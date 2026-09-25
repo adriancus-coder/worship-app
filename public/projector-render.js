@@ -14,7 +14,9 @@
   const MAX_FONT = 0.12;
   const FADE_MS = 150;
 
-  function create(container, { resolveLogo = async (url) => url } = {}) {
+  // videoPlaceholder: the small preview shows "▶ title" for a video frame (the screen itself
+  // plays it on its own layer, see video-player.js).
+  function create(container, { resolveLogo = async (url) => url, videoPlaceholder = false } = {}) {
     container.classList.add('projector');
     const stage = document.createElement('div');
     stage.className = 'projector-stage';
@@ -91,10 +93,18 @@
         await img.decode().catch(() => {});
         return img;
       }
-      return null; // black, idle without a logo, video (later), unknown
+      if (frame.kind === 'video' && videoPlaceholder && frame.video) {
+        const box = el('div', 'projector-text projector-video-placeholder');
+        box.append(el('div', 'projector-title', `${frame.video.state === 'paused' ? '❚❚' : '▶'} ${frame.video.media.title || frame.video.media.name || ''}`));
+        return box;
+      }
+      return null; // black, idle without a logo, a video on the screen's own layer, unknown
     }
 
-    const sameFrame = (a, b) => a && b && JSON.stringify({ ...a, version: 0 }) === JSON.stringify({ ...b, version: 0 });
+    // The same picture: the version and a prepared video (its own layer) do not count, except
+    // for the preview's video placeholder.
+    const picture = (f) => JSON.stringify({ ...f, version: 0, video: f.kind === 'video' && videoPlaceholder ? f.video : undefined });
+    const sameFrame = (a, b) => a && b && picture(a) === picture(b);
 
     async function show(frame) {
       if (!frame || sameFrame(frame, current)) {
@@ -127,7 +137,7 @@
 
   // A frame shows lyrics / text (the fullscreen hint must never cover it).
   function isContent(frame) {
-    return Boolean(frame) && ['lyrics', 'verse', 'announcement', 'title'].includes(frame.kind);
+    return Boolean(frame) && ['lyrics', 'verse', 'announcement', 'title', 'video'].includes(frame.kind);
   }
 
   window.PROJECTOR_RENDER = { create, isContent };

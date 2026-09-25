@@ -269,7 +269,9 @@
   // --- projector panel --------------------------------------------------------------
 
   // The small preview renders exactly the frame the screens get (same render module).
-  const preview = window.PROJECTOR_RENDER.create($('projector-preview'));
+  const preview = window.PROJECTOR_RENDER.create($('projector-preview'), { videoPlaceholder: true });
+  // Video controls (a module the operator console will reuse in stage 6).
+  const videoPanel = window.VIDEO_PANEL.create($('video-panel'), { send, api, t, el });
   const projector = { screens: 0, details: null };
 
   function renderProjector() {
@@ -299,6 +301,8 @@
       if (!reply || !reply.ok) return;
       preview.show(reply.frame);
       projector.screens = reply.screens;
+      videoPanel.setScreens(reply.screens);
+      if (reply.videoStatus && reply.videoStatus.length) videoPanel.status(reply.videoStatus);
       renderProjector();
     });
   }
@@ -398,6 +402,7 @@
     if (!state.snap) return;
     renderConnection(state.client.connection);
     renderProjector();
+    videoPanel.render();
     // Section labels come from the server in the page language: reload.
     state.loadedKey = null;
     syncSetlist(state.snap).then(render);
@@ -416,6 +421,8 @@
         $('live').hidden = false;
         render();
         renderProjector();
+        videoPanel.setSetlist(state.items);
+        videoPanel.update(snap);
       });
     },
     onPresence: (presence) => {
@@ -429,7 +436,9 @@
   state.client.socket.on('projector:frame', (frame) => preview.show(frame));
   state.client.socket.on('projector:screens', ({ count }) => {
     projector.screens = count;
+    videoPanel.setScreens(count);
     renderProjector();
   });
+  state.client.socket.on('projector:video-status', (status) => videoPanel.status(status));
   renderConnection('connecting');
 })();

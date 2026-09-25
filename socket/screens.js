@@ -29,7 +29,7 @@ function createScreensHub({ db, logger, config }) {
   const lastSent = new Map(); // adminId -> JSON of the last frame (without its version)
   const signer = createMediaSigner(config.DATA_DIR);
   const selectMedia = db.prepare('SELECT * FROM media WHERE id = ? AND admin_id = ?');
-  const videoStatus = new Map(); // adminId -> last playback status reported by a screen
+  const videoStatus = new Map(); // adminId -> Map(screenId -> last playback status of that screen)
   let onVideoEvent = () => {};
   let nsp = null;
   let mainIo = null;
@@ -101,7 +101,7 @@ function createScreensHub({ db, logger, config }) {
   function watch(socket) {
     const { adminId } = socket.data;
     socket.join(watchersRoom(adminId));
-    return { frame: frameFor(adminId), screens: screenCount(adminId), videoStatus: videoStatus.get(adminId) || null };
+    return { frame: frameFor(adminId), screens: screenCount(adminId), videoStatus: [...(videoStatus.get(adminId) || new Map()).values()] };
   }
 
   // Playback reported by a screen (at most once a second): relayed to the watchers, kept in
@@ -123,7 +123,8 @@ function createScreensHub({ db, logger, config }) {
       seq: Number.isInteger(payload.seq) ? payload.seq : null,
       at: Date.now(),
     };
-    videoStatus.set(adminId, status);
+    if (!videoStatus.has(adminId)) videoStatus.set(adminId, new Map());
+    videoStatus.get(adminId).set(screenId, status);
     mainIo.to(watchersRoom(adminId)).emit('projector:video-status', status);
     if (status.state === 'ended') onVideoEvent(adminId, { type: 'video.ended' });
   }
@@ -138,9 +139,10 @@ function createScreensHub({ db, logger, config }) {
     onVideoEvent = handler;
   }
 
+  // Where the video is, for a pause: the furthest position any screen reported.
   function lastVideoPosition(adminId) {
-    const status = videoStatus.get(adminId);
-    return status ? status.position : null;
+    const all = [...(videoStatus.get(adminId) || new Map()).values()];
+    return all.length ? Math.max(...all.map((s) => s.position)) : null;
   }
 
   // Ids of the admin's screens that are connected now.
@@ -176,7 +178,10 @@ function createScreensHub({ db, logger, config }) {
       sendCount(adminId);
       socket.on('screen:video-status', (payload) => onScreenVideoStatus(socket, payload));
       socket.on('screen:video-local', (payload) => onScreenVideoLocal(socket, payload));
-      socket.on('disconnect', () => sendCount(adminId));
+      socket.on('disconnect', () => {
+        if (videoStatus.has(adminId)) videoStatus.get(adminId).delete(screenId);
+        sendCount(adminId);
+      });
       logger.debug(`screen #${screenId} connected (admin #${adminId})`);
     });
     // last_seen_at while connected; a screen revoked meanwhile is dropped.

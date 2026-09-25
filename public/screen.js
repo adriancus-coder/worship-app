@@ -14,7 +14,7 @@
   const HINT_MS = 5000;
   const OFFLINE_DOT_MS = 30000;
 
-  const state = { token: null, pairing: null, pollTimer: null, countdown: null, socket: null, view: null, offlineTimer: null, logos: new Map() };
+  const state = { token: null, pairing: null, pollTimer: null, countdown: null, socket: null, view: null, player: null, offlineTimer: null, logos: new Map() };
 
   function readToken() {
     try {
@@ -164,6 +164,13 @@
     $('pairing').hidden = true;
     $('output').hidden = false;
     if (!state.view) state.view = window.PROJECTOR_RENDER.create($('output'), { resolveLogo });
+    if (!state.player) {
+      state.player = window.VIDEO_PLAYER.create($('video-layer'), {
+        t,
+        onStatus: (status) => { if (state.socket) state.socket.emit('screen:video-status', status); },
+        onLocalChosen: (name) => { if (state.socket) state.socket.emit('screen:video-local', { name }); },
+      });
+    }
     const socket = window.io('/screens', {
       auth: { token: state.token },
       transports: ['websocket', 'polling'],
@@ -174,6 +181,8 @@
     socket.on('connect', () => showOffline(false));
     socket.on('projector:frame', (frame) => {
       state.view.show(frame);
+      // A prepared video is loaded without being shown; a 'video' frame shows and plays it.
+      state.player.apply(frame.video || null, frame.kind === 'video');
       updateHint();
     });
     socket.on('screen:revoked', dropToken);

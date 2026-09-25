@@ -55,7 +55,13 @@ if (config.IS_PRODUCTION) app.set('trust proxy', 1);
 
 app.use(helmet({
   contentSecurityPolicy: {
-    directives: { upgradeInsecureRequests: config.IS_PRODUCTION ? [] : null },
+    directives: {
+      upgradeInsecureRequests: config.IS_PRODUCTION ? [] : null,
+      // Projector video: YouTube / Vimeo players in iframes (controlled with postMessage, no
+      // vendor scripts); uploads, local files (blob:) and direct https .mp4 / .webm links.
+      frameSrc: ["'self'", 'https://www.youtube-nocookie.com', 'https://player.vimeo.com'],
+      mediaSrc: ["'self'", 'blob:', 'https:'],
+    },
   },
   strictTransportSecurity: config.IS_PRODUCTION,
 }));
