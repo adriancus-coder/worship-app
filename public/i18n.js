@@ -109,6 +109,7 @@
         tabsLabel: 'Surse de cântări',
         tabLocal: 'Biblioteca mea',
         tabOnline: 'Caută online',
+        export: 'Exportă biblioteca',
       },
       online: {
         searchLabel: 'Caută pe resursecrestine.ro',
@@ -296,6 +297,7 @@
         tabsLabel: 'Song sources',
         tabLocal: 'My library',
         tabOnline: 'Search online',
+        export: 'Export the library',
       },
       online: {
         searchLabel: 'Search resursecrestine.ro',

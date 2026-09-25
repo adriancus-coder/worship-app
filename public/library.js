@@ -83,6 +83,7 @@
     const res = await api('/api/auth/me');
     me = res.body;
     newSong.hidden = !canEdit(me);
+    document.getElementById('library-actions').hidden = !canEdit(me);
     document.dispatchEvent(new CustomEvent('library:me', { detail: me }));
     load();
   })().catch(() => setStatus(t('common.networkError')));

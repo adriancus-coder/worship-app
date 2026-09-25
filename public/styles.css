@@ -352,3 +352,6 @@ dialog .message:empty { display: none; }
 .preview h2:focus { outline: none; }
 .preview-kicker { margin: 0 0 4px; font-size: 0.8125rem; color: var(--accent); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
 .preview .form-actions { margin-top: 12px; }
+
+.library-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border); }
+.library-actions > * { flex: 1 1 160px; }

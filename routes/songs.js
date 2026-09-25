@@ -6,7 +6,7 @@ const { LIMITS, SORT_MODES, DuplicateTitleError, validateSong, createSongStore }
 
 // All routes are scoped to req.adminId from the session. A song of another admin
 // simply does not exist here: 404, never 403.
-function createSongsRouter({ db, auth, logger }) {
+function createSongsRouter({ db, auth, config, logger }) {
   const router = express.Router();
   const songs = createSongStore(db);
   const canEdit = requireRole('owner', 'leader');
@@ -32,6 +32,16 @@ function createSongsRouter({ db, auth, logger }) {
     const q = typeof req.query.q === 'string' ? req.query.q.slice(0, LIMITS.queryMax) : '';
     const sort = SORT_MODES.includes(req.query.sort) ? req.query.sort : 'az';
     res.json({ songs: songs.list(req.adminId, { q, sort }) });
+  });
+
+  // Registered before /api/songs/:id.
+  router.get('/api/songs/export', canEdit, (req, res) => {
+    const payload = songs.exportLibrary(req.adminId, config.APP_NAME);
+    const filename = `worship-app-library-${payload.exportedAt.slice(0, 10)}.json`;
+    logger.info(`Library exported by user #${req.user.id} (admin #${req.adminId}, ${payload.count} songs)`);
+    res.set('Content-Type', 'application/json; charset=utf-8');
+    res.set('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(JSON.stringify(payload, null, 2));
   });
 
   router.get('/api/songs/:id', (req, res) => {

@@ -49,6 +49,10 @@
 
       <p id="status" class="muted" role="status" aria-live="polite" data-i18n="library.loading"></p>
       <ul id="songs" class="song-list"></ul>
+
+      <div class="library-actions" id="library-actions" hidden>
+        <a class="button secondary" id="export-library" href="/api/songs/export" download data-i18n="library.export"></a>
+      </div>
     </div>
 
     <div id="panel-online" role="tabpanel" aria-labelledby="tab-online" hidden>
