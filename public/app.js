@@ -35,15 +35,15 @@
     // The live page of this role: the console for the operator.
     const livePage = `/events/${event.id}/${role === 'operator' ? 'operator' : 'live'}`;
     if (live) {
-      if (EDITOR_ROLES.includes(role)) return [{ text: t('home.enterLive'), href: livePage }];
-      return [{ text: t('home.follow'), href: `/events/${event.id}/follow` }];
+      if (EDITOR_ROLES.includes(role)) return [{ text: t('home.enterLive'), href: livePage, icon: 'play' }];
+      return [{ text: t('home.follow'), href: `/events/${event.id}/follow`, icon: 'follow' }];
     }
     if (EDITOR_ROLES.includes(role)) {
-      const list = [{ text: t('home.prepare'), href: eventUrl(event, '/edit') }];
-      if (event.status === 'published') list.push({ text: t('home.startLive'), href: livePage });
+      const list = [{ text: t('home.prepare'), href: eventUrl(event, '/edit'), icon: 'edit' }];
+      if (event.status === 'published') list.push({ text: t('home.startLive'), href: livePage, icon: 'play' });
       return list;
     }
-    return [{ text: t('home.rehearse'), href: eventUrl(event, '/rehearse') }];
+    return [{ text: t('home.rehearse'), href: eventUrl(event, '/rehearse'), icon: 'rehearse' }];
   }
 
   function card(event, live) {
@@ -59,15 +59,15 @@
         el('span', { class: `pill pill-${event.status}`, text: t(`events.status.${event.status}`) })),
       event.status === 'draft' ? el('p', { class: 'hint', text: t('home.draftNote') }) : null,
       el('div', { class: 'now-actions' },
-        el('a', { class: 'button now-primary', href: primary.href, text: primary.text }),
-        secondary ? el('a', { class: 'button secondary', href: secondary.href, text: secondary.text }) : null));
+        el('a', { class: 'button now-primary', href: primary.href, 'data-icon': primary.icon, text: primary.text }),
+        secondary ? el('a', { class: 'button secondary', href: secondary.href, 'data-icon': secondary.icon, text: secondary.text }) : null));
   }
 
   function empty() {
     return el('article', { class: 'now-card empty' },
       el('p', { class: 'now-title', text: t('home.empty') }),
       el('p', { class: 'muted', text: editor() ? t('home.emptyEditor') : t('home.emptyTeam') }),
-      editor() ? el('div', { class: 'now-actions' }, el('a', { class: 'button now-primary', href: '/events?new=1', text: t('events.newEvent') })) : null);
+      editor() ? el('div', { class: 'now-actions' }, el('a', { class: 'button now-primary', href: '/events?new=1', 'data-icon': 'plus', text: t('events.newEvent') })) : null);
   }
 
   function render() {

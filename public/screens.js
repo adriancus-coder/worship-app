@@ -34,8 +34,8 @@
         el('span', { class: 'screen-name', text: screen.name }),
         el('span', { class: 'screen-meta', text: `${screen.online ? t('screens.online') : t('screens.offline')} · ${lastSeen(screen)}` })),
       el('span', { class: 'screen-tools' },
-        el('button', { type: 'button', class: 'secondary', text: t('screens.rename'), 'aria-label': t('screens.renameLabel', { name: screen.name }), onclick: () => openRename(screen) }),
-        el('button', { type: 'button', class: 'secondary', text: t('screens.revoke'), 'aria-label': t('screens.revokeLabel', { name: screen.name }), onclick: () => openRevoke(screen) })))));
+        el('button', { type: 'button', class: 'secondary', 'data-icon': 'edit', text: t('screens.rename'), 'aria-label': t('screens.renameLabel', { name: screen.name }), onclick: () => openRename(screen) }),
+        el('button', { type: 'button', class: 'secondary', 'data-icon': 'close', text: t('screens.revoke'), 'aria-label': t('screens.revokeLabel', { name: screen.name }), onclick: () => openRevoke(screen) })))));
   }
 
   async function load() {

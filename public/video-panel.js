@@ -65,7 +65,7 @@
     }
 
     function prepareButton(label, extra) {
-      return el('button', { type: 'button', class: 'secondary', text: t('video.prepare'), 'aria-label': t('video.prepareLabel', { title: label }), onclick: () => send('video.prepare', extra) });
+      return el('button', { type: 'button', class: 'secondary', 'data-icon': 'import', text: t('video.prepare'), 'aria-label': t('video.prepareLabel', { title: label }), onclick: () => send('video.prepare', extra) });
     }
 
     function tabPanel() {
@@ -102,12 +102,12 @@
         },
         el('label', { for: 'video-url', class: 'sr-only', text: t('media.urlLabel') }), url,
         el('label', { for: 'video-url-title', class: 'sr-only', text: t('media.titleLabel') }), title,
-        el('button', { type: 'submit', class: 'secondary', text: t('video.prepare') }));
+        el('button', { type: 'submit', class: 'secondary', 'data-icon': 'import', text: t('video.prepare') }));
         return el('div', null, el('p', { class: 'hint', text: t('media.urlHint') }), form);
       }
       return el('div', null,
         el('p', { class: 'hint', text: t('video.usbHint') }),
-        el('button', { type: 'button', class: 'secondary', text: t('video.usbPrepare'), onclick: () => send('video.prepare', { local: true }) }));
+        el('button', { type: 'button', class: 'secondary', 'data-icon': 'import', text: t('video.usbPrepare'), onclick: () => send('video.prepare', { local: true }) }));
     }
 
     // Progress and status text only (status reports arrive every second; the rest of the
@@ -169,13 +169,14 @@
           type: 'button',
           id: 'video-toggle',
           class: `video-toggle${playing ? ' playing' : ''}`,
+          'data-icon': playing ? 'pause' : 'play',
           disabled: !live || !loaded || (video.local && !video.localName),
           text: playing ? t('video.pause') : t('video.play'),
           onclick: () => send(playing ? 'video.pause' : 'video.play'),
         }),
         el('div', { class: 'video-tools' },
-          el('button', { type: 'button', class: 'secondary', id: 'video-restart', disabled: !live || !loaded, text: t('video.restart'), onclick: () => send('video.restart') }),
-          el('button', { type: 'button', class: 'secondary', id: 'video-stop', disabled: !live || !loaded, text: t('video.stop'), onclick: () => send('video.stop') }),
+          el('button', { type: 'button', class: 'secondary', id: 'video-restart', 'data-icon': 'restart', disabled: !live || !loaded, text: t('video.restart'), onclick: () => send('video.restart') }),
+          el('button', { type: 'button', class: 'secondary', id: 'video-stop', 'data-icon': 'stop', disabled: !live || !loaded, text: t('video.stop'), onclick: () => send('video.stop') }),
           el('label', { class: 'video-volume' },
             el('span', { text: t('video.volume') }),
             el('input', {

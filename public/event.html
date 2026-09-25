@@ -16,7 +16,7 @@
       <div class="draft-banner" id="draft-banner" role="alert" hidden>
         <p><strong data-i18n="setlist.draftFound"></strong> <span id="draft-time" class="muted"></span></p>
         <div class="form-actions">
-          <button type="button" id="draft-restore" data-i18n="setlist.draftRestore"></button>
+          <button type="button" id="draft-restore" data-icon="undo" data-i18n="setlist.draftRestore"></button>
           <button type="button" class="secondary" id="draft-discard" data-i18n="setlist.draftDiscard"></button>
         </div>
       </div>
@@ -27,14 +27,14 @@
         <p class="event-summary"><span id="event-status" class="pill"></span> <span id="event-counts"></span></p>
         <p id="event-notes" class="event-notes" hidden></p>
         <div class="event-actions" id="event-actions">
-          <a class="button" id="live-link" hidden data-i18n="live.link"></a>
-          <a class="button" id="follow-link" hidden data-i18n="follow.link"></a>
-          <a class="button secondary" id="operator-link" hidden data-i18n="operator.link"></a>
-          <a class="button" id="rehearse-link" data-i18n="rehearse.link"></a>
-          <a class="button secondary" id="edit-link" hidden data-i18n="setlist.edit"></a>
-          <button type="button" class="secondary" id="details-button" hidden data-i18n="setlist.details"></button>
-          <button type="button" id="publish-button" hidden></button>
-          <button type="button" class="secondary" id="template-button" hidden data-i18n="setlist.saveTemplate"></button>
+          <a class="button" id="live-link" hidden data-icon="play" data-i18n="live.link"></a>
+          <a class="button secondary" id="follow-link" hidden data-icon="follow" data-i18n="follow.link"></a>
+          <a class="button secondary" id="operator-link" hidden data-icon="projector" data-i18n="operator.link"></a>
+          <a class="button secondary" id="rehearse-link" data-icon="rehearse" data-i18n="rehearse.link"></a>
+          <a class="button secondary" id="edit-link" hidden data-icon="edit" data-i18n="setlist.edit"></a>
+          <button type="button" class="secondary" id="details-button" hidden data-icon="details" data-i18n="setlist.details"></button>
+          <button type="button" class="secondary" id="publish-button" hidden></button>
+          <button type="button" class="secondary" id="template-button" hidden data-icon="template" data-i18n="setlist.saveTemplate"></button>
         </div>
         <p id="action-message" class="message" role="status" aria-live="polite"></p>
       </header>
@@ -46,11 +46,11 @@
           <p id="setlist-empty" class="muted" hidden data-i18n="setlist.empty"></p>
           <ol id="items" class="setlist"></ol>
           <div class="add-bar" id="add-bar" role="group" data-i18n-aria-label="setlist.addLabel" hidden>
-            <button type="button" class="secondary" data-add="song" data-i18n="setlist.addSong"></button>
-            <button type="button" class="secondary" data-add="verse" data-i18n="setlist.addVerse"></button>
-            <button type="button" class="secondary" data-add="video" data-i18n="setlist.addVideo"></button>
-            <button type="button" class="secondary" data-add="announcement" data-i18n="setlist.addAnnouncement"></button>
-            <button type="button" class="secondary" data-add="sermon" data-i18n="setlist.addSermon"></button>
+            <button type="button" class="secondary" data-add="song" data-icon="plus" data-i18n="setlist.addSong"></button>
+            <button type="button" class="secondary" data-add="verse" data-icon="plus" data-i18n="setlist.addVerse"></button>
+            <button type="button" class="secondary" data-add="video" data-icon="plus" data-i18n="setlist.addVideo"></button>
+            <button type="button" class="secondary" data-add="announcement" data-icon="plus" data-i18n="setlist.addAnnouncement"></button>
+            <button type="button" class="secondary" data-add="sermon" data-icon="plus" data-i18n="setlist.addSermon"></button>
           </div>
         </section>
         <section class="detail-pane" id="detail-home" aria-live="polite">
@@ -60,7 +60,7 @@
 
       <div class="save-bar" id="save-bar" hidden>
         <p id="save-state" class="save-state" role="status" aria-live="polite"></p>
-        <button type="button" id="save-button" data-i18n="setlist.save"></button>
+        <button type="button" id="save-button" data-icon="check" data-i18n="setlist.save"></button>
       </div>
 
       <div class="delete-area" id="delete-area" hidden>

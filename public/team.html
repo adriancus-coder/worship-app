@@ -11,7 +11,7 @@
   <main class="wide team-page">
     <div class="page-head">
       <h1 data-i18n="team.heading"></h1>
-      <button type="button" id="add-person" data-i18n="team.add"></button>
+      <button type="button" id="add-person" data-icon="person-plus" data-i18n="team.add"></button>
     </div>
     <p class="muted" data-i18n="team.intro"></p>
     <p id="status" class="muted" role="status" aria-live="polite" data-i18n="events.loading"></p>
@@ -31,7 +31,7 @@
         </fieldset>
         <p id="add-message" class="message error" role="alert"></p>
         <div class="form-actions">
-          <button type="submit" id="add-submit" value="add" data-i18n="team.create"></button>
+          <button type="submit" id="add-submit" value="add" data-icon="person-plus" data-i18n="team.create"></button>
           <button type="button" class="secondary" data-close data-i18n="team.cancel"></button>
         </div>
       </form>
@@ -51,7 +51,7 @@
         <p id="edit-role-help" class="hint"></p>
         <p id="edit-message" class="message error" role="alert"></p>
         <div class="form-actions">
-          <button type="submit" id="edit-submit" data-i18n="team.save"></button>
+          <button type="submit" id="edit-submit" data-icon="check" data-i18n="team.save"></button>
           <button type="button" class="secondary" data-close data-i18n="team.cancel"></button>
         </div>
       </form>
@@ -76,13 +76,13 @@
         <dt data-i18n="team.temporaryPassword"></dt>
         <dd id="result-password" class="result-password" translate="no"></dd>
       </dl>
-      <button type="button" class="secondary" id="copy-password" data-i18n="team.copy"></button>
+      <button type="button" class="secondary" id="copy-password" data-icon="copy" data-i18n="team.copy"></button>
       <label class="result-message-label"><span data-i18n="team.messageLabel"></span>
         <textarea id="result-message" rows="5" readonly></textarea>
       </label>
       <div class="form-actions">
-        <button type="button" id="copy-message" data-i18n="team.copyMessage"></button>
-        <button type="button" class="secondary" id="share-message" hidden data-i18n="team.share"></button>
+        <button type="button" id="copy-message" data-icon="copy" data-i18n="team.copyMessage"></button>
+        <button type="button" class="secondary" id="share-message" hidden data-icon="publish" data-i18n="team.share"></button>
       </div>
       <p id="copy-status" class="message success" role="status" aria-live="polite"></p>
       <div class="form-actions">

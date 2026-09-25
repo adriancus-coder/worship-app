@@ -23,17 +23,17 @@
           <p id="connection" class="connection" role="status" aria-live="polite"><span class="dot" aria-hidden="true"></span><span id="connection-text"></span></p>
         </div>
         <div class="live-actions op-actions">
-          <button type="button" id="start-button" hidden data-i18n="live.start"></button>
-          <button type="button" class="danger" id="end-button" hidden data-i18n="live.end"></button>
+          <button type="button" id="start-button" hidden data-icon="play" data-i18n="live.start"></button>
+          <button type="button" class="danger" id="end-button" hidden data-icon="stop" data-i18n="live.end"></button>
         </div>
         <div id="mode-controls" hidden></div>
         <div id="cross" class="cross-line" hidden>
           <p id="cross-text" aria-live="polite"></p>
-          <button type="button" class="secondary" id="cross-jump" data-i18n="live.modes.jump"></button>
+          <button type="button" class="secondary" id="cross-jump" data-icon="jump" data-i18n="live.modes.jump"></button>
         </div>
         <div class="op-screen">
           <span id="op-screens" class="projector-screens"></span>
-          <button type="button" class="secondary" id="open-projector" data-i18n="live.projector.open"></button>
+          <button type="button" class="secondary" id="open-projector" data-icon="projector" data-i18n="live.projector.open"></button>
         </div>
         <p class="hint" id="projector-permission" data-i18n="live.projector.permissionHint"></p>
         <p id="projector-message" class="message" role="status" aria-live="polite"></p>
@@ -52,8 +52,8 @@
             <ul id="add-results" class="op-results" data-i18n-aria-label="operator.resultsLabel"></ul>
             <p class="hint" data-i18n="operator.addHint"></p>
             <div class="op-add-actions">
-              <button type="button" class="secondary" id="add-projector" data-i18n="operator.addProjector"></button>
-              <button type="button" id="add-setlist" data-i18n="operator.addSetlist"></button>
+              <button type="button" class="secondary" id="add-projector" data-icon="projector" data-i18n="operator.addProjector"></button>
+              <button type="button" id="add-setlist" data-icon="plus" data-i18n="operator.addSetlist"></button>
             </div>
             <p id="add-message" class="message" role="status" aria-live="polite"></p>
           </section>
@@ -73,7 +73,7 @@
             <button type="button" class="secondary" id="op-prev" data-i18n="live.prev"></button>
             <button type="button" id="op-next"></button>
           </div>
-          <button type="button" class="secondary op-sync" id="op-sync" data-i18n="operator.syncWorship"></button>
+          <button type="button" class="secondary op-sync" id="op-sync" data-icon="jump" data-i18n="operator.syncWorship"></button>
           <p class="hint key-hint op-keys" data-i18n="operator.keysHint"></p>
         </section>
 

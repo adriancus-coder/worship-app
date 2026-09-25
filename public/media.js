@@ -44,8 +44,8 @@
         el('span', { class: 'screen-name', text: item.title }),
         el('span', { class: 'screen-meta', text: describe(item) })),
       el('span', { class: 'screen-tools' },
-        el('button', { type: 'button', class: 'secondary', text: t('screens.rename'), 'aria-label': t('media.renameLabel', { title: item.title }), onclick: () => openRename(item) }),
-        el('button', { type: 'button', class: 'secondary', text: t('media.delete'), 'aria-label': t('media.deleteLabel', { title: item.title }), onclick: () => openDelete(item) })))));
+        el('button', { type: 'button', class: 'secondary', 'data-icon': 'edit', text: t('screens.rename'), 'aria-label': t('media.renameLabel', { title: item.title }), onclick: () => openRename(item) }),
+        el('button', { type: 'button', class: 'secondary', 'data-icon': 'close', text: t('media.delete'), 'aria-label': t('media.deleteLabel', { title: item.title }), onclick: () => openDelete(item) })))));
   }
 
   async function load() {

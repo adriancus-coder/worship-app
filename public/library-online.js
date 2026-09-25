@@ -55,18 +55,19 @@
       const imported = row && row.kind === 'imported';
       return [
         el('span', { class: `row-state${imported ? ' success' : ''}`, text: t(imported ? 'online.importedShort' : 'online.exists') }),
-        el('a', { class: 'button secondary', href: `/songs/${existing}`, text: t('online.open'), 'aria-label': t('online.openSongTitle', { title: item.title }) }),
+        el('a', { class: 'button secondary', href: `/songs/${existing}`, 'data-icon': 'jump', text: t('online.open'), 'aria-label': t('online.openSongTitle', { title: item.title }) }),
       ];
     }
     const busy = Boolean(state.busy);
     return [
       el('button', {
-        type: 'button', class: 'secondary', disabled: busy,
+        type: 'button', class: 'secondary', disabled: busy, 'data-icon': 'follow',
         'aria-label': t('online.previewSong', { title: item.title }),
         onclick: () => openPreview({ id: item.id }, item.id),
       }, t('online.preview')),
       el('button', {
-        type: 'button', disabled: busy,
+        // One import button per result: secondary (a list of filled buttons reads as options).
+        type: 'button', class: 'secondary', disabled: busy, 'data-icon': 'import',
         'aria-label': t('online.importSong', { title: item.title }),
         onclick: () => importRow(item),
       }, state.busy === `row:${item.id}` ? t('online.importing') : t('online.import')),

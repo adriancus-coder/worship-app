@@ -50,11 +50,11 @@
             owner ? null : el('span', { class: `pill status-pill status-${status}`, text: t(`team.status.${status}`) }),
             el('span', { class: 'muted', text: lastLogin(user.lastLoginAt) }))),
         owner ? null : el('div', { class: 'team-actions' },
-          el('button', { type: 'button', class: 'secondary', text: t('team.edit'), 'aria-label': t('team.editFor', { name: user.name }), onclick: () => openEdit(user) }),
-          el('button', { type: 'button', class: 'secondary', text: t('team.reset'), 'aria-label': t('team.resetFor', { name: user.name }), onclick: () => openConfirm('reset', user) }),
+          el('button', { type: 'button', class: 'secondary', 'data-icon': 'edit', text: t('team.edit'), 'aria-label': t('team.editFor', { name: user.name }), onclick: () => openEdit(user) }),
+          el('button', { type: 'button', class: 'secondary', 'data-icon': 'key', text: t('team.reset'), 'aria-label': t('team.resetFor', { name: user.name }), onclick: () => openConfirm('reset', user) }),
           user.active
-            ? el('button', { type: 'button', class: 'secondary danger-text', text: t('team.deactivate'), 'aria-label': t('team.deactivateFor', { name: user.name }), onclick: () => openConfirm('deactivate', user) })
-            : el('button', { type: 'button', class: 'secondary', text: t('team.reactivate'), 'aria-label': t('team.reactivateFor', { name: user.name }), onclick: () => openConfirm('reactivate', user) })));
+            ? el('button', { type: 'button', class: 'secondary danger-text', 'data-icon': 'close', text: t('team.deactivate'), 'aria-label': t('team.deactivateFor', { name: user.name }), onclick: () => openConfirm('deactivate', user) })
+            : el('button', { type: 'button', class: 'secondary', 'data-icon': 'restart', text: t('team.reactivate'), 'aria-label': t('team.reactivateFor', { name: user.name }), onclick: () => openConfirm('reactivate', user) })));
     }));
   }
 

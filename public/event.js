@@ -167,6 +167,7 @@
     templateButton.hidden = !state.editing;
     publishButton.hidden = !state.editing || ev.isTemplate || !['draft', 'published'].includes(ev.status);
     publishButton.className = ev.status === 'published' ? 'secondary' : '';
+    publishButton.dataset.icon = ev.status === 'published' ? 'unpublish' : 'publish';
     publishButton.textContent = ev.status === 'published' ? t('setlist.unpublish') : t('setlist.publish');
     const dirty = isDirty();
     publishButton.disabled = dirty;

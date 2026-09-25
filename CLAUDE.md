@@ -57,6 +57,18 @@ Working name: `worship-app`. The public name may change — keep it in ONE place
 - `npm run check` must pass before every commit.
 - Diagnostic/debug tools are never removed unless Adrian explicitly confirms.
 
+## UI rules
+Actions and selection must never look alike (styles in `public/styles.css`, "UI rules").
+- **Primary action:** filled accent (`button`, `a.button`), a verb with a leading icon
+  (`data-icon="play"` → "▶ Intră live"). At most ONE primary action visible per screen area.
+- **Secondary action:** `.secondary` — dark surface + 1px border, icon + verb.
+- **Selection controls** (segmented switches, tabs, RO/EN, C/Do, filters, "Doar text",
+  projector sources): options carry `aria-pressed` (or `role="tab"` + `aria-selected`) and
+  sit in a visible container (`.choice-group` or one of the switch classes; a single toggle
+  such as "Doar text" keeps its own border). The selected option gets the accent fill + a
+  check mark + bold; the others are flat.
+- Never give an action `aria-pressed`, and never style a selection option as a button.
+
 ## Reporting
 Every task ends with a final report **inside one triple-backtick code block**
 (commit SHAs + subjects, `npm run check` output, smoke test output, anything skipped).

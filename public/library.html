@@ -12,7 +12,7 @@
     <div class="page-head library-head">
       <h1 data-i18n="library.heading"></h1>
       <div class="head-actions">
-        <a class="button" id="new-song" href="/songs/new" hidden data-i18n="library.newSong"></a>
+        <a class="button" id="new-song" href="/songs/new" hidden data-icon="plus" data-i18n="library.newSong"></a>
         <div class="menu" id="library-menu" hidden>
           <button type="button" class="secondary menu-button" id="library-menu-button" aria-haspopup="true" aria-expanded="false" aria-controls="library-menu-list" data-i18n-aria-label="library.moreActions"><span aria-hidden="true">⋯</span></button>
           <div class="menu-list" id="library-menu-list" hidden>
@@ -30,7 +30,7 @@
         <div class="input-row search-row">
           <input type="search" id="q" enterkeyhint="search" autocomplete="off" autocapitalize="off" spellcheck="false"
             maxlength="200" aria-describedby="q-hint" aria-controls="songs">
-          <button type="submit" class="secondary" id="online-search" hidden data-i18n="online.searchBoth"></button>
+          <button type="submit" class="secondary" id="online-search" hidden data-icon="search" data-i18n="online.searchBoth"></button>
         </div>
         <span class="hint" id="q-hint"></span>
       </form>
@@ -78,7 +78,7 @@
       <div class="preview-dialog-foot">
         <p id="preview-message" class="message" role="alert"></p>
         <div class="form-actions">
-          <button type="button" id="preview-import" data-i18n="online.import"></button>
+          <button type="button" id="preview-import" data-icon="import" data-i18n="online.import"></button>
           <button type="button" id="preview-close" class="secondary" data-i18n="online.close"></button>
         </div>
       </div>
@@ -104,13 +104,13 @@
       </div>
 
       <div class="form-actions" id="import-actions">
-        <button type="button" id="import-run" hidden></button>
+        <button type="button" id="import-run" data-icon="import" hidden></button>
         <button type="button" class="secondary" id="import-cancel" data-i18n="import.cancel"></button>
       </div>
 
       <div id="import-result" hidden>
         <ul class="import-summary" id="import-summary"></ul>
-        <button type="button" id="import-done" data-i18n="import.back"></button>
+        <button type="button" id="import-done" data-icon="check" data-i18n="import.back"></button>
       </div>
     </section>
   </main>
