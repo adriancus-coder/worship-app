@@ -32,13 +32,13 @@ function createEventsRouter({ db, auth, logger }) {
   // Loads the event for this request (team roles only see published events) or sends 404.
   function load(req, res) {
     const id = eventId(req);
-    const found = id && events.get(req.adminId, id, { teamOnly: !isEditor(req) });
+    const found = id && events.get(req.adminId, id, { teamOnly: !isEditor(req), t: req.t });
     if (!found) notFound(req, res);
     return found || null;
   }
 
   function respond(req, res, id, status = 200) {
-    res.status(status).json({ ...events.get(req.adminId, id), today: today(req) });
+    res.status(status).json({ ...events.get(req.adminId, id, { t: req.t }), today: today(req) });
   }
 
   router.use('/api/events', auth.requireUser, (req, res, next) => {
@@ -56,6 +56,17 @@ function createEventsRouter({ db, auth, logger }) {
   router.get('/api/events/:id', (req, res) => {
     const found = load(req, res);
     if (found) res.json({ ...found, today: today(req) });
+  });
+
+  // A song item ready to render (rehearsal, previews): sections transposed and the
+  // arrangement resolved. Same visibility as the event.
+  router.get('/api/events/:id/items/:itemId/song', (req, res) => {
+    const found = load(req, res);
+    if (!found) return;
+    const itemId = /^\d{1,15}$/.test(req.params.itemId) ? Number(req.params.itemId) : null;
+    const result = itemId && events.itemSong(req.adminId, found.event.id, itemId, req.t);
+    if (!result) return res.status(404).json({ error: req.t('errors.songNotFound') });
+    res.json(result);
   });
 
   router.post('/api/events', canEdit, (req, res) => {

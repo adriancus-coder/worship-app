@@ -568,6 +568,29 @@ test('validateItems: one of each type, per-type fields, limits', () => {
   assert.strictEqual(evs.validateItems(Array(60).fill({ type: 'other', title: 'x' }), tro, findSong).error, undefined);
 });
 
+test('validateItems: song options (transpose, arrangement, team note, reference link)', () => {
+  const sections = [{ type: 'verse' }, { type: 'chorus' }, { type: 'verse' }, { type: 'bridge' }];
+  const findSong = (id) => (id === 5 ? { id: 5, title: 'Sfânt', sections } : null);
+  const ok = evs.validateItems([{ type: 'song', songId: 5, transpose: -3, arrangement: 'v1, c c1 B', teamNote: ' încet ', referenceUrl: 'https://youtu.be/x' }], tro, findSong);
+  assert.deepStrictEqual(ok.value[0], {
+    type: 'song', songId: 5, title: 'Sfânt', body: null, reference: null, url: null, durationMin: null,
+    transpose: -3, arrangement: 'V1 C C B', teamNote: 'încet', referenceUrl: 'https://youtu.be/x',
+  });
+  assert.deepStrictEqual(evs.validateItems([{ type: 'song', songId: 5 }], tro, findSong).value[0].transpose, 0);
+  const err = (item, tf = tro) => evs.validateItems([item], tf, findSong).error;
+  assert.strictEqual(err({ type: 'song', songId: 5, arrangement: 'V1 V9 C Q' }, tEn), 'Item 1: unknown sections in the order: V9, Q.');
+  assert.ok(err({ type: 'song', songId: 5, transpose: 12 }));
+  assert.ok(err({ type: 'song', songId: 5, transpose: 1.5 }));
+  assert.ok(err({ type: 'song', songId: 5, arrangement: 'V1 '.repeat(70) }));
+  assert.ok(err({ type: 'song', songId: 5, teamNote: 'x'.repeat(501) }));
+  assert.ok(err({ type: 'song', songId: 5, referenceUrl: 'http://youtu.be/x' }));
+  for (const field of [{ transpose: 2 }, { transpose: 0 }, { arrangement: 'V1' }, { teamNote: 'x' }, { referenceUrl: 'https://x.ro' }]) {
+    assert.strictEqual(err({ type: 'announcement', title: 'x', ...field }, tEn), 'Item 1: key, section order, team note and reference link are only for songs.', JSON.stringify(field));
+  }
+  // A deleted song keeps its options (nothing to check the arrangement against).
+  assert.strictEqual(evs.validateItems([{ type: 'song', songId: null, title: 'Veche', arrangement: 'V1 C', transpose: 2 }], tro, findSong).value[0].arrangement, 'V1 C');
+});
+
 // --- transposition and section codes -------------------------------------------
 
 test('keyAfter: all 12 major and minor keys one semitone up and down', () => {

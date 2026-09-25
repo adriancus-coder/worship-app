@@ -39,16 +39,40 @@
 
   // --- helpers ----------------------------------------------------------------
 
+  // Custom arrangement to save, or null for the default. Codes that no longer resolve
+  // (the song was edited) are dropped so the save is not rejected.
+  function arrangementPayload(item) {
+    if (item.arrangementIsDefault !== false) return null;
+    if (item.songDeleted || !item.songId) return item.arrangement || null;
+    const codes = Array.isArray(item.arrangementCodes)
+      ? item.arrangementCodes
+      : (item.arrangementResolved || []).map((r) => r.code);
+    return codes.join(' ') || null;
+  }
+
   function payload(items) {
-    return items.map(({ type, songId, title, body, reference, url, durationMin }) => ({
-      type,
-      songId: type === 'song' ? songId : null,
-      title: title || '',
-      body: body || '',
-      reference: reference || '',
-      url: url || '',
-      durationMin: durationMin === '' || durationMin === null || durationMin === undefined ? null : Number(durationMin),
-    }));
+    return items.map((item) => {
+      const { type, songId, title, body, reference, url, durationMin } = item;
+      const out = {
+        type,
+        songId: type === 'song' ? songId : null,
+        title: title || '',
+        body: body || '',
+        reference: reference || '',
+        url: url || '',
+        durationMin: durationMin === '' || durationMin === null || durationMin === undefined ? null : Number(durationMin),
+      };
+      // Per-event song options (only song items may carry them).
+      if (type === 'song') {
+        Object.assign(out, {
+          transpose: Number(item.transpose) || 0,
+          arrangement: arrangementPayload(item),
+          teamNote: item.teamNote || '',
+          referenceUrl: item.referenceUrl || '',
+        });
+      }
+      return out;
+    });
   }
 
   function isDirty() {
