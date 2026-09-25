@@ -47,15 +47,9 @@
 
           <section class="op-add" aria-labelledby="op-add-heading">
             <h3 id="op-add-heading" data-i18n="operator.addHeading"></h3>
-            <label for="add-search" class="field-label" data-i18n="operator.searchLabel"></label>
-            <input type="search" id="add-search" autocomplete="off" maxlength="100">
-            <ul id="add-results" class="op-results" data-i18n-aria-label="operator.resultsLabel"></ul>
             <p class="hint" data-i18n="operator.addHint"></p>
-            <div class="op-add-actions">
-              <button type="button" class="secondary" id="add-projector" data-icon="projector" data-i18n="operator.addProjector"></button>
-              <button type="button" id="add-setlist" data-icon="plus" data-i18n="operator.addSetlist"></button>
-            </div>
-            <p id="add-message" class="message" role="status" aria-live="polite"></p>
+            <!-- The shared song search (public/song-search.js): library and resursecrestine.ro. -->
+            <div id="add-search" class="song-pick op-search"></div>
           </section>
         </section>
 
@@ -107,8 +101,13 @@
   </main>
   <script src="/socket.io/socket.io.js"></script>
   <script src="/i18n.js"></script>
+  <script src="/chords.js"></script>
+  <script src="/sections.js"></script>
   <script src="/page.js"></script>
+  <script src="/notation.js"></script>
   <script src="/shell.js"></script>
+  <script src="/song-render.js"></script>
+  <script src="/song-search.js"></script>
   <script src="/projector-render.js"></script>
   <script src="/background-picker.js"></script>
   <script src="/video-panel.js"></script>

@@ -458,9 +458,11 @@
           const out = await action.run(songId, item);
           if (out && out.error) fail(out.error);
           else {
+            // Done: the preview closes; the result says so in this search (row or status).
             const text = (out && out.done) || t('online.importedShort');
-            if (fromPreview) online.outcome = { kind: 'done', text };
             if (item.id) online.rows.set(item.id, { kind: 'done', text });
+            else local.message = { text, tone: 'success' };
+            if (fromPreview && dialog.open) dialog.close();
           }
           load(); // the imported song is a library song now
         }

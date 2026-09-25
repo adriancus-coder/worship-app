@@ -64,19 +64,16 @@
       </div>
     </div>
 
-    <dialog id="song-dialog" aria-labelledby="song-dialog-heading" class="wide-dialog">
-      <form method="dialog" id="song-form">
+    <!-- "+ Cântare": the shared song search (public/song-search.js) in pick mode. -->
+    <dialog id="song-dialog" aria-labelledby="song-dialog-heading" class="wide-dialog song-pick-dialog">
+      <div class="song-pick-head">
         <h2 id="song-dialog-heading" data-i18n="setlist.pickSongHeading"></h2>
-        <div class="field">
-          <label for="song-q" data-i18n="setlist.pickSearchLabel"></label>
-          <input type="search" id="song-q" autocomplete="off" maxlength="200" aria-controls="song-results">
-        </div>
-        <p id="song-status" class="muted" role="status" aria-live="polite"></p>
-        <ul id="song-results" class="pick-list"></ul>
-        <div class="form-actions">
-          <button type="submit" class="secondary" value="cancel" data-i18n="setlist.pickClose"></button>
-        </div>
-      </form>
+        <button type="button" class="shell-close preview-close-x" id="song-dialog-x" data-i18n-aria-label="setlist.pickClose">✕</button>
+      </div>
+      <div id="song-search" class="song-pick"></div>
+      <div class="form-actions">
+        <button type="button" class="secondary" id="song-dialog-close" data-i18n="setlist.pickClose"></button>
+      </div>
     </dialog>
 
     <dialog id="details-dialog" aria-labelledby="details-heading">
@@ -155,6 +152,7 @@
   <script src="/notation.js"></script>
   <script src="/shell.js"></script>
   <script src="/song-render.js"></script>
+  <script src="/song-search.js"></script>
   <script src="/background-picker.js"></script>
   <script src="/event.js"></script>
 </body>

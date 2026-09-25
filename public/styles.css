@@ -1714,3 +1714,16 @@ button.bg-field { justify-content: flex-start; gap: 10px; min-height: var(--touc
 /* --- Song search in pick mode (event editor, operator console) ---------------------------- */
 .preview-actions { display: contents; }
 .pick-results .result-row { align-items: center; }
+.song-pick-dialog { width: min(720px, calc(100vw - 24px)); }
+.song-pick-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.song-pick-head h2 { margin: 0; }
+.song-pick .results-section { margin-top: 12px; }
+.song-pick .song-list { max-height: 55vh; overflow-y: auto; }
+/* In narrow panels the actions wrap under the title and share the row. */
+.song-pick .result-row { flex-wrap: wrap; }
+.song-pick .result-text { flex: 1 1 12rem; min-width: 0; }
+.song-pick .result-actions { flex: 1 1 100%; min-width: 0; justify-content: flex-end; }
+.song-pick .result-actions button { flex: 0 1 auto; min-width: 0; max-width: 100%; white-space: normal; text-align: center; }
+.op-search .result-actions button { flex: 1 1 auto; }
+.op-search .search-row > button { flex: 1 1 100%; }
+.op-search .song-list { max-height: 50vh; overflow-y: auto; }

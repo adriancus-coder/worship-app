@@ -1011,73 +1011,57 @@
 
   // --- song picker ------------------------------------------------------------------
 
+  // "+ Cântare": the shared search (public/song-search.js). A library song: "Adaugă"; a song
+  // from resursecrestine.ro: "Previzualizare" and "Importă și adaugă" (a song already in the
+  // library is added as it is, never imported twice).
   const songDialog = $('song-dialog');
-  const songQuery = $('song-q');
-  const songResults = $('song-results');
-  const songStatus = $('song-status');
-  let pickTimer = null;
-  let pickRequest = 0;
-  let pickData = null;
 
-  function renderPick() {
-    if (!pickData) return;
-    songResults.replaceChildren(...pickData.songs.map((song) => el('li', null,
-      el('button', {
-        type: 'button',
-        class: 'pick-button',
-        onclick: () => {
-          state.items.push({
-            key: nextKey++, type: 'song', songId: song.id, title: song.title, body: '', reference: '', url: '',
-            durationMin: null, song: { id: song.id, title: song.title, key: song.song_key, sectionCount: song.section_count }, songDeleted: false,
-            transpose: 0, arrangementIsDefault: true, arrangementCodes: null, arrangementWarnings: [], teamNote: '', referenceUrl: '',
-          });
-          songDialog.close();
-          changed();
-          renderItems();
-          renderDetail();
-          focusItem(state.items.length - 1, null);
-        },
+  function addSong(song) {
+    state.items.push({
+      key: nextKey++, type: 'song', songId: song.id, title: song.title, body: '', reference: '', url: '',
+      durationMin: null, song: { id: song.id, title: song.title, key: song.song_key, sectionCount: song.section_count }, songDeleted: false,
+      transpose: 0, arrangementIsDefault: true, arrangementCodes: null, arrangementWarnings: [], teamNote: '', referenceUrl: '',
+    });
+    songDialog.close();
+    changed();
+    renderItems();
+    renderDetail();
+    focusItem(state.items.length - 1, null);
+  }
+
+  const songSearch = window.SONG_SEARCH.create($('song-search'), {
+    mode: 'pick',
+    prefix: 'pick-',
+    withHistory: true,
+    songHint: (song) => lastSungText(song.lastSung),
+    onLoaded: (body) => { if (body.today) state.today = body.today; },
+    localActions: (song) => [{
+      label: t('setlist.pickAdd'), icon: 'plus', primary: true,
+      ariaLabel: t('setlist.pickAddLabel', { title: song.title }), run: addSong,
+    }],
+    onlineActions: (item) => [{
+      label: t('setlist.pickImportAdd'), icon: 'import',
+      ariaLabel: t('setlist.pickAddLabel', { title: item.title }),
+      run: async (songId) => {
+        const res = await api(`/api/songs/${songId}`);
+        if (!res.ok) return { error: res.body.error || t('common.networkError') };
+        const song = res.body.song;
+        addSong({ id: song.id, title: song.title, song_key: song.song_key, section_count: song.sections.length });
+        return { done: t('online.importedShort') };
       },
-      el('span', { class: 'song-title', text: song.title }),
-      el('span', { class: 'song-meta', text: [song.song_key ? t('library.key', { key: window.NOTATION.chord(song.song_key) }) : null, song.author].filter(Boolean).join(' · ') }),
-      el('span', { class: 'song-hint', text: lastSungText(song.lastSung) })))));
-    songStatus.textContent = pickData.songs.length ? '' : t('setlist.pickNoResults');
-  }
-
-  async function searchSongs() {
-    const id = ++pickRequest;
-    const q = songQuery.value.trim();
-    try {
-      const res = await api(`/api/songs?${new URLSearchParams({ q, withHistory: '1' })}`);
-      if (id !== pickRequest) return;
-      if (!res.ok) {
-        songStatus.textContent = res.body.error || t('common.networkError');
-        return;
-      }
-      pickData = res.body;
-      if (res.body.today) state.today = res.body.today;
-      renderPick();
-    } catch (err) {
-      if (id === pickRequest) songStatus.textContent = t('common.networkError');
-    }
-  }
-
-  songQuery.addEventListener('input', () => {
-    clearTimeout(pickTimer);
-    pickTimer = setTimeout(searchSongs, 250);
+    }],
   });
+  songSearch.setOnline(true); // the editor is for the event roles, who may import
+
+  for (const close of [$('song-dialog-close'), $('song-dialog-x')]) close.addEventListener('click', () => songDialog.close());
 
   $('add-bar').addEventListener('click', (event) => {
     const button = event.target.closest('[data-add]');
     if (!button) return;
     if (button.dataset.add === 'song') {
-      songQuery.value = '';
-      pickData = null;
-      songResults.replaceChildren();
-      songStatus.textContent = t('events.loading');
+      songSearch.reset();
       songDialog.showModal();
-      songQuery.focus();
-      searchSongs();
+      songSearch.focus();
     } else {
       addItem(button.dataset.add);
     }
@@ -1101,7 +1085,6 @@
     if (!state.event) return;
     actionMessage.replaceChildren();
     renderAll();
-    renderPick();
     renderDraftBanner();
     const focusedId = document.activeElement && document.activeElement.id;
     if (focusedId) $(focusedId)?.focus();

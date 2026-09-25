@@ -16,9 +16,8 @@
   const $ = (id) => document.getElementById(id);
   const eventId = Number(window.location.pathname.split('/')[2]);
   const RESULTS_MAX = 8;
-  const SEARCH_DELAY_MS = 250;
 
-  const state = { snap: null, event: null, client: null, queue: Promise.resolve(), selected: null, results: [], screens: 0 };
+  const state = { snap: null, event: null, client: null, queue: Promise.resolve(), screens: 0 };
 
   // --- helpers ----------------------------------------------------------------------
 
@@ -209,26 +208,6 @@
     }
   }
 
-  function renderAdd() {
-    const enabled = live();
-    $('add-search').disabled = !enabled;
-    $('add-projector').disabled = !enabled || !state.selected;
-    $('add-setlist').disabled = !enabled || !state.selected;
-    $('add-search').placeholder = t('operator.searchPlaceholder');
-    $('add-results').replaceChildren(...state.results.map((song) => el('li', null, el('button', {
-      type: 'button',
-      class: `op-result${state.selected === song.id ? ' selected' : ''}`,
-      'aria-pressed': String(state.selected === song.id),
-      disabled: !enabled,
-      onclick: () => {
-        state.selected = state.selected === song.id ? null : song.id;
-        renderAdd();
-      },
-    },
-    el('span', { class: 'item-title', text: song.title }),
-    song.key ? el('span', { class: 'item-sub', text: t('options.songKeyShort', { key: song.key }) }) : null))));
-  }
-
   function render() {
     if (!state.event || !state.snap) return;
     renderBanner();
@@ -237,7 +216,7 @@
     renderCenter();
     renderSources();
     backgroundButton.update(state.snap);
-    renderAdd();
+    addSearch.render(); // its actions follow live()
     videoPanel.setSetlist(items());
     videoPanel.update(state.snap);
     videoPanel.setLocked(!live());
@@ -318,45 +297,32 @@
     action();
   });
 
-  // Library search for the add panel.
-  let searchTimer = null;
-  let searchToken = 0;
-  $('add-search').addEventListener('input', () => {
-    clearTimeout(searchTimer);
-    searchTimer = setTimeout(async () => {
-      const q = $('add-search').value.trim();
-      const mine = ++searchToken;
-      if (!q) {
-        state.results = [];
-        state.selected = null;
-        renderAdd();
-        return;
-      }
-      const res = await api(`/api/songs?q=${encodeURIComponent(q)}`).catch(() => null);
-      if (mine !== searchToken) return;
-      state.results = res && res.ok ? res.body.songs.slice(0, RESULTS_MAX).map((s) => ({ id: s.id, title: s.title, key: s.song_key || null })) : [];
-      if (!state.results.some((s) => s.id === state.selected)) state.selected = null;
-      message('add-message', res && res.ok && !state.results.length ? t('operator.noResults') : '');
-      renderAdd();
-    }, SEARCH_DELAY_MS);
-  });
-
-  async function addSelected(target) {
-    if (!state.selected) {
-      message('add-message', t('operator.addNeedsSong'), 'error');
-      return;
-    }
-    const reply = await send('operator.addItem', { target, item: { type: 'song', songId: state.selected } });
-    if (!reply.ok) {
-      message('add-message', errorText(reply), 'error');
-      return;
-    }
-    message('add-message', t(target === 'setlist' ? 'operator.addedSetlist' : 'operator.addedProjector'), 'success');
-    state.selected = null;
-    renderAdd();
+  // The add panel: the shared song search. Library results: "Doar pe proiector" / "În
+  // setlist"; resursecrestine.ro results: "Previzualizare", "Importă · Doar pe proiector",
+  // "Importă · În setlist". Searching and importing run in the background: the spinner and
+  // any error stay in this panel, the live controls never wait for them.
+  async function addSong(target, songId) {
+    const reply = await send('operator.addItem', { target, item: { type: 'song', songId } });
+    if (!reply || !reply.ok) return { error: errorText(reply) };
+    return { done: t(target === 'setlist' ? 'operator.addedSetlist' : 'operator.addedProjector') };
   }
-  $('add-projector').addEventListener('click', () => addSelected('projector'));
-  $('add-setlist').addEventListener('click', () => addSelected('setlist'));
+  const addSearch = window.SONG_SEARCH.create($('add-search'), {
+    mode: 'pick',
+    prefix: 'add-',
+    headingLevel: 4,
+    emptyQuery: 'none',
+    limit: RESULTS_MAX,
+    disabled: () => !live(),
+    localActions: (song) => [
+      { label: t('operator.addProjector'), icon: 'projector', ariaLabel: `${t('operator.addProjector')}: ${song.title}`, run: () => addSong('projector', song.id) },
+      { label: t('operator.addSetlist'), icon: 'plus', primary: true, ariaLabel: `${t('operator.addSetlist')}: ${song.title}`, run: () => addSong('setlist', song.id) },
+    ],
+    onlineActions: (item) => [
+      { label: t('operator.importProjector'), icon: 'projector', ariaLabel: `${t('operator.importProjector')}: ${item.title}`, run: (songId) => addSong('projector', songId) },
+      { label: t('operator.importSetlist'), icon: 'import', ariaLabel: `${t('operator.importSetlist')}: ${item.title}`, run: (songId) => addSong('setlist', songId) },
+    ],
+  });
+  addSearch.setOnline(true); // the console is for the event roles, who may import
 
   document.addEventListener('i18n:change', () => {
     if (!state.snap) return;
