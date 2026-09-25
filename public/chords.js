@@ -125,8 +125,70 @@
     return out.join('\n');
   }
 
+  // --- transposition ---------------------------------------------------------
+
+  const SHARP_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+  const FLAT_NAMES = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
+  const NATURAL = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+  // Keys written with flats; every other key uses sharps.
+  const FLAT_KEYS = ['F', 'Bb', 'Eb', 'Ab', 'Db', 'Gb', 'Dm', 'Gm', 'Cm', 'Fm', 'Bbm', 'Ebm'];
+  const CHORD_PARTS_RE = /^([A-G])([#b]?)(.*?)(?:\/([A-G])([#b]?))?$/;
+
+  function noteIndex(letter, accidental) {
+    return (NATURAL[letter] + (accidental === '#' ? 1 : accidental === 'b' ? -1 : 0) + 12) % 12;
+  }
+
+  function mod12(n) {
+    return ((n % 12) + 12) % 12;
+  }
+
+  function usesFlats(key) {
+    return FLAT_KEYS.includes(key);
+  }
+
+  // Display key after transposing, e.g. keyAfter('G', 2) -> 'A', keyAfter('C', 1) -> 'Db'.
+  // The flat spelling is used when it is one of the flat keys, otherwise the sharp one.
+  // null when the song has no (valid) key.
+  function keyAfter(songKey, semitones) {
+    const m = /^([A-G])([#b]?)(m?)$/.exec(String(songKey || ''));
+    if (!m) return null;
+    const index = mod12(noteIndex(m[1], m[2]) + (Number(semitones) || 0));
+    const flat = FLAT_NAMES[index] + m[3];
+    return usesFlats(flat) ? flat : SHARP_NAMES[index] + m[3];
+  }
+
+  // One chord, e.g. transposeChord('D/F#', 2) -> 'E/G#'. N.C. and anything that is not a
+  // chord are returned unchanged. useFlats picks Bb over A# etc.
+  function transposeChord(chord, semitones, useFlats) {
+    const text = String(chord);
+    const shift = mod12(Number(semitones) || 0);
+    if (!shift || /^N\.?C\.?$/.test(text) || !isChord(text)) return text;
+    const m = CHORD_PARTS_RE.exec(text);
+    if (!m) return text;
+    const names = useFlats ? FLAT_NAMES : SHARP_NAMES;
+    const root = names[mod12(noteIndex(m[1], m[2]) + shift)];
+    const bass = m[4] ? `/${names[mod12(noteIndex(m[4], m[5]) + shift)]}` : '';
+    return root + m[3] + bass;
+  }
+
+  // Inline ChordPro content with every chord moved by `semitones`; sharps or flats follow
+  // targetKey (the key after transposing; no key -> sharps).
+  function transposeContent(content, semitones, targetKey) {
+    const shift = mod12(Number(semitones) || 0);
+    if (!shift) return String(content || '');
+    const flats = usesFlats(targetKey);
+    return String(content || '').replace(INLINE_CHORD_RE, (match, chord) => {
+      const trimmed = chord.trim();
+      return trimmed ? `[${transposeChord(trimmed, shift, flats)}]` : match;
+    });
+  }
+
   const CHORDS = {
     isChord,
+    FLAT_KEYS,
+    keyAfter,
+    transposeChord,
+    transposeContent,
     isChordLine,
     stripChords,
     chordsOverLyricsToInline,

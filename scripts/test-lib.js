@@ -568,6 +568,93 @@ test('validateItems: one of each type, per-type fields, limits', () => {
   assert.strictEqual(evs.validateItems(Array(60).fill({ type: 'other', title: 'x' }), tro, findSong).error, undefined);
 });
 
+// --- transposition and section codes -------------------------------------------
+
+test('keyAfter: all 12 major and minor keys one semitone up and down', () => {
+  const up = { C: 'Db', Db: 'D', D: 'Eb', Eb: 'E', E: 'F', F: 'Gb', Gb: 'G', G: 'Ab', Ab: 'A', A: 'Bb', Bb: 'B', B: 'C' };
+  for (const [from, to] of Object.entries(up)) {
+    assert.strictEqual(chords.keyAfter(from, 1), to, `${from} +1`);
+    assert.strictEqual(chords.keyAfter(to, -1), from === 'Gb' ? 'Gb' : from, `${to} -1`);
+  }
+  assert.strictEqual(chords.keyAfter('F#', 1), 'G');
+  assert.strictEqual(chords.keyAfter('C#', 0), 'Db');
+  const minorUp = { Am: 'Bbm', Bbm: 'Bm', Bm: 'Cm', Cm: 'C#m', 'C#m': 'Dm', Dm: 'Ebm', Ebm: 'Em', Em: 'Fm', Fm: 'F#m', 'F#m': 'Gm', Gm: 'G#m', 'G#m': 'Am' };
+  for (const [from, to] of Object.entries(minorUp)) assert.strictEqual(chords.keyAfter(from, 1), to, `${from} +1`);
+  assert.strictEqual(chords.keyAfter('G', 2), 'A');
+  assert.strictEqual(chords.keyAfter('G', -7), 'C');
+  assert.strictEqual(chords.keyAfter('G', 12), 'G');
+  assert.strictEqual(chords.keyAfter(null, 2), null);
+  assert.strictEqual(chords.keyAfter('', 2), null);
+});
+
+test('transposeChord: every semitone from C, with sharps and with flats', () => {
+  const sharps = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+  const flats = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
+  for (let n = -11; n <= 11; n++) {
+    const i = ((n % 12) + 12) % 12;
+    assert.strictEqual(chords.transposeChord('C', n, false), sharps[i], `C ${n} sharps`);
+    assert.strictEqual(chords.transposeChord('C', n, true), flats[i], `C ${n} flats`);
+  }
+});
+
+test('transposeContent: sharps or flats chosen by the target key', () => {
+  const g = '[G]Ne ridici [D/F#]din [Em7]noaptea [C]grea';
+  assert.strictEqual(chords.transposeContent(g, 2, chords.keyAfter('G', 2)), '[A]Ne ridici [E/G#]din [F#m7]noaptea [D]grea');
+  assert.strictEqual(chords.transposeContent('[F]Sfânt [Bb]e [C7]Domnul', -1, chords.keyAfter('F', -1)), '[E]Sfânt [A]e [B7]Domnul');
+  assert.strictEqual(chords.transposeContent('[C]Aleluia [F]amin [G7]', 1, chords.keyAfter('C', 1)), '[Db]Aleluia [Gb]amin [Ab7]');
+  assert.strictEqual(chords.transposeContent('[D]Tu [F#m]ești', 1, 'Eb'), '[Eb]Tu [Gm]ești');
+  assert.strictEqual(chords.transposeContent('[A]fără ton [C#m]', 1, null), '[A#]fără ton [Dm]');
+  assert.strictEqual(chords.transposeContent(g, 0, 'G'), g);
+  assert.strictEqual(chords.transposeContent(g, 12, 'G'), g);
+});
+
+test('transposeChord: slash and complex chords, N.C. and non-chords untouched', () => {
+  const cases = [
+    ['D/F#', 2, false, 'E/G#'], ['Bbmaj7', 2, false, 'Cmaj7'], ['Csus4', -1, false, 'Bsus4'],
+    ['Am7b5', 3, false, 'Cm7b5'], ['E7#9', 1, true, 'F7#9'], ['C(add9)', 2, false, 'D(add9)'],
+    ['Gm/Bb', 2, false, 'Am/C'], ['Ebdim7', -3, false, 'Cdim7'], ['Dsus2', 5, false, 'Gsus2'],
+    ['F#m', -6, false, 'Cm'], ['Cadd9/E', 5, true, 'Fadd9/A'],
+  ];
+  for (const [chord, n, flats, expected] of cases) assert.strictEqual(chords.transposeChord(chord, n, flats), expected, `${chord} ${n}`);
+  assert.strictEqual(chords.transposeChord('N.C.', 3, false), 'N.C.');
+  assert.strictEqual(chords.transposeChord('NC', 3, false), 'NC');
+  assert.strictEqual(chords.transposeContent('[x2] [G]Da [N.C.] [Amin]', 2, 'A'), '[x2] [A]Da [N.C.] [Amin]');
+});
+
+test('transposeContent: +n then -n returns the original on 5 samples', () => {
+  const samples = [
+    ['G', '[G]Ne ridici din [D/F#]noaptea [Em]grea\n[C]Tu ești [D]lumina [G]mea'],
+    ['F', '[F]Sfânt, [Bb]sfânt, [C7]sfânt\n[Dm]e [Gm7]Domnul [C]nostru'],
+    ['D', '[D]Aleluia [A/C#]amin [Bm]cântăm [G]Ție [Em7]Doamne'],
+    ['Eb', '[Eb]Mare [Ab]ești [Bb]Tu, [Cm]Doamne [Fm7]al [Bb7]meu'],
+    ['Am', '[Am]În [Dm]noaptea [E7]grea [G/B]Tu [C]vii [F]la [Am]noi'],
+  ];
+  for (const [key, content] of samples) {
+    for (const n of [1, 2, 5, -3, 7, -11]) {
+      const up = chords.transposeContent(content, n, chords.keyAfter(key, n));
+      assert.strictEqual(chords.transposeContent(up, -n, key), content, `${key} ${n}: ${up}`);
+    }
+  }
+});
+
+test('section codes, arrangements and defaults', () => {
+  const S = require('../lib/sections');
+  const mixed = [{ type: 'intro' }, { type: 'verse' }, { type: 'chorus' }, { type: 'verse' }, { type: 'pre_chorus' },
+    { type: 'chorus' }, { type: 'bridge' }, { type: 'outro' }, { type: 'tag' }, { type: 'other' }, { type: 'verse' }];
+  assert.deepStrictEqual(S.sectionCodes(mixed), ['I', 'V1', 'C1', 'V2', 'P', 'C2', 'B', 'O', 'T', 'X', 'V3']);
+  assert.deepStrictEqual(S.sectionCodes([{ type: 'verse' }, { type: 'chorus' }]), ['V1', 'C']);
+  const song = [{ type: 'verse' }, { type: 'chorus' }, { type: 'verse' }, { type: 'bridge' }];
+  const parsed = S.parseArrangement('v1, c1  V2 C b V9 zz C3', song);
+  assert.deepStrictEqual(parsed.codes, ['V1', 'C', 'V2', 'C', 'B']);
+  assert.deepStrictEqual(parsed.indexes, [0, 1, 2, 1, 3]);
+  assert.deepStrictEqual(parsed.unknown, ['V9', 'zz', 'C3']);
+  assert.strictEqual(S.codeIndex('V', song), 0);
+  assert.deepStrictEqual(S.defaultArrangement({ presentation: 'V1 C V2 C B C', sections: song }), ['V1', 'C', 'V2', 'C', 'B', 'C']);
+  assert.deepStrictEqual(S.defaultArrangement({ presentation: 'V1 C V3', sections: song }), ['V1', 'C', 'V2', 'B']);
+  assert.deepStrictEqual(S.defaultArrangement({ presentation: null, sections: song }), ['V1', 'C', 'V2', 'B']);
+  assert.deepStrictEqual(S.defaultArrangement({ presentation: 'V C', sections: [{ type: 'verse' }, { type: 'verse' }, { type: 'chorus' }] }), ['V1', 'C']);
+});
+
 // --- sections -------------------------------------------------------------
 
 test('sectionLabels: numbered verses, repeated types, custom labels, both languages', () => {
