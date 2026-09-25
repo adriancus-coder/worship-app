@@ -17,6 +17,7 @@ const createHealthRouter = require('./routes/health');
 const createSetupRouter = require('./routes/setup');
 const createAuthRouter = require('./routes/auth');
 const createMeRouter = require('./routes/me');
+const createSongsRouter = require('./routes/songs');
 const createPagesRouter = require('./routes/pages');
 
 const db = openDb(config.DATA_DIR);
@@ -61,6 +62,7 @@ const sendPage = createPageRenderer({ config });
 app.use(createSetupRouter({ db, config, logger, sendPage }));
 app.use(createAuthRouter({ db, auth, config, logger }));
 app.use(createMeRouter({ db, auth, config }));
+app.use(createSongsRouter({ db, auth, logger }));
 app.use(createPagesRouter({ db, auth, sendPage }));
 
 app.use('/api', (req, res) => {

@@ -154,6 +154,51 @@ test('touching inline chords stay one space apart in display', () => {
   assert.strictEqual(chords.inlineToChordsOverLyrics('[G][D]Aleluia'), 'G D\nAleluia');
 });
 
+// --- songs ----------------------------------------------------------------
+
+const { lyricsHash, validateSong, KEYS } = require('../lib/songs');
+const tro = (k, v) => t(k, v, 'ro');
+const tEn = (k, v) => t(k, v, 'en');
+
+test('lyricsHash ignores chords and whitespace, not wording', () => {
+  const plain = lyricsHash('Ne ridici din noaptea grea');
+  assert.match(plain, /^[0-9a-f]{64}$/);
+  assert.strictEqual(lyricsHash('[G]Ne ridici din [D]noaptea grea'), plain);
+  assert.strictEqual(lyricsHash('  Ne ridici\n din   noaptea grea \n'), plain);
+  assert.notStrictEqual(lyricsHash('Ne ridici din noaptea rea'), plain);
+});
+
+test('validateSong: cleans a valid song and converts chords over lyrics', () => {
+  const { value, error } = validateSong({
+    title: '  Dacă-ntr-o zi ', author: '', song_key: 'Em',
+    sections: [{ type: 'verse', content: 'G          D\nDacă-ntr-o zi\n', label: ' ', note: '' }],
+  }, tro);
+  assert.strictEqual(error, undefined);
+  assert.strictEqual(value.title, 'Dacă-ntr-o zi');
+  assert.strictEqual(value.titleNorm, 'daca ntr o zi');
+  assert.strictEqual(value.author, null);
+  assert.strictEqual(value.songKey, 'Em');
+  assert.deepStrictEqual(value.sections, [{ type: 'verse', label: null, content: '[G]Dacă-ntr-o [D]zi', note: null }]);
+});
+
+test('validateSong: limits and messages in both languages', () => {
+  const ok = { title: 'T', sections: [{ type: 'verse', content: 'x' }] };
+  const err = (patch, tf = tro) => validateSong({ ...ok, ...patch }, tf).error;
+  assert.strictEqual(err({ title: ' ' }), 'Titlul este obligatoriu (max. 200 de caractere).');
+  assert.strictEqual(err({ title: 'x'.repeat(201) }, tEn), 'The title is required (max. 200 characters).');
+  assert.ok(err({ author: 'x'.repeat(201) }));
+  assert.ok(err({ song_key: 'H' }));
+  assert.ok(err({ song_key: 'Cmaj' }));
+  assert.strictEqual(err({ song_key: '' }), undefined);
+  assert.ok(err({ sections: [] }));
+  assert.ok(err({ sections: Array(41).fill({ type: 'verse', content: 'x' }) }));
+  assert.strictEqual(err({ sections: [{ type: 'verse', content: 'x' }, { type: 'rap', content: 'x' }] }, tEn), 'Section 2: unknown type.');
+  assert.ok(err({ sections: [{ type: 'verse', content: '   ' }] }));
+  assert.ok(err({ sections: [{ type: 'verse', content: 'x'.repeat(5001) }] }));
+  assert.ok(err({ sections: [{ type: 'verse', content: 'x', note: 'x'.repeat(301) }] }));
+  assert.strictEqual(KEYS.length, 34);
+});
+
 // --- sections -------------------------------------------------------------
 
 test('sectionLabels: numbered verses, repeated types, custom labels, both languages', () => {
