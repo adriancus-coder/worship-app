@@ -305,6 +305,68 @@ async function main() {
     assert.ok(otherScreen.frames.every((f) => f.kind === 'idle'), 'other admin screen saw only idle');
   });
 
+  await step('video: prepare keeps the projector, play switches to video, ended -> black; member refused', async () => {
+    const upload = await fetch(`${base()}/api/media/upload?title=Clip`, {
+      method: 'POST',
+      headers: { Cookie: owner, 'Content-Type': 'video/mp4' },
+      body: Buffer.concat([Buffer.from([0, 0, 0, 0x20]), Buffer.from('ftypisom'), Buffer.alloc(4000)]),
+    });
+    assert.strictEqual(upload.status, 201);
+    const mediaId = (await upload.json()).media.id;
+    const before = screen.frames[screen.frames.length - 1];
+    await send(lead.socket, { type: 'video.prepare', mediaId });
+    let frame = await frameWhere(screen, (f) => f.version === version);
+    assert.strictEqual(frame.kind, before.kind, 'prepare does not change what the projector shows');
+    assert.deepStrictEqual([frame.video.state, frame.video.media.type, frame.video.media.title], ['prepared', 'upload', 'Clip']);
+    assert.ok(/^\/api\/media\/\d+\/file\?exp=\d+&sig=[0-9a-f]{64}$/.test(frame.video.media.src), 'signed file URL');
+    const refused = await emit(mem.socket, 'live:command', { type: 'video.play', eventId: ev.id });
+    assert.deepStrictEqual([refused.ok, refused.code], [false, 'forbidden']);
+    await send(lead.socket, { type: 'video.play' });
+    frame = await frameWhere(screen, (f) => f.version === version);
+    assert.deepStrictEqual([frame.kind, frame.video.state], ['video', 'playing']);
+    // The screen reports progress; the leader's projector watchers get it.
+    const watchers = connect(leader);
+    await next(watchers, 'connect');
+    assert.strictEqual((await emit(watchers, 'projector:watch', {})).ok, true);
+    const relayed = next(watchers, 'projector:video-status');
+    screen.emit('screen:video-status', { state: 'playing', position: 12.5, duration: 60 });
+    const status = await relayed;
+    assert.deepStrictEqual([status.state, status.position, status.duration], ['playing', 12.5, 60]);
+    await send(lead.socket, { type: 'video.pause' });
+    frame = await frameWhere(screen, (f) => f.version === version);
+    assert.deepStrictEqual([frame.kind, frame.video.state, frame.video.position], ['video', 'paused', 12.5]);
+    await send(lead.socket, { type: 'video.volume', volume: 0.4 });
+    assert.strictEqual((await frameWhere(screen, (f) => f.version === version)).video.volume, 0.4);
+    const seq = frame.video.seq;
+    await send(lead.socket, { type: 'video.restart' });
+    frame = await frameWhere(screen, (f) => f.version === version);
+    assert.deepStrictEqual([frame.video.position, frame.video.seq > seq], [0, true]);
+    await send(lead.socket, { type: 'video.play' });
+    await frameWhere(screen, (f) => f.version === version);
+    screen.emit('screen:video-status', { state: 'ended', position: 60, duration: 60 });
+    frame = await frameWhere(screen, (f) => f.video && f.video.state === 'ended');
+    assert.strictEqual(frame.kind, 'black', 'the end of a video goes to black, never back to lyrics');
+    const snap = await memberAt(frame.version);
+    assert.deepStrictEqual([snap.projector.source, snap.video.state], ['black', 'ended']);
+    version = snap.version;
+    // A local file on the projector PC: prepare, then the screen reports the chosen name.
+    await send(lead.socket, { type: 'video.prepare', local: true });
+    frame = await frameWhere(screen, (f) => f.version === version);
+    assert.deepStrictEqual(frame.video.media, { type: 'local', name: null });
+    assert.strictEqual((await send(lead.socket, { type: 'video.play' })).code, 'videoLocalNotChosen');
+    screen.emit('screen:video-local', { name: 'anunturi.mp4' });
+    frame = await frameWhere(screen, (f) => f.video && f.video.media.name === 'anunturi.mp4');
+    version = frame.version;
+    await send(lead.socket, { type: 'video.play' });
+    assert.strictEqual((await frameWhere(screen, (f) => f.version === version)).kind, 'video');
+    await send(lead.socket, { type: 'video.stop' });
+    frame = await frameWhere(screen, (f) => f.version === version);
+    assert.deepStrictEqual([frame.kind, frame.video.state], ['black', 'prepared']);
+    await send(lead.socket, { type: 'projector.source', source: 'content' });
+    await frameWhere(screen, (f) => f.version === version);
+    watchers.close();
+  });
+
   await step('a second event cannot start while one is live', async () => {
     const ev2 = (await api('POST', '/api/events', owner, { name: 'Seara', eventDate: '2026-10-04' })).body.event;
     await api('POST', `/api/events/${ev2.id}/publish`, owner);

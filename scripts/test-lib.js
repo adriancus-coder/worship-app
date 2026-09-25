@@ -936,6 +936,24 @@ test('validateItems: a video item from the media library', () => {
   assert.ok(v({}).error);
 });
 
+test('projector frames: a prepared video rides along, plays only on the video source', () => {
+  const { projectorFrame } = require('../lib/projector');
+  const items = [{ id: 1, type: 'verse', reference: 'Ps 1', body: 'Ferice' }];
+  const media = { type: 'upload', src: '/api/media/4/file?exp=1&sig=x', mime: 'video/mp4', title: 'Clip' };
+  const st = (source, videoState) => ({ version: 3, eventId: 2, status: 'live', worship: { itemId: 1, step: 0 },
+    projector: { follows: 'worship', itemId: null, step: 0, source },
+    video: { state: videoState, seq: 5, volume: 0.8, position: 0 } });
+  const f = (source, videoState, m = media) => projectorFrame(st(source, videoState), { items }, new Map(), { videoMedia: m });
+  assert.deepStrictEqual(f('content', 'prepared'), { kind: 'verse', reference: 'Ps 1', text: 'Ferice', version: 3, eventId: 2,
+    video: { state: 'prepared', seq: 5, volume: 0.8, position: 0, media } });
+  assert.strictEqual(f('video', 'playing').kind, 'video');
+  assert.strictEqual(f('video', 'paused').kind, 'video');
+  assert.strictEqual(f('video', 'prepared').kind, 'black');
+  assert.strictEqual(f('black', 'ended').kind, 'black');
+  assert.strictEqual(f('content', 'none', null).video, undefined);
+  assert.strictEqual(f('video', 'playing', null).kind, 'black', 'nothing playable');
+});
+
 test('section codes, arrangements and defaults', () => {
   const S = require('../lib/sections');
   const mixed = [{ type: 'intro' }, { type: 'verse' }, { type: 'chorus' }, { type: 'verse' }, { type: 'pre_chorus' },

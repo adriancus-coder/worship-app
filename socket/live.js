@@ -11,7 +11,8 @@ const ROLES = ['owner', 'leader', 'operator', 'member'];
 const PRESENCE_DEBOUNCE_MS = 1000;
 const SESSION_SWEEP_MS = 30 * 1000;
 
-const COMMANDS = ['event.start', 'event.end', 'worship.next', 'worship.prev', 'worship.goto', 'projector.source'];
+const COMMANDS = ['event.start', 'event.end', 'worship.next', 'worship.prev', 'worship.goto', 'projector.source',
+  'video.prepare', 'video.play', 'video.pause', 'video.restart', 'video.stop', 'video.volume'];
 
 const roomName = (adminId, eventId) => `admin:${adminId}:event:${eventId}`;
 const isId = (value) => Number.isInteger(value) && value > 0;
@@ -122,9 +123,11 @@ function createLiveHub({ db, auth, logger, screensHub }) {
     const expected = cmd.expectedVersion;
     if (expected !== undefined && expected !== null && !Number.isInteger(expected)) return fail(socket, ack, 'badCommand');
     if (cmd.type === 'worship.goto' && (!isId(cmd.itemId) || !Number.isInteger(cmd.step))) return fail(socket, ack, 'badPosition');
+    // Pausing keeps the position the screens last reported.
+    const command = cmd.type === 'video.pause' ? { ...cmd, position: screensHub.lastVideoPosition(adminId) } : cmd;
     let result;
     try {
-      result = store.command(adminId, cmd.eventId, cmd, expected);
+      result = store.command(adminId, cmd.eventId, command, expected);
     } catch (err) {
       if (!(err instanceof LiveError)) throw err;
       if (err.code === 'stale') return fail(socket, ack, 'stale', { state: fullSnapshot(adminId, cmd.eventId) });
@@ -136,6 +139,17 @@ function createLiveHub({ db, auth, logger, screensHub }) {
     if (result.changed) broadcast(adminId, cmd.eventId);
     reply(ack, { ok: true, version: result.version });
   }
+
+  // Video events from the screens: the end of a video, a local file chosen on the PC.
+  screensHub.setVideoHandler((adminId, cmd) => {
+    const eventId = store.liveEventId(adminId);
+    if (!eventId) return;
+    try {
+      if (store.command(adminId, eventId, cmd).changed) broadcast(adminId, eventId);
+    } catch (err) {
+      if (!(err instanceof LiveError)) logger.error('video event failed', err);
+    }
+  });
 
   function onConnection(socket) {
     logger.debug(`socket ${socket.id} connected: user #${socket.data.userId} (admin #${socket.data.adminId})`);

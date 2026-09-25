@@ -46,7 +46,7 @@ cleanupSessions();
 setInterval(cleanupSessions, SESSION_CLEANUP_MS).unref();
 
 // Live rooms and projector screens: routes notify the hubs; they attach to socket.io below.
-const screensHub = createScreensHub({ db, logger });
+const screensHub = createScreensHub({ db, logger, config });
 const live = createLiveHub({ db, auth, logger, screensHub });
 
 const app = express();
