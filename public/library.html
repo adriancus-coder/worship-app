@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="{{LANG}}" data-app-name="{{APP_NAME}}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#141318">
+  <title data-i18n="library.pageTitle">{{APP_NAME}}</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <nav class="topnav" data-i18n-aria-label="nav.label">
+      <a href="/app" data-i18n="nav.home"></a>
+      <a href="/library" aria-current="page" data-i18n="nav.library"></a>
+    </nav>
+    <div class="lang-switch" role="group" aria-label="Limbă / Language">
+      <button type="button" data-lang="ro" lang="ro" aria-pressed="false">RO</button>
+      <button type="button" data-lang="en" lang="en" aria-pressed="false">EN</button>
+    </div>
+  </header>
+  <main class="wide">
+    <div class="page-head">
+      <h1 data-i18n="library.heading"></h1>
+      <a class="button" id="new-song" href="/songs/new" hidden data-i18n="library.newSong"></a>
+    </div>
+
+    <div class="toolbar">
+      <div class="field grow">
+        <label for="q" data-i18n="library.searchLabel"></label>
+        <input type="search" id="q" autocomplete="off" autocapitalize="off" spellcheck="false"
+          maxlength="200" aria-describedby="q-hint" aria-controls="songs">
+        <span class="hint" id="q-hint" data-i18n="library.searchHint"></span>
+      </div>
+      <div class="field">
+        <label for="sort" data-i18n="library.sortLabel"></label>
+        <select id="sort">
+          <option value="az" data-i18n="library.sortAz"></option>
+          <option value="za" data-i18n="library.sortZa"></option>
+          <option value="recent" data-i18n="library.sortRecent"></option>
+        </select>
+      </div>
+    </div>
+
+    <p id="status" class="muted" role="status" aria-live="polite" data-i18n="library.loading"></p>
+    <ul id="songs" class="song-list"></ul>
+  </main>
+  <script src="/i18n.js"></script>
+  <script src="/page.js"></script>
+  <script src="/library.js"></script>
+</body>
+</html>

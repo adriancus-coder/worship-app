@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="{{LANG}}" data-app-name="{{APP_NAME}}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#141318">
+  <title data-i18n="editor.pageTitleNew">{{APP_NAME}}</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <nav class="topnav" data-i18n-aria-label="nav.label">
+      <a href="/app" data-i18n="nav.home"></a>
+      <a href="/library" aria-current="page" data-i18n="nav.library"></a>
+    </nav>
+    <div class="lang-switch" role="group" aria-label="Limbă / Language">
+      <button type="button" data-lang="ro" lang="ro" aria-pressed="false">RO</button>
+      <button type="button" data-lang="en" lang="en" aria-pressed="false">EN</button>
+    </div>
+  </header>
+  <main class="wide">
+    <h1 id="editor-heading" data-i18n="editor.headingNew"></h1>
+    <p id="status" class="muted" role="status" aria-live="polite"></p>
+    <form id="song-form" novalidate hidden>
+      <div class="field">
+        <label for="song-title" data-i18n="editor.titleLabel"></label>
+        <input type="text" id="song-title" maxlength="200" required>
+      </div>
+      <div class="field">
+        <label for="song-author" data-i18n="editor.authorLabel"></label>
+        <input type="text" id="song-author" maxlength="200">
+      </div>
+      <div class="field">
+        <label for="song-key" data-i18n="editor.keyLabel"></label>
+        <select id="song-key"></select>
+      </div>
+
+      <h2 data-i18n="editor.sectionsHeading"></h2>
+      <div id="sections-editor"></div>
+      <button type="button" id="add-section" class="secondary" data-i18n="editor.addSection"></button>
+
+      <div class="message error" id="message" role="alert" aria-live="assertive"></div>
+      <div class="form-actions">
+        <button type="submit" id="save" data-i18n="editor.save"></button>
+        <a class="button secondary" id="cancel" href="/library" data-i18n="editor.cancel"></a>
+      </div>
+    </form>
+  </main>
+  <script src="/i18n.js"></script>
+  <script src="/chords.js"></script>
+  <script src="/sections.js"></script>
+  <script src="/page.js"></script>
+  <script src="/song-edit.js"></script>
+</body>
+</html>

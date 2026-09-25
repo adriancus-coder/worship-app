@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="{{LANG}}" data-app-name="{{APP_NAME}}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#141318">
+  <title data-i18n="song.pageTitle">{{APP_NAME}}</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <nav class="topnav" data-i18n-aria-label="nav.label">
+      <a href="/app" data-i18n="nav.home"></a>
+      <a href="/library" aria-current="page" data-i18n="nav.library"></a>
+    </nav>
+    <div class="lang-switch" role="group" aria-label="Limbă / Language">
+      <button type="button" data-lang="ro" lang="ro" aria-pressed="false">RO</button>
+      <button type="button" data-lang="en" lang="en" aria-pressed="false">EN</button>
+    </div>
+  </header>
+  <main class="wide">
+    <p class="back"><a href="/library" data-i18n="song.back"></a></p>
+    <p id="status" class="muted" role="status" aria-live="polite" data-i18n="library.loading"></p>
+    <article id="song" hidden>
+      <h1 id="song-title"></h1>
+      <p id="song-meta" class="muted"></p>
+      <div class="song-actions">
+        <button type="button" id="text-only" class="secondary" aria-pressed="false" data-i18n="song.textOnly"></button>
+        <a class="button secondary" id="edit-song" hidden data-i18n="song.edit"></a>
+      </div>
+      <div id="sections"></div>
+    </article>
+  </main>
+  <script src="/i18n.js"></script>
+  <script src="/chords.js"></script>
+  <script src="/sections.js"></script>
+  <script src="/page.js"></script>
+  <script src="/song.js"></script>
+</body>
+</html>

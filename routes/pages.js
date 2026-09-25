@@ -2,6 +2,8 @@
 
 const express = require('express');
 
+const EDITOR_ROLES = ['owner', 'leader'];
+
 function createPagesRouter({ db, auth, sendPage }) {
   const router = express.Router();
   const selectAnyAdmin = db.prepare('SELECT 1 FROM admins LIMIT 1');
@@ -27,6 +29,33 @@ function createPagesRouter({ db, auth, sendPage }) {
   router.get('/app', noStore, (req, res) => {
     if (!auth.getSession(req)) return res.redirect('/login');
     sendPage(req, res, 'app');
+  });
+
+  // Signed-in pages. Editing pages are only served to roles that may edit;
+  // the API enforces the same rules.
+  const signedIn = (req, res, next) => {
+    req.session = auth.getSession(req);
+    if (!req.session) return res.redirect('/login');
+    next();
+  };
+  const canEdit = (req) => EDITOR_ROLES.includes(req.session.user.role);
+
+  router.get('/library', noStore, signedIn, (req, res) => {
+    sendPage(req, res, 'library');
+  });
+
+  router.get('/songs/new', noStore, signedIn, (req, res) => {
+    if (!canEdit(req)) return res.redirect('/library');
+    sendPage(req, res, 'song-edit');
+  });
+
+  router.get('/songs/:id(\\d+)', noStore, signedIn, (req, res) => {
+    sendPage(req, res, 'song');
+  });
+
+  router.get('/songs/:id(\\d+)/edit', noStore, signedIn, (req, res) => {
+    if (!canEdit(req)) return res.redirect(`/songs/${req.params.id}`);
+    sendPage(req, res, 'song-edit');
   });
 
   return router;

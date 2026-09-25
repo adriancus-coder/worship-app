@@ -34,9 +34,28 @@ main {
 
 .topbar {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
+  gap: 8px;
   padding: 8px 16px 0;
 }
+
+main.wide { max-width: 720px; }
+
+.topnav { display: flex; gap: 4px; margin-right: auto; min-width: 0; }
+
+.topnav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--touch);
+  padding: 0 10px;
+  border-radius: var(--radius);
+  color: var(--muted);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.topnav a[aria-current="page"] { color: var(--text); background: var(--surface); }
 
 .lang-switch {
   display: inline-flex;
@@ -97,7 +116,10 @@ label.checkbox { flex-direction: row; align-items: center; gap: 12px; min-height
 
 input[type="text"],
 input[type="email"],
-input[type="password"] {
+input[type="password"],
+input[type="search"],
+select,
+textarea {
   min-height: var(--touch);
   padding: 10px 12px;
   font: inherit;
@@ -107,9 +129,14 @@ input[type="password"] {
   border-radius: var(--radius);
 }
 
+textarea { resize: vertical; line-height: 1.45; }
+
+.mono,
+.chord-sheet { font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace; }
+
 input[type="checkbox"] { width: 24px; height: 24px; margin: 0; accent-color: var(--accent); }
 
-input:focus-visible, button:focus-visible, a:focus-visible {
+input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible, a:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
@@ -133,7 +160,8 @@ button, .button {
   cursor: pointer;
 }
 
-button.secondary {
+button.secondary,
+.button.secondary {
   color: var(--text);
   background: transparent;
   border: 1px solid var(--border);
@@ -148,3 +176,96 @@ a { color: var(--accent); }
 .message.success { color: var(--success); }
 
 [hidden] { display: none !important; }
+
+/* --- song library ------------------------------------------------------- */
+
+h2 { font-size: 1.15rem; margin: 24px 0 8px; }
+
+.page-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.page-head h1 { margin: 0; }
+
+.toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; margin-bottom: 8px; }
+.toolbar .grow { flex: 1 1 240px; }
+.toolbar .field:not(.grow) { flex: 0 1 180px; }
+
+#status { margin: 8px 0; }
+
+.song-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+
+.song-link {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: var(--touch);
+  padding: 12px 14px;
+  color: var(--text);
+  text-decoration: none;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.song-link:hover { border-color: var(--accent); }
+.song-title { font-weight: 600; }
+.song-meta { font-size: 0.875rem; color: var(--muted); }
+.song-hint { font-size: 0.8125rem; color: var(--accent); }
+
+.back { margin: 0 0 8px; }
+.back a { display: inline-flex; align-items: center; min-height: var(--touch); }
+
+.song-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 16px; }
+
+.song-section { margin-bottom: 20px; }
+.section-label { font-size: 0.9375rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.04em; margin: 0 0 6px; }
+.section-note { font-size: 0.875rem; color: var(--muted); font-style: italic; margin: 0 0 6px; }
+.lyrics { white-space: pre-line; font-size: 1.0625rem; line-height: 1.6; margin: 0; }
+
+/* Chords above lyrics: both monospace so columns match; long lines scroll sideways. */
+.chord-sheet {
+  display: flex;
+  flex-direction: column;
+  overflow-x: auto;
+  font-size: 0.9375rem;
+  line-height: 1.35;
+  padding-bottom: 4px;
+}
+
+.chord-line, .lyric-line { white-space: pre; }
+.chord-line { color: var(--accent); font-weight: 700; }
+.lyric-line + .chord-line { margin-top: 4px; }
+
+/* --- song editor -------------------------------------------------------- */
+
+#song-form { margin-top: 16px; }
+
+.section-editor {
+  gap: 12px;
+  padding: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 12px;
+}
+
+.section-editor legend { float: left; width: 100%; margin: 0; font-weight: 700; color: var(--accent); }
+.section-editor legend + * { clear: both; }
+
+.section-fields { display: flex; flex-wrap: wrap; gap: 12px; }
+.section-fields > .field { flex: 1 1 140px; }
+
+.section-tools { display: flex; gap: 8px; justify-content: flex-end; }
+.icon-button { padding: 0; font-size: 1.1rem; }
+button:disabled.icon-button { opacity: 0.35; cursor: not-allowed; }
+
+.form-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+.form-actions > * { flex: 1 1 140px; }
+
+.message a { color: var(--accent); }

@@ -6,6 +6,10 @@
 (function (root) {
   const SECTION_TYPES = ['verse', 'chorus', 'pre_chorus', 'bridge', 'intro', 'outro', 'tag', 'other'];
 
+  // Allowed song keys: each root, major and minor ("G", "Gm").
+  const SONG_KEYS = ['C', 'C#', 'Db', 'D', 'D#', 'Eb', 'E', 'F', 'F#', 'Gb', 'G', 'G#', 'Ab', 'A', 'A#', 'Bb', 'B']
+    .flatMap((root) => [root, `${root}m`]);
+
   // Display labels for an ordered list of sections ({ type, label }).
   // A custom label wins. Verses are always numbered ("Strofa 1"); other types are
   // numbered only when the song has more than one of them ("Punte 1", "Punte 2").
@@ -25,7 +29,7 @@
     });
   }
 
-  const SECTIONS = { SECTION_TYPES, sectionLabels };
+  const SECTIONS = { SECTION_TYPES, SONG_KEYS, sectionLabels };
 
   if (typeof module === 'object' && module.exports) module.exports = SECTIONS;
   else root.SECTIONS = SECTIONS;
