@@ -13,7 +13,8 @@ const SESSION_SWEEP_MS = 30 * 1000;
 
 const COMMANDS = ['event.start', 'event.end', 'worship.next', 'worship.prev', 'worship.goto',
   'projector.follow', 'projector.next', 'projector.prev', 'projector.goto', 'projector.syncToWorship', 'projector.source',
-  'video.prepare', 'video.play', 'video.pause', 'video.restart', 'video.stop', 'video.volume'];
+  'video.prepare', 'video.play', 'video.pause', 'video.restart', 'video.stop', 'video.volume',
+  'operator.addItem', 'request.accept', 'request.refuse'];
 // Roles that may send commands at all; the store decides the rest (lib/live.js permission).
 const COMMAND_ROLES = ['owner', 'leader', 'operator'];
 
@@ -45,10 +46,15 @@ function createLiveHub({ db, auth, logger, screensHub }) {
     return counts;
   }
 
-  function fullSnapshot(adminId, eventId) {
+  // role: the receiver's. Operator, owner and leader also get every item (with the
+  // operator's projector-only ones) and the requests; team phones never see those.
+  function fullSnapshot(adminId, eventId, role) {
     const state = store.snapshot(adminId, eventId);
     if (!state) return null;
-    return { ...state, presence: presence(roomName(adminId, eventId)), serverTime: Date.now() };
+    const extra = COMMAND_ROLES.includes(role)
+      ? { items: store.items(adminId, eventId, 'all'), requests: store.requests(adminId, eventId) }
+      : {};
+    return { ...state, ...extra, presence: presence(roomName(adminId, eventId)), serverTime: Date.now() };
   }
 
   // Presence changes are broadcast at most once a second per room.
@@ -98,7 +104,7 @@ function createLiveHub({ db, auth, logger, screensHub }) {
       socket.data.eventId = eventId;
       schedulePresence(adminId, eventId);
     }
-    const state = fullSnapshot(adminId, eventId);
+    const state = fullSnapshot(adminId, eventId, role);
     socket.emit('live:state', state);
     reply(ack, { ok: true, version: state.version });
   }
@@ -106,8 +112,15 @@ function createLiveHub({ db, auth, logger, screensHub }) {
   // Every change goes to the event room and, if it changes what the projector shows, to
   // the admin's screens.
   function broadcast(adminId, eventId) {
-    const state = fullSnapshot(adminId, eventId);
-    if (state) io.to(roomName(adminId, eventId)).emit('live:state', state);
+    const room = roomName(adminId, eventId);
+    const team = fullSnapshot(adminId, eventId, 'member');
+    if (team) {
+      const full = fullSnapshot(adminId, eventId, 'owner');
+      for (const id of io.sockets.adapter.rooms.get(room) || []) {
+        const socket = io.sockets.sockets.get(id);
+        if (socket) socket.emit('live:state', COMMAND_ROLES.includes(socket.data.role) ? full : team);
+      }
+    }
     screensHub.update(adminId);
   }
 
@@ -138,10 +151,10 @@ function createLiveHub({ db, auth, logger, screensHub }) {
     const command = cmd.type === 'video.pause' ? { ...cmd, position: screensHub.lastVideoPosition(adminId) } : cmd;
     let result;
     try {
-      result = store.command(adminId, cmd.eventId, command, expected, role);
+      result = store.command(adminId, cmd.eventId, command, expected, role, userId);
     } catch (err) {
       if (!(err instanceof LiveError)) throw err;
-      if (err.code === 'stale') return fail(socket, ack, 'stale', { state: fullSnapshot(adminId, cmd.eventId) });
+      if (err.code === 'stale') return fail(socket, ack, 'stale', { state: fullSnapshot(adminId, cmd.eventId, role) });
       return fail(socket, ack, err.code);
     }
     if (cmd.type === 'event.start' || cmd.type === 'event.end') {
@@ -239,7 +252,7 @@ function createLiveHub({ db, auth, logger, screensHub }) {
 
   // Call before a setlist is saved; pass the result to setlistChanged afterwards.
   function setlistBefore(adminId, eventId) {
-    return store.layout(adminId, eventId);
+    return store.layouts(adminId, eventId);
   }
 
   // The setlist was saved: a live event clamps its position (new version); either way the
@@ -254,7 +267,7 @@ function createLiveHub({ db, auth, logger, screensHub }) {
   // song id, so they must be found first). No songId: every live event of the admin
   // (a library import that updates many songs).
   function songBefore(adminId, songId) {
-    return store.liveEventsWithSongId(adminId, songId).map((eventId) => ({ eventId, layout: store.layout(adminId, eventId) }));
+    return store.liveEventsWithSongId(adminId, songId).map((eventId) => ({ eventId, layout: store.layouts(adminId, eventId) }));
   }
 
   function songChanged(adminId, before) {

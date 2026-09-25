@@ -432,6 +432,52 @@ async function main() {
     op.socket.close();
   });
 
+  await step('operator items: projector-only for the team; requests answered by the leader', async () => {
+    const op = await joined(operator, ev.id);
+    const opStates = [];
+    op.socket.on('live:state', (st) => opStates.push(st));
+    const leadStates = [];
+    lead.socket.on('live:state', (st) => leadStates.push(st));
+    const memberKey = (await memberAt(version)).setlistKey;
+    const add = (socket, item, propose) => emit(socket, 'live:command', { eventId: ev.id, type: 'operator.addItem', item, propose });
+    let reply = await add(op.socket, { type: 'song', songId: s2.id }, false);
+    assert.strictEqual(reply.ok, true, JSON.stringify(reply));
+    version = reply.version;
+    let snap = await memberAt(version);
+    assert.strictEqual(snap.setlistKey, memberKey, 'team phones do not reload');
+    assert.deepStrictEqual([snap.items, snap.requests], [undefined, undefined], 'team snapshots carry no operator items');
+    const opSnap = opStates.find((st) => st.version === version) || await next(op.socket, 'live:state', (st) => st.version === version);
+    const added = opSnap.items.find((it) => it.scope === 'projector');
+    assert.deepStrictEqual([opSnap.items.map((it) => it.id).indexOf(added.id), added.title], [1, 'Mare ești'], 'right after the current item');
+    // members, the rehearsal view and the event page never see it
+    const memberEvent = (await api('GET', `/api/events/${ev.id}`, member)).body;
+    assert.ok(!memberEvent.items.some((it) => it.id === added.id));
+    assert.strictEqual((await api('GET', `/api/events/${ev.id}/items/${added.id}/song`, member)).status, 404);
+    assert.strictEqual((await api('GET', `/api/events/${ev.id}/items/${added.id}/song`, leader)).status, 200, 'the leader can preview it');
+    // proposals
+    reply = await add(op.socket, { type: 'verse', reference: 'Ioan 3:16', body: 'Fiindcă' }, true);
+    version = reply.version;
+    const leadSnap = leadStates.find((st) => st.version === version) || await next(lead.socket, 'live:state', (st) => st.version === version);
+    const proposal = leadSnap.requests.find((r) => r.status === 'pending');
+    assert.deepStrictEqual([proposal.title, proposal.requestedBy], ['Ioan 3:16', 'Operator']);
+    assert.strictEqual((await add(mem.socket, { type: 'verse', reference: 'x' }, true)).code, 'forbidden');
+    assert.strictEqual((await emit(mem.socket, 'live:command', { eventId: ev.id, type: 'request.accept', itemId: proposal.itemId, position: 'end' })).code, 'forbidden');
+    assert.strictEqual((await emit(op.socket, 'live:command', { eventId: ev.id, type: 'request.accept', itemId: proposal.itemId, position: 'end' })).code, 'forbidden');
+    reply = await send(lead.socket, { type: 'request.accept', itemId: proposal.itemId, position: 'afterCurrent' });
+    assert.strictEqual(reply.ok, true);
+    snap = await memberAt(version);
+    assert.notStrictEqual(snap.setlistKey, memberKey, 'team phones reload the setlist');
+    const after = (await api('GET', `/api/events/${ev.id}`, member)).body.items.map((it) => it.reference || it.title);
+    assert.deepStrictEqual(after.slice(0, 2), ['Sfânt', 'Ioan 3:16'], 'accepted after the current worship item');
+    // 10 pending at most
+    for (let i = 0; i < 10; i++) assert.strictEqual((await add(op.socket, { type: 'verse', reference: `R${i}` }, true)).ok, true);
+    assert.strictEqual((await add(op.socket, { type: 'verse', reference: 'R10' }, true)).code, 'tooManyRequests');
+    const last = await add(op.socket, { type: 'verse', reference: 'R' }, false);
+    version = last.version;
+    await memberAt(version);
+    op.socket.close();
+  });
+
   await step('shared frames: a page holding the event data computes the same frame as the server', async () => {
     // The browser build of public/frames.js (no require), as the live page loads it.
     const sandbox = { window: {} };

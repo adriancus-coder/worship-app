@@ -59,13 +59,13 @@ function createScreensHub({ db, logger, config }) {
     const eventId = live.liveEventId(adminId);
     if (!eventId) return projectorFrame(null, null, null, { logoUrl: logoUrl(adminId) });
     const state = live.snapshot(adminId, eventId);
-    const found = events.get(adminId, eventId);
+    const found = events.get(adminId, eventId, { scope: 'all' }); // the operator's items too
     const songs = new Map();
     // The item on the projector: the operator's position in operator mode, else worship's.
     const at = state.projector.follows === 'operator' ? state.projector.itemId : state.worship.itemId;
     const current = found && found.items.find((it) => it.id === at);
     if (current && current.type === 'song' && current.songId) {
-      const ready = events.itemSong(adminId, eventId, current.id);
+      const ready = events.itemSong(adminId, eventId, current.id, undefined, { scope: 'all' });
       if (ready) songs.set(current.id, ready.song);
     }
     return projectorFrame(state, found, songs, {
