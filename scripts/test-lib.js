@@ -492,6 +492,28 @@ test('library import: anything else is rejected', () => {
   assert.strictEqual(code({ type: 'sanctuary-voice-library', version: 1, songs: [] }), 'accepted');
 });
 
+// --- dates and admin settings -------------------------------------------------
+
+const dates = require('../lib/dates');
+const { isValidTimezone } = require('../lib/admin-settings');
+
+test('dates: validation and today in a timezone', () => {
+  assert.ok(dates.isValidDate('2026-10-11'));
+  assert.ok(dates.isValidDate('2028-02-29'));
+  for (const bad of ['2026-02-30', '2026-13-01', '26-10-11', '2026-10-1', '', null, '2026-10-11T00:00']) {
+    assert.ok(!dates.isValidDate(bad), String(bad));
+  }
+  assert.ok(dates.isValidTime('09:30') && dates.isValidTime('23:59') && dates.isValidTime('00:00'));
+  for (const bad of ['24:00', '9:30', '09:60', '', 'noon']) assert.ok(!dates.isValidTime(bad), bad);
+  // 22:30 UTC on 25 Sep is already 26 Sep in Oslo (UTC+2), still 25 Sep in New York.
+  const at = new Date(Date.UTC(2026, 8, 25, 22, 30));
+  assert.strictEqual(dates.todayIn('Europe/Oslo', at), '2026-09-26');
+  assert.strictEqual(dates.todayIn('America/New_York', at), '2026-09-25');
+  assert.strictEqual(dates.todayIn('Europe/Oslo', new Date(Date.UTC(2026, 11, 31, 22, 59))), '2026-12-31');
+  assert.strictEqual(dates.todayIn('Europe/Oslo', new Date(Date.UTC(2026, 11, 31, 23, 0))), '2027-01-01');
+  assert.ok(isValidTimezone('Europe/Oslo') && !isValidTimezone('Mars/Base'));
+});
+
 // --- sections -------------------------------------------------------------
 
 test('sectionLabels: numbered verses, repeated types, custom labels, both languages', () => {

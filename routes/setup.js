@@ -3,6 +3,7 @@
 const express = require('express');
 const asyncRoute = require('../lib/async-route');
 const { safeEqual, hashPassword } = require('../lib/auth');
+const { DEFAULTS: DEFAULT_SETTINGS } = require('../lib/admin-settings');
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD_LENGTH = 10;
@@ -40,6 +41,7 @@ function createSetupRouter({ db, config, logger, sendPage }) {
 
   const countAdmins = db.prepare('SELECT COUNT(*) FROM admins').pluck();
   const insertAdmin = db.prepare('INSERT INTO admins (name, created_at) VALUES (?, ?)');
+  const insertSetting = db.prepare('INSERT INTO admin_settings (admin_id, key, value) VALUES (?, ?, ?)');
   const insertUser = db.prepare(`INSERT INTO users
     (admin_id, email, name, password_hash, role, active, created_at)
     VALUES (?, ?, ?, ?, 'owner', 1, ?)`);
@@ -48,6 +50,7 @@ function createSetupRouter({ db, config, logger, sendPage }) {
     if (countAdmins.get() > 0) throw new SetupConflict();
     const now = Date.now();
     const adminId = Number(insertAdmin.run(input.adminName, now).lastInsertRowid);
+    insertSetting.run(adminId, 'timezone', DEFAULT_SETTINGS.timezone);
     const userId = Number(insertUser.run(adminId, input.ownerEmail, input.ownerName, passwordHash, now).lastInsertRowid);
     return { adminId, userId };
   });
