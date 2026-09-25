@@ -1045,35 +1045,96 @@ body.has-shell { --shell-bottom: calc(64px + env(safe-area-inset-bottom)); paddi
 .shell-icon { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .shell-icon-more { stroke-width: 3.5; }
 
+.shell-more.open { color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
+
+/* "Mai mult": a bottom sheet above the tab bar on phones, a panel by the rail from 900px. */
+.shell-backdrop { position: fixed; z-index: 45; inset: 0; background: rgba(0, 0, 0, 0.6); opacity: 0; transition: opacity 200ms ease-out; }
+.shell-backdrop.visible { opacity: 1; }
+body.shell-locked { position: fixed; left: 0; right: 0; overflow: hidden; }
 .shell-panel {
-  position: absolute;
-  right: 8px;
-  bottom: calc(100% + 8px);
-  width: min(340px, calc(100vw - 16px));
-  max-height: calc(100dvh - 96px);
-  overflow-y: auto;
-  padding: 16px;
+  position: fixed;
+  z-index: 60;
+  left: 0;
+  right: 0;
+  bottom: var(--shell-bottom);
+  display: flex;
+  flex-direction: column;
+  max-height: min(85vh, calc(100dvh - var(--shell-bottom) - 16px));
   background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+  border-top: 1px solid var(--border);
+  border-radius: 18px 18px 0 0;
+  box-shadow: 0 -12px 32px rgba(0, 0, 0, 0.5);
+  transform: translateY(calc(100% + var(--shell-bottom)));
+  transition: transform 200ms ease-out;
 }
-.shell-panel-title { margin: 0 0 4px; font-size: 1.125rem; }
-.shell-who { margin: 0 0 12px; color: var(--muted); font-size: 0.875rem; overflow-wrap: anywhere; }
-.shell-pages { list-style: none; margin: 0 0 12px; padding: 0; display: flex; flex-direction: column; gap: 4px; }
-.shell-page { display: flex; align-items: center; min-height: var(--touch); padding: 0 12px; border-radius: var(--radius); color: var(--text); text-decoration: none; font-weight: 600; background: var(--bg); }
-.shell-page[aria-current="page"] { color: var(--accent); }
-.shell-page:hover { background: var(--border); }
-.shell-setting { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 12px; }
+.shell-panel.visible { transform: translateY(0); }
+.shell-panel.dragging { transition: none; }
+.shell-handle { display: flex; justify-content: center; padding: 8px 0 2px; touch-action: none; cursor: grab; }
+.shell-handle span { width: 40px; height: 5px; border-radius: 3px; background: var(--muted); opacity: 0.6; }
+.shell-panel-head { display: flex; align-items: flex-start; gap: 12px; padding: 4px 12px 10px 20px; border-bottom: 1px solid var(--border); touch-action: none; }
+.shell-who { flex: 1 1 auto; min-width: 0; padding-top: 6px; }
+.shell-who-name { margin: 0; font-size: 1.125rem; overflow-wrap: anywhere; }
+.shell-who-role { margin: 2px 0 0; color: var(--muted); font-size: 0.875rem; overflow-wrap: anywhere; }
+.shell-close { flex: none; width: var(--touch); height: var(--touch); min-height: var(--touch); padding: 0; border-radius: 50%; font-size: 1.125rem; color: var(--text); background: var(--bg); border: 1px solid var(--border); }
+.shell-panel-body { overflow-y: auto; overscroll-behavior: contain; padding: 4px 12px calc(12px + env(safe-area-inset-bottom)); }
+body.has-shell .shell-panel-body { padding-bottom: 12px; } /* the tab bar already keeps the safe area */
+.shell-section { padding: 10px 0 4px; }
+.shell-section + .shell-section { border-top: 1px solid var(--border); }
+.shell-section-title { margin: 0 8px 6px; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.shell-rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.shell-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-height: 52px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--radius);
+  color: var(--text);
+  background: transparent;
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+.shell-row:hover { background: var(--bg); }
+.shell-row:focus-visible { outline: 3px solid var(--accent); outline-offset: -3px; }
+.shell-row .shell-icon { flex: none; width: 22px; height: 22px; color: var(--muted); }
+.shell-row .shell-icon-chevron { width: 18px; height: 18px; margin-left: auto; }
+.shell-row-label { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.shell-row[aria-current="page"], .shell-row[aria-current="page"] .shell-icon { color: var(--accent); }
+.shell-setting { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; padding: 0 8px; }
 .shell-setting-label { font-weight: 600; }
-.shell-logout { width: 100%; }
+.shell-logout { margin-top: 8px; color: var(--error); border-top: 1px solid var(--border); border-radius: 0; }
+.shell-logout .shell-icon { color: var(--error); }
 
 @media (min-width: 900px) {
   body.has-shell { --shell-bottom: 0px; padding-bottom: 0; padding-left: 96px; }
   .app-shell { top: 0; right: auto; width: 96px; box-shadow: 1px 0 0 var(--border); padding: 8px 0; }
   .shell-list { flex-direction: column; gap: 4px; }
   .shell-item { min-height: 72px; font-size: 0.8125rem; }
-  .shell-panel { left: calc(100% + 8px); right: auto; bottom: 8px; top: auto; }
+  .shell-backdrop { left: 96px; } /* the rail stays visible, "Mai mult" marked open */
+  .shell-panel {
+    left: 104px;
+    right: auto;
+    bottom: 8px;
+    width: 360px;
+    max-height: calc(100dvh - 16px);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    transform: translateX(-12px);
+    opacity: 0;
+    transition: transform 200ms ease-out, opacity 200ms ease-out;
+  }
+  .shell-panel.visible { transform: none; opacity: 1; }
+  .shell-handle { display: none; }
+  .shell-panel-head { padding-top: 12px; touch-action: auto; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shell-backdrop, .shell-panel { transition: none !important; }
 }
 
 /* Full-screen work pages (live, follow): only a small "← Ieși". */
