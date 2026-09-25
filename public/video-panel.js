@@ -5,9 +5,11 @@
 // status and progress, "De la început", volume, and one big "Pornește pe proiector" /
 // "Pauză" button. Preparing never changes what the projector shows.
 //
-//   const panel = VIDEO_PANEL.create(container, { send, api, t, el });
+//   const panel = VIDEO_PANEL.create(container, { send, api, t, el, canAddUrl });
 //   panel.setSetlist(items); panel.update(liveSnapshot); panel.status(videoStatus);
-//   panel.setScreens(count);
+//   panel.setScreens(count); panel.setLocked(locked);
+// canAddUrl: false hides the URL tab (it adds to the media library: owner / leader only).
+// setLocked(true) disables every control (the operator console while worship has the projector).
 // send(type, extra) sends a live command; api(url, options) is PAGE.api.
 
 (function () {
@@ -19,8 +21,9 @@
     return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
   }
 
-  function create(container, { send, api, t, el }) {
-    const state = { tab: 'library', media: [], items: [], snap: null, statuses: new Map(), status: null, screens: 0, message: '' };
+  function create(container, { send, api, t, el, canAddUrl = true }) {
+    const tabNames = canAddUrl ? TABS : TABS.filter((tab) => tab !== 'url');
+    const state = { tab: 'library', media: [], items: [], snap: null, statuses: new Map(), status: null, screens: 0, message: '', locked: false };
 
     // Several screens may report: any screen blocked by autoplay or failing to load is shown;
     // otherwise the furthest progress counts.
@@ -137,7 +140,7 @@
       const duration = status ? status.duration : null;
 
       const tabs = el('div', { class: 'video-tabs', role: 'tablist', 'aria-label': t('video.tabsLabel') },
-        TABS.map((tab) => el('button', {
+        tabNames.map((tab) => el('button', {
           type: 'button',
           role: 'tab',
           id: `video-tab-${tab}`,
@@ -180,6 +183,9 @@
               onchange: (event) => send('video.volume', { volume: Number(event.target.value) }),
             }))),
       ].filter(Boolean)); // a null would be inserted as the text "null"
+      if (state.locked) {
+        for (const control of root.querySelectorAll('button:not([role="tab"]), input, select')) control.disabled = true;
+      }
       if (focusedId) {
         const again = root.querySelector(`#${focusedId}`);
         if (again && !again.disabled) again.focus();
@@ -213,6 +219,11 @@
       },
       setScreens(count) {
         state.screens = count;
+        render();
+      },
+      setLocked(locked) {
+        if (state.locked === Boolean(locked)) return;
+        state.locked = Boolean(locked);
         render();
       },
       reloadMedia: loadMedia,

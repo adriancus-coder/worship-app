@@ -4,7 +4,7 @@
 // a socket joins at most one event room, "admin:<adminId>:event:<eventId>", and receives
 // full `live:state` snapshots from the server (the single source of truth).
 
-const { EDITOR_ROLES, LiveError, createLiveStore } = require('../lib/live');
+const { LiveError, createLiveStore } = require('../lib/live');
 const { resolveLang, t: translate } = require('../lib/i18n');
 
 const ROLES = ['owner', 'leader', 'operator', 'member'];
@@ -46,13 +46,14 @@ function createLiveHub({ db, auth, logger, screensHub }) {
     return counts;
   }
 
-  // role: the receiver's. Operator, owner and leader also get every item (with the
-  // operator's projector-only ones) and the requests; team phones never see those.
-  function fullSnapshot(adminId, eventId, role) {
+  // role, lang: the receiver's. Operator, owner and leader also get every item (with the
+  // operator's projector-only ones, section labels in their language) and the requests;
+  // team phones never see those.
+  function fullSnapshot(adminId, eventId, role, lang) {
     const state = store.snapshot(adminId, eventId);
     if (!state) return null;
     const extra = COMMAND_ROLES.includes(role)
-      ? { items: store.items(adminId, eventId, 'all'), requests: store.requests(adminId, eventId) }
+      ? { items: store.items(adminId, eventId, 'all', (key, vars) => translate(key, vars, lang)), requests: store.requests(adminId, eventId) }
       : {};
     return { ...state, ...extra, presence: presence(roomName(adminId, eventId)), serverTime: Date.now() };
   }
@@ -104,7 +105,7 @@ function createLiveHub({ db, auth, logger, screensHub }) {
       socket.data.eventId = eventId;
       schedulePresence(adminId, eventId);
     }
-    const state = fullSnapshot(adminId, eventId, role);
+    const state = fullSnapshot(adminId, eventId, role, socket.data.lang);
     socket.emit('live:state', state);
     reply(ack, { ok: true, version: state.version });
   }
@@ -115,10 +116,17 @@ function createLiveHub({ db, auth, logger, screensHub }) {
     const room = roomName(adminId, eventId);
     const team = fullSnapshot(adminId, eventId, 'member');
     if (team) {
-      const full = fullSnapshot(adminId, eventId, 'owner');
+      const full = new Map(); // one per language
       for (const id of io.sockets.adapter.rooms.get(room) || []) {
         const socket = io.sockets.sockets.get(id);
-        if (socket) socket.emit('live:state', COMMAND_ROLES.includes(socket.data.role) ? full : team);
+        if (!socket) continue;
+        if (!COMMAND_ROLES.includes(socket.data.role)) {
+          socket.emit('live:state', team);
+          continue;
+        }
+        const { lang } = socket.data;
+        if (!full.has(lang)) full.set(lang, fullSnapshot(adminId, eventId, 'owner', lang));
+        socket.emit('live:state', full.get(lang));
       }
     }
     screensHub.update(adminId);
@@ -154,7 +162,7 @@ function createLiveHub({ db, auth, logger, screensHub }) {
       result = store.command(adminId, cmd.eventId, command, expected, role, userId);
     } catch (err) {
       if (!(err instanceof LiveError)) throw err;
-      if (err.code === 'stale') return fail(socket, ack, 'stale', { state: fullSnapshot(adminId, cmd.eventId, role) });
+      if (err.code === 'stale') return fail(socket, ack, 'stale', { state: fullSnapshot(adminId, cmd.eventId, role, socket.data.lang) });
       return fail(socket, ack, err.code);
     }
     if (cmd.type === 'event.start' || cmd.type === 'event.end') {
@@ -187,10 +195,11 @@ function createLiveHub({ db, auth, logger, screensHub }) {
         fail(socket, ack, 'internal');
       }
     });
-    // The leader's projector panel: the frame the screens show and how many are connected.
+    // The leader's projector panel and the operator console: the frame the screens show and
+    // how many are connected.
     socket.on('projector:watch', (payload, ack) => {
       if (!refresh(socket)) return;
-      if (!EDITOR_ROLES.includes(socket.data.role)) return fail(socket, ack, 'forbidden');
+      if (!COMMAND_ROLES.includes(socket.data.role)) return fail(socket, ack, 'forbidden');
       reply(ack, { ok: true, ...screensHub.watch(socket) });
     });
     // The home page: an admin-level room, no event room needed.

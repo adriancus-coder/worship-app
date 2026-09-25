@@ -50,19 +50,21 @@ function createMediaRouter({ db, auth, config, logger }) {
     });
   });
 
-  router.use('/api/media', auth.requireUser, canEdit, (req, res, next) => {
+  router.use('/api/media', auth.requireUser, (req, res, next) => {
     res.set('Cache-Control', 'no-store');
     next();
   });
 
-  router.get('/api/media', (req, res) => {
+  // The list also for the operator (the video panel on the operator console); changes:
+  // owner and leader only.
+  router.get('/api/media', requireRole(...EDITOR_ROLES, 'operator'), (req, res) => {
     const used = media.usedBytes(req.adminId);
     res.json({ media: media.list(req.adminId), usedBytes: used, maxFileBytes: config.MEDIA_MAX_FILE_BYTES, maxAdminBytes: config.MEDIA_MAX_ADMIN_BYTES });
   });
 
   // The body is the video itself. It is written to a temp file as it arrives (never held
   // in memory), stopped as soon as it passes the limits, then checked by its magic bytes.
-  router.post('/api/media/upload', (req, res) => {
+  router.post('/api/media/upload', canEdit, (req, res) => {
     const title = validateTitle(req.query.title, req.t);
     if (title.error) return res.status(400).json({ error: title.error });
     const maxFile = config.MEDIA_MAX_FILE_BYTES;
@@ -124,7 +126,7 @@ function createMediaRouter({ db, auth, config, logger }) {
     req.pipe(out);
   });
 
-  router.post('/api/media/url', (req, res) => {
+  router.post('/api/media/url', canEdit, (req, res) => {
     const body = req.body || {};
     const title = validateTitle(body.title, req.t);
     if (title.error) return res.status(400).json({ error: title.error });
@@ -133,7 +135,7 @@ function createMediaRouter({ db, auth, config, logger }) {
     res.status(201).json({ media: media.addUrl(req.adminId, req.user.id, title.value, parsed) });
   });
 
-  router.put('/api/media/:id', (req, res) => {
+  router.put('/api/media/:id', canEdit, (req, res) => {
     const id = mediaId(req);
     if (!id || !media.get(req.adminId, id)) return notFound(req, res);
     const title = validateTitle((req.body || {}).title, req.t);
@@ -142,7 +144,7 @@ function createMediaRouter({ db, auth, config, logger }) {
     res.json({ media: media.get(req.adminId, id) });
   });
 
-  router.delete('/api/media/:id', (req, res) => {
+  router.delete('/api/media/:id', canEdit, (req, res) => {
     const id = mediaId(req);
     if (!id || !media.remove(req.adminId, id)) return notFound(req, res);
     logger.info(`Media #${id} deleted by user #${req.user.id} (admin #${req.adminId})`);

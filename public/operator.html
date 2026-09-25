@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="{{LANG}}" data-app-name="{{APP_NAME}}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#141318">
+  <title>{{APP_NAME}}</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body class="operator-body" data-shell="exit">
+  <main class="operator-page">
+    <p id="status" class="muted" role="status" aria-live="polite" data-i18n="events.loading"></p>
+
+    <div id="console" hidden>
+      <div id="mode-banner" class="mode-banner" role="status" aria-live="polite">
+        <p id="mode-title" class="mode-title"></p>
+        <p id="mode-detail" class="mode-detail"></p>
+      </div>
+
+      <header class="op-head">
+        <div class="op-title">
+          <h1 id="event-name"></h1>
+          <p id="connection" class="connection" role="status" aria-live="polite"><span class="dot" aria-hidden="true"></span><span id="connection-text"></span></p>
+        </div>
+        <p class="op-worship" aria-live="polite"><span class="ro-label" data-i18n="operator.worshipAt"></span> <strong id="worship-at"></strong></p>
+        <div class="op-screen">
+          <span id="op-screens" class="projector-screens"></span>
+          <button type="button" class="secondary" id="open-projector" data-i18n="live.projector.open"></button>
+        </div>
+        <p class="hint" id="projector-permission" data-i18n="live.projector.permissionHint"></p>
+        <p id="projector-message" class="message" role="status" aria-live="polite"></p>
+        <p id="op-message" class="message" role="status" aria-live="polite"></p>
+      </header>
+
+      <div class="op-grid">
+        <section class="op-setlist" aria-labelledby="op-setlist-heading">
+          <h2 id="op-setlist-heading" data-i18n="operator.setlistHeading"></h2>
+          <ol id="op-list" class="op-list"></ol>
+
+          <section class="op-add" aria-labelledby="op-add-heading">
+            <h3 id="op-add-heading" data-i18n="operator.addHeading"></h3>
+            <label for="add-search" class="field-label" data-i18n="operator.searchLabel"></label>
+            <input type="search" id="add-search" autocomplete="off" maxlength="100">
+            <ul id="add-results" class="op-results" data-i18n-aria-label="operator.resultsLabel"></ul>
+            <label class="checkbox"><input type="checkbox" id="add-propose"> <span data-i18n="operator.propose"></span></label>
+            <button type="button" id="add-button" data-i18n="operator.add"></button>
+            <p id="add-message" class="message" role="status" aria-live="polite"></p>
+          </section>
+        </section>
+
+        <section class="op-center" aria-labelledby="op-item-title">
+          <header class="op-item-head">
+            <span id="op-item-type" class="type-badge"></span>
+            <h2 id="op-item-title" class="op-item-title"></h2>
+          </header>
+          <ol id="op-steps" class="op-steps" data-i18n-aria-label="operator.stepsLabel"></ol>
+          <p class="op-legend">
+            <span class="legend-chip projector" data-i18n="operator.onProjector"></span>
+            <span class="legend-chip worship" data-i18n="operator.worshipHere"></span>
+          </p>
+          <div class="live-nav op-nav" role="group" data-i18n-aria-label="live.navLabel">
+            <button type="button" class="secondary" id="op-prev" data-i18n="live.prev"></button>
+            <button type="button" id="op-next"></button>
+          </div>
+          <button type="button" class="secondary op-sync" id="op-sync" data-i18n="operator.syncWorship"></button>
+          <p class="hint key-hint op-keys" data-i18n="operator.keysHint"></p>
+        </section>
+
+        <aside class="op-right" aria-labelledby="op-projector-heading">
+          <h2 id="op-projector-heading" data-i18n="live.projector.heading"></h2>
+          <div id="projector-preview" class="projector-preview" role="img" data-i18n-aria-label="live.projector.previewLabel"></div>
+          <div class="source-buttons op-sources" role="group" data-i18n-aria-label="live.projector.sourceLabel">
+            <button type="button" class="secondary" data-source="content" aria-pressed="false" data-i18n="live.projector.content"></button>
+            <button type="button" class="secondary" data-source="video" aria-pressed="false" data-i18n="operator.video"></button>
+            <button type="button" class="secondary" data-source="logo" aria-pressed="false" data-i18n="live.projector.logo"></button>
+            <button type="button" class="secondary" data-source="black" aria-pressed="false" data-i18n="live.projector.black"></button>
+          </div>
+          <div id="video-panel"></div>
+        </aside>
+      </div>
+    </div>
+  </main>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/i18n.js"></script>
+  <script src="/page.js"></script>
+  <script src="/shell.js"></script>
+  <script src="/projector-render.js"></script>
+  <script src="/video-panel.js"></script>
+  <script src="/projector-window.js"></script>
+  <script src="/live-client.js"></script>
+  <script src="/operator.js"></script>
+</body>
+</html>

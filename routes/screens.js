@@ -69,6 +69,15 @@ function createScreensRouter({ db, auth, logger, screensHub }) {
     res.json({ screen: { id: screen.id, name: screen.name }, admin: { id: screen.adminId, name: screen.adminName } });
   });
 
+  // A one-time link (60 s) that pairs the window opening it, without a code: from the
+  // leader's live page or the operator console.
+  router.post('/api/screens/auto-claim', auth.requireUser, requireRole(...EDITOR_ROLES, 'operator'), noStore, (req, res) => {
+    const name = validateScreenName((req.body || {}).name, req.t);
+    if (name.error) return res.status(400).json({ error: name.error });
+    const link = screens.createLink(req.adminId, req.user.id, name.value);
+    res.status(201).json({ claimUrl: `/screen?claim=${link.claim}`, expiresAt: link.expiresAt });
+  });
+
   // --- owner / leader -----------------------------------------------------------------
 
   router.use('/api/screens', auth.requireUser, canManage, noStore);
@@ -91,13 +100,6 @@ function createScreensRouter({ db, auth, logger, screensHub }) {
     res.status(201).json({ screen });
   });
 
-  // A one-time link (60 s) that pairs the window opening it, without a code.
-  router.post('/api/screens/auto-claim', (req, res) => {
-    const name = validateScreenName((req.body || {}).name, req.t);
-    if (name.error) return res.status(400).json({ error: name.error });
-    const link = screens.createLink(req.adminId, req.user.id, name.value);
-    res.status(201).json({ claimUrl: `/screen?claim=${link.claim}`, expiresAt: link.expiresAt });
-  });
 
   router.get('/api/screens', (req, res) => {
     const online = screensHub.onlineIds(req.adminId);

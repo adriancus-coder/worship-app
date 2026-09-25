@@ -1119,3 +1119,79 @@ body.has-shell { --shell-bottom: calc(64px + env(safe-area-inset-bottom)); paddi
 .home-row-when { color: var(--muted); font-size: 0.875rem; }
 .home-quick { display: flex; flex-wrap: wrap; gap: 10px; }
 .home-quick .button { flex: 1 1 180px; min-height: var(--touch); display: inline-flex; align-items: center; justify-content: center; }
+
+/* --- Operator console (/events/:id/operator) -------------------------------------------- */
+:root { --worship: #6cb4ff; }
+main.operator-page { max-width: 1600px; padding-top: 4px; }
+.mode-banner { margin: 0 0 12px; padding: 10px 14px; border-radius: 10px; border: 2px solid var(--border); background: var(--surface); }
+.mode-banner p { margin: 0; overflow-wrap: anywhere; }
+.mode-banner[data-mode="operator"] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--surface)); }
+.mode-banner[data-mode="worship"] { border-style: dashed; border-color: var(--worship); }
+.mode-title { font-weight: 800; }
+.mode-banner[data-mode="operator"] .mode-title { color: var(--accent); }
+.mode-banner[data-mode="worship"] .mode-title { color: var(--worship); }
+.mode-detail { font-size: 0.9375rem; color: var(--muted); }
+.op-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 20px; margin-bottom: 12px; }
+.op-head > .message { flex: 1 0 100%; }
+.op-head > .message:empty, .op-head > .hint[hidden] { display: none; }
+.op-title { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; min-width: 0; }
+.op-title h1 { margin: 0; font-size: 1.5rem; overflow-wrap: anywhere; }
+.op-worship { margin: 0; padding: 6px 12px; border: 2px dashed var(--worship); border-radius: var(--radius); overflow-wrap: anywhere; }
+.op-worship .ro-label { display: inline; color: var(--worship); font-weight: 700; }
+.op-screen { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-left: auto; }
+.op-grid { display: grid; grid-template-columns: 1fr; gap: 20px; }
+.op-grid h2 { margin: 0 0 10px; font-size: 1.125rem; }
+.op-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.op-item { display: flex; align-items: flex-start; gap: 10px; width: 100%; padding: 8px 10px; font-weight: 400; text-align: left; justify-content: flex-start; color: var(--text); background: var(--surface); border: 1px solid var(--border); }
+.op-item.projector-only { border-style: dashed; }
+.op-item.on-projector { border: 2px solid var(--accent); background: #3a2d18; }
+.op-item.at-worship:not(.on-projector) { border: 2px dashed var(--worship); }
+button.op-item:disabled { opacity: 1; cursor: default; }
+.op-markers { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; margin-left: auto; flex: none; }
+.marker { padding: 1px 8px; font-size: 0.6875rem; font-weight: 800; letter-spacing: 0.06em; border-radius: 999px; white-space: nowrap; }
+.marker.projector { color: var(--accent-text); background: var(--accent); }
+.marker.worship { color: var(--worship); border: 1px dashed var(--worship); }
+.op-tag { padding: 1px 6px; font-size: 0.6875rem; font-weight: 800; letter-spacing: 0.05em; border-radius: 4px; border: 1px solid currentColor; }
+.tag-projectorOnly { color: var(--muted); }
+.tag-pending { color: var(--worship); }
+.tag-accepted { color: var(--success); }
+.tag-refused { color: var(--error); }
+.op-add { margin-top: 18px; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+.op-add h3 { margin: 0 0 8px; font-size: 1rem; }
+.op-add input[type="search"] { width: 100%; }
+.op-results { list-style: none; margin: 8px 0; padding: 0; display: flex; flex-direction: column; gap: 4px; max-height: 260px; overflow-y: auto; }
+.op-results:empty { display: none; }
+.op-result { display: flex; justify-content: space-between; gap: 8px; width: 100%; min-height: var(--touch); padding: 6px 10px; font-weight: 400; text-align: left; color: var(--text); background: var(--bg); border: 1px solid var(--border); }
+.op-result.selected { border: 2px solid var(--accent); }
+.op-add label.checkbox { margin: 4px 0 8px; }
+.op-add #add-button { width: 100%; }
+.op-item-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 12px; }
+.op-item-title { margin: 0; font-size: 1.5rem; overflow-wrap: anywhere; }
+.op-steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
+.op-step { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; width: 100%; min-height: 76px; padding: 8px 10px; font-weight: 400; text-align: left; justify-content: flex-start; color: var(--text); background: var(--surface); border: 2px solid var(--border); }
+.op-step.projector { border-color: var(--accent); background: #3a2d18; }
+.op-step.worship { outline: 2px dashed var(--worship); outline-offset: 3px; }
+button.op-step:disabled { opacity: 1; cursor: default; }
+.op-step .marker { font-size: 0.625rem; }
+.op-step .step-code:empty { display: none; }
+.op-legend { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+.legend-chip { padding: 2px 10px; font-size: 0.75rem; font-weight: 800; border-radius: 999px; }
+.legend-chip.projector { color: var(--accent-text); background: var(--accent); }
+.legend-chip.worship { color: var(--worship); border: 1px dashed var(--worship); }
+.op-nav { position: static; margin: 12px 0 0; padding: 0; border: 0; background: none; }
+.op-nav button { min-height: 72px; font-size: 1.125rem; }
+.op-sync { width: 100%; margin-top: 10px; min-height: 52px; border: 2px dashed var(--worship); color: var(--worship); }
+.op-keys { display: none; }
+.op-right { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.op-right h2 { margin: 0; }
+.op-sources button { min-height: var(--touch); }
+.op-center, .op-setlist { min-width: 0; }
+@media (min-width: 900px) {
+  .op-grid { grid-template-columns: minmax(260px, 1fr) minmax(0, 1.4fr); }
+  .op-right { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
+  .op-keys { display: block; }
+}
+@media (min-width: 1280px) {
+  .op-grid { grid-template-columns: minmax(260px, 320px) minmax(0, 1fr) minmax(320px, 400px); }
+  .op-right { grid-column: auto; display: flex; }
+}

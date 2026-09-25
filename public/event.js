@@ -160,6 +160,9 @@
     $('live-link').href = `/events/${ev.id}/live`;
     $('follow-link').hidden = ev.status !== 'live';
     $('follow-link').href = `/events/${ev.id}/follow`;
+    // The operator console for the roles that run the projector, while the event is live.
+    $('operator-link').hidden = ev.status !== 'live' || !['owner', 'leader', 'operator'].includes(state.me && state.me.user.role);
+    $('operator-link').href = `/events/${ev.id}/operator`;
     $('details-button').hidden = !state.editing;
     templateButton.hidden = !state.editing;
     publishButton.hidden = !state.editing || ev.isTemplate || !['draft', 'published'].includes(ev.status);

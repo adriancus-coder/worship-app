@@ -78,6 +78,12 @@ function createPagesRouter({ db, auth, sendPage }) {
     sendPage(req, res, 'live');
   });
 
+  // Operator console: operator, owner and leader; the team follows the event instead.
+  router.get('/events/:id(\\d+)/operator', noStore, signedIn, (req, res) => {
+    if (!['owner', 'leader', 'operator'].includes(req.session.user.role)) return res.redirect(`/events/${req.params.id}`);
+    sendPage(req, res, 'operator');
+  });
+
   router.get('/events/:id(\\d+)/edit', noStore, signedIn, (req, res) => {
     if (!canEdit(req)) return res.redirect(`/events/${req.params.id}`);
     sendPage(req, res, 'event');

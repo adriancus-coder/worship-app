@@ -290,7 +290,7 @@
   const preview = window.PROJECTOR_RENDER.create($('projector-preview'), { videoPlaceholder: true });
   // Video controls (a module the operator console will reuse in stage 6).
   const videoPanel = window.VIDEO_PANEL.create($('video-panel'), { send, api, t, el });
-  const projector = { screens: 0, details: null, logoUrl: null, frame: null };
+  const projector = { screens: 0, logoUrl: null, frame: null };
 
   function renderProjector() {
     const snap = state.snap;
@@ -330,60 +330,8 @@
     });
   }
 
-  function projectorMessage(text, kind) {
-    $('projector-message').className = `message${kind ? ` ${kind}` : ''}`;
-    $('projector-message').textContent = text || '';
-  }
-
-  // Window Management API (Chrome / Edge): with the one-time permission the projector window
-  // opens directly, fullscreen, on a screen other than this one.
-  const canPlace = 'getScreenDetails' in window;
-  $('projector-permission').hidden = !canPlace;
-
-  async function screenDetails(ask) {
-    if (!canPlace) return null;
-    if (projector.details) return projector.details;
-    try {
-      const permission = await navigator.permissions.query({ name: 'window-management' });
-      if (permission.state === 'denied' || (permission.state === 'prompt' && !ask)) return null;
-    } catch (err) {
-      if (!ask) return null; // permission name unknown: only ask on a click
-    }
-    try {
-      projector.details = await window.getScreenDetails();
-    } catch (err) {
-      projector.details = null; // denied
-    }
-    return projector.details;
-  }
-  screenDetails(false); // already granted earlier: no prompt, the window opens at once
-
-  function otherScreen(details) {
-    if (!details) return null;
-    const others = details.screens.filter((s) => s !== details.currentScreen);
-    return others.find((s) => !s.isPrimary) || others[0] || null;
-  }
-
-  $('open-projector').addEventListener('click', async () => {
-    projectorMessage('');
-    const target = otherScreen(await screenDetails(true));
-    const features = target
-      ? `popup,left=${target.availLeft},top=${target.availTop},width=${target.availWidth},height=${target.availHeight},fullscreen`
-      : 'popup,width=1280,height=720';
-    // Opened right away (still inside the click); the claim link is filled in after.
-    const win = window.open('about:blank', 'wa-projector', features);
-    if (!win) {
-      projectorMessage(t('live.projector.blocked'), 'error');
-      return;
-    }
-    const res = await api('/api/screens/auto-claim', { method: 'POST', body: { name: t('live.projector.windowName') } });
-    if (!res.ok) {
-      win.close();
-      projectorMessage(res.body.error || t('common.networkError'), 'error');
-      return;
-    }
-    win.location.href = res.body.claimUrl;
-    projectorMessage(target ? t('live.projector.placed') : t('live.projector.dragHint'), target ? 'success' : null);
+  window.PROJECTOR_WINDOW.setup({
+    button: $('open-projector'), hint: $('projector-permission'), message: $('projector-message'), api, t,
   });
 
   // --- emergency mode ---------------------------------------------------------------
