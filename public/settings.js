@@ -1,10 +1,11 @@
 'use strict';
 
 // Admin settings (/settings, owner only): the default chord notation, the default colour
-// theme and the church logo shown by the projector.
+// theme, the default projector backgrounds with each background's readability, and the
+// church logo shown by the projector.
 
 (function () {
-  const { api, setTitle } = window.PAGE;
+  const { api, el, setTitle } = window.PAGE;
   const { t } = window.I18N;
   const $ = (id) => document.getElementById(id);
   const MAX_BYTES = 2 * 1024 * 1024;
@@ -35,7 +36,86 @@
     renderLogo(res.body.logo);
     renderNotation(res.body.chordNotationDefault);
     renderThemeDefault(res.body.themeDefault);
+    await renderBackgrounds(res.body.backgroundDefaults || {});
   }
+
+  // --- backgrounds: the church defaults and each background's readability ---
+
+  const BG = window.BG_PICKER;
+  const DEFAULT_TYPES = { song: 'defaultSong', verse: 'defaultVerse', announcement: 'defaultAnnouncement' };
+  const bg = { defaults: {}, items: [], selected: null, timer: null, view: null };
+
+  function bgMessage(id, text, kind) {
+    $(id).className = `message${kind ? ` ${kind}` : ''}`;
+    $(id).textContent = text || '';
+  }
+
+  async function renderBackgrounds(defaults) {
+    bg.defaults = defaults;
+    bg.items = await BG.list(true);
+    $('bg-defaults').replaceChildren(...Object.entries(DEFAULT_TYPES).map(([type, key]) => BG.field({
+      id: `bg-default-${type}`, label: t(`background.${key}`), value: defaults[type] || null, noneValue: null,
+      onChange: async (choice) => {
+        const res = await api('/api/settings/backgrounds', { method: 'PUT', body: { [type]: choice } });
+        if (res.ok) bg.defaults = res.body.backgroundDefaults;
+        bgMessage('bg-defaults-message', res.ok ? t('background.defaultsSaved') : res.body.error || t('common.networkError'), res.ok ? 'success' : 'error');
+      },
+    }).node));
+    const empty = bg.items.length === 0;
+    $('bg-read-empty').hidden = !empty;
+    document.querySelector('.bg-read-controls').hidden = empty;
+    $('bg-read-preview').hidden = empty;
+    if (empty) return;
+    if (!bg.items.some((m) => m.id === bg.selected)) bg.selected = bg.items[0].id;
+    $('bg-read-select').replaceChildren(...bg.items.map((m) => el('option', {
+      value: String(m.id), text: m.kind === 'loop' ? `${m.title} · ${t('background.loop')}` : m.title,
+    })));
+    $('bg-read-select').value = String(bg.selected);
+    renderReadability();
+  }
+
+  const selectedItem = () => bg.items.find((m) => m.id === bg.selected);
+
+  // The controls and the 16:9 preview (the projector's own renderer) for the selected one.
+  function renderReadability() {
+    const item = selectedItem();
+    if (!item) return;
+    $('bg-dim').value = String(item.dim);
+    $('bg-blur').value = String(item.blur);
+    $('bg-dim-value').textContent = `${item.dim}%`;
+    $('bg-blur-value').textContent = `${item.blur} px`;
+    $('bg-shadow').setAttribute('aria-pressed', String(item.shadow));
+    if (!bg.view) bg.view = window.PROJECTOR_RENDER.create($('bg-read-preview'));
+    bg.view.show({
+      kind: 'lyrics', lines: t('background.sample').split('\n'), version: 0, eventId: null,
+      background: {
+        id: item.id, kind: item.kind, dim: item.dim, blur: item.blur, shadow: item.shadow,
+        url: `/api/media/${item.id}/file${item.kind === 'image' ? '?v=display' : ''}`,
+      },
+    });
+  }
+
+  // Applied to the preview at once, saved shortly after the last change.
+  function changeReadability(values) {
+    const item = selectedItem();
+    if (!item) return;
+    Object.assign(item, values);
+    renderReadability();
+    clearTimeout(bg.timer);
+    bg.timer = setTimeout(async () => {
+      const res = await api(`/api/media/${item.id}`, { method: 'PUT', body: { dim: item.dim, blur: item.blur, shadow: item.shadow } });
+      bgMessage('bg-read-message', res.ok ? t('background.readSaved') : res.body.error || t('common.networkError'), res.ok ? 'success' : 'error');
+    }, 400);
+  }
+
+  $('bg-read-select').addEventListener('change', () => {
+    bg.selected = Number($('bg-read-select').value);
+    bgMessage('bg-read-message', '');
+    renderReadability();
+  });
+  $('bg-dim').addEventListener('input', () => changeReadability({ dim: Number($('bg-dim').value) }));
+  $('bg-blur').addEventListener('input', () => changeReadability({ blur: Number($('bg-blur').value) }));
+  $('bg-shadow').addEventListener('click', () => changeReadability({ shadow: !selectedItem().shadow }));
 
   function renderThemeDefault(theme) {
     for (const button of document.querySelectorAll('[data-theme-default]')) {
@@ -98,6 +178,8 @@
     setTitle('settings.pageTitle');
     message('');
     $('notation-message').textContent = '';
+    bgMessage('bg-defaults-message', '');
+    renderBackgrounds(bg.defaults).catch(() => {});
   });
 
   setTitle('settings.pageTitle');

@@ -10,7 +10,8 @@ const { parseReadability, createBackgroundStore } = require('../lib/backgrounds'
 const EDITOR_ROLES = ['owner', 'leader'];
 
 // Media library (videos and backgrounds for the projector), scoped to req.adminId.
-//   GET    /api/media                  list (owner, leader, operator)
+//   GET    /api/media                  list (owner, leader, operator), with the church's
+//                                      default backgrounds (what "Implicit" means in pickers)
 //   POST   /api/media/upload?title=…&as=video|background
 //                                      raw body, streamed to disk: a video (MP4 / WebM), or a
 //                                      background: an image (JPEG / PNG / WebP, max 8 MB) or a
@@ -76,6 +77,7 @@ function createMediaRouter({ db, auth, config, logger, live }) {
       maxImageBytes: config.MEDIA_MAX_IMAGE_BYTES,
       maxLoopBytes: config.MEDIA_MAX_LOOP_BYTES,
       maxAdminBytes: config.MEDIA_MAX_ADMIN_BYTES,
+      backgroundDefaults: backgrounds.defaults(req.adminId),
     });
   });
 
@@ -91,8 +93,11 @@ function createMediaRouter({ db, auth, config, logger, live }) {
     const room = config.MEDIA_MAX_ADMIN_BYTES - media.usedBytes(req.adminId);
     const limit = Math.min(maxFile, room);
     // The file limit wins the message when the file alone is too big; else the church is full.
+    const fileTooLarge = () => (background
+      ? req.t('errors.backgroundTooLarge', { image: mb(config.MEDIA_MAX_IMAGE_BYTES), loop: mb(config.MEDIA_MAX_LOOP_BYTES) })
+      : req.t('errors.mediaTooLarge', { max: mb(maxFile) }));
     const tooLarge = (bytes) => (bytes > maxFile
-      ? req.t('errors.mediaTooLarge', { max: mb(maxFile) })
+      ? fileTooLarge()
       : req.t('errors.mediaQuotaExceeded', { max: mb(config.MEDIA_MAX_ADMIN_BYTES) }));
     const declared = Number(req.get('content-length'));
     if (Number.isFinite(declared) && declared > limit) {
@@ -145,10 +150,10 @@ function createMediaRouter({ db, auth, config, logger, live }) {
         res.status(201).json({ media: item });
       };
       if (video) {
-        if (background && size > config.MEDIA_MAX_LOOP_BYTES) return fail(413, req.t('errors.mediaTooLarge', { max: mb(config.MEDIA_MAX_LOOP_BYTES) }));
+        if (background && size > config.MEDIA_MAX_LOOP_BYTES) return fail(413, fileTooLarge());
         return logged(media.addUpload(req.adminId, req.user.id, { title: title.value, temp, mime: video, size, kind: background ? 'loop' : 'upload' }), video);
       }
-      if (size > config.MEDIA_MAX_IMAGE_BYTES) return fail(413, req.t('errors.mediaTooLarge', { max: mb(config.MEDIA_MAX_IMAGE_BYTES) }));
+      if (size > config.MEDIA_MAX_IMAGE_BYTES) return fail(413, req.t('errors.imageTooLarge', { max: mb(config.MEDIA_MAX_IMAGE_BYTES) }));
       media.addImage(req.adminId, req.user.id, { title: title.value, temp, mime: image }).then((item) => logged(item, image), (err) => {
         logger.info(`Image upload refused (admin #${req.adminId}): ${err.message}`);
         failed = true;

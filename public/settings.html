@@ -32,6 +32,36 @@
       <p id="theme-message" class="message" role="status" aria-live="polite"></p>
     </section>
 
+    <section class="settings-section" aria-labelledby="bg-heading">
+      <h2 id="bg-heading" data-i18n="background.settingsHeading"></h2>
+      <p class="hint" data-i18n="background.settingsHint"></p>
+      <div id="bg-defaults" class="bg-defaults"></div>
+      <p id="bg-defaults-message" class="message" role="status" aria-live="polite"></p>
+
+      <h3 id="bg-read-heading" data-i18n="background.readHeading"></h3>
+      <p class="hint" data-i18n="background.readHint"></p>
+      <div class="bg-read">
+        <p id="bg-read-empty" class="hint" hidden data-i18n="background.empty"></p>
+        <div class="bg-read-controls">
+          <div class="field">
+            <label for="bg-read-select" data-i18n="background.readPick"></label>
+            <select id="bg-read-select"></select>
+          </div>
+          <div class="field">
+            <label for="bg-dim"><span data-i18n="background.dim"></span> <output id="bg-dim-value" for="bg-dim"></output></label>
+            <input type="range" id="bg-dim" min="0" max="80" step="1">
+          </div>
+          <div class="field">
+            <label for="bg-blur"><span data-i18n="background.blur"></span> <output id="bg-blur-value" for="bg-blur"></output></label>
+            <input type="range" id="bg-blur" min="0" max="20" step="1">
+          </div>
+          <div><button type="button" id="bg-shadow" aria-pressed="true" data-i18n="background.shadow"></button></div>
+          <p id="bg-read-message" class="message" role="status" aria-live="polite"></p>
+        </div>
+        <div class="projector-preview bg-read-preview" id="bg-read-preview" aria-hidden="true"></div>
+      </div>
+    </section>
+
     <section class="settings-section" aria-labelledby="logo-heading">
       <h2 id="logo-heading" data-i18n="settings.logoHeading"></h2>
       <p class="hint" data-i18n="settings.logoHint"></p>
@@ -52,6 +82,8 @@
   <script src="/i18n.js"></script>
   <script src="/page.js"></script>
   <script src="/shell.js"></script>
+  <script src="/projector-render.js"></script>
+  <script src="/background-picker.js"></script>
   <script src="/settings.js"></script>
 </body>
 </html>

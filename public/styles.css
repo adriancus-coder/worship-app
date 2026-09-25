@@ -1670,3 +1670,43 @@ label.button.file-button { flex-direction: row; }
 @media (max-width: 420px) {
   .media-thumb { width: 72px; }
 }
+
+/* --- Backgrounds: the picker (a dialog / bottom sheet of 16:9 tiles) and its field -------- */
+.bg-picker { width: min(760px, calc(100vw - 24px)); }
+.bg-group { margin: 16px 0 8px; font-size: 1rem; }
+.bg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+@media (max-width: 420px) { .bg-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.bg-thumb { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 6px; background: var(--projector-bg); }
+.bg-thumb-inherit { background: repeating-linear-gradient(135deg, var(--surface), var(--surface) 8px, var(--background) 8px, var(--background) 16px); border: 1px dashed var(--border); }
+button.bg-tile {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  justify-items: start;
+  gap: 6px 6px;
+  min-height: var(--touch);
+  padding: 6px;
+  text-align: left;
+  white-space: normal;
+}
+button.bg-tile > .bg-thumb { grid-column: 1 / -1; grid-row: 1; }
+button.bg-tile::before { grid-column: 1; grid-row: 2; }
+.bg-tile-name { grid-column: 2; grid-row: 2; min-width: 0; overflow-wrap: anywhere; }
+button.bg-tile[aria-pressed="false"] .bg-tile-name { grid-column: 1 / -1; }
+.bg-tile-detail { font-weight: 500; opacity: 0.85; }
+button.bg-field { justify-content: flex-start; gap: 10px; min-height: var(--touch); padding: 6px 12px 6px 6px; text-align: left; white-space: normal; }
+.bg-field-thumb { flex: none; width: 64px; }
+.bg-field-name { min-width: 0; overflow-wrap: anywhere; }
+.bg-field-row { align-items: flex-start; }
+.bg-field-row .label { font-weight: 500; }
+.bg-defaults { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.bg-read { display: grid; gap: 16px; }
+.bg-read-controls { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.bg-read-controls[hidden], .bg-read-preview[hidden] { display: none; }
+.bg-read-controls input[type="range"] { width: 100%; min-height: var(--touch); accent-color: var(--accent-fill); }
+.bg-read-controls output { font-weight: 700; }
+@media (min-width: 900px) {
+  .bg-read { grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); align-items: start; }
+}
+.bg-live-row { display: flex; }
+.bg-live-row .bg-field { flex: 1 1 auto; min-width: 0; }

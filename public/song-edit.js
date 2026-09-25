@@ -25,6 +25,18 @@
   const confirmDelete = document.getElementById('confirm-delete');
 
   const state = { title: '', sections: [{ type: 'verse', label: '', content: '', note: '' }] };
+  // The song's default background (null: the church default, 'none', a media id); saved
+  // through its own route after the song itself.
+  const background = { saved: null, field: null };
+
+  function renderBackground() {
+    const value = background.field ? background.field.value : background.saved;
+    background.field = window.BG_PICKER.field({
+      id: 'song-bg', label: t('background.songDefault'), hint: t('background.songDefaultHint'), value, inherit: '…',
+    });
+    document.getElementById('song-background').replaceChildren(background.field.node);
+    window.BG_PICKER.inheritedName('song').then((name) => background.field.setInherit(name));
+  }
   let lastMessage = null; // { key, vars } re-translates; { text } is cleared on a language switch
 
   // --- messages -------------------------------------------------------------
@@ -240,6 +252,14 @@
         body: payload,
       });
       if (ok) {
+        const choice = background.field ? background.field.value : background.saved;
+        if (choice !== background.saved) {
+          const saved = await api(`/api/songs/${body.song.id}/background`, { method: 'PUT', body: { background: choice } });
+          if (!saved.ok) {
+            showMessage({ text: saved.body.error || t('editor.failed') });
+            return;
+          }
+        }
         window.location.assign(`/songs/${body.song.id}`);
         return;
       }
@@ -285,6 +305,7 @@
   document.addEventListener('i18n:change', () => {
     if (lastMessage && !lastMessage.key) clearMessage();
     renderPage();
+    renderBackground();
     if (songId) renderDeleteText();
     deleteMessage.textContent = '';
   });
@@ -307,8 +328,10 @@
       keySelect.value = song.song_key || '';
       cancelLink.href = `/songs/${song.id}`;
       deleteArea.hidden = false;
+      background.saved = song.background === undefined ? null : song.background;
     }
     renderPage();
+    renderBackground();
     form.hidden = false;
   })().catch(() => {
     status.textContent = t('common.networkError');

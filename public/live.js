@@ -296,6 +296,7 @@
   // Video controls (a module the operator console will reuse in stage 6).
   const videoPanel = window.VIDEO_PANEL.create($('video-panel'), { send, api, t, el });
   const projector = { screens: 0, logoUrl: null, frame: null };
+  const backgroundButton = window.BG_PICKER.liveButton($('bg-live'), { send });
 
   function renderProjector() {
     const snap = state.snap;
@@ -309,6 +310,7 @@
       ? t('live.projector.screensOne')
       : t('live.projector.screens', { n: projector.screens });
     modes.update(snap);
+    backgroundButton.update(snap);
     // Separate: where the projector is, and "Sari acolo" (the team goes there).
     const split = live && snap.mode === 'split';
     $('cross').hidden = !split;

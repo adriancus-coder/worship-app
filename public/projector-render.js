@@ -180,7 +180,7 @@
       if (old) {
         // The old layer goes once the new one is fully in (or itself has faded out).
         const drop = () => { if (old.layer.parentNode) old.layer.remove(); };
-        if (!ms) drop();
+        if (!ms || !container.getClientRects().length) drop(); // hidden: no transition runs
         else {
           const fading = layer || old.layer;
           if (!layer) {

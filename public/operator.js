@@ -236,6 +236,7 @@
     renderList();
     renderCenter();
     renderSources();
+    backgroundButton.update(state.snap);
     renderAdd();
     videoPanel.setSetlist(items());
     videoPanel.update(state.snap);
@@ -258,6 +259,7 @@
   });
   window.PROJECTOR_WINDOW.setup({ button: $('open-projector'), hint: $('projector-permission'), message: $('projector-message'), api, t });
   const modes = window.LIVE_MODES.controls($('mode-controls'), { send, t, el });
+  const backgroundButton = window.BG_PICKER.liveButton($('bg-live'), { send });
   const toast = window.LIVE_MODES.toast($('info-toast'), { t });
 
   function watchProjector(socket) {

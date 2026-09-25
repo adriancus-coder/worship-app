@@ -708,8 +708,25 @@
         el('span', { class: `type-badge type-${item.type}`, text: t(`setlist.types.${item.type}`) }),
         el('h3', { text: itemTitle(item) })),
       ...(item.type === 'song' ? songDetail(item) : (state.editing ? editFields(item) : viewFields(item))).filter(Boolean),
+      state.editing && item.type !== 'video' ? backgroundField(item) : null,
     );
     placeDetail();
+  }
+
+  // The item's own background; "Implicit (…)" names what applies without one (the song's
+  // default, else the church default for the type).
+  function backgroundField(item) {
+    const song = item.type === 'song' ? state.songCache.get(item.songId) : null;
+    const songChoice = song && typeof song === 'object' ? song.background || null : null;
+    const picker = window.BG_PICKER.field({
+      id: 'it-background', label: t('background.itemLabel'), value: item.background || null, inherit: '…',
+      onChange: (choice) => {
+        item.background = choice;
+        changed();
+      },
+    });
+    window.BG_PICKER.inheritedName(item.type, songChoice).then((name) => picker.setInherit(name));
+    return picker.node;
   }
 
   // --- saving, publishing, templates, delete --------------------------------------
