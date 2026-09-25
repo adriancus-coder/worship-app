@@ -20,36 +20,47 @@ never implement a later stage early. Mockups: claude.ai design canvas
 ## Live model (core rules)
 
 - **Server is the single source of truth.** Clients send commands; the server validates
-  (role + who has control), applies, versions the state and broadcasts it to the event room.
-  On reconnect a client receives the full state snapshot.
-- **Two positions per event:**
-  - *worship position* — moved by the leader's tablet; team phones always follow it;
-  - *projector position* — follows the worship position, unless the leader ticks
-    "Proiectorul controlat de operator"; then only the operator moves it, independently.
-    Unticking returns the projector to the worship position.
-- The operator always sees where worship is ("Worship e la: …") and has
-  "Sari la worship" (key W) to jump the projector there.
-- **Who may do what** (checked by the server against the stored mode, in the same
-  transaction as the command):
-  - worship position, start/end, "Proiectorul controlat de operator": owner, leader;
-  - projector position (next / prev / goto / sari la worship): only in operator mode,
-    for operator, owner and leader;
-  - projector source and video: owner and leader always, the operator only in operator mode;
-  - operator additions: operator, owner, leader; answering them: owner, leader;
-  - members: nothing (they follow).
-  While the projector follows worship the operator console is a read-only mirror.
+  (role + live mode), applies, versions the state and broadcasts it to the event room.
+  On reconnect a client receives the full state snapshot. Commands carry the version they
+  were made against; one made against an older version is refused ("stale") and the page
+  gets the current state, so two people moving at once never skip a section.
+- **Event rights.** Owner, leader and operator (EVENT_ROLES, defined once in
+  `lib/events.js`) have the same rights over events, always: create, edit, publish,
+  unpublish, templates, delete, start, end, move the live position, projector, sources,
+  video, live mode and team mode. They see drafts and templates. Members only see
+  published / live / finished events and send no commands. The library (writing), media,
+  screens, team and settings keep their own rules (owner / leader, or owner).
+- **Two live modes** (`live.mode`, any event role; a new start is *together*):
+  - *Împreună* (together, default) — ONE main position. The leader page and the operator
+    console both move it; the projector and the team phones follow it. Projector-position
+    commands are refused.
+  - *Separat* (split) — the main position (team phones) and the projector position are
+    independent; anyone with event rights may move either. The leader page's big controls
+    move the team, the console's move the projector; each page shows where the other is
+    ("Proiectorul e la …" / "Echipa e la …") with "Sari acolo" (key W on the console).
+    Entering split copies the main position to the projector; back to together the
+    projector shows the main position at once.
+- **Team mode** (`team.mode`, any event role; a new start is *follow*):
+  - *Urmărește live* (follow) — phones follow the main position. Someone who moves away on
+    their own phone (swipe, ← / →) keeps their place with a floating "Revino la live";
+    a tap, or 30 s without touching the page, returns them.
+  - *Derulează liber* (free) — phones never jump; each person navigates the whole setlist,
+    with a slim "Live: <song> · <section>" bar and "Mergi la live".
+  Switching is instant for everyone; free mode keeps each person's place.
 - **The projector never changes on its own.** Every source change is an explicit action.
   Projector sources: song, verse, video, logo, translation (bridge), black screen.
-- **Operator additions:** a song the operator adds goes to the projector only, right after
-  what the projector shows. Worship navigation, team phones, rehearsal, item counts and
-  history never see projector-only items; the editor's save leaves them in place. If
-  "Propune și în setlist-ul worship" is ticked, a request goes to the leader (at most 10
-  waiting per event). The leader gets a small non-blocking toast ("Mai târziu" keeps a
-  badge with the count); "Vezi" opens a preview (key, sections, lyrics+chords in the
-  leader's notation) with position choice (after the current worship item / at the end of
-  the shared setlist) and Accept / Refuse. Accepted → shared setlist → team phones;
-  refused → stays projector-only. Only operator, owner and leader receive the full item
-  list and the requests in their live snapshots.
+- **Additions during live** (operator console; any event role): the sender chooses where
+  the item goes, no approval:
+  - "Doar pe proiector" — a projector-only item right after what the projector shows.
+    Main-position navigation, team phones, rehearsal, item counts and history never see
+    it; the editor's save leaves it in place. Choosing it on the console while together
+    switches to split (only the projector can show it).
+  - "În setlist" — a shared item right after the current main item; team phones reload
+    the setlist at once.
+  The other event-role pages get a short, non-blocking info toast ("<name> a adăugat
+  <title>", hidden after 5 s, never over a control). Only the event roles receive the full
+  item list in their live snapshots. (Before this, operator additions were proposals the
+  leader accepted or refused; migration 014 turned pending ones into projector-only items.)
 - **Video:** from the app library (uploaded, size-limited), URL (direct mp4 preferred;
   YouTube/Vimeo allowed), or a file picked once on the projector PC (e.g. USB stick).
   Selecting only *prepares* it; it plays only on "Pornește pe proiector".
@@ -62,7 +73,8 @@ never implement a later stage early. Mockups: claude.ai design canvas
   drag + F11. Opened from a logged-in page it pairs automatically.
 - A PC with no operator pairs with a 6-digit code entered in the admin.
 - **Emergency mode:** the leader's live page and the projector window on the same PC keep
-  working without internet (BroadcastChannel + locally cached event and songs). The
+  working without internet (BroadcastChannel + locally cached event and songs): the main
+  position and Black / Logo only (mode switches and additions wait for the server). The
   operator console does not run it yet.
   Team phones keep cached songs and navigate manually. Resync when back online.
   (A phone hotspot is the recommended backup internet.)
@@ -94,7 +106,8 @@ never implement a later stage early. Mockups: claude.ai design canvas
 ## Event preparation
 
 - Events: name, date, time; create from a template or copy a previous event.
-- Status: draft (leader only) → published (team sees it) → live → finished (history).
+- Status: draft (owner / leader / operator only) → published (team sees it) → live →
+  finished (history).
 - Setlist items of several types: song, verse, video, announcement, sermon/other.
 - Per song, per event: key (with automatic chord transposition), section order
   (arrangement — drives "Next" in live mode), note for the team, optional reference link.
@@ -110,7 +123,8 @@ never implement a later stage early. Mockups: claude.ai design canvas
 3. Events + setlists (preparation, arrangement, key/transposition, item types).
 4. Live control: worship position, leader tablet, team phone view.
 5. Projector screen: pairing, open-on-second-display, sources, video, emergency mode.
-6. Operator console: independent control, requests to the leader.
+6. Operator console: full event rights for the operator, live modes together / split,
+   direct additions (projector only / setlist), team follow mode.
 7. Team: user invites, roles, assignments, confirmations, rehearsal view, push.
 8. Bridge to Sanctuary Voice via event code:
    8a. SV → worship: live translated text as a projector source.
