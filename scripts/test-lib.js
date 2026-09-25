@@ -981,6 +981,135 @@ test('sectionLabels: numbered verses, repeated types, custom labels, both langua
   assert.deepStrictEqual(sectionLabels([{ type: 'chorus' }, { type: 'chorus' }], (k, v) => t(k, v, 'ro')), ['Refren 1', 'Refren 2']);
 });
 
+// A live event in a fresh in-memory database: a song V1 C V1 (3 steps) and two verses.
+function liveFixture() {
+  const Database = require('better-sqlite3');
+  const { runMigrations } = require('../lib/db');
+  const { createEventStore, validateItems } = require('../lib/events');
+  const { createLiveStore } = require('../lib/live');
+  const mem = new Database(':memory:');
+  mem.pragma('foreign_keys = ON');
+  runMigrations(mem);
+  mem.prepare("INSERT INTO admins (id, name, created_at) VALUES (1, 'A', 0)").run();
+  mem.prepare("INSERT INTO users (id, admin_id, email, name, password_hash, role, created_at) VALUES (1, 1, 'a@x.ro', 'A', 'x', 'owner', 0)").run();
+  mem.prepare("INSERT INTO songs (id, admin_id, title, title_norm, created_at, updated_at) VALUES (1, 1, 'Sfânt', 'sfant', 0, 0)").run();
+  const section = mem.prepare("INSERT INTO song_sections (song_id, admin_id, position, type, content, content_hash) VALUES (1, 1, ?, ?, ?, 'h')");
+  section.run(0, 'verse', '[G]Strofa');
+  section.run(1, 'chorus', '[C]Refren');
+  const evs = createEventStore(mem);
+  const eventId = evs.create(1, 1, { name: 'E', eventDate: '2026-10-04', startTime: null, notes: null });
+  const tro = (k, v) => t(k, v, 'ro');
+  const save = (items) => {
+    const { error, value } = validateItems(items, tro, (id) => evs.findSong(1, id));
+    assert.ok(!error, error);
+    evs.replaceItems(1, eventId, value);
+    return evs.get(1, eventId).items;
+  };
+  const items = save([{ type: 'song', songId: 1, arrangement: 'V1 C V1' }, { type: 'verse', reference: 'Ps 1' }, { type: 'verse', reference: 'Ps 2' }]);
+  evs.setStatus(1, eventId, 'published');
+  const live = createLiveStore(mem);
+  return { mem, evs, live, eventId, items, save };
+}
+
+test('live permissions: by role and by who controls the projector', () => {
+  const { permission } = require('../lib/live');
+  const rows = {
+    'worship.next': ['owner', 'leader'],
+    'event.start': ['owner', 'leader'],
+    'projector.follow': ['owner', 'leader'],
+    'projector.next': [],
+    'projector.syncToWorship': [],
+    'projector.source': ['owner', 'leader'],
+    'video.play': ['owner', 'leader'],
+  };
+  const operatorRows = { ...rows, 'projector.next': ['owner', 'leader', 'operator'], 'projector.syncToWorship': ['owner', 'leader', 'operator'],
+    'projector.source': ['owner', 'leader', 'operator'], 'video.play': ['owner', 'leader', 'operator'] };
+  for (const [follows, table] of [['worship', rows], ['operator', operatorRows]]) {
+    for (const [type, allowed] of Object.entries(table)) {
+      for (const role of ['owner', 'leader', 'operator', 'member']) {
+        const code = permission(role, type, follows);
+        assert.strictEqual(code === null, allowed.includes(role), `${role} ${type} (${follows}): ${code}`);
+      }
+    }
+  }
+  assert.strictEqual(permission('operator', 'projector.next', 'worship'), 'notOperatorMode');
+  assert.strictEqual(permission('leader', 'projector.goto', 'worship'), 'notOperatorMode');
+  assert.strictEqual(permission('operator', 'worship.next', 'operator'), 'forbidden');
+  assert.strictEqual(permission('member', 'projector.next', 'operator'), 'forbidden');
+  assert.strictEqual(permission(undefined, 'video.ended', 'worship'), null, 'the server itself');
+});
+
+test('live store: projector follows worship or the operator, two independent positions', () => {
+  const { mem, live, eventId, items } = liveFixture();
+  const [song, v1, v2] = items.map((it) => it.id);
+  const cmd = (c, role = 'leader') => live.command(1, eventId, c, undefined, role);
+  const code = (c, role) => { try { cmd(c, role); return 'ok'; } catch (err) { return err.code; } };
+  const snap = () => live.snapshot(1, eventId);
+  const pos = (p) => [p.itemId, p.step];
+  cmd({ type: 'event.start' });
+  assert.deepStrictEqual([snap().projector.follows, snap().projector.itemId], ['worship', null]);
+  // worship mode: the projector commands are refused for everyone
+  assert.strictEqual(code({ type: 'projector.next' }, 'operator'), 'notOperatorMode');
+  assert.strictEqual(code({ type: 'projector.next' }, 'leader'), 'notOperatorMode');
+  assert.strictEqual(code({ type: 'projector.source', source: 'black' }, 'operator'), 'notOperatorMode');
+  assert.strictEqual(code({ type: 'video.volume', volume: 0.5 }, 'operator'), 'notOperatorMode');
+  assert.strictEqual(code({ type: 'projector.follow', mode: 'operator' }, 'operator'), 'forbidden');
+  cmd({ type: 'worship.next' });
+  // hand over: the projector starts where worship is
+  cmd({ type: 'projector.follow', mode: 'operator' });
+  assert.deepStrictEqual([snap().projector.follows, ...pos(snap().projector)], ['operator', song, 1]);
+  // independent: the operator moves the projector, worship stays; worship moves, the projector stays
+  cmd({ type: 'projector.next' }, 'operator');
+  cmd({ type: 'projector.next' }, 'operator');
+  assert.deepStrictEqual([pos(snap().projector), pos(snap().worship)], [[v1, 0], [song, 1]]);
+  cmd({ type: 'worship.prev' });
+  assert.deepStrictEqual([pos(snap().projector), pos(snap().worship)], [[v1, 0], [song, 0]]);
+  cmd({ type: 'projector.goto', itemId: v2, step: 0 }, 'operator');
+  assert.strictEqual(code({ type: 'projector.goto', itemId: v2, step: 3 }, 'operator'), 'badPosition');
+  assert.strictEqual(code({ type: 'projector.source', source: 'black' }, 'operator'), 'ok');
+  assert.strictEqual(code({ type: 'video.volume', volume: 0.5 }, 'operator'), 'ok');
+  assert.strictEqual(code({ type: 'worship.next' }, 'operator'), 'forbidden');
+  assert.strictEqual(code({ type: 'projector.next' }, 'member'), 'forbidden');
+  // W: jump to worship
+  cmd({ type: 'projector.syncToWorship' }, 'operator');
+  assert.deepStrictEqual(pos(snap().projector), [song, 0]);
+  const v = snap().version;
+  cmd({ type: 'projector.syncToWorship' }, 'operator');
+  assert.strictEqual(snap().version, v, 'already there: no-op');
+  // the frame shows the projector position in operator mode, the worship one otherwise
+  const { projectorFrame } = require('../lib/projector');
+  cmd({ type: 'projector.source', source: 'content' }, 'operator');
+  cmd({ type: 'projector.goto', itemId: v1, step: 0 }, 'operator');
+  const events = require('../lib/events').createEventStore(mem);
+  assert.strictEqual(projectorFrame(snap(), events.get(1, eventId), new Map()).reference, 'Ps 1');
+  // hand back: the projector shows the worship position at once
+  cmd({ type: 'projector.follow', mode: 'worship' });
+  assert.strictEqual(projectorFrame(snap(), events.get(1, eventId), new Map()).kind, 'title', 'the song item (no song map here)');
+  assert.strictEqual(code({ type: 'projector.next' }, 'operator'), 'notOperatorMode');
+  mem.close();
+});
+
+test('live store: both positions clamp on their own after a setlist change; persisted', () => {
+  const { mem, live, eventId, items, save } = liveFixture();
+  const [song, v1, v2] = items.map((it) => it.id);
+  const cmd = (c, role = 'leader') => live.command(1, eventId, c, undefined, role);
+  cmd({ type: 'event.start' });
+  cmd({ type: 'worship.goto', itemId: song, step: 2 });
+  cmd({ type: 'projector.follow', mode: 'operator' });
+  cmd({ type: 'projector.goto', itemId: v1, step: 0 }, 'operator');
+  const before = live.layout(1, eventId);
+  // the song loses its repeat (3 -> 2 steps) and Ps 1 is removed
+  save([{ id: song, type: 'song', songId: 1, arrangement: 'V1 C' }, { id: v2, type: 'verse', reference: 'Ps 2' }]);
+  live.setlistChanged(1, eventId, before);
+  const s = live.snapshot(1, eventId);
+  assert.deepStrictEqual([s.worship.itemId, s.worship.step], [song, 1], 'worship clamped to the last step');
+  assert.deepStrictEqual([s.projector.itemId, s.projector.step, s.projector.follows], [v2, 0, 'operator'], 'projector moved to the next item');
+  // a new store on the same database (a server restart) reads the same state
+  const again = require('../lib/live').createLiveStore(mem).snapshot(1, eventId);
+  assert.deepStrictEqual([again.projector, again.worship], [s.projector, s.worship]);
+  mem.close();
+});
+
 (async () => {
   for (const [name, fn] of asyncTests) {
     try {

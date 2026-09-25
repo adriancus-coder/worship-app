@@ -11,8 +11,11 @@ const ROLES = ['owner', 'leader', 'operator', 'member'];
 const PRESENCE_DEBOUNCE_MS = 1000;
 const SESSION_SWEEP_MS = 30 * 1000;
 
-const COMMANDS = ['event.start', 'event.end', 'worship.next', 'worship.prev', 'worship.goto', 'projector.source',
+const COMMANDS = ['event.start', 'event.end', 'worship.next', 'worship.prev', 'worship.goto',
+  'projector.follow', 'projector.next', 'projector.prev', 'projector.goto', 'projector.syncToWorship', 'projector.source',
   'video.prepare', 'video.play', 'video.pause', 'video.restart', 'video.stop', 'video.volume'];
+// Roles that may send commands at all; the store decides the rest (lib/live.js permission).
+const COMMAND_ROLES = ['owner', 'leader', 'operator'];
 
 const roomName = (adminId, eventId) => `admin:${adminId}:event:${eventId}`;
 // Home pages ("Acum") of an admin: told when an event starts, ends or changes status.
@@ -123,17 +126,19 @@ function createLiveHub({ db, auth, logger, screensHub }) {
     const cmd = payload && typeof payload === 'object' ? payload : {};
     const { adminId, role, userId } = socket.data;
     if (!COMMANDS.includes(cmd.type) || !isId(cmd.eventId)) return fail(socket, ack, 'badCommand');
-    if (!EDITOR_ROLES.includes(role)) return fail(socket, ack, 'forbidden');
+    if (!COMMAND_ROLES.includes(role)) return fail(socket, ack, 'forbidden');
     if (!store.visibleEvent(adminId, cmd.eventId, role)) return fail(socket, ack, 'notFound');
     if (socket.data.eventId !== cmd.eventId) return fail(socket, ack, 'notJoined');
     const expected = cmd.expectedVersion;
     if (expected !== undefined && expected !== null && !Number.isInteger(expected)) return fail(socket, ack, 'badCommand');
-    if (cmd.type === 'worship.goto' && (!isId(cmd.itemId) || !Number.isInteger(cmd.step))) return fail(socket, ack, 'badPosition');
+    if ((cmd.type === 'worship.goto' || cmd.type === 'projector.goto') && (!isId(cmd.itemId) || !Number.isInteger(cmd.step))) {
+      return fail(socket, ack, 'badPosition');
+    }
     // Pausing keeps the position the screens last reported.
     const command = cmd.type === 'video.pause' ? { ...cmd, position: screensHub.lastVideoPosition(adminId) } : cmd;
     let result;
     try {
-      result = store.command(adminId, cmd.eventId, command, expected);
+      result = store.command(adminId, cmd.eventId, command, expected, role);
     } catch (err) {
       if (!(err instanceof LiveError)) throw err;
       if (err.code === 'stale') return fail(socket, ack, 'stale', { state: fullSnapshot(adminId, cmd.eventId) });

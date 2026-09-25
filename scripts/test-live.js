@@ -83,10 +83,11 @@ function connect(cookie, options = {}) {
 
 // Resolves with the first `event` (optionally matching `test`), or rejects after ms.
 function next(socket, event, test = () => true, ms = 3000) {
+  const origin = new Error().stack.split('\n')[3];
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       socket.off(event, handler);
-      reject(new Error(`timeout waiting for ${event}`));
+      reject(new Error(`timeout waiting for ${event} ${origin}`));
     }, ms);
     function handler(payload) {
       if (!test(payload)) return;
@@ -128,12 +129,14 @@ async function main() {
   const addUser = db.prepare('INSERT INTO users (admin_id, email, name, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?, 0)');
   addUser.run(1, 'lider@x.ro', 'Lider', hash, 'leader');
   addUser.run(1, 'membru@x.ro', 'Membru', hash, 'member');
+  addUser.run(1, 'operator@x.ro', 'Operator', hash, 'operator');
   db.prepare("INSERT INTO admins (id, name, created_at) VALUES (2, 'Alta', 0)").run();
   addUser.run(2, 'alt@x.ro', 'Alt', hash, 'owner');
   db.close();
   const owner = await login('ana@x.ro');
   const leader = await login('lider@x.ro');
   const member = await login('membru@x.ro');
+  const operator = await login('operator@x.ro');
   const other = await login('alt@x.ro');
 
   // Event: a song V1 C V2 C B C (6 steps), a verse, a song with 2 sections (2 steps).
@@ -366,6 +369,67 @@ async function main() {
     await send(lead.socket, { type: 'projector.source', source: 'content' });
     await frameWhere(screen, (f) => f.version === version);
     watchers.close();
+  });
+
+  await step('projector control: worship mode refuses the operator; operator mode is independent; unticking returns', async () => {
+    const op = await joined(operator, ev.id);
+    const opCode = async (cmd) => (await emit(op.socket, 'live:command', { eventId: ev.id, ...cmd })).code || 'ok';
+    const opSend = async (cmd) => {
+      const reply = await emit(op.socket, 'live:command', { eventId: ev.id, ...cmd });
+      assert.strictEqual(reply.ok, true, JSON.stringify(reply));
+      version = reply.version;
+    };
+    await send(lead.socket, { type: 'worship.goto', itemId: i1, step: 0 });
+    await frameWhere(screen, (f) => f.version === version || (f.kind === 'lyrics' && f.lines[0] === 'verse'));
+    // worship mode: the projector belongs to worship
+    assert.strictEqual(await opCode({ type: 'projector.next' }), 'notOperatorMode');
+    assert.strictEqual(await opCode({ type: 'projector.source', source: 'black' }), 'notOperatorMode');
+    assert.strictEqual(await opCode({ type: 'video.volume', volume: 0.3 }), 'notOperatorMode');
+    assert.strictEqual((await send(lead.socket, { type: 'projector.next' })).code, 'notOperatorMode');
+    assert.strictEqual(await opCode({ type: 'projector.follow', mode: 'operator' }), 'forbidden');
+    assert.strictEqual(await opCode({ type: 'worship.next' }), 'forbidden');
+    assert.strictEqual((await emit(mem.socket, 'live:command', { eventId: ev.id, type: 'projector.follow', mode: 'operator' })).code, 'forbidden');
+    // the leader hands the projector over
+    await send(lead.socket, { type: 'projector.follow', mode: 'operator' });
+    let snap = await memberAt(version);
+    assert.deepStrictEqual([snap.projector.follows, snap.projector.itemId, snap.projector.step], ['operator', i1, 0]);
+    await opSend({ type: 'projector.goto', itemId: i2, step: 0 });
+    assert.strictEqual((await frameWhere(screen, (f) => f.version === version)).kind, 'verse');
+    snap = await memberAt(version);
+    assert.deepStrictEqual([snap.worship.itemId, snap.worship.step], [i1, 0], 'team phones stay on worship');
+    // worship moves: the projector does not
+    await send(lead.socket, { type: 'worship.next' });
+    snap = await memberAt(version);
+    assert.deepStrictEqual([snap.worship.itemId, snap.worship.step, snap.projector.itemId], [i1, 1, i2]);
+    await new Promise((r) => setTimeout(r, 100));
+    assert.strictEqual(screen.frames[screen.frames.length - 1].kind, 'verse', 'screen unchanged by worship');
+    // W: jump to worship
+    await opSend({ type: 'projector.syncToWorship' });
+    let frame = await frameWhere(screen, (f) => f.version === version);
+    assert.deepStrictEqual([frame.kind, frame.lines], ['lyrics', ['chorus']]);
+    await opSend({ type: 'projector.next' });
+    assert.deepStrictEqual((await frameWhere(screen, (f) => f.version === version)).lines, ['verse']);
+    // another song on the projector while worship stays on the first one: its lyrics, not its title
+    // (the frame the screens show now, read through projector:watch: an unchanged picture is not re-sent)
+    const shown = async () => (await emit(lead.socket, 'projector:watch', {})).frame;
+    await opSend({ type: 'projector.goto', itemId: i3, step: 1 });
+    frame = await shown();
+    assert.deepStrictEqual([frame.kind, frame.lines, frame.version], ['lyrics', ['chorus'], version]);
+    assert.strictEqual((await memberAt(version)).worship.itemId, i1);
+    await opSend({ type: 'projector.source', source: 'black' });
+    assert.strictEqual((await frameWhere(screen, (f) => f.version === version)).kind, 'black');
+    await opSend({ type: 'projector.source', source: 'content' });
+    await frameWhere(screen, (f) => f.version === version);
+    // the leader unticks: back to the worship position at once
+    await opSend({ type: 'projector.goto', itemId: i2, step: 0 });
+    await frameWhere(screen, (f) => f.version === version && f.kind === 'verse');
+    await send(lead.socket, { type: 'projector.follow', mode: 'worship' });
+    frame = await frameWhere(screen, (f) => f.version === version);
+    assert.deepStrictEqual([frame.kind, frame.lines], ['lyrics', ['chorus']]);
+    assert.strictEqual(await opCode({ type: 'projector.next' }), 'notOperatorMode');
+    await send(lead.socket, { type: 'worship.goto', itemId: i1, step: 0 });
+    await memberAt(version);
+    op.socket.close();
   });
 
   await step('shared frames: a page holding the event data computes the same frame as the server', async () => {

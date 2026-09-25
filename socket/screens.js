@@ -61,7 +61,9 @@ function createScreensHub({ db, logger, config }) {
     const state = live.snapshot(adminId, eventId);
     const found = events.get(adminId, eventId);
     const songs = new Map();
-    const current = found && found.items.find((it) => it.id === state.worship.itemId);
+    // The item on the projector: the operator's position in operator mode, else worship's.
+    const at = state.projector.follows === 'operator' ? state.projector.itemId : state.worship.itemId;
+    const current = found && found.items.find((it) => it.id === at);
     if (current && current.type === 'song' && current.songId) {
       const ready = events.itemSong(adminId, eventId, current.id);
       if (ready) songs.set(current.id, ready.song);
