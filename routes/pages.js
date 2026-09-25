@@ -57,6 +57,11 @@ function createPagesRouter({ db, auth, sendPage }) {
     sendPage(req, res, 'rehearse');
   });
 
+  // Team phones follow the live position; the live room decides what the user may see.
+  router.get('/events/:id(\\d+)/follow', noStore, signedIn, (req, res) => {
+    sendPage(req, res, 'follow');
+  });
+
   // Live control: owner and leader only; the team follows the event page instead.
   router.get('/events/:id(\\d+)/live', noStore, signedIn, (req, res) => {
     if (!canEdit(req)) return res.redirect(`/events/${req.params.id}`);

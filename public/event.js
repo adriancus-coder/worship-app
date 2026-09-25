@@ -151,6 +151,8 @@
     // Live control for owner / leader once the event is published (or already live).
     $('live-link').hidden = !editor || ev.isTemplate || !['published', 'live'].includes(ev.status);
     $('live-link').href = `/events/${ev.id}/live`;
+    $('follow-link').hidden = ev.status !== 'live';
+    $('follow-link').href = `/events/${ev.id}/follow`;
     $('details-button').hidden = !state.editing;
     templateButton.hidden = !state.editing;
     publishButton.hidden = !state.editing || ev.isTemplate || !['draft', 'published'].includes(ev.status);

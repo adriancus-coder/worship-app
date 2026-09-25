@@ -834,3 +834,19 @@ button.live-item:disabled { opacity: 1; cursor: default; }
   .live-nav { position: static; margin: 16px 0 0; padding: 0; border-top: 0; background: transparent; }
   .key-hint { display: block; }
 }
+
+/* --- live: team phones ---------------------------------------------------------------------- */
+
+.follow-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px; margin-bottom: 8px; }
+.follow-head p { margin: 0; }
+.follow-event { font-weight: 700; overflow-wrap: anywhere; }
+.wake-hint { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+.wake-hint span { flex: 1 1 200px; }
+.follow-section .song-section { margin-bottom: 12px; }
+.follow-section .section-label { font-size: 1.125em; }
+.up-next { margin: 16px 0 0; padding-top: 12px; border-top: 1px solid var(--border); }
+.up-next strong { display: block; font-size: 1.0625em; }
+.follow-setlist-heading { margin-top: 16px; }
+.follow-setlist { margin: 0; padding-left: 1.5em; display: flex; flex-direction: column; gap: 8px; }
+.follow-setlist li { overflow-wrap: anywhere; }
+.follow-setlist .type-badge { margin-right: 8px; }

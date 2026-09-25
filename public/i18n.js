@@ -135,6 +135,14 @@
         openVideo: 'Deschide videoclipul',
         empty: 'Programul acestui eveniment e gol.',
       },
+      follow: {
+        link: 'Urmărește live',
+        pageTitle: 'Urmărește: {name} — {appName}',
+        position: 'Elementul {n} din {total}',
+        lastItem: 'Nimic — este ultimul element',
+        wakeHint: 'Browserul acesta nu poate ține ecranul aprins. Dezactivează blocarea automată a ecranului cât timp urmărești.',
+        wakeHintClose: 'Am înțeles',
+      },
       live: {
         link: 'Live',
         pageTitle: 'Live: {name} — {appName}',
@@ -609,6 +617,14 @@
         teamNote: 'Note for the team',
         openVideo: 'Open the video',
         empty: 'This event has no items yet.',
+      },
+      follow: {
+        link: 'Follow live',
+        pageTitle: 'Follow: {name} — {appName}',
+        position: 'Item {n} of {total}',
+        lastItem: 'Nothing — this is the last item',
+        wakeHint: 'This browser cannot keep the screen on. Turn off auto-lock while you follow.',
+        wakeHintClose: 'Got it',
       },
       live: {
         link: 'Live',
