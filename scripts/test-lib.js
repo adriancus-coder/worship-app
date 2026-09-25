@@ -763,6 +763,27 @@ test('live: clamp after setlist and song changes', () => {
   assert.deepStrictEqual(L.clampPosition([], [{ id: 7, steps: 2 }], { itemId: null, step: 0 }), { itemId: 7, step: 0 });
 });
 
+test('migration 008 and screen tokens: only the hash is stored, unique', () => {
+  const Database = require('better-sqlite3');
+  const { runMigrations } = require('../lib/db');
+  const S = require('../lib/screens');
+  const token = S.newToken();
+  assert.ok(S.isToken(token) && token !== S.newToken());
+  assert.strictEqual(S.hashToken(token), require('crypto').createHash('sha256').update(token).digest('hex'));
+  assert.ok(!S.isToken('abc') && !S.isToken(token.toUpperCase()) && !S.isToken(null));
+  const mem = new Database(':memory:');
+  mem.pragma('foreign_keys = ON');
+  runMigrations(mem);
+  mem.prepare("INSERT INTO admins (id, name, created_at) VALUES (1, 'A', 0)").run();
+  const add = mem.prepare("INSERT INTO screens (admin_id, name, token_hash, created_at) VALUES (1, 'Proiector', ?, 0)");
+  add.run(S.hashToken(token));
+  assert.throws(() => add.run(S.hashToken(token)), /UNIQUE/);
+  mem.prepare("INSERT INTO screen_pairings (id, code, admin_id, screen_id, created_at, expires_at) VALUES ('p1', '123456', 1, 1, 0, 1)").run();
+  mem.prepare('DELETE FROM screens WHERE id = 1').run();
+  assert.strictEqual(mem.prepare('SELECT COUNT(*) FROM screen_pairings').pluck().get(), 0);
+  mem.close();
+});
+
 test('section codes, arrangements and defaults', () => {
   const S = require('../lib/sections');
   const mixed = [{ type: 'intro' }, { type: 'verse' }, { type: 'chorus' }, { type: 'verse' }, { type: 'pre_chorus' },
