@@ -80,7 +80,11 @@
   }
 
   function fromServer(item) {
-    return { ...item, key: nextKey++ };
+    const out = { ...item, key: nextKey++ };
+    if (item.type === 'song' && Array.isArray(item.arrangementResolved) && item.songId) {
+      out.arrangementCodes = item.arrangementResolved.map((r) => r.code);
+    }
+    return out;
   }
 
   function itemTitle(item) {
@@ -94,8 +98,9 @@
     if (item.type === 'song') {
       if (item.songDeleted) parts.push(t('setlist.songDeleted'));
       else if (item.song) {
-        if (item.song.key) parts.push(t('setlist.songKey', { key: item.song.key }));
-        parts.push(t('setlist.sectionCount', { n: item.song.sectionCount }));
+        const key = songKeySubline(item);
+        if (key) parts.push(key);
+        parts.push(item.song.sectionCount === 1 ? t('setlist.sectionCountOne') : t('setlist.sectionCount', { n: item.song.sectionCount }));
       }
     } else if (item.type === 'verse' && item.body) {
       parts.push(item.body.split('\n')[0].slice(0, 60));
@@ -233,6 +238,7 @@
   }
 
   function select(index, focusDetail) {
+    if (index !== state.selected) selectedChip = -1;
     state.selected = index;
     renderItems();
     renderDetail();
@@ -336,29 +342,200 @@
     return value ? el('div', { class: 'ro-field' }, el('span', { class: 'ro-label', text: label }), el('p', { class: 'lyrics', text: value })) : null;
   }
 
+  // --- song options (key, arrangement, note, reference) -----------------------------
+
+  const { keyAfter, transposeContent } = window.CHORDS;
+  const { sectionCodes, sectionLabels, codeIndex, defaultArrangement } = window.SECTIONS;
+  let selectedChip = -1;
+
+  function offsetText(n) {
+    return n > 0 ? `+${n}` : String(n);
+  }
+
+  // A song without a key can still be transposed: show the semitone offset instead.
+  function semitoneText(transpose) {
+    return t(Math.abs(transpose) === 1 ? 'options.keyNoKeyOne' : 'options.keyNoKey', { offset: offsetText(transpose) });
+  }
+
+  function songKeySubline(item) {
+    if (!item.song) return null;
+    const transpose = Number(item.transpose) || 0;
+    if (!item.song.key) return transpose ? semitoneText(transpose) : null;
+    const key = keyAfter(item.song.key, transpose);
+    return transpose ? t('options.songKeyShifted', { key, offset: offsetText(transpose) }) : t('options.songKeyShort', { key });
+  }
+
+  function arrangementCodes(item, song) {
+    return Array.isArray(item.arrangementCodes) ? item.arrangementCodes : defaultArrangement(song);
+  }
+
+  // Re-render the detail after an option change, keeping focus on the control used.
+  function optionChanged(item) {
+    const focusedId = document.activeElement && document.activeElement.id;
+    changed();
+    const row = itemsList.children[state.selected];
+    const sub = row && row.querySelector('.item-sub');
+    if (sub) sub.textContent = itemSubline(item);
+    renderDetail();
+    const again = focusedId && $(focusedId);
+    if (again && !again.disabled) again.focus();
+  }
+
+  function keyBlock(item, song) {
+    const transpose = Number(item.transpose) || 0;
+    const display = song.song_key
+      ? (transpose
+        ? t('options.keyDisplay', { key: keyAfter(song.song_key, transpose), original: song.song_key, offset: offsetText(transpose) })
+        : t('options.keyOriginalOnly', { key: song.song_key }))
+      : (transpose ? semitoneText(transpose) : t('options.keyNoKeyNone'));
+    const setTranspose = (value) => {
+      item.transpose = value;
+      optionChanged(item);
+    };
+    if (!state.editing) {
+      return el('div', { class: 'option-block' },
+        el('span', { class: 'ro-label', text: t('options.keyLabel') }),
+        el('p', { class: 'key-display', text: display }));
+    }
+    return el('div', { class: 'option-block', role: 'group', 'aria-labelledby': 'opt-key-label' },
+      el('span', { class: 'ro-label', id: 'opt-key-label', text: t('options.keyLabel') }),
+      el('div', { class: 'key-row' },
+        el('button', { type: 'button', class: 'secondary icon-button', id: 'opt-key-down', 'aria-label': t('options.keyDown'), disabled: transpose <= -11, onclick: () => setTranspose(transpose - 1) }, el('span', { 'aria-hidden': 'true', text: '−' })),
+        el('output', { class: 'key-display', id: 'opt-key-display', 'aria-live': 'polite', text: display }),
+        el('button', { type: 'button', class: 'secondary icon-button', id: 'opt-key-up', 'aria-label': t('options.keyUp'), disabled: transpose >= 11, onclick: () => setTranspose(transpose + 1) }, el('span', { 'aria-hidden': 'true', text: '+' }))),
+      el('button', { type: 'button', class: 'secondary', id: 'opt-key-reset', disabled: transpose === 0, onclick: () => setTranspose(0), text: t('options.keyReset') }));
+  }
+
+  function arrangementBlock(item, song) {
+    const codes = arrangementCodes(item, song);
+    const canonical = sectionCodes(song.sections);
+    const labels = sectionLabels(song.sections, t);
+    const labelOf = (code) => labels[canonical.indexOf(code)] || code;
+    const isDefault = item.arrangementIsDefault !== false;
+    if (selectedChip >= codes.length) selectedChip = -1;
+
+    const setCodes = (next, chip) => {
+      item.arrangementCodes = next;
+      item.arrangementIsDefault = false;
+      item.arrangementWarnings = [];
+      selectedChip = chip;
+      optionChanged(item);
+    };
+    const moveChip = (delta) => {
+      const next = codes.slice();
+      const to = selectedChip + delta;
+      [next[selectedChip], next[to]] = [next[to], next[selectedChip]];
+      setCodes(next, to);
+    };
+
+    const chips = el('ol', { class: 'chip-strip', 'aria-label': t('options.arrangementLabel') },
+      codes.map((code, i) => el('li', null, state.editing
+        ? el('button', {
+          type: 'button',
+          class: 'chip',
+          id: `opt-chip-${i}`,
+          'aria-pressed': String(i === selectedChip),
+          onclick: () => {
+            selectedChip = i === selectedChip ? -1 : i;
+            optionChanged(item);
+          },
+        }, el('span', { class: 'chip-code', text: code }), el('span', { text: labelOf(code) }))
+        : el('span', { class: 'chip' }, el('span', { class: 'chip-code', text: code }), el('span', { text: labelOf(code) })))));
+
+    const parts = [
+      el('span', { class: 'ro-label', text: `${t('options.arrangementLabel')} · ${t(isDefault ? 'options.arrangementIsDefault' : 'options.arrangementIsCustom')}` }),
+      (item.arrangementWarnings || []).length
+        ? el('p', { class: 'message error', text: t('options.arrangementWarning', { codes: item.arrangementWarnings.join(', ') }) })
+        : null,
+      codes.length ? chips : el('p', { class: 'muted', text: t('options.arrangementEmpty') }),
+    ];
+    if (state.editing) {
+      const chipLabel = selectedChip >= 0 ? labelOf(codes[selectedChip]) : '';
+      const add = el('select', {
+        id: 'opt-add-section',
+        'aria-label': t('options.addSectionLabel'),
+        onchange: (event) => {
+          if (!event.target.value) return;
+          setCodes([...codes, event.target.value], codes.length);
+        },
+      }, el('option', { value: '', text: t('options.addSection') }),
+      canonical.map((code, i) => el('option', { value: code, text: `${labels[i]} (${code})` })));
+      parts.push(
+        codes.length ? el('p', { class: 'hint', text: t('options.chipHint') }) : null,
+        el('div', { class: 'chip-tools' },
+          el('button', { type: 'button', class: 'secondary', id: 'opt-chip-left', disabled: selectedChip <= 0, 'aria-label': chipLabel ? t('options.moveLeftLabel', { label: chipLabel }) : null, onclick: () => moveChip(-1) }, '← ', t('options.moveLeft')),
+          el('button', { type: 'button', class: 'secondary', id: 'opt-chip-right', disabled: selectedChip < 0 || selectedChip >= codes.length - 1, 'aria-label': chipLabel ? t('options.moveRightLabel', { label: chipLabel }) : null, onclick: () => moveChip(1) }, t('options.moveRight'), ' →'),
+          el('button', { type: 'button', class: 'secondary', id: 'opt-chip-remove', disabled: selectedChip < 0, 'aria-label': chipLabel ? t('options.removeChipLabel', { label: chipLabel }) : null, onclick: () => setCodes(codes.filter((c, i) => i !== selectedChip), Math.min(selectedChip, codes.length - 2)) }, '✕ ', t('options.removeChip'))),
+        el('div', { class: 'chip-tools' },
+          add,
+          el('button', {
+            type: 'button',
+            class: 'secondary',
+            id: 'opt-arrangement-reset',
+            disabled: isDefault,
+            onclick: () => {
+              item.arrangementIsDefault = true;
+              item.arrangementCodes = defaultArrangement(song);
+              item.arrangementWarnings = [];
+              selectedChip = -1;
+              optionChanged(item);
+            },
+            text: t('options.resetArrangement'),
+          })));
+    }
+    return el('div', { class: 'option-block' }, parts);
+  }
+
+  // Sections in arrangement order (first appearance), chords transposed, labels from the whole song.
+  function previewBlock(item, song) {
+    const codes = arrangementCodes(item, song);
+    const seen = new Set();
+    const indexes = [];
+    for (const code of codes.length ? codes : sectionCodes(song.sections)) {
+      const index = codeIndex(code, song.sections);
+      if (index >= 0 && !seen.has(index)) {
+        seen.add(index);
+        indexes.push(index);
+      }
+    }
+    const labels = sectionLabels(song.sections, t);
+    const key = keyAfter(song.song_key, item.transpose);
+    const sections = indexes.map((i) => ({ ...song.sections[i], content: transposeContent(song.sections[i].content, item.transpose, key) }));
+    return el('div', { class: 'detail-sections' },
+      el('span', { class: 'ro-label', text: t('options.previewHeading') }),
+      window.SONG_RENDER.sectionsView(sections, { headingLevel: 4, labels: indexes.map((i) => labels[i]) }));
+  }
+
   function songDetail(item) {
     const parts = [];
     if (item.songDeleted || !item.songId) {
       parts.push(el('p', { class: 'message error', text: t('setlist.songDeletedHint') }));
-    } else {
-      const cached = state.songCache.get(item.songId);
-      parts.push(el('p', null, el('a', { class: 'button secondary', href: `/songs/${item.songId}`, text: t('setlist.openSong') })));
-      if (!cached) {
-        state.songCache.set(item.songId, 'loading');
-        api(`/api/songs/${item.songId}`).then((res) => {
-          state.songCache.set(item.songId, res.ok ? res.body.song : 'error');
-          if (state.items[state.selected] === item) renderDetail();
-        }).catch(() => state.songCache.set(item.songId, 'error'));
-        parts.push(el('p', { class: 'muted', text: t('events.loading') }));
-      } else if (cached === 'loading') {
-        parts.push(el('p', { class: 'muted', text: t('events.loading') }));
-      } else if (cached === 'error') {
-        parts.push(el('p', { class: 'message error', text: t('common.networkError') }));
-      } else {
-        parts.push(el('div', { class: 'detail-sections' }, window.SONG_RENDER.sectionsView(cached.sections, { headingLevel: 4 })));
-      }
+      if (state.editing) parts.push(durationField(item));
+      return parts;
     }
-    if (state.editing) parts.unshift(durationField(item));
+    const cached = state.songCache.get(item.songId);
+    if (!cached) {
+      state.songCache.set(item.songId, 'loading');
+      api(`/api/songs/${item.songId}`).then((res) => {
+        state.songCache.set(item.songId, res.ok ? res.body.song : 'error');
+        if (state.items[state.selected] === item) renderDetail();
+      }).catch(() => state.songCache.set(item.songId, 'error'));
+    }
+    if (!cached || cached === 'loading') return [el('p', { class: 'muted', text: t('events.loading') })];
+    if (cached === 'error') return [el('p', { class: 'message error', text: t('common.networkError') })];
+
+    const song = cached;
+    parts.push(keyBlock(item, song), arrangementBlock(item, song));
+    if (state.editing) {
+      parts.push(
+        field('it-team-note', t('options.teamNoteLabel'), bind(item, 'teamNote', el('textarea', { id: 'it-team-note', rows: '2', maxlength: '500', value: item.teamNote || '' }))),
+        field('it-reference-url', t('options.referenceUrlLabel'), input(item, 'referenceUrl', 'it-reference-url', { type: 'url', maxlength: '500', inputmode: 'url', autocapitalize: 'off', spellcheck: 'false' })),
+        durationField(item));
+    } else {
+      if (item.teamNote) parts.push(el('p', { class: 'team-note', text: item.teamNote }));
+      if (item.referenceUrl) parts.push(el('p', null, el('a', { class: 'button secondary', href: item.referenceUrl, target: '_blank', rel: 'noopener noreferrer', text: t('options.listenReference') })));
+    }
+    parts.push(el('p', null, el('a', { class: 'button secondary', href: `/songs/${item.songId}`, text: t('setlist.openSong') })), previewBlock(item, song));
     return parts;
   }
 
@@ -731,6 +908,7 @@
           state.items.push({
             key: nextKey++, type: 'song', songId: song.id, title: song.title, body: '', reference: '', url: '',
             durationMin: null, song: { id: song.id, title: song.title, key: song.song_key, sectionCount: song.section_count }, songDeleted: false,
+            transpose: 0, arrangementIsDefault: true, arrangementCodes: null, arrangementWarnings: [], teamNote: '', referenceUrl: '',
           });
           songDialog.close();
           changed();

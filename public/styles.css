@@ -607,3 +607,44 @@ main.wide.event-page { max-width: 1200px; }
 
 .draft-banner p { margin: 0 0 10px; }
 .leave-actions { display: flex; flex-direction: column; gap: 8px; }
+
+/* --- per-event song options ------------------------------------------------------ */
+
+.option-block { display: flex; flex-direction: column; gap: 8px; }
+.key-row { display: flex; align-items: center; gap: 8px; }
+.key-display { flex: 1; margin: 0; padding: 8px 12px; min-height: var(--touch); display: flex; align-items: center; font-weight: 700; font-size: 1.0625rem; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); }
+.option-block > p.key-display { flex: none; }
+.key-row .icon-button { font-size: 1.375rem; width: 44px; }
+
+.chip-strip { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--touch);
+  padding: 0 12px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+
+span.chip { min-height: 36px; }
+button.chip[aria-pressed="true"] { border-color: var(--accent); background: #3a2d18; }
+.chip-code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.8125rem; color: var(--accent); }
+
+.chip-tools { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip-tools > * { flex: 1 1 auto; }
+.chip-tools select { flex: 2 1 160px; }
+
+.team-note {
+  margin: 0;
+  padding: 10px 12px;
+  white-space: pre-line;
+  border-left: 3px solid var(--accent);
+  background: var(--bg);
+  border-radius: 0 var(--radius) var(--radius) 0;
+}

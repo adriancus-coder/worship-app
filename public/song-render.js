@@ -4,11 +4,13 @@
 // computed labels, optional note, chords above lyrics in monospace or lyrics only.
 
 (function () {
-  function sectionsView(sections, { textOnly = false, headingLevel = 2 } = {}) {
+  // labels: optional display labels aligned with `sections` (e.g. computed on the whole song
+  // when only some sections are shown).
+  function sectionsView(sections, { textOnly = false, headingLevel = 2, labels: givenLabels = null } = {}) {
     const { el } = window.PAGE;
     const { t } = window.I18N;
     const { inlineLinePairs, stripChords } = window.CHORDS;
-    const labels = window.SECTIONS.sectionLabels(sections, t);
+    const labels = givenLabels || window.SECTIONS.sectionLabels(sections, t);
 
     function chordSheet(content) {
       const lines = [];
