@@ -23,6 +23,16 @@
     <p class="back"><a href="/app" data-i18n="screens.back"></a></p>
     <h1 data-i18n="settings.heading"></h1>
 
+    <section class="settings-section" aria-labelledby="notation-heading">
+      <h2 id="notation-heading" data-i18n="settings.notationHeading"></h2>
+      <p class="hint" data-i18n="settings.notationHint"></p>
+      <div class="notation-choice" role="group" aria-labelledby="notation-heading">
+        <button type="button" class="secondary" data-notation="letters" aria-pressed="false" data-i18n="settings.notationLetters"></button>
+        <button type="button" class="secondary" data-notation="solfege" aria-pressed="false" data-i18n="settings.notationSolfege"></button>
+      </div>
+      <p id="notation-message" class="message" role="status" aria-live="polite"></p>
+    </section>
+
     <section class="settings-section" aria-labelledby="logo-heading">
       <h2 id="logo-heading" data-i18n="settings.logoHeading"></h2>
       <p class="hint" data-i18n="settings.logoHint"></p>

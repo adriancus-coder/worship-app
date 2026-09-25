@@ -932,3 +932,5 @@ body.screen-body.cursor-hidden, body.screen-body.cursor-hidden * { cursor: none;
 .source-buttons button[aria-pressed="true"] { color: var(--accent-text); background: var(--accent); border-color: var(--accent); }
 .source-buttons button[data-source="black"][aria-pressed="true"] { color: #fff; background: #000; border-color: var(--text); }
 .source-buttons button:disabled { opacity: 0.45; cursor: not-allowed; }
+.notation-choice { display: flex; flex-wrap: wrap; gap: 8px; }
+.notation-choice button { min-width: 120px; }

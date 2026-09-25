@@ -5,10 +5,12 @@ const asyncRoute = require('../lib/async-route');
 const { DUMMY_HASH, verifyPassword } = require('../lib/auth');
 const { createFailureLimiter } = require('../lib/rate-limit');
 const { isLang, setLangCookie } = require('../lib/i18n');
+const { createAdminSettings } = require('../lib/admin-settings');
 
 function createAuthRouter({ db, auth, config, logger, live }) {
   const router = express.Router();
   const limiter = createFailureLimiter({ maxFailures: 5, windowMs: 15 * 60 * 1000 });
+  const settings = createAdminSettings(db);
 
   const findUser = db.prepare(`SELECT u.id, u.admin_id, u.name, u.email, u.role, u.locale, u.password_hash,
       a.name AS admin_name
@@ -70,7 +72,12 @@ function createAuthRouter({ db, auth, config, logger, live }) {
 
   router.get('/api/auth/me', auth.requireUser, (req, res) => {
     res.set('Cache-Control', 'no-store');
-    res.json({ user: req.user, admin: req.admin });
+    // chordNotation is the effective one: the user's own, else the church default.
+    const own = req.user.chordNotation || null;
+    res.json({
+      user: { ...req.user, chordNotation: own || settings.chordNotationDefault(req.adminId), chordNotationOwn: own },
+      admin: req.admin,
+    });
   });
 
   return router;

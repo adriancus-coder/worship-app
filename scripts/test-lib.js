@@ -880,6 +880,24 @@ test('chord notation: Romanian lyric lines are never chord lines; solfège chord
   assert.strictEqual(chords.chordsOverLyricsToInline('[Sol]Ne [Re/Fa#]ridici [x2]'), '[G]Ne [D/F#]ridici [x2]');
 });
 
+test('migration 009: users.chord_notation is letters, solfege or NULL', () => {
+  const Database = require('better-sqlite3');
+  const { runMigrations } = require('../lib/db');
+  const { createAdminSettings } = require('../lib/admin-settings');
+  const mem = new Database(':memory:');
+  runMigrations(mem);
+  mem.prepare("INSERT INTO admins (id, name, created_at) VALUES (1, 'A', 0)").run();
+  const add = mem.prepare("INSERT INTO users (admin_id, email, name, password_hash, role, created_at, chord_notation) VALUES (1, ?, 'U', 'x', 'member', 0, ?)");
+  add.run('a@x.ro', null);
+  add.run('b@x.ro', 'solfege');
+  assert.throws(() => add.run('c@x.ro', 'german'), /CHECK/);
+  const settings = createAdminSettings(mem);
+  assert.strictEqual(settings.chordNotationDefault(1), 'letters');
+  settings.set(1, 'chord_notation_default', 'solfege');
+  assert.strictEqual(settings.chordNotationDefault(1), 'solfege');
+  mem.close();
+});
+
 test('section codes, arrangements and defaults', () => {
   const S = require('../lib/sections');
   const mixed = [{ type: 'intro' }, { type: 'verse' }, { type: 'chorus' }, { type: 'verse' }, { type: 'pre_chorus' },

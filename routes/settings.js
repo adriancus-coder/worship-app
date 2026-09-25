@@ -4,13 +4,16 @@ const express = require('express');
 const { requireRole } = require('../lib/auth');
 const { MAX_BYTES, sniff, createLogoStore } = require('../lib/logo');
 const { createScreenStore } = require('../lib/screens');
+const { NOTATIONS, createAdminSettings } = require('../lib/admin-settings');
 
-// Admin settings (owner only): the church logo shown by the projector.
+// Admin settings (owner only): the church logo shown by the projector and the default
+// chord notation.
 // GET /api/logo/:file serves it to the users of that admin and to its paired screens.
 function createSettingsRouter({ db, auth, config, logger, screensHub }) {
   const router = express.Router();
   const logos = createLogoStore(db, config.DATA_DIR);
   const screens = createScreenStore(db);
+  const settings = createAdminSettings(db);
   const ownerOnly = requireRole('owner');
   const rawBody = express.raw({ type: () => true, limit: MAX_BYTES });
 
@@ -25,7 +28,15 @@ function createSettingsRouter({ db, auth, config, logger, screensHub }) {
   });
 
   router.get('/api/settings', (req, res) => {
-    res.json({ logo: logoInfo(req.adminId) });
+    res.json({ logo: logoInfo(req.adminId), chordNotationDefault: settings.chordNotationDefault(req.adminId) });
+  });
+
+  // The church default chord notation, for users without their own preference.
+  router.put('/api/settings/chord-notation', (req, res) => {
+    const notation = (req.body || {}).notation;
+    if (!NOTATIONS.includes(notation)) return res.status(400).json({ error: req.t('errors.chordNotationInvalid') });
+    settings.set(req.adminId, 'chord_notation_default', notation);
+    res.json({ chordNotationDefault: notation });
   });
 
   // The image is the raw request body (the browser sends the File as is).

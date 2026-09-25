@@ -1,6 +1,7 @@
 'use strict';
 
-// Admin settings (/settings, owner only): the church logo shown by the projector.
+// Admin settings (/settings, owner only): the default chord notation and the church logo
+// shown by the projector.
 
 (function () {
   const { api, setTitle } = window.PAGE;
@@ -22,10 +23,32 @@
     else $('logo-image').removeAttribute('src');
   }
 
+  function renderNotation(notation) {
+    for (const button of document.querySelectorAll('[data-notation]')) {
+      button.setAttribute('aria-pressed', String(button.dataset.notation === notation));
+    }
+  }
+
   async function load() {
     const res = await api('/api/settings');
     if (!res.ok) return message(res.body.error || t('common.networkError'), 'error');
     renderLogo(res.body.logo);
+    renderNotation(res.body.chordNotationDefault);
+  }
+
+  for (const button of document.querySelectorAll('[data-notation]')) {
+    button.addEventListener('click', async () => {
+      const res = await api('/api/settings/chord-notation', { method: 'PUT', body: { notation: button.dataset.notation } });
+      const out = $('notation-message');
+      if (!res.ok) {
+        out.className = 'message error';
+        out.textContent = res.body.error || t('common.networkError');
+        return;
+      }
+      renderNotation(res.body.chordNotationDefault);
+      out.className = 'message success';
+      out.textContent = t('settings.notationSaved');
+    });
   }
 
   $('logo-file').addEventListener('change', async () => {
@@ -57,6 +80,7 @@
   document.addEventListener('i18n:change', () => {
     setTitle('settings.pageTitle');
     message('');
+    $('notation-message').textContent = '';
   });
 
   setTitle('settings.pageTitle');
