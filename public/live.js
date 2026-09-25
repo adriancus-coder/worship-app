@@ -221,16 +221,20 @@
     const steps = el('ol', { class: 'step-grid', 'aria-label': t('live.stepsLabel') },
       arrangement.map((entry, step) => {
         const isCurrent = step === pos.step;
+        const label = t('live.stepLabel', { n: step + 1, label: entry.label });
         return el('li', null, el('button', {
           type: 'button',
           class: `step${isCurrent ? ' current' : ''}`,
           'aria-current': isCurrent ? 'step' : null,
-          'aria-label': t('live.stepLabel', { n: step + 1, label: entry.label }),
+          'aria-label': entry.firstLine ? `${label}: ${entry.firstLine}` : label,
+          title: entry.firstLine || null,
           onclick: () => send('worship.goto', { itemId: item.id, step }),
         },
-        el('span', { class: 'step-code', text: entry.code }),
-        el('span', { class: 'step-label', text: entry.label }),
-        isCurrent ? el('span', { class: 'live-badge', text: t('live.liveBadge') }) : null));
+        el('span', { class: 'step-head' },
+          el('span', { class: 'step-code', text: entry.code }),
+          el('span', { class: 'step-label', text: entry.label })),
+        entry.firstLine ? el('span', { class: 'step-line', text: entry.firstLine }) : null,
+        isCurrent ? el('span', { class: 'step-badges' }, el('span', { class: 'live-badge', text: t('live.liveBadge') })) : null));
       }));
     box.replaceChildren(head, steps);
 

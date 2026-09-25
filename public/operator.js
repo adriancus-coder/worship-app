@@ -52,6 +52,11 @@
     return item.title || (item.body ? item.body.split('\n')[0].slice(0, 80) : '') || t(`setlist.types.${item.type}`);
   }
 
+  // The first line of a verse's / an announcement's text (the step buttons show it).
+  const bodyLine = (item) => (['verse', 'announcement'].includes(item.type)
+    ? (String(item.body || '').split('\n').map((line) => line.trim()).find(Boolean) || '')
+    : '');
+
   const stepsOf = (item) => (item && item.type === 'song' && item.songId && item.arrangementResolved && item.arrangementResolved.length
     ? item.arrangementResolved
     : null);
@@ -168,22 +173,28 @@
       $('op-item-type').textContent = t(`setlist.types.${item.type}`);
     }
     $('op-item-title').textContent = item ? itemTitle(item) : t(live() ? 'setlist.empty' : 'operator.notLiveShort');
-    const steps = stepsOf(item) || (item ? [{ code: '', label: itemTitle(item) }] : []);
+    // A verse / an announcement is one step: its reference / title and the first line of its text.
+    const steps = stepsOf(item) || (item ? [{ code: '', label: itemTitle(item), firstLine: bodyLine(item) }] : []);
     $('op-steps').replaceChildren(...steps.map((entry, step) => {
       const here = step === pos.step;
       const worshipHere = worship.itemId === item.id && worship.step === step;
+      const label = t('live.stepLabel', { n: step + 1, label: entry.label });
       return el('li', null, el('button', {
         type: 'button',
         class: `op-step${here ? ' projector' : ''}${worshipHere ? ' worship' : ''}`,
         'aria-current': here ? 'step' : null,
-        'aria-label': t('live.stepLabel', { n: step + 1, label: entry.label }),
+        'aria-label': entry.firstLine ? `${label}: ${entry.firstLine}` : label,
+        title: entry.firstLine || null,
         disabled: !enabled,
         onclick: () => goto(item, step),
       },
-      el('span', { class: 'step-code', text: entry.code }),
-      el('span', { class: 'step-label', text: entry.label }),
-      here ? el('span', { class: 'marker projector', text: t('operator.onProjector') }) : null,
-      worshipHere ? el('span', { class: 'marker worship', text: t('operator.worshipHere') }) : null));
+      el('span', { class: 'step-head' },
+        el('span', { class: 'step-code', text: entry.code }),
+        el('span', { class: 'step-label', text: entry.label })),
+      entry.firstLine ? el('span', { class: 'step-line', text: entry.firstLine }) : null,
+      here || worshipHere ? el('span', { class: 'step-badges' },
+        here ? el('span', { class: 'marker projector', text: t('operator.onProjector') }) : null,
+        worshipHere ? el('span', { class: 'marker worship', text: t('operator.worshipHere') }) : null) : null));
     }));
     const list = items();
     const index = list.findIndex((it) => it.id === pos.itemId);
