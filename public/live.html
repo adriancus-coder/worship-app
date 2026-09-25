@@ -21,6 +21,10 @@
           <p id="presence" class="presence" aria-live="polite"></p>
           <p id="connection" class="connection" role="status" aria-live="polite"><span class="dot" aria-hidden="true"></span><span id="connection-text"></span></p>
         </div>
+        <label class="checkbox operator-toggle" id="operator-toggle-row" hidden>
+          <input type="checkbox" id="operator-toggle">
+          <span data-i18n="live.requests.toggle"></span>
+        </label>
         <div class="live-actions">
           <button type="button" id="start-button" hidden data-i18n="live.start"></button>
           <button type="button" class="danger" id="end-button" hidden data-i18n="live.end"></button>
@@ -46,7 +50,10 @@
         </section>
 
         <section class="live-setlist" aria-labelledby="setlist-heading">
-          <h2 id="setlist-heading" data-i18n="live.setlistHeading"></h2>
+          <div class="setlist-head">
+            <h2 id="setlist-heading" data-i18n="live.setlistHeading"></h2>
+            <button type="button" class="requests-badge" id="requests-badge" hidden></button>
+          </div>
           <ol id="setlist" class="live-list"></ol>
         </section>
 
@@ -54,6 +61,7 @@
           <section class="projector-panel" aria-labelledby="projector-heading">
             <h2 id="projector-heading" data-i18n="live.projector.heading"></h2>
             <div id="projector-preview" class="projector-preview" role="img" data-i18n-aria-label="live.projector.previewLabel"></div>
+            <p id="projector-follows" class="projector-follows" hidden></p>
             <p id="projector-screens" class="projector-screens"></p>
             <div class="source-buttons" role="group" data-i18n-aria-label="live.projector.sourceLabel">
               <button type="button" class="secondary" data-source="content" aria-pressed="false" data-i18n="live.projector.content"></button>
@@ -72,6 +80,9 @@
         </aside>
       </div>
     </div>
+
+    <div id="request-toast" class="request-toast" role="status" aria-live="polite" hidden></div>
+    <dialog id="request-dialog" class="request-dialog"></dialog>
 
     <dialog id="end-dialog" aria-labelledby="end-heading">
       <form method="dialog">
@@ -98,6 +109,7 @@
   <script src="/event-cache.js"></script>
   <script src="/video-panel.js"></script>
   <script src="/projector-window.js"></script>
+  <script src="/live-requests.js"></script>
   <script src="/live-client.js"></script>
   <script src="/live.js"></script>
 </body>

@@ -303,7 +303,26 @@
     $('projector-screens').textContent = projector.screens === 1
       ? t('live.projector.screensOne')
       : t('live.projector.screens', { n: projector.screens });
+    // "Proiectorul controlat de operator": the preview then shows the operator's position.
+    const operatorMode = live && snap.projector.follows === 'operator';
+    $('operator-toggle-row').hidden = !live;
+    $('operator-toggle').checked = operatorMode;
+    $('projector-follows').hidden = !operatorMode;
+    if (operatorMode) {
+      // (shared items from the setlist loaded in the page language; the operator's own from the snapshot)
+      const item = state.items.find((it) => it.id === snap.projector.itemId)
+        || (snap.items || []).find((it) => it.id === snap.projector.itemId);
+      const step = item && item.arrangementResolved && item.arrangementResolved[snap.projector.step];
+      const label = item ? [itemTitle(item), step ? step.label : null].filter(Boolean).join(' · ') : '—';
+      $('projector-follows').textContent = t('live.requests.operatorAt', { label });
+    }
   }
+
+  $('operator-toggle').addEventListener('change', (event) => {
+    send('projector.follow', { mode: event.target.checked ? 'operator' : 'worship' }).then((reply) => {
+      if (!reply || !reply.ok) renderProjector(); // put the box back
+    });
+  });
 
   function toggleSource(source) {
     const currentSource = state.snap && state.snap.projector.source;
@@ -332,6 +351,11 @@
 
   window.PROJECTOR_WINDOW.setup({
     button: $('open-projector'), hint: $('projector-permission'), message: $('projector-message'), api, t,
+  });
+
+  // Proposals from the operator: toast, badge, preview dialog.
+  const requests = window.LIVE_REQUESTS.create({
+    badge: $('requests-badge'), toast: $('request-toast'), dialog: $('request-dialog'), eventId, api, send, t, el,
   });
 
   // --- emergency mode ---------------------------------------------------------------
@@ -463,7 +487,7 @@
   });
 
   document.addEventListener('keydown', (event) => {
-    if (!state.snap || state.snap.status !== 'live' || $('end-dialog').open) return;
+    if (!state.snap || state.snap.status !== 'live' || document.querySelector('dialog[open]')) return;
     if (event.altKey || event.ctrlKey || event.metaKey || event.target.closest('input, textarea, select')) return;
     // Space on a focused button or link already clicks it.
     if (event.key === ' ' && event.target.closest('button, a')) return;
@@ -490,6 +514,7 @@
     renderEmergency();
     renderProjector();
     videoPanel.render();
+    requests.render();
     // Section labels come from the server in the page language: reload.
     const key = state.loadedKey;
     state.loadedKey = null;
@@ -512,6 +537,7 @@
         renderProjector();
         videoPanel.setSetlist(state.items);
         videoPanel.update(snap);
+        requests.update(snap);
       }).catch(() => {}); // server unreachable meanwhile: the next snapshot tries again
     },
     onPresence: (presence) => {
