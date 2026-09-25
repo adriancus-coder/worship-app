@@ -832,6 +832,54 @@ test('logo: type from magic bytes only (PNG, JPEG, WebP; never SVG)', () => {
   for (const bad of ['../x.png', 'logo-0123456789abcdef.svg', 'logo-xyz.png', 'logo-0123456789abcdef.png/..']) assert.ok(!isLogoFile(bad), bad);
 });
 
+test('chord notation: letters <-> Romanian solfège', () => {
+  const pairs = [['C', 'Do'], ['C#', 'Do#'], ['Db', 'Reb'], ['D', 'Re'], ['D#', 'Re#'], ['Eb', 'Mib'], ['E', 'Mi'], ['F', 'Fa'],
+    ['F#', 'Fa#'], ['Gb', 'Solb'], ['G', 'Sol'], ['G#', 'Sol#'], ['Ab', 'Lab'], ['A', 'La'], ['A#', 'La#'], ['Bb', 'Sib'], ['B', 'Si']];
+  for (const [letters, solfege] of pairs) {
+    assert.strictEqual(chords.toNotation(letters, 'solfege'), solfege, letters);
+    assert.strictEqual(chords.fromSolfege(solfege), letters, solfege);
+    assert.strictEqual(chords.toNotation(letters, 'letters'), letters);
+  }
+  const suffixes = [['Am', 'Lam'], ['F#m', 'Fa#m'], ['Bbm', 'Sibm'], ['G7', 'Sol7'], ['Dmaj7', 'Remaj7'], ['Asus4', 'Lasus4'],
+    ['Cdim', 'Dodim'], ['Em7', 'Mim7'], ['D/F#', 'Re/Fa#'], ['G/B', 'Sol/Si'], ['Am7b5', 'Lam7b5'], ['C(add9)', 'Do(add9)']];
+  for (const [letters, solfege] of suffixes) {
+    assert.strictEqual(chords.toNotation(letters, 'solfege'), solfege, letters);
+    assert.strictEqual(chords.fromSolfege(solfege), letters, solfege);
+  }
+  assert.strictEqual(chords.toNotation('N.C.', 'solfege'), 'N.C.');
+  assert.strictEqual(chords.toNotation('x2', 'solfege'), 'x2');
+  for (const word of ['Mi-e', 'Si-am', 'Do-mnul', 'Domnul', 'La-nceput', 'la', 'mi', 'Lamin']) assert.strictEqual(chords.fromSolfege(word), word, word);
+  // Round trip letters -> solfège -> letters on 10 samples.
+  const samples = ['[G]Ne ridici din [D/F#]noaptea [Em7]grea', '[Am]În [F]noaptea [C]grea [G]Tu', '[Bb]Mare [Eb]ești [F7]Tu',
+    '[C#m]Sfânt [A]e [E/G#]Domnul', '[Dmaj7]Pace [Gsus4]Ție', '[F#m7b5]A [B7]doua', '[Ab]Isus [Db/F]Hristos [Eb]Domn',
+    '[N.C.]Aleluia [x2]', '[Cdim]Har [C(add9)]și', '[Gm/Bb]Tu [A7sus4]ești'];
+  for (const content of samples) {
+    const shown = chords.renderContent(content, 'solfege');
+    assert.ok(shown !== content || !/\[[A-G]/.test(content));
+    assert.strictEqual(chords.chordsOverLyricsToInline(shown), content, shown);
+  }
+  assert.strictEqual(chords.renderContent('[G]Ne [D/F#]ridici', 'solfege'), '[Sol]Ne [Re/Fa#]ridici');
+  assert.strictEqual(chords.renderContent('[G]Ne', 'letters'), '[G]Ne');
+});
+
+test('chord notation: Romanian lyric lines are never chord lines; solfège chord lines are', () => {
+  const lyrics = ['La mulți ani', 'Mi-e dor de Tine', 'Si-am cântat', 'Do-mnul e bun', 'La la la', 'La La La', 'Do Re Mi',
+    'Sol și ploaie', 'Re-nviere', 'Mi se pare', 'Fa ce vrei', 'Am cântat', 'Si', 'la'];
+  for (const line of lyrics.slice(0, -2)) assert.strictEqual(chords.isChordLine(line), false, line);
+  assert.strictEqual(chords.isChordLine('la'), false);
+  const chordLines = ['Sol   Re/Fa#   Mim7', 'Lam  Fa  Do  Sol', 'Sol', '  Re', 'Do#m7 Fa#', 'Sol Re Mi7 La', 'G D Em C'];
+  for (const line of chordLines) assert.strictEqual(chords.isChordLine(line), true, line);
+  // Lyrics pass through untouched (they are not chord lines).
+  const song = 'La mulți ani\nMi-e dor de Tine\nSi-am cântat\nDo-mnul e bun\nLa La La';
+  assert.strictEqual(chords.chordsOverLyricsToInline(song), song);
+  // A real solfège chord-over-lyrics block becomes inline letters.
+  const pasted = ['Sol        Re/Fa#     Mim7', 'Ne ridici din noaptea grea', 'Do          Re', 'Tu ești lumina mea', 'La mulți ani'].join('\n');
+  assert.strictEqual(chords.chordsOverLyricsToInline(pasted),
+    '[G]Ne ridici d[D/F#]in noaptea [Em7]grea\n[C]Tu ești lumi[D]na mea\nLa mulți ani');
+  // Inline solfège chords are stored as letters too.
+  assert.strictEqual(chords.chordsOverLyricsToInline('[Sol]Ne [Re/Fa#]ridici [x2]'), '[G]Ne [D/F#]ridici [x2]');
+});
+
 test('section codes, arrangements and defaults', () => {
   const S = require('../lib/sections');
   const mixed = [{ type: 'intro' }, { type: 'verse' }, { type: 'chorus' }, { type: 'verse' }, { type: 'pre_chorus' },

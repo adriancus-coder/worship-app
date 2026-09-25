@@ -9,15 +9,69 @@
   const CHORD_RE = /^(?:N\.?C\.?|[A-G][#b]?(?:maj|m|dim|aug|sus|add|M|\+|°|ø)?(?:\d+|maj\d*|sus\d*|add\d+|dim\d*|aug|[#b]\d+|\(\w+\))*(?:\/[A-G][#b]?)?)$/;
   const INLINE_CHORD_RE = /\[([^\]\n]*)\]/g;
 
+  // --- notation: letters (C D E) or Romanian solfège (Do Re Mi) ------------------------
+  // Storage is always letters; solfège is for display and for pasted input.
+  // C=Do D=Re E=Mi F=Fa G=Sol A=La B=Si; accidentals stay # / b, minor is glued (Lam, Fa#m).
+  const SOLFEGE = { C: 'Do', D: 'Re', E: 'Mi', F: 'Fa', G: 'Sol', A: 'La', B: 'Si' };
+  const LETTER = Object.fromEntries(Object.entries(SOLFEGE).map(([letter, name]) => [name, letter]));
+  const SOLFEGE_CHORD_RE = /^(Do|Re|Mi|Fa|Sol|La|Si)([#b]?)(.*?)(?:\/(Do|Re|Mi|Fa|Sol|La|Si)([#b]?))?$/;
+  const BARE_SYLLABLE_RE = /^(Do|Re|Mi|Fa|Sol|La|Si)$/;
+  const NOTATIONS = ['letters', 'solfege'];
+
+  // Capitalised solfège chord -> letters ("Fa#m7" -> "F#m7", "Re/Fa#" -> "D/F#"); anything
+  // else (letters, lyrics such as "Mi-e" or "La-nceput") is returned unchanged.
+  function fromSolfege(chord) {
+    const text = String(chord);
+    const m = SOLFEGE_CHORD_RE.exec(text);
+    if (!m) return text;
+    const letters = LETTER[m[1]] + m[2] + m[3] + (m[4] ? `/${LETTER[m[4]]}${m[5]}` : '');
+    return CHORD_RE.test(letters) ? letters : text;
+  }
+
+  // A letter chord in the given notation ("F#m7" -> "Fa#m7" in solfège). N.C. and anything
+  // that is not a letter chord are returned unchanged.
+  function toNotation(chord, notation) {
+    const text = String(chord);
+    if (notation !== 'solfege' || !CHORD_RE.test(text) || /^N\.?C\.?$/.test(text)) return text;
+    const m = CHORD_PARTS_RE.exec(text);
+    if (!m) return text;
+    return SOLFEGE[m[1]] + m[2] + m[3] + (m[4] ? `/${SOLFEGE[m[4]]}${m[5]}` : '');
+  }
+
   function isChord(token) {
-    return CHORD_RE.test(token);
+    return CHORD_RE.test(token) || fromSolfege(token) !== token;
   }
 
   // A line made only of chords (and optional "|" bar marks), with at least one chord.
+  // Solfège syllables are also Romanian words: a line made only of bare capitalised
+  // syllables ("La La La", "Do Re Mi") counts as chords only when laid out like a chord
+  // line (a single chord, an indent, or chords spaced out by 2+ spaces). Lowercase words
+  // ("la", "mi", "si") and joined forms ("Mi-e", "Si-am", "Do-mnul") are never chords.
   function isChordLine(line) {
-    const tokens = String(line || '').trim().split(/\s+/).filter(Boolean);
+    const text = String(line || '');
+    const tokens = text.trim().split(/\s+/).filter(Boolean);
     const chords = tokens.filter((tok) => tok !== '|');
-    return chords.length > 0 && chords.every(isChord);
+    if (!chords.length || !chords.every(isChord)) return false;
+    if (!chords.every((tok) => BARE_SYLLABLE_RE.test(tok))) return true;
+    return chords.length === 1 || /^\s/.test(text) || /\S\s{2,}\S/.test(text);
+  }
+
+  // Inline chords written in solfège ("[Sol]") -> letters ("[G]"); other brackets unchanged.
+  function inlineToLetters(content) {
+    return String(content || '').replace(INLINE_CHORD_RE, (match, chord) => {
+      const trimmed = chord.trim();
+      const letters = fromSolfege(trimmed);
+      return letters !== trimmed ? `[${letters}]` : match;
+    });
+  }
+
+  // Inline content for display: every chord in the notation.
+  function renderContent(content, notation) {
+    if (notation !== 'solfege') return String(content || '');
+    return String(content || '').replace(INLINE_CHORD_RE, (match, chord) => {
+      const trimmed = chord.trim();
+      return trimmed ? `[${toNotation(trimmed, notation)}]` : match;
+    });
   }
 
   // Lyrics only: chords removed, spaces left behind collapsed, chord-only lines dropped.
@@ -49,7 +103,7 @@
     if (text.length < last) text = text.padEnd(last, ' ');
     for (let i = chords.length - 1; i >= 0; i--) {
       const { col, chord } = chords[i];
-      text = `${text.slice(0, col)}[${chord}]${text.slice(col)}`;
+      text = `${text.slice(0, col)}[${fromSolfege(chord)}]${text.slice(col)}`; // stored as letters
     }
     return text;
   }
@@ -62,14 +116,15 @@
 
   // "Chord line above lyric line" -> inline ChordPro, keeping chord columns.
   // A chord line without a lyric line below becomes an inline chord-only line.
-  // Text that is already inline (or has no chord lines) is returned unchanged.
+  // Chords are stored as letters: solfège chords (above lyrics or inline) are converted.
+  // Text that is already inline with letter chords (or has no chords) is returned unchanged.
   function chordsOverLyricsToInline(text) {
     const lines = String(text || '').replace(/\r\n?/g, '\n').normalize('NFC').split('\n');
     const out = [];
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
       if (!isChordLine(line)) {
-        out.push(line);
+        out.push(inlineToLetters(line));
         continue;
       }
       const chords = chordPositions(line);
@@ -209,6 +264,10 @@
   }
 
   const CHORDS = {
+    NOTATIONS,
+    toNotation,
+    fromSolfege,
+    renderContent,
     isChord,
     FLAT_KEYS,
     keyAfter,
