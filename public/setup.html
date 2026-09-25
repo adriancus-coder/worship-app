@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="ro">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#141318">
+  <title>Configurare inițială</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <main>
+    <h1>Configurare inițială</h1>
+    <p class="muted">Creează contul bisericii sau al echipei și contul tău de proprietar.</p>
+
+    <form id="setup-form" novalidate>
+      <label>
+        Cod de configurare
+        <input type="password" name="setupToken" autocomplete="off" required>
+        <span class="hint">Valoarea SETUP_TOKEN din configurația serverului.</span>
+      </label>
+
+      <fieldset>
+        <legend>Biserica / echipa</legend>
+        <label>
+          Nume
+          <input type="text" name="adminName" maxlength="100" required>
+        </label>
+      </fieldset>
+
+      <fieldset>
+        <legend>Contul tău (proprietar)</legend>
+        <label>
+          Nume
+          <input type="text" name="ownerName" autocomplete="name" maxlength="100" required>
+        </label>
+        <label>
+          Email
+          <input type="email" name="ownerEmail" autocomplete="email" inputmode="email" required>
+        </label>
+        <label>
+          Parolă
+          <input type="password" name="ownerPassword" autocomplete="new-password" minlength="10" required>
+          <span class="hint">Cel puțin 10 caractere.</span>
+        </label>
+      </fieldset>
+
+      <p class="message" id="message" role="alert" aria-live="polite"></p>
+      <button type="submit">Creează contul</button>
+    </form>
+
+    <div id="done" hidden>
+      <p class="message success">Configurarea s-a încheiat. Te poți autentifica acum.</p>
+      <a class="button" href="/login">Mergi la autentificare</a>
+    </div>
+  </main>
+  <script src="/setup.js"></script>
+</body>
+</html>

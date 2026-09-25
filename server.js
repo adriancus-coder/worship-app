@@ -1,6 +1,7 @@
 'use strict';
 
 const http = require('http');
+const path = require('path');
 const express = require('express');
 const helmet = require('helmet');
 const compression = require('compression');
@@ -10,6 +11,7 @@ const config = require('./lib/config');
 const logger = require('./lib/logger');
 const { openDb, runMigrations } = require('./lib/db');
 const createHealthRouter = require('./routes/health');
+const createSetupRouter = require('./routes/setup');
 
 const db = openDb(config.DATA_DIR);
 const applied = runMigrations(db);
@@ -33,7 +35,12 @@ app.use(helmet({
 app.use(compression());
 app.use(express.json({ limit: '100kb' }));
 
+// Pages are served only through their routes, never as raw .html files.
+app.use((req, res, next) => (req.path.endsWith('.html') ? res.status(404).end() : next()));
+app.use(express.static(path.join(__dirname, 'public'), { index: false }));
+
 app.use(createHealthRouter({ config }));
+app.use(createSetupRouter({ db, config, logger }));
 
 app.use('/api', (req, res) => {
   res.status(404).json({ error: 'Not found' });
