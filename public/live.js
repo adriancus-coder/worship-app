@@ -11,7 +11,7 @@
   const $ = (id) => document.getElementById(id);
   const eventId = Number(window.location.pathname.split('/')[2]);
 
-  const state = { event: null, items: [], loadedKey: null, loading: null, songs: new Map(), snap: null, client: null, queue: Promise.resolve() };
+  const state = { event: null, items: [], loadedKey: null, loading: null, songs: new Map(), snap: null, client: null, queue: Promise.resolve(), cached: null };
 
   // --- data -------------------------------------------------------------------------
 
@@ -28,6 +28,7 @@
       state.items = res.body.items;
       state.songs.clear();
       state.loadedKey = snap.setlistKey;
+      cacheEvent();
     });
     state.loading = { key: snap.setlistKey, promise };
     return promise;
@@ -41,6 +42,22 @@
         .catch(() => null));
     }
     return state.songs.get(item.id);
+  }
+
+  // Everything needed to compute projector frames without the server (public/frames.js):
+  // the setlist, every song ready to render and the logo, saved in IndexedDB whenever the
+  // setlist changes (and when the logo is first known).
+  async function cacheEvent() {
+    const key = state.loadedKey;
+    const items = state.items;
+    const songs = await Promise.all(items.filter((it) => it.type === 'song' && it.songId)
+      .map(async (it) => [it.id, await loadSong(it)]));
+    if (state.loadedKey !== key) return; // a newer setlist is being loaded
+    const logoUrl = projector.logoUrl;
+    const logo = logoUrl ? { url: logoUrl, dataUrl: await window.EVENT_CACHE.logoData(logoUrl) } : null;
+    if (state.loadedKey !== key) return;
+    state.cached = { eventId, setlistKey: key, event: state.event, items, songs: songs.filter(([, song]) => song), logo };
+    await window.EVENT_CACHE.save(state.cached);
   }
 
   // --- helpers ----------------------------------------------------------------------
@@ -272,7 +289,7 @@
   const preview = window.PROJECTOR_RENDER.create($('projector-preview'), { videoPlaceholder: true });
   // Video controls (a module the operator console will reuse in stage 6).
   const videoPanel = window.VIDEO_PANEL.create($('video-panel'), { send, api, t, el });
-  const projector = { screens: 0, details: null };
+  const projector = { screens: 0, details: null, logoUrl: null };
 
   function renderProjector() {
     const snap = state.snap;
@@ -304,6 +321,10 @@
       videoPanel.setScreens(reply.screens);
       if (reply.videoStatus && reply.videoStatus.length) videoPanel.status(reply.videoStatus);
       renderProjector();
+      if (reply.logoUrl !== projector.logoUrl) {
+        projector.logoUrl = reply.logoUrl || null;
+        if (state.event) cacheEvent();
+      }
     });
   }
 

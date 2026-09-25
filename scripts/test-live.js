@@ -9,6 +9,7 @@ const fs = require('fs');
 const net = require('net');
 const os = require('os');
 const path = require('path');
+const vm = require('vm');
 const { spawn } = require('child_process');
 const { io } = require('socket.io-client');
 const Database = require('better-sqlite3');
@@ -365,6 +366,80 @@ async function main() {
     await send(lead.socket, { type: 'projector.source', source: 'content' });
     await frameWhere(screen, (f) => f.version === version);
     watchers.close();
+  });
+
+  await step('shared frames: a page holding the event data computes the same frame as the server', async () => {
+    // The browser build of public/frames.js (no require), as the live page loads it.
+    const sandbox = { window: {} };
+    vm.createContext(sandbox);
+    for (const file of ['chords.js', 'frames.js']) {
+      vm.runInContext(fs.readFileSync(path.join(ROOT, 'public', file), 'utf8'), sandbox, { filename: file });
+    }
+    const { projectorFrame } = sandbox.window.FRAMES;
+    // Admin 2 (its own live event and screen): every item kind, a transposed song, a logo.
+    const png = Buffer.from('89504e470d0a1a0a0000000d4948445200000001000000010806000000'
+      + '1f15c4890000000d4944415478da63f8ffff3f0005fe02fea7d69b3a0000000049454e44ae426082', 'hex');
+    assert.strictEqual((await fetch(`${base()}/api/settings/logo`, { method: 'PUT', headers: { Cookie: other, 'Content-Type': 'image/png' }, body: png })).status, 200);
+    const add = async (title, sections) => (await api('POST', '/api/songs', other, { title, songKey: 'G', sections })).body.song;
+    const a = await add('Cânt', [{ type: 'verse', content: '[G]Cânt [D/F#]azi\n[Em]pentru [C]Tine\n' }, { type: 'chorus', content: '\n[C]Sfânt [G]ești' }]);
+    const gone = await add('Șters', [{ type: 'verse', content: '[A]x' }]);
+    const e2 = (await api('POST', '/api/events', other, { name: 'Seara', eventDate: '2026-10-05' })).body.event;
+    const put = await api('PUT', `/api/events/${e2.id}/items`, other, { items: [
+      { type: 'song', songId: a.id, arrangement: 'V1 C V1', transpose: 2 },
+      { type: 'verse', reference: 'Ioan 3:16', body: 'Fiindcă atât de mult\na iubit' },
+      { type: 'announcement', title: 'Tabără', body: 'Înscrieri\nduminică' },
+      { type: 'sermon', title: 'Predica' },
+      { type: 'other', body: '\nRugăciune\npentru țară' },
+      { type: 'video', title: 'Clip', url: 'https://youtu.be/dQw4w9WgXcQ' },
+      { type: 'song', songId: gone.id },
+    ] });
+    assert.strictEqual(put.status, 200, JSON.stringify(put.body));
+    assert.strictEqual((await api('DELETE', `/api/songs/${gone.id}`, other)).status, 200);
+    assert.strictEqual((await api('POST', `/api/events/${e2.id}/publish`, other)).status, 200);
+    const o = await joined(other, e2.id);
+    const states = [];
+    o.socket.on('live:state', (st) => states.push(st));
+    const stateAt = (v) => states.find((st) => st.version === v) || next(o.socket, 'live:state', (st) => st.version === v);
+    const cmd = async (c) => {
+      const reply = await emit(o.socket, 'live:command', { eventId: e2.id, ...c });
+      assert.strictEqual(reply.ok, true, JSON.stringify(reply));
+      return reply.version;
+    };
+    // What the browser has: the event and each song item ready to render, over HTTP.
+    const loaded = (await api('GET', `/api/events/${e2.id}`, other)).body;
+    const songs = new Map();
+    for (const it of loaded.items.filter((x) => x.type === 'song' && x.songId)) {
+      songs.set(it.id, (await api('GET', `/api/events/${e2.id}/items/${it.id}/song`, other)).body.song);
+    }
+    const kinds = new Set();
+    let logoUrl = null;
+    async function compare(v) {
+      const snap = await stateAt(v);
+      const watched = await emit(o.socket, 'projector:watch', {});
+      logoUrl = watched.logoUrl;
+      const server = watched.frame;
+      const local = projectorFrame(snap, { items: loaded.items }, songs, { logoUrl, videoMedia: server.video ? server.video.media : null });
+      assert.deepStrictEqual(JSON.parse(JSON.stringify(local)), server, `frame at ${JSON.stringify(snap.worship)} / ${snap.projector.source}`);
+      kinds.add(server.kind);
+      return server;
+    }
+    assert.strictEqual((await compare(await cmd({ type: 'event.start' }))).kind, 'lyrics');
+    const layout = loaded.items.map((it) => (it.arrangementResolved && it.songId ? it.arrangementResolved.length : 1));
+    for (const [i, it] of loaded.items.entries()) {
+      for (let st = 0; st < layout[i]; st++) {
+        const frame = await compare(await cmd({ type: 'worship.goto', itemId: it.id, step: st })); // the first: a no-op
+        if (i === 0 && st === 0) assert.deepStrictEqual(frame.lines, ['Cânt azi', 'pentru Tine'], 'no chords');
+      }
+    }
+    await cmd({ type: 'worship.goto', itemId: loaded.items[1].id, step: 0 });
+    for (const source of ['black', 'logo', 'content']) await compare(await cmd({ type: 'projector.source', source }));
+    assert.ok(/^\/api\/logo\//.test(logoUrl), 'the watch reply carries the logo URL');
+    await compare(await cmd({ type: 'video.prepare', itemId: loaded.items[5].id }));
+    await compare(await cmd({ type: 'video.play' }));
+    await compare(await cmd({ type: 'video.pause' }));
+    await compare(await cmd({ type: 'video.stop' }));
+    assert.deepStrictEqual([...kinds].sort(), ['announcement', 'black', 'logo', 'lyrics', 'title', 'verse', 'video']);
+    await cmd({ type: 'event.end' });
   });
 
   await step('a second event cannot start while one is live', async () => {

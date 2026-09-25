@@ -101,7 +101,12 @@ function createScreensHub({ db, logger, config }) {
   function watch(socket) {
     const { adminId } = socket.data;
     socket.join(watchersRoom(adminId));
-    return { frame: frameFor(adminId), screens: screenCount(adminId), videoStatus: [...(videoStatus.get(adminId) || new Map()).values()] };
+    return {
+      frame: frameFor(adminId),
+      screens: screenCount(adminId),
+      videoStatus: [...(videoStatus.get(adminId) || new Map()).values()],
+      logoUrl: logoUrl(adminId), // for pages that compute frames themselves (public/frames.js)
+    };
   }
 
   // Playback reported by a screen (at most once a second): relayed to the watchers, kept in
