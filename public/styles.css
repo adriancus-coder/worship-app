@@ -594,3 +594,16 @@ main.wide.event-page { max-width: 1200px; }
 }
 
 .video-link { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; line-height: 24px; }
+
+/* --- unsaved-changes guard ----------------------------------------------------- */
+
+.draft-banner {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.draft-banner p { margin: 0 0 10px; }
+.leave-actions { display: flex; flex-direction: column; gap: 8px; }

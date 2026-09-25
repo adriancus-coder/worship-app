@@ -2,7 +2,9 @@
 
 // Event page: /events/:id (read-only) and /events/:id/edit (owner, leader).
 // The setlist lives in `state.items`; the list and the detail pane are re-rendered from it.
-// Changes are saved explicitly; leaving with unsaved changes asks for confirmation.
+// Changes are saved explicitly. Unsaved changes are protected three ways: beforeunload
+// (desktop), an in-app dialog on internal links (iPhone/iPad Safari and Edge never show the
+// beforeunload prompt) and a local draft backup restored on the next visit.
 
 (function () {
   const { api, el, canEdit, setTitle, formatDate } = window.PAGE;
@@ -203,6 +205,7 @@
     state.lastSaveError = null;
     renderHeader();
     renderSaveBar();
+    scheduleDraft();
   }
 
   function select(index, focusDetail) {
@@ -415,6 +418,7 @@
       if (res.ok) {
         applyEvent(res.body, true);
         state.justSaved = true;
+        removeDraft();
       } else {
         state.lastSaveError = res.body.error || t('common.networkError');
       }
@@ -546,8 +550,139 @@
     }
   });
 
+  // --- unsaved-changes guard ----------------------------------------------------------
+
+  const DRAFT_DELAY_MS = 500;
+  const DRAFT_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+  const leaveDialog = $('leave-dialog');
+  let draftTimer = null;
+  let pendingDraft = null;
+  let pendingHref = null;
+  let leaving = false; // true once we navigate away on purpose
+
+  function draftKey() {
+    return `wa_setlist_draft:${state.me.user.id}:${state.event.id}`;
+  }
+
+  // localStorage can be unavailable (private mode) or full: the guard then just does less.
+  function storage(fn) {
+    try {
+      return fn(window.localStorage);
+    } catch (err) {
+      return null;
+    }
+  }
+
+  function removeDraft() {
+    clearTimeout(draftTimer);
+    draftTimer = null;
+    if (state.event && state.me) storage((s) => s.removeItem(draftKey()));
+  }
+
+  function writeDraft() {
+    clearTimeout(draftTimer);
+    draftTimer = null;
+    if (!state.editing || !state.event) return;
+    if (!isDirty()) {
+      removeDraft();
+      return;
+    }
+    const items = state.items.map(({ key, ...rest }) => rest);
+    storage((s) => s.setItem(draftKey(), JSON.stringify({ savedAt: Date.now(), eventUpdatedAt: state.event.updatedAt, items })));
+  }
+
+  function scheduleDraft() {
+    if (!state.editing) return;
+    clearTimeout(draftTimer);
+    draftTimer = setTimeout(writeDraft, DRAFT_DELAY_MS);
+  }
+
+  // Leaving by swipe/back on iOS may not wait for the debounce: write it now.
+  function flushDraft() {
+    if (draftTimer) writeDraft();
+  }
+  window.addEventListener('pagehide', flushDraft);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') flushDraft();
+  });
+
+  // A backup is offered when it is newer than the last save of the event and at most
+  // 7 days old; anything else is dropped.
+  function checkDraft() {
+    const draft = storage((s) => JSON.parse(s.getItem(draftKey()) || 'null'));
+    if (!draft) return;
+    const valid = Array.isArray(draft.items) && Number.isFinite(draft.savedAt)
+      && Date.now() - draft.savedAt <= DRAFT_MAX_AGE_MS && draft.savedAt > state.event.updatedAt;
+    if (!valid) {
+      removeDraft();
+      return;
+    }
+    pendingDraft = draft;
+    renderDraftBanner();
+  }
+
+  function renderDraftBanner() {
+    $('draft-banner').hidden = !pendingDraft;
+    if (!pendingDraft) return;
+    const locale = window.I18N.lang === 'en' ? 'en-GB' : 'ro-RO';
+    const time = new Date(pendingDraft.savedAt).toLocaleString(locale, { dateStyle: 'medium', timeStyle: 'short' });
+    $('draft-time').textContent = t('setlist.draftTime', { time });
+  }
+
+  $('draft-restore').addEventListener('click', () => {
+    state.items = pendingDraft.items.map(fromServer);
+    state.selected = -1;
+    pendingDraft = null;
+    renderDraftBanner();
+    renderAll();
+    changed();
+    itemsList.querySelector('.item-main')?.focus();
+  });
+
+  $('draft-discard').addEventListener('click', () => {
+    pendingDraft = null;
+    removeDraft();
+    renderDraftBanner();
+  });
+
+  function leaveTo(href) {
+    leaving = true;
+    window.location.assign(href);
+  }
+
+  // Internal links (nav, back, song links...) ask first while there are unsaved changes.
+  document.addEventListener('click', (event) => {
+    if (!isDirty() || event.defaultPrevented || event.button !== 0) return;
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    const link = event.target.closest('a[href]');
+    if (!link || link.target === '_blank' || link.hasAttribute('download')) return;
+    const url = new URL(link.href, window.location.href);
+    if (url.origin !== window.location.origin) return;
+    if (url.pathname === window.location.pathname && url.search === window.location.search) return;
+    event.preventDefault();
+    pendingHref = url.href;
+    $('leave-message').textContent = '';
+    leaveDialog.showModal();
+    $('leave-stay').focus();
+  }, true);
+
+  $('leave-save').addEventListener('click', async () => {
+    $('leave-save').disabled = true;
+    await save();
+    $('leave-save').disabled = false;
+    if (!isDirty() && !state.lastSaveError) leaveTo(pendingHref);
+    else $('leave-message').textContent = state.lastSaveError || t('common.networkError');
+  });
+
+  $('leave-discard').addEventListener('click', () => {
+    removeDraft();
+    leaveTo(pendingHref);
+  });
+
+  // Desktop browsers still get the native prompt (reloads, closing the tab, typed URLs).
   window.addEventListener('beforeunload', (event) => {
-    if (!isDirty()) return;
+    if (leaving || !isDirty()) return;
+    flushDraft();
     event.preventDefault();
     event.returnValue = '';
   });
@@ -634,6 +769,7 @@
     actionMessage.replaceChildren();
     renderAll();
     renderPick();
+    renderDraftBanner();
     const focusedId = document.activeElement && document.activeElement.id;
     if (focusedId) $(focusedId)?.focus();
   });
@@ -652,6 +788,7 @@
     applyEvent(eventRes.body, false);
     status.hidden = true;
     $('event').hidden = false;
+    if (state.editing) checkDraft();
   })().catch(() => {
     status.removeAttribute('data-i18n');
     status.textContent = t('common.networkError');
