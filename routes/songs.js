@@ -3,6 +3,10 @@
 const express = require('express');
 const { requireRole } = require('../lib/auth');
 const { LIMITS, SORT_MODES, DuplicateTitleError, validateSong, createSongStore } = require('../lib/songs');
+const { MAX_SONGS, LibraryFileError, parseLibraryFile, planImport } = require('../lib/library-import');
+
+// The import route parses its own body (the global JSON limit is 100 kB, see server.js).
+const IMPORT_BODY_LIMIT = '10mb';
 
 // All routes are scoped to req.adminId from the session. A song of another admin
 // simply does not exist here: 404, never 403.
@@ -32,6 +36,57 @@ function createSongsRouter({ db, auth, config, logger }) {
     const q = typeof req.query.q === 'string' ? req.query.q.slice(0, LIMITS.queryMax) : '';
     const sort = SORT_MODES.includes(req.query.sort) ? req.query.sort : 'az';
     res.json({ songs: songs.list(req.adminId, { q, sort }) });
+  });
+
+  // Library file import. ?dryRun=1 only reports; otherwise mode=skip (default) keeps
+  // existing songs, mode=update replaces their sections and metadata. One transaction.
+  router.post('/api/songs/import', canEdit, express.json({ limit: IMPORT_BODY_LIMIT }), (req, res) => {
+    const dryRun = req.query.dryRun === '1' || req.query.dryRun === 'true';
+    const mode = req.query.mode === undefined ? 'skip' : req.query.mode;
+    if (!['skip', 'update'].includes(mode)) return res.status(400).json({ error: req.t('errors.importMode') });
+
+    let file;
+    try {
+      file = parseLibraryFile(req.body);
+    } catch (err) {
+      if (!(err instanceof LibraryFileError)) throw err;
+      const key = err.code === 'too_many' ? 'errors.importTooMany' : 'errors.importFormat';
+      return res.status(400).json({ error: req.t(key, { max: MAX_SONGS }) });
+    }
+    const plan = () => planImport(file.entries, {
+      t: req.t,
+      findIdByTitle: (title) => songs.findIdByTitle(req.adminId, title),
+    });
+
+    if (dryRun) {
+      const p = plan();
+      return res.json({
+        format: file.format,
+        new: p.add.map((x) => x.value.title),
+        existing: p.existing.map((x) => x.value.title),
+        invalid: p.invalid,
+      });
+    }
+
+    const result = db.transaction(() => {
+      const p = plan();
+      for (const { value, meta } of p.add) songs.create(req.adminId, req.user.id, value, meta);
+      if (mode === 'update') {
+        for (const { id, value, meta, keepAuthor } of p.existing) {
+          const song = keepAuthor ? { ...value, author: songs.get(req.adminId, id).author } : value;
+          songs.update(req.adminId, id, song, meta);
+        }
+      }
+      return {
+        added: p.add.length,
+        updated: mode === 'update' ? p.existing.length : 0,
+        skipped: mode === 'update' ? 0 : p.existing.length,
+        invalid: p.invalid.length,
+      };
+    })();
+    logger.info(`Library import (${file.format}, mode=${mode}) by user #${req.user.id} (admin #${req.adminId}): `
+      + `added=${result.added} updated=${result.updated} skipped=${result.skipped} invalid=${result.invalid}`);
+    res.json(result);
   });
 
   // Registered before /api/songs/:id.

@@ -93,7 +93,7 @@ test('isChord: common chord spellings', () => {
   for (const c of ['G', 'D/F#', 'Em7', 'Bbmaj7', 'Csus4', 'N.C.', 'Am7b5', 'C(add9)', 'E7#9', 'Gm/Bb', 'F#m', 'Dsus2', 'Cadd9', 'A7', 'Ebdim7']) {
     assert.ok(chords.isChord(c), `${c} should be a chord`);
   }
-  for (const w of ['Ne', 'Doamne', 'H', 'Gg', 'x2', 'Em7,', 'Tu', 'G/', '[G]']) {
+  for (const w of ['Ne', 'Doamne', 'H', 'Gg', 'x2', 'Em7,', 'Tu', 'G/', '[G]', 'Amin', 'Amin!', 'Dmin']) {
     assert.ok(!chords.isChord(w), `${w} should not be a chord`);
   }
 });
@@ -106,6 +106,8 @@ test('isChordLine', () => {
   assert.ok(!chords.isChordLine('Am venit la Tine'));
   assert.ok(!chords.isChordLine(''));
   assert.ok(!chords.isChordLine('[G]Ne ridici'));
+  assert.ok(!chords.isChordLine('Amin'));
+  assert.strictEqual(chords.chordsOverLyricsToInline('Aleluia\nAmin, amin\nAmin'), 'Aleluia\nAmin, amin\nAmin');
 });
 
 test('stripChords removes chords and chord-only lines', () => {
@@ -409,6 +411,85 @@ testAsync('search and import use the ported endpoints', async () => {
   assert.strictEqual((await resurse.importFromUrl({ id: 7 }, { fetchImpl })).sourceUrl, 'https://www.resursecrestine.ro/cantece/7');
   assert.strictEqual(await asyncCode(resurse.importFromUrl({ url: 'https://evil.example/cantece/1' }, { fetchImpl })), 'invalid_url');
   assert.strictEqual(await asyncCode(resurse.importFromUrl({ id: '1; drop' }, { fetchImpl })), 'invalid_url');
+});
+
+// --- library file import ----------------------------------------------------
+
+const libImport = require('../lib/library-import');
+
+const OWN_FILE = {
+  type: 'worship-app-library', version: 1, exportedAt: '2026-09-25T00:00:00.000Z', app: 'Worship App', count: 4,
+  songs: [
+    { title: 'Aleluia', author: 'X', key: 'Em', sourceLang: 'ro', sourceProvider: 'resursecrestine',
+      sourceUrl: 'https://www.resursecrestine.ro/cantece/1', presentation: 'V1 C',
+      sections: [{ type: 'verse', label: null, content: '[Em]Aleluia', note: 'încet' }, { type: 'chorus', label: null, content: 'Amin', note: null }] },
+    { title: 'Fără secțiuni', sections: [] },
+    { title: 'ALELUIA', sections: [{ type: 'verse', content: 'dublură' }] },
+    { title: 'Nouă', key: 'D', sourceUrl: 'javascript:alert(1)', sections: [{ type: 'verse', content: 'text' }] },
+  ],
+};
+
+const SV_FILE = {
+  type: 'sanctuary-voice-library', version: 1, exportedAt: '2026-09-01T00:00:00.000Z', count: 2,
+  songs: [
+    {
+      id: 'uuid-1', title: 'Sfânt e Domnul', key: 'H', sourceLang: 'ro',
+      text: 'G             D\nNe ridici din noaptea grea\n\nRefren text\nal doilea rând\n\n\nPunte text',
+      labels: ['Strofa 1', 'Refren', 'Pod special'],
+      sections: ['verse', 'chorus', 'rap'],
+      sectionNotes: ['', 'de două ori', ''],
+      translationsByHash: { abc123: { en: 'Holy is the Lord' } },
+      updatedAt: '2026-08-01T00:00:00.000Z',
+    },
+    { id: 'uuid-2', title: 'Isus', key: 'D', sourceLang: 'en', text: 'Unu\n\nDoi', labels: ['Verse 1', 'Verse 2'], sections: ['verse', 'chorus'] },
+  ],
+};
+
+test('library import: own format -> new, existing, invalid (validation + duplicate in file)', () => {
+  const file = libImport.parseLibraryFile(OWN_FILE);
+  assert.strictEqual(file.format, 'worship-app-library');
+  const plan = libImport.planImport(file.entries, { t: tro, findIdByTitle: (title) => (q(title) === 'aleluia' ? 7 : null) });
+  assert.deepStrictEqual(plan.add.map((x) => x.value.title), ['Nouă']);
+  assert.deepStrictEqual(plan.existing.map((x) => [x.id, x.value.title]), [[7, 'Aleluia']]);
+  assert.deepStrictEqual(plan.invalid.map((x) => x.title), ['Fără secțiuni', 'ALELUIA']);
+  assert.match(plan.invalid[1].reason, /mai multe ori/);
+  assert.deepStrictEqual(plan.existing[0].meta, { sourceLang: 'ro', sourceProvider: 'resursecrestine', sourceUrl: 'https://www.resursecrestine.ro/cantece/1', presentation: 'V1 C' });
+  assert.strictEqual(plan.add[0].meta.sourceUrl, null);
+  assert.ok(libImport.planImport(libImport.parseLibraryFile(OWN_FILE).entries, { t: tro, findIdByTitle: () => null }).invalid.every((x) => x.title !== 'Nouă'));
+  // an invalid key in our own format is a validation error, like POST /api/songs
+  const withBadKey = libImport.parseLibraryFile({ ...OWN_FILE, songs: [{ ...OWN_FILE.songs[3], key: 'H' }] });
+  assert.strictEqual(libImport.planImport(withBadKey.entries, { t: tro, findIdByTitle: () => null }).invalid[0].reason, 'Tonalitate necunoscută.');
+});
+
+test('library import: Sanctuary Voice blocks, types, notes, labels, chords; ids and translations dropped', () => {
+  const file = libImport.parseLibraryFile(SV_FILE);
+  const [first, second] = file.entries;
+  assert.strictEqual(first.body.song_key, '');
+  assert.deepStrictEqual(first.body.sections, [
+    { type: 'verse', label: '', content: '[G]Ne ridici din [D]noaptea grea', note: '' },
+    { type: 'chorus', label: '', content: 'Refren text\nal doilea rând', note: 'de două ori' },
+    { type: 'verse', label: 'Pod special', content: 'Punte text', note: '' },
+  ]);
+  assert.deepStrictEqual(first.meta, { sourceLang: 'ro' });
+  assert.strictEqual(first.keepAuthor, true);
+  assert.ok(!JSON.stringify(file).includes('translationsByHash') && !JSON.stringify(file).includes('uuid-1'));
+  // "Verse 2" is Sanctuary Voice's own fallback label, not a custom one.
+  assert.deepStrictEqual(second.body.sections.map((x) => [x.type, x.label]), [['verse', ''], ['chorus', '']]);
+  assert.strictEqual(second.body.song_key, 'D');
+  assert.strictEqual(second.meta.sourceLang, 'en');
+  const plan = libImport.planImport(file.entries, { t: tro, findIdByTitle: () => null });
+  assert.deepStrictEqual(plan.add.map((x) => x.value.title), ['Sfânt e Domnul', 'Isus']);
+});
+
+test('library import: anything else is rejected', () => {
+  const code = (data) => { try { libImport.parseLibraryFile(data); } catch (err) { return err.code; } return 'accepted'; };
+  assert.strictEqual(code(null), 'format');
+  assert.strictEqual(code([]), 'format');
+  assert.strictEqual(code({ type: 'playlist', version: 1, songs: [] }), 'format');
+  assert.strictEqual(code({ type: 'worship-app-library', version: 2, songs: [] }), 'format');
+  assert.strictEqual(code({ type: 'worship-app-library', version: 1 }), 'format');
+  assert.strictEqual(code({ type: 'worship-app-library', version: 1, songs: Array(2001).fill({}) }), 'too_many');
+  assert.strictEqual(code({ type: 'sanctuary-voice-library', version: 1, songs: [] }), 'accepted');
 });
 
 // --- sections -------------------------------------------------------------

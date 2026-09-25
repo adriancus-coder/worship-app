@@ -51,7 +51,9 @@ app.use(helmet({
 }));
 app.use(compression());
 app.use(createI18nMiddleware());
-app.use(express.json({ limit: '100kb' }));
+const jsonBody = express.json({ limit: '100kb' });
+// The library import route parses its own, larger body (routes/songs.js).
+app.use((req, res, next) => (req.path === '/api/songs/import' ? next() : jsonBody(req, res, next)));
 
 // Pages are served only through their routes, never as raw .html files.
 app.use((req, res, next) => (req.path.endsWith('.html') ? res.status(404).end() : next()));
@@ -73,7 +75,10 @@ app.use('/api', (req, res) => {
 
 app.use((err, req, res, next) => {
   if (res.headersSent) return next(err);
-  if (err.type === 'entity.parse.failed' || err.type === 'entity.too.large') {
+  if (err.type === 'entity.too.large') {
+    return res.status(413).json({ error: (req.t || t)('errors.bodyTooLarge') });
+  }
+  if (err.type === 'entity.parse.failed') {
     return res.status(err.status || 400).json({ error: (req.t || t)('errors.badRequest') });
   }
   logger.error('Unhandled error on', req.method, req.path, err);

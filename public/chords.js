@@ -5,7 +5,8 @@
 
 (function (root) {
   // G, D/F#, Em7, Bbmaj7, Csus4, Am7b5, C(add9), E7#9, Gm/Bb, N.C.
-  const CHORD_RE = /^(?:N\.?C\.?|[A-G][#b]?(?:maj|min|m|dim|aug|sus|add|M|\+|°|ø)?(?:\d+|maj\d*|sus\d*|add\d+|dim\d*|aug|[#b]\d+|\(\w+\))*(?:\/[A-G][#b]?)?)$/;
+  // Minor is written "m" only: "Amin" is the Romanian word (Amen), not A minor.
+  const CHORD_RE = /^(?:N\.?C\.?|[A-G][#b]?(?:maj|m|dim|aug|sus|add|M|\+|°|ø)?(?:\d+|maj\d*|sus\d*|add\d+|dim\d*|aug|[#b]\d+|\(\w+\))*(?:\/[A-G][#b]?)?)$/;
   const INLINE_CHORD_RE = /\[([^\]\n]*)\]/g;
 
   function isChord(token) {

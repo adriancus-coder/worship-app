@@ -355,3 +355,35 @@ dialog .message:empty { display: none; }
 
 .library-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border); }
 .library-actions > * { flex: 1 1 160px; }
+
+/* --- library file import -------------------------------------------------- */
+
+.import-review h2:focus { outline: none; }
+.import-review .message:empty { display: none; }
+
+.import-list {
+  margin-bottom: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.import-list summary {
+  display: flex;
+  align-items: center;
+  min-height: var(--touch);
+  padding: 0 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.import-list ul { margin: 0; padding: 0 14px 12px 32px; overflow-wrap: anywhere; }
+.import-list li + li { margin-top: 4px; }
+#import-invalid summary { color: var(--error); }
+
+.choice { margin: 16px 0; gap: 0; }
+.choice legend { color: var(--text); }
+.choice input[type="radio"] { width: 24px; height: 24px; margin: 0; accent-color: var(--accent); }
+
+.import-summary { list-style: none; margin: 0 0 16px; padding: 0; font-size: 1.0625rem; }
+.import-summary li { padding: 4px 0; }

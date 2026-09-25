@@ -52,6 +52,8 @@
 
       <div class="library-actions" id="library-actions" hidden>
         <a class="button secondary" id="export-library" href="/api/songs/export" download data-i18n="library.export"></a>
+        <button type="button" class="secondary" id="import-library" data-i18n="library.import"></button>
+        <input type="file" id="import-file" accept=".json,application/json" hidden>
       </div>
     </div>
 
@@ -95,6 +97,36 @@
         </div>
       </section>
     </div>
+
+    <section id="import-review" class="import-review" hidden aria-labelledby="import-heading">
+      <h2 id="import-heading" tabindex="-1" data-i18n="import.heading"></h2>
+      <p id="import-file-name" class="muted"></p>
+      <p id="import-status" class="muted" role="status" aria-live="polite"></p>
+      <p id="import-error" class="message error" role="alert"></p>
+
+      <div id="import-plan" hidden>
+        <details class="import-list" id="import-new"><summary></summary><ul></ul></details>
+        <details class="import-list" id="import-existing"><summary></summary><ul></ul></details>
+        <details class="import-list" id="import-invalid"><summary></summary><ul></ul></details>
+
+        <fieldset class="choice" id="import-mode">
+          <legend data-i18n="import.modeLegend"></legend>
+          <label class="checkbox"><input type="radio" name="import-mode" value="skip" checked><span data-i18n="import.modeSkip"></span></label>
+          <label class="checkbox"><input type="radio" name="import-mode" value="update"><span data-i18n="import.modeUpdate"></span></label>
+        </fieldset>
+
+      </div>
+
+      <div class="form-actions" id="import-actions">
+        <button type="button" id="import-run" hidden></button>
+        <button type="button" class="secondary" id="import-cancel" data-i18n="import.cancel"></button>
+      </div>
+
+      <div id="import-result" hidden>
+        <ul class="import-summary" id="import-summary"></ul>
+        <button type="button" id="import-done" data-i18n="import.back"></button>
+      </div>
+    </section>
   </main>
   <script src="/i18n.js"></script>
   <script src="/chords.js"></script>
@@ -103,5 +135,6 @@
   <script src="/song-render.js"></script>
   <script src="/library.js"></script>
   <script src="/library-online.js"></script>
+  <script src="/library-import.js"></script>
 </body>
 </html>
