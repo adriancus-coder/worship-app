@@ -12,6 +12,7 @@ const logger = require('./lib/logger');
 const { openDb, runMigrations } = require('./lib/db');
 const { createAuth } = require('./lib/auth');
 const { createPageRenderer } = require('./lib/pages');
+const { createThemeResolver } = require('./lib/theme');
 const { t, createI18nMiddleware } = require('./lib/i18n');
 const createHealthRouter = require('./routes/health');
 const createSetupRouter = require('./routes/setup');
@@ -79,8 +80,9 @@ app.use((req, res, next) => (req.path.endsWith('.html') ? res.status(404).end() 
 app.use(express.static(path.join(__dirname, 'public'), { index: false }));
 
 app.use(createHealthRouter({ config }));
-const sendPage = createPageRenderer({ config });
-app.use(createPwaRouter({ config, logger, sendPage }));
+const { themeOf } = createThemeResolver({ db, auth });
+const sendPage = createPageRenderer({ config, themeOf });
+app.use(createPwaRouter({ config, logger, sendPage, themeOf }));
 
 app.use(createSetupRouter({ db, config, logger, sendPage }));
 app.use(createAuthRouter({ db, auth, config, logger, live }));

@@ -765,6 +765,46 @@ async function main() {
     assert.strictEqual((await api('POST', '/api/auth/login', null, { email: 'ion@x.ro', password: reset.body.temporaryPassword })).status, 200);
   });
 
+  await step('theme: own choice on every device, church default otherwise, cookie and first paint', async () => {
+    const pref = async (cookie) => /data-theme-pref="(\w+)" data-theme="(\w+)"/.exec(await (await fetch(`${base()}/library`, { headers: { Cookie: cookie } })).text()).slice(1).join('/');
+    const cookieOf = (res) => (/wa_theme=(\w+)/.exec(res.headers.get('set-cookie') || '') || [])[1];
+    // church default (dark) for a user without a choice
+    let me = await api('GET', '/api/auth/me', member);
+    assert.deepStrictEqual([me.body.user.theme, me.body.user.themeOwn], ['dark', null]);
+    assert.strictEqual(cookieOf(me), 'dark', 'the cookie follows the effective theme');
+    assert.strictEqual(await pref(member), 'dark/dark');
+    // the owner changes the default: the member follows it
+    assert.strictEqual((await api('PUT', '/api/settings/theme-default', member, { theme: 'light' })).status, 403);
+    assert.strictEqual((await api('PUT', '/api/settings/theme-default', owner, { theme: 'purple' })).status, 400);
+    assert.strictEqual((await api('PUT', '/api/settings/theme-default', owner, { theme: 'light' })).body.themeDefault, 'light');
+    assert.strictEqual((await api('GET', '/api/settings', owner)).body.themeDefault, 'light');
+    assert.strictEqual((await api('GET', '/api/auth/me', member)).body.user.theme, 'light');
+    assert.strictEqual(await pref(member), 'light/light');
+    // own choice: wins over the default, on another device (another session) too
+    const bad = await api('PUT', '/api/me/theme', member, { theme: 'pink' });
+    assert.deepStrictEqual([bad.status, typeof bad.body.error], [400, 'string']);
+    const set = await api('PUT', '/api/me/theme', member, { theme: 'auto' });
+    assert.deepStrictEqual([set.status, set.body.theme, cookieOf(set)], [200, 'auto', 'auto']);
+    assert.strictEqual(await pref(member), 'auto/dark', 'auto: the browser resolves it (public/theme.js)');
+    const other = await login('membru@x.ro');
+    assert.strictEqual(await pref(other), 'auto/dark');
+    await api('PUT', '/api/me/theme', other, { theme: 'dark' });
+    assert.strictEqual((await api('GET', '/api/auth/me', member)).body.user.theme, 'dark', 'the first device sees it');
+    // login sets the cookie: signed-out pages of this device follow it
+    const res = await api('POST', '/api/auth/login', null, { email: 'membru@x.ro', password: PASSWORD });
+    assert.strictEqual(cookieOf(res), 'dark');
+    const loginPage = async (cookie) => /data-theme-pref="(\w+)"/.exec(await (await fetch(`${base()}/login`, { headers: cookie ? { Cookie: cookie } : {} })).text())[1];
+    assert.strictEqual(await loginPage('wa_theme=light'), 'light');
+    assert.strictEqual(await loginPage(null), 'auto', 'no cookie: the device decides');
+    // null returns to the church default; the manifest follows the theme
+    assert.strictEqual((await api('PUT', '/api/me/theme', member, { theme: null })).body.theme, 'light');
+    const manifest = await (await fetch(`${base()}/manifest.webmanifest`, { headers: { Cookie: member } })).json();
+    assert.deepStrictEqual([manifest.theme_color, manifest.background_color], ['#f7f5f1', '#f7f5f1']);
+    const html = await (await fetch(`${base()}/library`, { headers: { Cookie: member } })).text();
+    assert.ok(html.includes('<meta name="theme-color" content="#f7f5f1">') && html.includes('content="default"') && /<script src="\/theme\.js\?v=/.test(html));
+    await api('PUT', '/api/settings/theme-default', owner, { theme: 'dark' });
+  });
+
   await step('first login: a temporary password must be changed before anything else', async () => {
     const created = await api('POST', '/api/team', owner, { name: 'Maria', email: 'maria@x.ro', role: 'member' });
     const temp = created.body.temporaryPassword;

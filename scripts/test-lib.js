@@ -1227,6 +1227,37 @@ test('events: the editor save keeps projector-only items where they were', () =>
   mem.close();
 });
 
+test('theme: browser colours match the CSS tokens; migration 015', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const theme = require('../lib/theme');
+  const css = fs.readFileSync(path.join(__dirname, '..', 'public', 'styles.css'), 'utf8');
+  const token = (selector) => {
+    const start = css.indexOf(`${selector} {`);
+    return /--background:\s*(#[0-9a-f]+)/i.exec(css.slice(start, css.indexOf('\n}', start)))[1].toLowerCase();
+  };
+  assert.strictEqual(theme.BROWSER_COLORS.dark, token(':root'));
+  assert.strictEqual(theme.BROWSER_COLORS.light, token(':root[data-theme="light"]'));
+  assert.deepStrictEqual(['dark', 'light', 'auto'].map(theme.browserColor), [token(':root'), token(':root[data-theme="light"]'), token(':root')]);
+  assert.deepStrictEqual(['dark', 'light', 'auto'].map(theme.statusBarStyle), ['black-translucent', 'default', 'default']);
+  assert.ok(theme.isTheme('auto') && !theme.isTheme('blue') && !theme.isTheme(null));
+  const Database = require('better-sqlite3');
+  const { runMigrations } = require('../lib/db');
+  const mem = new Database(':memory:');
+  runMigrations(mem);
+  mem.prepare("INSERT INTO admins (id, name, created_at) VALUES (1, 'A', 0)").run();
+  const add = mem.prepare("INSERT INTO users (admin_id, email, name, password_hash, role, created_at, theme) VALUES (1, ?, 'U', 'x', 'member', 0, ?)");
+  for (const [i, value] of [null, 'dark', 'light', 'auto'].entries()) add.run(`u${i}@x.ro`, value);
+  assert.throws(() => add.run('bad@x.ro', 'blue'), /CHECK/);
+  const settings = require('../lib/admin-settings').createAdminSettings(mem);
+  assert.strictEqual(settings.themeDefault(1), 'dark', 'default dark');
+  settings.set(1, 'theme_default', 'light');
+  assert.strictEqual(settings.themeDefault(1), 'light');
+  settings.set(1, 'theme_default', 'purple');
+  assert.strictEqual(settings.themeDefault(1), 'dark', 'an invalid stored value falls back');
+  mem.close();
+});
+
 test('team: temporary passwords, validation', () => {
   const T = require('../lib/team');
   const seen = new Set();

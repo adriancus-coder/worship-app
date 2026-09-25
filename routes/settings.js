@@ -4,7 +4,7 @@ const express = require('express');
 const { requireRole } = require('../lib/auth');
 const { MAX_BYTES, sniff, createLogoStore } = require('../lib/logo');
 const { createScreenStore } = require('../lib/screens');
-const { NOTATIONS, createAdminSettings } = require('../lib/admin-settings');
+const { NOTATIONS, THEME_DEFAULTS, createAdminSettings } = require('../lib/admin-settings');
 
 // Admin settings (owner only): the church logo shown by the projector and the default
 // chord notation.
@@ -28,7 +28,19 @@ function createSettingsRouter({ db, auth, config, logger, screensHub }) {
   });
 
   router.get('/api/settings', (req, res) => {
-    res.json({ logo: logoInfo(req.adminId), chordNotationDefault: settings.chordNotationDefault(req.adminId) });
+    res.json({
+      logo: logoInfo(req.adminId),
+      chordNotationDefault: settings.chordNotationDefault(req.adminId),
+      themeDefault: settings.themeDefault(req.adminId),
+    });
+  });
+
+  // The church default colour theme, for users without their own choice.
+  router.put('/api/settings/theme-default', (req, res) => {
+    const theme = (req.body || {}).theme;
+    if (!THEME_DEFAULTS.includes(theme)) return res.status(400).json({ error: req.t('errors.themeInvalid') });
+    settings.set(req.adminId, 'theme_default', theme);
+    res.json({ themeDefault: theme });
   });
 
   // The church default chord notation, for users without their own preference.

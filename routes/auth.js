@@ -6,13 +6,14 @@ const { DUMMY_HASH, verifyPassword } = require('../lib/auth');
 const { createFailureLimiter } = require('../lib/rate-limit');
 const { isLang, setLangCookie } = require('../lib/i18n');
 const { createAdminSettings } = require('../lib/admin-settings');
+const { setThemeCookie, themeCookie } = require('../lib/theme');
 
 function createAuthRouter({ db, auth, config, logger, live }) {
   const router = express.Router();
   const limiter = createFailureLimiter({ maxFailures: 5, windowMs: 15 * 60 * 1000 });
   const settings = createAdminSettings(db);
 
-  const findUser = db.prepare(`SELECT u.id, u.admin_id, u.name, u.email, u.role, u.locale, u.password_hash,
+  const findUser = db.prepare(`SELECT u.id, u.admin_id, u.name, u.email, u.role, u.locale, u.theme, u.password_hash,
       a.name AS admin_name
     FROM users u JOIN admins a ON a.id = u.admin_id
     WHERE u.email = ? AND u.active = 1`);
@@ -55,6 +56,8 @@ function createAuthRouter({ db, auth, config, logger, live }) {
       updateLocale.run(locale, user.id, user.admin_id);
     }
     setLangCookie(res, locale, config);
+    // The effective theme (own, else the church default): signed-out pages follow it too.
+    setThemeCookie(res, user.theme || settings.themeDefault(user.admin_id), config);
     logger.info(`User #${user.id} logged in (admin #${user.admin_id})`);
     res.json({
       user: { id: user.id, name: user.name, email: user.email, role: user.role, locale },
@@ -74,10 +77,19 @@ function createAuthRouter({ db, auth, config, logger, live }) {
 
   router.get('/api/auth/me', auth.requireUser, (req, res) => {
     res.set('Cache-Control', 'no-store');
-    // chordNotation is the effective one: the user's own, else the church default.
+    // chordNotation and theme are the effective ones: the user's own, else the church default.
     const own = req.user.chordNotation || null;
+    const theme = req.user.theme || settings.themeDefault(req.adminId);
+    // Keeps this device's cookie in step (a choice made on another device, a new default).
+    if (themeCookie(req) !== theme) setThemeCookie(res, theme, config);
     res.json({
-      user: { ...req.user, chordNotation: own || settings.chordNotationDefault(req.adminId), chordNotationOwn: own },
+      user: {
+        ...req.user,
+        chordNotation: own || settings.chordNotationDefault(req.adminId),
+        chordNotationOwn: own,
+        theme,
+        themeOwn: req.user.theme || null,
+      },
       admin: req.admin,
     });
   });

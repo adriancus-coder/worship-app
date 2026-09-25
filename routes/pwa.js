@@ -4,13 +4,13 @@ const fs = require('fs');
 const path = require('path');
 const express = require('express');
 const { buildInfo } = require('../lib/pwa');
+const { browserColor } = require('../lib/theme');
 
 const SHORT_NAME_MAX = 12;
-const STAGE = '#141318';
 
 // The web app manifest: installable from Chrome / Edge (and the icons for iOS "Add to Home
 // Screen"). Names from config, language from the request.
-function createPwaRouter({ config, logger, sendPage }) {
+function createPwaRouter({ config, logger, sendPage, themeOf = () => 'dark' }) {
   const router = express.Router();
   const build = buildInfo(config.VERSION);
   const workerSource = fs.readFileSync(path.join(__dirname, '..', 'lib', 'service-worker.js'), 'utf8')
@@ -33,8 +33,9 @@ function createPwaRouter({ config, logger, sendPage }) {
       scope: '/',
       display: 'standalone',
       orientation: 'any',
-      background_color: STAGE,
-      theme_color: STAGE,
+      // The splash and title bar of the installed app: the user's theme ('auto' -> dark).
+      background_color: browserColor(themeOf(req)),
+      theme_color: browserColor(themeOf(req)),
       icons: [
         { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
         { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },

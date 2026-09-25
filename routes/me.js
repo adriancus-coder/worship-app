@@ -2,7 +2,8 @@
 
 const express = require('express');
 const { isLang, setLangCookie } = require('../lib/i18n');
-const { NOTATIONS } = require('../lib/admin-settings');
+const { NOTATIONS, createAdminSettings } = require('../lib/admin-settings');
+const { isTheme, setThemeCookie } = require('../lib/theme');
 const asyncRoute = require('../lib/async-route');
 const { hashPassword, verifyPassword } = require('../lib/auth');
 const { MIN_PASSWORD_LENGTH } = require('../lib/team');
@@ -18,6 +19,8 @@ function createMeRouter({ db, auth, config, logger, live }) {
 
   const updateLocale = db.prepare('UPDATE users SET locale = ? WHERE id = ? AND admin_id = ?');
   const updateNotation = db.prepare('UPDATE users SET chord_notation = ? WHERE id = ? AND admin_id = ?');
+  const updateTheme = db.prepare('UPDATE users SET theme = ? WHERE id = ? AND admin_id = ?');
+  const settings = createAdminSettings(db);
 
   router.put('/api/me/locale', auth.requireUser, (req, res) => {
     const locale = (req.body || {}).locale;
@@ -35,6 +38,17 @@ function createMeRouter({ db, auth, config, logger, live }) {
     if (!NOTATIONS.includes(notation)) return res.status(400).json({ error: req.t('errors.chordNotationInvalid') });
     updateNotation.run(notation, req.user.id, req.adminId);
     res.json({ ok: true, chordNotation: notation });
+  });
+
+  // The user's own colour theme ('dark' | 'light' | 'auto'), on every device; null returns
+  // to the church default. The cookie keeps signed-out pages of this device in step.
+  router.put('/api/me/theme', auth.requireUser, (req, res) => {
+    const theme = (req.body || {}).theme;
+    if (theme !== null && !isTheme(theme)) return res.status(400).json({ error: req.t('errors.themeInvalid') });
+    updateTheme.run(theme, req.user.id, req.adminId);
+    const effective = theme || settings.themeDefault(req.adminId);
+    setThemeCookie(res, effective, config);
+    res.json({ ok: true, theme: effective, themeOwn: theme });
   });
 
   // The user's own password: the current one (a temporary one included) and a new one of at
