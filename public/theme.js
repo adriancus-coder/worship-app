@@ -37,6 +37,53 @@
     else if (media.addListener) media.addListener(onChange);
   }
 
+  // Live, console and follow pages (<body data-stage>) in the light theme: once, a small
+  // dismissible hint that the dark theme suits the stage better.
+  const HINT_KEY = 'wa_stage_theme_hint';
+  function hintSeen() {
+    try {
+      return window.localStorage.getItem(HINT_KEY) === '1';
+    } catch (err) {
+      return false;
+    }
+  }
+  function stageHint() {
+    const body = document.body;
+    if (!body || !body.hasAttribute('data-stage') || !window.I18N) return;
+    let box = document.getElementById('stage-hint');
+    if (root.dataset.theme !== 'light' || hintSeen()) {
+      if (box) box.hidden = true;
+      return;
+    }
+    if (!box) {
+      box = document.createElement('div');
+      box.id = 'stage-hint';
+      box.className = 'stage-hint';
+      box.setAttribute('role', 'note');
+      const text = document.createElement('p');
+      const close = document.createElement('button');
+      close.type = 'button';
+      close.className = 'secondary';
+      close.dataset.icon = 'close';
+      close.addEventListener('click', () => {
+        try {
+          window.localStorage.setItem(HINT_KEY, '1');
+        } catch (err) {
+          // no storage: hidden for this page only
+        }
+        box.hidden = true;
+      });
+      box.append(text, close);
+      (document.querySelector('main') || body).prepend(box);
+    }
+    box.firstChild.textContent = window.I18N.t('theme.stageHint');
+    box.lastChild.textContent = window.I18N.t('theme.stageHintClose');
+    box.hidden = false;
+  }
+  document.addEventListener('DOMContentLoaded', stageHint);
+  document.addEventListener('theme:change', stageHint);
+  document.addEventListener('i18n:change', stageHint);
+
   window.THEME = {
     set(pref) {
       root.dataset.themePref = pref;

@@ -1,7 +1,7 @@
 'use strict';
 
-// Admin settings (/settings, owner only): the default chord notation and the church logo
-// shown by the projector.
+// Admin settings (/settings, owner only): the default chord notation, the default colour
+// theme and the church logo shown by the projector.
 
 (function () {
   const { api, setTitle } = window.PAGE;
@@ -34,6 +34,23 @@
     if (!res.ok) return message(res.body.error || t('common.networkError'), 'error');
     renderLogo(res.body.logo);
     renderNotation(res.body.chordNotationDefault);
+    renderThemeDefault(res.body.themeDefault);
+  }
+
+  function renderThemeDefault(theme) {
+    for (const button of document.querySelectorAll('[data-theme-default]')) {
+      button.setAttribute('aria-pressed', String(button.dataset.themeDefault === theme));
+    }
+  }
+
+  for (const button of document.querySelectorAll('[data-theme-default]')) {
+    button.addEventListener('click', async () => {
+      const res = await api('/api/settings/theme-default', { method: 'PUT', body: { theme: button.dataset.themeDefault } });
+      const out = $('theme-message');
+      out.className = `message ${res.ok ? 'success' : 'error'}`;
+      out.textContent = res.ok ? t('settings.themeSaved') : res.body.error || t('common.networkError');
+      if (res.ok) renderThemeDefault(res.body.themeDefault);
+    });
   }
 
   for (const button of document.querySelectorAll('[data-notation]')) {

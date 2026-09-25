@@ -165,6 +165,31 @@
   const notationLabel = el('span', { class: 'shell-setting-label', id: 'shell-notation-label' });
   const notationSlot = el('span', { class: 'shell-notation' });
 
+  // Temă: Întunecat · Luminos · Automat — applied at once (public/theme.js), saved on the account.
+  const themeLabel = el('span', { class: 'shell-setting-label', id: 'shell-theme-label' });
+  const themeButtons = ['dark', 'light', 'auto'].map((value) => el('button', {
+    type: 'button',
+    'data-theme-choice': value,
+    'aria-pressed': 'false',
+    onclick: () => {
+      if (window.THEME) window.THEME.set(value);
+      renderTheme();
+      fetch('/api/me/theme', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ theme: value }),
+      }).catch(() => {}); // the page already shows it; the account catches up next time
+    },
+  }));
+  const themeSwitch = el('div', { class: 'choice-group theme-switch', role: 'group', 'aria-labelledby': 'shell-theme-label' }, ...themeButtons);
+  function renderTheme() {
+    const pref = window.THEME ? window.THEME.pref : 'dark';
+    for (const button of themeButtons) {
+      button.textContent = t(`theme.${button.dataset.themeChoice}`);
+      button.setAttribute('aria-pressed', String(button.dataset.themeChoice === pref));
+    }
+  }
+
   const logoutLabel = el('span', { class: 'shell-row-label' });
   const logout = el('button', {
     type: 'button',
@@ -201,7 +226,8 @@
       navSection,
       section('shell.sections.preferences',
         el('div', { class: 'shell-setting' }, langLabel, langSwitch),
-        el('div', { class: 'shell-setting' }, notationLabel, notationSlot)),
+        el('div', { class: 'shell-setting' }, notationLabel, notationSlot),
+        el('div', { class: 'shell-setting shell-setting-stack' }, themeLabel, themeSwitch)),
       section('shell.sections.account',
         installRow,
         el('ul', { class: 'shell-rows' }, ...accountLinks.map((p) => p.item)),
@@ -267,6 +293,8 @@
     for (const heading of panel.querySelectorAll('.shell-section-title')) heading.textContent = t(heading.dataset.key);
     langLabel.textContent = t('shell.language');
     notationLabel.textContent = t('notation.label');
+    themeLabel.textContent = t('theme.label');
+    renderTheme();
     logoutLabel.textContent = t('app.logout');
     installLabel.textContent = t('pwa.install');
     for (const p of pageLinks) p.label.textContent = t(p.key);
