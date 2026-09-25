@@ -26,6 +26,7 @@ const createSettingsRouter = require('./routes/settings');
 const createMediaRouter = require('./routes/media');
 const { createHomeRouter } = require('./routes/home');
 const { createTeamRouter } = require('./routes/team');
+const { createPwaRouter } = require('./routes/pwa');
 const { createLiveHub } = require('./socket/live');
 const { createScreensHub } = require('./socket/screens');
 
@@ -78,6 +79,7 @@ app.use((req, res, next) => (req.path.endsWith('.html') ? res.status(404).end() 
 app.use(express.static(path.join(__dirname, 'public'), { index: false }));
 
 app.use(createHealthRouter({ config }));
+app.use(createPwaRouter({ config }));
 const sendPage = createPageRenderer({ config });
 
 app.use(createSetupRouter({ db, config, logger, sendPage }));
