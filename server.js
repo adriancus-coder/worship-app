@@ -21,6 +21,7 @@ const createSongsRouter = require('./routes/songs');
 const createResurseRouter = require('./routes/resurse');
 const createEventsRouter = require('./routes/events');
 const createPagesRouter = require('./routes/pages');
+const { createScreensRouter } = require('./routes/screens');
 const { createLiveHub } = require('./socket/live');
 
 const db = openDb(config.DATA_DIR);
@@ -73,6 +74,7 @@ app.use(createMeRouter({ db, auth, config }));
 app.use(createSongsRouter({ db, auth, config, logger, live }));
 app.use(createResurseRouter({ db, auth, logger }));
 app.use(createEventsRouter({ db, auth, logger, live }));
+app.use(createScreensRouter({ db, auth, logger }));
 app.use(createPagesRouter({ db, auth, sendPage }));
 
 app.use('/api', (req, res) => {

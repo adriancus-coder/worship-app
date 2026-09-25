@@ -850,3 +850,22 @@ button.live-item:disabled { opacity: 1; cursor: default; }
 .follow-setlist { margin: 0; padding-left: 1.5em; display: flex; flex-direction: column; gap: 8px; }
 .follow-setlist li { overflow-wrap: anywhere; }
 .follow-setlist .type-badge { margin-right: 8px; }
+
+/* --- projector screens (admin) ------------------------------------------------------------ */
+
+.app-links { list-style: none; margin: 0 0 16px; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.app-links li[hidden] { display: none; }
+.pair-form { margin: 16px 0 24px; padding: 16px; gap: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+.pair-form h2 { margin: 0; }
+.pair-form .hint { margin: 0; }
+.pair-fields { display: flex; flex-wrap: wrap; gap: 12px; }
+.pair-fields > label { flex: 1 1 200px; }
+.code-input { font-size: 1.375rem; letter-spacing: 0.2em; }
+.screen-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.screen-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 10px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+.online-dot { flex: none; width: 12px; height: 12px; border-radius: 50%; background: var(--border); }
+.online-dot.on { background: var(--success); }
+.screen-text { display: flex; flex-direction: column; flex: 1 1 180px; min-width: 0; }
+.screen-name { font-weight: 600; overflow-wrap: anywhere; }
+.screen-meta { font-size: 0.875rem; color: var(--muted); }
+.screen-tools { display: flex; gap: 8px; }

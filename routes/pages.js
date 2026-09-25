@@ -73,6 +73,12 @@ function createPagesRouter({ db, auth, sendPage }) {
     sendPage(req, res, 'event');
   });
 
+  // Projector screens: pairing and management (owner / leader).
+  router.get('/screens', noStore, signedIn, (req, res) => {
+    if (!canEdit(req)) return res.redirect('/app');
+    sendPage(req, res, 'screens');
+  });
+
   router.get('/songs/new', noStore, signedIn, (req, res) => {
     if (!canEdit(req)) return res.redirect('/library');
     sendPage(req, res, 'song-edit');

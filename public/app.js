@@ -16,6 +16,10 @@
         adminName: me.admin.name,
       });
       whoami.classList.remove('muted');
+      // Admin pages for owner / leader.
+      const manager = ['owner', 'leader'].includes(me.user.role);
+      document.getElementById('screens-link').hidden = !manager;
+      document.getElementById('app-links').hidden = !manager;
     } else if (loadFailed) {
       whoami.removeAttribute('data-i18n');
       whoami.textContent = t('app.loadFailed');
