@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ro" data-app-name="{{APP_NAME}}">
+<html lang="{{LANG}}" data-app-name="{{APP_NAME}}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -8,6 +8,12 @@
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
+  <header class="topbar">
+    <div class="lang-switch" role="group" aria-label="Limbă / Language">
+      <button type="button" data-lang="ro" lang="ro" aria-pressed="false">RO</button>
+      <button type="button" data-lang="en" lang="en" aria-pressed="false">EN</button>
+    </div>
+  </header>
   <main>
     <h1 data-i18n="app.heading"></h1>
     <p id="whoami" class="muted" data-i18n="app.loading"></p>

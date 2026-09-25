@@ -29,7 +29,44 @@ main {
   width: 100%;
   max-width: 440px;
   margin: 0 auto;
-  padding: 32px 16px 48px;
+  padding: 16px 16px 48px;
+}
+
+.topbar {
+  display: flex;
+  justify-content: flex-end;
+  padding: 8px 16px 0;
+}
+
+.lang-switch {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.lang-switch button {
+  min-width: var(--touch);
+  min-height: var(--touch);
+  padding: 0 10px;
+  font-size: 0.875rem;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  background: transparent;
+  border-radius: 0;
+}
+
+.lang-switch button:first-child { border-radius: calc(var(--radius) - 1px) 0 0 calc(var(--radius) - 1px); }
+.lang-switch button:last-child { border-radius: 0 calc(var(--radius) - 1px) calc(var(--radius) - 1px) 0; }
+.lang-switch button + button { border-left: 1px solid var(--border); }
+
+.lang-switch button[aria-pressed="true"] {
+  color: var(--accent-text);
+  background: var(--accent);
+}
+
+.lang-switch button:focus-visible {
+  outline-color: var(--text);
+  outline-offset: -3px;
 }
 
 h1 { font-size: 1.6rem; line-height: 1.25; margin: 0 0 8px; }

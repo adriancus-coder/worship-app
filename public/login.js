@@ -6,14 +6,35 @@
   const button = form.querySelector('button[type="submit"]');
   const { t } = window.I18N;
 
-  function showError(text) {
+  // Messages from a dictionary key re-translate on a language switch;
+  // server messages are cleared because they are in the previous language.
+  function showErrorKey(key, vars) {
+    message.dataset.i18n = key;
+    if (vars) message.dataset.i18nVars = JSON.stringify(vars);
+    else delete message.dataset.i18nVars;
+    message.textContent = t(key, vars);
+    message.className = 'message error';
+  }
+
+  function showErrorText(text) {
+    clearMessage();
     message.textContent = text;
     message.className = 'message error';
   }
 
+  function clearMessage() {
+    delete message.dataset.i18n;
+    delete message.dataset.i18nVars;
+    message.textContent = '';
+  }
+
+  document.addEventListener('i18n:change', () => {
+    if (!message.dataset.i18n) clearMessage();
+  });
+
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
-    message.textContent = '';
+    clearMessage();
 
     const data = {
       email: form.elements.email.value.trim(),
@@ -21,7 +42,7 @@
       remember: form.elements.remember.checked,
     };
     if (!data.email || !data.password) {
-      showError(t('login.missingFields'));
+      showErrorKey('login.missingFields');
       return;
     }
 
@@ -37,9 +58,10 @@
         return;
       }
       const body = await res.json().catch(() => ({}));
-      showError(body.error || t('login.failed'));
+      if (body.error) showErrorText(body.error);
+      else showErrorKey('login.failed');
     } catch (err) {
-      showError(t('common.networkError'));
+      showErrorKey('common.networkError');
     } finally {
       button.disabled = false;
     }

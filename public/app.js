@@ -4,6 +4,23 @@
   const whoami = document.getElementById('whoami');
   const logout = document.getElementById('logout');
   const { t } = window.I18N;
+  let me = null;
+  let loadFailed = false;
+
+  function render() {
+    if (me) {
+      whoami.removeAttribute('data-i18n');
+      whoami.textContent = t('app.signedInAs', {
+        name: me.user.name,
+        role: t(`roles.${me.user.role}`),
+        adminName: me.admin.name,
+      });
+      whoami.classList.remove('muted');
+    } else if (loadFailed) {
+      whoami.removeAttribute('data-i18n');
+      whoami.textContent = t('app.loadFailed');
+    }
+  }
 
   async function load() {
     const res = await fetch('/api/auth/me', { cache: 'no-store' });
@@ -11,10 +28,11 @@
       window.location.replace('/login');
       return;
     }
-    const { user, admin } = await res.json();
-    whoami.textContent = t('app.signedInAs', { name: user.name, role: t(`roles.${user.role}`), adminName: admin.name });
-    whoami.classList.remove('muted');
+    me = await res.json();
+    render();
   }
+
+  document.addEventListener('i18n:change', render);
 
   logout.addEventListener('click', async () => {
     logout.disabled = true;
@@ -26,6 +44,7 @@
   });
 
   load().catch(() => {
-    whoami.textContent = t('app.loadFailed');
+    loadFailed = true;
+    render();
   });
 })();

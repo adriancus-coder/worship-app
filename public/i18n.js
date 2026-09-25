@@ -161,16 +161,49 @@
     return;
   }
 
-  // Browser: fill every [data-i18n] element; {appName} comes from <html data-app-name>.
-  I18N.apply = function apply(scope) {
-    const html = document.documentElement;
+  // Browser: the page language comes from <html lang> (set by the server),
+  // {appName} from <html data-app-name>.
+  const html = document.documentElement;
+  const LANG_COOKIE = 'wa_lang';
+  const ONE_YEAR_SECONDS = 365 * 24 * 60 * 60;
+  let current = LANGS.includes(html.lang) ? html.lang : DEFAULT_LANG;
+
+  function apply(scope) {
     const base = { appName: html.dataset.appName || '' };
-    html.lang = DEFAULT_LANG;
+    html.lang = current;
     for (const el of (scope || document).querySelectorAll('[data-i18n]')) {
       const vars = Object.assign({}, base, el.dataset.i18nVars ? JSON.parse(el.dataset.i18nVars) : null);
-      el.textContent = t(el.dataset.i18n, vars);
+      el.textContent = t(el.dataset.i18n, vars, current);
     }
+    for (const button of document.querySelectorAll('.lang-switch [data-lang]')) {
+      button.setAttribute('aria-pressed', String(button.dataset.lang === current));
+    }
+  }
+
+  // Saves the choice in the wa_lang cookie and re-applies all texts in place.
+  function setLang(lang) {
+    if (!LANGS.includes(lang)) return;
+    const secure = window.location.protocol === 'https:' ? '; Secure' : '';
+    document.cookie = `${LANG_COOKIE}=${lang}; Path=/; Max-Age=${ONE_YEAR_SECONDS}; SameSite=Lax${secure}`;
+    if (lang === current) return;
+    current = lang;
+    apply();
+    document.dispatchEvent(new CustomEvent('i18n:change', { detail: { lang } }));
+  }
+
+  document.addEventListener('click', (event) => {
+    const button = event.target.closest('.lang-switch [data-lang]');
+    if (button) setLang(button.dataset.lang);
+  });
+
+  root.I18N = {
+    DEFAULT_LANG,
+    LANGS,
+    STRINGS,
+    get lang() { return current; },
+    t: (key, vars, lang) => t(key, vars, lang || current),
+    apply,
+    setLang,
   };
-  root.I18N = I18N;
-  I18N.apply();
+  apply();
 })(typeof window !== 'undefined' ? window : this);

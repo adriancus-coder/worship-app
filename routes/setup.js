@@ -3,7 +3,6 @@
 const express = require('express');
 const asyncRoute = require('../lib/async-route');
 const { safeEqual, hashPassword } = require('../lib/auth');
-const { t } = require('../lib/i18n');
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD_LENGTH = 10;
@@ -15,7 +14,7 @@ function cleanText(value) {
   return typeof value === 'string' ? value.trim() : '';
 }
 
-function validate(body) {
+function validate(body, t) {
   const adminName = cleanText(body.adminName);
   const ownerName = cleanText(body.ownerName);
   const ownerEmail = cleanText(body.ownerEmail).toLowerCase();
@@ -59,7 +58,7 @@ function createSetupRouter({ db, config, logger, sendPage }) {
 
   router.get('/setup', (req, res) => {
     if (countAdmins.get() > 0) return res.redirect('/');
-    sendPage(res, 'setup');
+    sendPage(req, res, 'setup');
   });
 
   router.post('/api/setup', asyncRoute(async (req, res) => {
@@ -67,17 +66,17 @@ function createSetupRouter({ db, config, logger, sendPage }) {
 
     if (!config.SETUP_TOKEN) {
       logger.warn('Setup attempt rejected: SETUP_TOKEN is not set, first-run setup is disabled');
-      return res.status(403).json({ error: t('errors.setupDisabled') });
+      return res.status(403).json({ error: req.t('errors.setupDisabled') });
     }
     if (typeof body.setupToken !== 'string' || !safeEqual(body.setupToken, config.SETUP_TOKEN)) {
       logger.warn(`Setup attempt rejected: invalid setup token from ${req.ip}`);
-      return res.status(403).json({ error: t('errors.setupBadToken') });
+      return res.status(403).json({ error: req.t('errors.setupBadToken') });
     }
     if (countAdmins.get() > 0) {
-      return res.status(409).json({ error: t('errors.setupDone') });
+      return res.status(409).json({ error: req.t('errors.setupDone') });
     }
 
-    const { error, value } = validate(body);
+    const { error, value } = validate(body, req.t);
     if (error) return res.status(400).json({ error });
 
     const passwordHash = await hashPassword(value.ownerPassword);
@@ -87,7 +86,7 @@ function createSetupRouter({ db, config, logger, sendPage }) {
       return res.json({ ok: true });
     } catch (err) {
       if (err instanceof SetupConflict) {
-        return res.status(409).json({ error: t('errors.setupDone') });
+        return res.status(409).json({ error: req.t('errors.setupDone') });
       }
       throw err;
     }

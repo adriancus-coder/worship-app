@@ -21,12 +21,12 @@ function createPagesRouter({ db, auth, sendPage }) {
   router.get('/login', noStore, (req, res) => {
     if (!hasAdmin()) return res.redirect('/setup');
     if (auth.getSession(req)) return res.redirect('/app');
-    sendPage(res, 'login');
+    sendPage(req, res, 'login');
   });
 
   router.get('/app', noStore, (req, res) => {
     if (!auth.getSession(req)) return res.redirect('/login');
-    sendPage(res, 'app');
+    sendPage(req, res, 'app');
   });
 
   return router;
