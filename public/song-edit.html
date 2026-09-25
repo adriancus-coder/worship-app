@@ -45,6 +45,23 @@
         <a class="button secondary" id="cancel" href="/library" data-i18n="editor.cancel"></a>
       </div>
     </form>
+
+    <section class="danger-zone" id="danger-zone" hidden>
+      <h2 data-i18n="editor.dangerHeading"></h2>
+      <button type="button" class="danger" id="delete-song" data-i18n="editor.deleteSong"></button>
+    </section>
+
+    <dialog id="delete-dialog" aria-labelledby="delete-dialog-text">
+      <form method="dialog">
+        <p id="delete-dialog-text"></p>
+        <p class="muted" data-i18n="editor.deleteWarning"></p>
+        <p class="message error" id="delete-message" role="alert"></p>
+        <div class="form-actions">
+          <button type="button" class="danger" id="confirm-delete" data-i18n="editor.deleteConfirmButton"></button>
+          <button type="submit" class="secondary" value="cancel" data-i18n="editor.cancel"></button>
+        </div>
+      </form>
+    </dialog>
   </main>
   <script src="/i18n.js"></script>
   <script src="/chords.js"></script>

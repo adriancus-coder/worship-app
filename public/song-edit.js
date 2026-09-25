@@ -18,6 +18,11 @@
   const message = document.getElementById('message');
   const saveButton = document.getElementById('save');
   const cancelLink = document.getElementById('cancel');
+  const dangerZone = document.getElementById('danger-zone');
+  const deleteDialog = document.getElementById('delete-dialog');
+  const deleteText = document.getElementById('delete-dialog-text');
+  const deleteMessage = document.getElementById('delete-message');
+  const confirmDelete = document.getElementById('confirm-delete');
 
   const state = { title: '', sections: [{ type: 'verse', label: '', content: '', note: '' }] };
   let lastMessage = null; // { key, vars } re-translates; { text } is cleared on a language switch
@@ -222,9 +227,39 @@
     }
   });
 
+  // --- delete (edit page only) ---------------------------------------------
+
+  function renderDeleteText() {
+    deleteText.textContent = t('editor.deleteConfirm', { title: state.title });
+  }
+
+  document.getElementById('delete-song').addEventListener('click', () => {
+    renderDeleteText();
+    deleteMessage.textContent = '';
+    deleteDialog.showModal();
+  });
+
+  confirmDelete.addEventListener('click', async () => {
+    confirmDelete.disabled = true;
+    try {
+      const { ok, body } = await api(`/api/songs/${songId}`, { method: 'DELETE' });
+      if (ok) {
+        window.location.assign('/library');
+        return;
+      }
+      deleteMessage.textContent = body.error || t('editor.deleteFailed');
+    } catch (err) {
+      deleteMessage.textContent = t('common.networkError');
+    } finally {
+      confirmDelete.disabled = false;
+    }
+  });
+
   document.addEventListener('i18n:change', () => {
     if (lastMessage && !lastMessage.key) clearMessage();
     renderPage();
+    if (songId) renderDeleteText();
+    deleteMessage.textContent = '';
   });
 
   // --- start ----------------------------------------------------------------
@@ -244,6 +279,7 @@
       renderKeys();
       keySelect.value = song.song_key || '';
       cancelLink.href = `/songs/${song.id}`;
+      dangerZone.hidden = false;
     }
     renderPage();
     form.hidden = false;
