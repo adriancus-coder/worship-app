@@ -680,6 +680,27 @@ test('chord spelling by scale degree in the target key', () => {
   assert.strictEqual(chords.transposeContent('[Ab]x [A#]y', 0, 'D'), '[Ab]x [A#]y');
 });
 
+test('migration 007: live_state defaults, checks and cascade', () => {
+  const Database = require('better-sqlite3');
+  const { runMigrations } = require('../lib/db');
+  const mem = new Database(':memory:');
+  mem.pragma('foreign_keys = ON');
+  runMigrations(mem);
+  mem.prepare("INSERT INTO admins (id, name, created_at) VALUES (1, 'A', 0)").run();
+  mem.prepare(`INSERT INTO events (id, admin_id, name, event_date, created_at, updated_at)
+    VALUES (1, 1, 'E', '2026-10-04', 0, 0)`).run();
+  mem.prepare('INSERT INTO live_state (event_id, admin_id, version, updated_at) VALUES (1, 1, 0, 0)').run();
+  const row = mem.prepare('SELECT * FROM live_state WHERE event_id = 1').get();
+  assert.deepStrictEqual(
+    [row.worship_item_id, row.worship_step, row.projector_follows, row.projector_item_id, row.projector_step, row.projector_source, row.started_at],
+    [null, 0, 'worship', null, 0, 'content', null]);
+  assert.throws(() => mem.prepare("UPDATE live_state SET projector_follows = 'nobody'").run(), /CHECK/);
+  assert.throws(() => mem.prepare("UPDATE live_state SET projector_source = 'slides'").run(), /CHECK/);
+  mem.prepare('DELETE FROM events WHERE id = 1').run();
+  assert.strictEqual(mem.prepare('SELECT COUNT(*) FROM live_state').pluck().get(), 0);
+  mem.close();
+});
+
 test('section codes, arrangements and defaults', () => {
   const S = require('../lib/sections');
   const mixed = [{ type: 'intro' }, { type: 'verse' }, { type: 'chorus' }, { type: 'verse' }, { type: 'pre_chorus' },
