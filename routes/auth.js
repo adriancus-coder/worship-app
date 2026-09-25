@@ -6,7 +6,7 @@ const { DUMMY_HASH, verifyPassword } = require('../lib/auth');
 const { createFailureLimiter } = require('../lib/rate-limit');
 const { isLang, setLangCookie } = require('../lib/i18n');
 
-function createAuthRouter({ db, auth, config, logger }) {
+function createAuthRouter({ db, auth, config, logger, live }) {
   const router = express.Router();
   const limiter = createFailureLimiter({ maxFailures: 5, windowMs: 15 * 60 * 1000 });
 
@@ -60,7 +60,10 @@ function createAuthRouter({ db, auth, config, logger }) {
 
   router.post('/api/auth/logout', (req, res) => {
     const sessionId = auth.getSessionId(req);
-    if (sessionId) auth.deleteSession(sessionId);
+    if (sessionId) {
+      auth.deleteSession(sessionId);
+      live.closeSession(sessionId);
+    }
     auth.clearSessionCookie(res);
     res.json({ ok: true });
   });

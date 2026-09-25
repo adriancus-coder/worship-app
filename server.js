@@ -21,6 +21,7 @@ const createSongsRouter = require('./routes/songs');
 const createResurseRouter = require('./routes/resurse');
 const createEventsRouter = require('./routes/events');
 const createPagesRouter = require('./routes/pages');
+const { createLiveHub } = require('./socket/live');
 
 const db = openDb(config.DATA_DIR);
 const applied = runMigrations(db);
@@ -39,6 +40,9 @@ function cleanupSessions() {
 }
 cleanupSessions();
 setInterval(cleanupSessions, SESSION_CLEANUP_MS).unref();
+
+// Live rooms: routes notify the hub; it is attached to socket.io below.
+const live = createLiveHub({ db, auth, logger });
 
 const app = express();
 app.disable('x-powered-by');
@@ -64,7 +68,7 @@ app.use(createHealthRouter({ config }));
 const sendPage = createPageRenderer({ config });
 
 app.use(createSetupRouter({ db, config, logger, sendPage }));
-app.use(createAuthRouter({ db, auth, config, logger }));
+app.use(createAuthRouter({ db, auth, config, logger, live }));
 app.use(createMeRouter({ db, auth, config }));
 app.use(createSongsRouter({ db, auth, config, logger }));
 app.use(createResurseRouter({ db, auth, logger }));
@@ -88,11 +92,7 @@ app.use((err, req, res, next) => {
 });
 
 const server = http.createServer(app);
-const io = new SocketServer(server);
-
-io.on('connection', (socket) => {
-  logger.debug('socket connected', socket.id);
-});
+live.attach(new SocketServer(server));
 
 server.listen(config.PORT, () => {
   logger.info(`${config.APP_NAME} v${config.VERSION} listening on port ${config.PORT} (${config.NODE_ENV})`);
