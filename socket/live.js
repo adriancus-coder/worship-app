@@ -4,14 +4,17 @@
 // a socket joins at most one event room, "admin:<adminId>:event:<eventId>", and receives
 // full `live:state` snapshots from the server (the single source of truth).
 
-const { createLiveStore } = require('../lib/live');
+const { EDITOR_ROLES, LiveError, createLiveStore } = require('../lib/live');
 const { resolveLang, t: translate } = require('../lib/i18n');
 
 const ROLES = ['owner', 'leader', 'operator', 'member'];
 const PRESENCE_DEBOUNCE_MS = 1000;
 const SESSION_SWEEP_MS = 30 * 1000;
 
+const COMMANDS = ['event.start', 'event.end', 'worship.next', 'worship.prev', 'worship.goto'];
+
 const roomName = (adminId, eventId) => `admin:${adminId}:event:${eventId}`;
+const isId = (value) => Number.isInteger(value) && value > 0;
 
 // Created before the HTTP routes (they notify it), attached to socket.io once it exists.
 function createLiveHub({ db, auth, logger }) {
@@ -94,9 +97,54 @@ function createLiveHub({ db, auth, logger }) {
     reply(ack, { ok: true, version: state.version });
   }
 
+  function broadcast(adminId, eventId) {
+    const state = fullSnapshot(adminId, eventId);
+    if (state) io.to(roomName(adminId, eventId)).emit('live:state', state);
+  }
+
+  function fail(socket, ack, code, extra) {
+    reply(ack, { ok: false, code, error: tr(socket, `live.errors.${code}`), ...extra });
+  }
+
+  // live:command { type, eventId, expectedVersion?, itemId?, step? } -> ack { ok, version }
+  // or { ok: false, code, error } (+ state when the expected version was stale).
+  function onCommand(socket, payload, ack) {
+    if (!refresh(socket)) return;
+    const cmd = payload && typeof payload === 'object' ? payload : {};
+    const { adminId, role, userId } = socket.data;
+    if (!COMMANDS.includes(cmd.type) || !isId(cmd.eventId)) return fail(socket, ack, 'badCommand');
+    if (!EDITOR_ROLES.includes(role)) return fail(socket, ack, 'forbidden');
+    if (!store.visibleEvent(adminId, cmd.eventId, role)) return fail(socket, ack, 'notFound');
+    if (socket.data.eventId !== cmd.eventId) return fail(socket, ack, 'notJoined');
+    const expected = cmd.expectedVersion;
+    if (expected !== undefined && expected !== null && !Number.isInteger(expected)) return fail(socket, ack, 'badCommand');
+    if (cmd.type === 'worship.goto' && (!isId(cmd.itemId) || !Number.isInteger(cmd.step))) return fail(socket, ack, 'badPosition');
+    let result;
+    try {
+      result = store.command(adminId, cmd.eventId, cmd, expected);
+    } catch (err) {
+      if (!(err instanceof LiveError)) throw err;
+      if (err.code === 'stale') return fail(socket, ack, 'stale', { state: fullSnapshot(adminId, cmd.eventId) });
+      return fail(socket, ack, err.code);
+    }
+    if (cmd.type === 'event.start' || cmd.type === 'event.end') {
+      logger.info(`Event #${cmd.eventId} ${cmd.type === 'event.start' ? 'started' : 'ended'} by user #${userId} (admin #${adminId})`);
+    }
+    if (result.changed) broadcast(adminId, cmd.eventId);
+    reply(ack, { ok: true, version: result.version });
+  }
+
   function onConnection(socket) {
     logger.debug(`socket ${socket.id} connected: user #${socket.data.userId} (admin #${socket.data.adminId})`);
     socket.on('live:join', (payload, ack) => onJoin(socket, payload, ack));
+    socket.on('live:command', (payload, ack) => {
+      try {
+        onCommand(socket, payload, ack);
+      } catch (err) {
+        logger.error('live:command failed', err);
+        fail(socket, ack, 'internal');
+      }
+    });
     socket.on('live:leave', (payload, ack) => {
       if (!refresh(socket)) return;
       leaveRoom(socket);
@@ -146,7 +194,50 @@ function createLiveHub({ db, auth, logger }) {
     }
   }
 
-  return { attach, closeSession, closeUser, roomName };
+  // --- changes made through the HTTP API ------------------------------------------
+
+  // Call before a setlist is saved; pass the result to setlistChanged afterwards.
+  function setlistBefore(adminId, eventId) {
+    return store.layout(adminId, eventId);
+  }
+
+  // The setlist was saved: a live event clamps its position (new version); either way the
+  // room gets the new snapshot, whose setlistKey tells clients to reload the setlist.
+  function setlistChanged(adminId, eventId, before) {
+    if (!io) return;
+    store.setlistChanged(adminId, eventId, before);
+    broadcast(adminId, eventId);
+  }
+
+  // Call before a song is edited or deleted (a deleted song leaves its items without a
+  // song id, so they must be found first). No songId: every live event of the admin
+  // (a library import that updates many songs).
+  function songBefore(adminId, songId) {
+    return store.liveEventsWithSongId(adminId, songId).map((eventId) => ({ eventId, layout: store.layout(adminId, eventId) }));
+  }
+
+  function songChanged(adminId, before) {
+    for (const { eventId, layout } of before) setlistChanged(adminId, eventId, layout);
+  }
+
+  // Status or details changed, or the event was deleted: sockets that may no longer see it
+  // leave the room (live:gone); the others get the new snapshot.
+  function eventChanged(adminId, eventId) {
+    if (!io) return;
+    const room = roomName(adminId, eventId);
+    for (const id of [...(io.sockets.adapter.rooms.get(room) || [])]) {
+      const socket = io.sockets.sockets.get(id);
+      if (socket && !store.visibleEvent(adminId, eventId, socket.data.role)) {
+        socket.leave(room);
+        socket.data.eventId = null;
+        socket.emit('live:gone', { eventId });
+      }
+    }
+    broadcast(adminId, eventId);
+    schedulePresence(adminId, eventId);
+  }
+
+  return { attach, closeSession, closeUser, roomName, setlistBefore, setlistChanged, songBefore, songChanged, eventChanged };
 }
 
 module.exports = { createLiveHub, roomName };

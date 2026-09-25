@@ -13,7 +13,7 @@ const IMPORT_BODY_LIMIT = '10mb';
 
 // All routes are scoped to req.adminId from the session. A song of another admin
 // simply does not exist here: 404, never 403.
-function createSongsRouter({ db, auth, config, logger }) {
+function createSongsRouter({ db, auth, config, logger, live }) {
   const router = express.Router();
   const songs = createSongStore(db);
   const events = createEventStore(db);
@@ -81,6 +81,7 @@ function createSongsRouter({ db, auth, config, logger }) {
       });
     }
 
+    const before = mode === 'update' ? live.songBefore(req.adminId) : [];
     const result = db.transaction(() => {
       const p = plan();
       for (const { value, meta } of p.add) songs.create(req.adminId, req.user.id, value, meta);
@@ -97,6 +98,7 @@ function createSongsRouter({ db, auth, config, logger }) {
         invalid: p.invalid.length,
       };
     })();
+    live.songChanged(req.adminId, before);
     logger.info(`Library import (${file.format}, mode=${mode}) by user #${req.user.id} (admin #${req.adminId}): `
       + `added=${result.added} updated=${result.updated} skipped=${result.skipped} invalid=${result.invalid}`);
     res.json(result);
@@ -148,7 +150,9 @@ function createSongsRouter({ db, auth, config, logger }) {
     const { error, value } = validateSong(req.body, req.t);
     if (error) return res.status(400).json({ error });
     try {
+      const before = live.songBefore(req.adminId, id);
       if (!songs.update(req.adminId, id, value)) return notFound(req, res);
+      live.songChanged(req.adminId, before);
       res.json({ song: songs.get(req.adminId, id) });
     } catch (err) {
       if (err instanceof DuplicateTitleError) return duplicate(req, res, err);
@@ -158,7 +162,9 @@ function createSongsRouter({ db, auth, config, logger }) {
 
   router.delete('/api/songs/:id', canEdit, (req, res) => {
     const id = songId(req);
+    const before = id ? live.songBefore(req.adminId, id) : [];
     if (!id || !songs.remove(req.adminId, id)) return notFound(req, res);
+    live.songChanged(req.adminId, before);
     logger.info(`Song #${id} deleted by user #${req.user.id} (admin #${req.adminId})`);
     res.json({ ok: true });
   });

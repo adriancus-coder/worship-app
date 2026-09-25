@@ -573,7 +573,7 @@ test('validateItems: song options (transpose, arrangement, team note, reference 
   const findSong = (id) => (id === 5 ? { id: 5, title: 'Sfânt', sections } : null);
   const ok = evs.validateItems([{ type: 'song', songId: 5, transpose: -3, arrangement: 'v1, c c1 B', teamNote: ' încet ', referenceUrl: 'https://youtu.be/x' }], tro, findSong);
   assert.deepStrictEqual(ok.value[0], {
-    type: 'song', songId: 5, title: 'Sfânt', body: null, reference: null, url: null, durationMin: null,
+    id: null, type: 'song', songId: 5, title: 'Sfânt', body: null, reference: null, url: null, durationMin: null,
     transpose: -3, arrangement: 'V1 C C B', teamNote: 'încet', referenceUrl: 'https://youtu.be/x',
   });
   assert.deepStrictEqual(evs.validateItems([{ type: 'song', songId: 5 }], tro, findSong).value[0].transpose, 0);
@@ -699,6 +699,68 @@ test('migration 007: live_state defaults, checks and cascade', () => {
   mem.prepare('DELETE FROM events WHERE id = 1').run();
   assert.strictEqual(mem.prepare('SELECT COUNT(*) FROM live_state').pluck().get(), 0);
   mem.close();
+});
+
+test('validateItems: an item id is kept only when it is a positive integer', () => {
+  const ids = [7, '7', -1, 0, 1.5, null].map((id) => evs.validateItems([{ id, type: 'other', title: 'x' }], tro, () => null).value[0].id);
+  assert.deepStrictEqual(ids, [7, null, null, null, null, null]);
+});
+
+// --- live position engine ---------------------------------------------------------
+
+test('live: next / prev across songs with repeats and non-song items, stopping at the ends', () => {
+  const L = require('../lib/live');
+  const song = (id, codes) => ({ id, type: 'song', songId: id, arrangementResolved: codes.map((code) => ({ code })) });
+  const items = [song(1, ['V1', 'C', 'V2', 'C', 'B', 'C']), { id: 2, type: 'verse' }, song(3, ['V1', 'C']),
+    { id: 4, type: 'song', songId: null }, { id: 5, type: 'video' }];
+  const lay = L.layoutOf(items);
+  assert.deepStrictEqual(lay.map((x) => x.steps), [6, 1, 2, 1, 1]);
+  let pos = L.firstPosition(lay);
+  const walk = [];
+  for (let i = 0; i < 11; i++) {
+    walk.push(`${pos.itemId}.${pos.step}`);
+    pos = L.nextPosition(lay, pos);
+  }
+  assert.deepStrictEqual(walk, ['1.0', '1.1', '1.2', '1.3', '1.4', '1.5', '2.0', '3.0', '3.1', '4.0', '5.0']);
+  assert.deepStrictEqual(pos, { itemId: 5, step: 0 }, 'next on the last step stays');
+  const back = [];
+  for (let i = 0; i < 11; i++) {
+    back.push(`${pos.itemId}.${pos.step}`);
+    pos = L.prevPosition(lay, pos);
+  }
+  assert.deepStrictEqual(back, ['5.0', '4.0', '3.1', '3.0', '2.0', '1.5', '1.4', '1.3', '1.2', '1.1', '1.0']);
+  assert.deepStrictEqual(pos, { itemId: 1, step: 0 }, 'prev on the first step stays');
+  assert.deepStrictEqual(L.firstPosition([]), { itemId: null, step: 0 });
+  assert.deepStrictEqual(L.nextPosition([], { itemId: null, step: 0 }), { itemId: null, step: 0 });
+  // An unknown position (item gone) restarts at the first item.
+  assert.deepStrictEqual(L.nextPosition(lay, { itemId: 99, step: 3 }), { itemId: 1, step: 0 });
+});
+
+test('live: goto validation', () => {
+  const L = require('../lib/live');
+  const lay = [{ id: 1, steps: 6 }, { id: 2, steps: 1 }];
+  assert.deepStrictEqual(L.gotoPosition(lay, 1, 5), { itemId: 1, step: 5 });
+  assert.deepStrictEqual(L.gotoPosition(lay, 2, 0), { itemId: 2, step: 0 });
+  for (const [id, step] of [[1, 6], [1, -1], [2, 1], [3, 0], [1, 1.5], [1, '2']]) {
+    assert.strictEqual(L.gotoPosition(lay, id, step), null, `${id}.${step}`);
+  }
+});
+
+test('live: clamp after setlist and song changes', () => {
+  const L = require('../lib/live');
+  const old = [{ id: 1, steps: 6 }, { id: 2, steps: 1 }, { id: 3, steps: 2 }, { id: 4, steps: 1 }];
+  // Same item still there: step clamped to its new count.
+  assert.deepStrictEqual(L.clampPosition(old, [{ id: 1, steps: 3 }, { id: 2, steps: 1 }], { itemId: 1, step: 5 }), { itemId: 1, step: 2 });
+  assert.deepStrictEqual(L.clampPosition(old, [{ id: 2, steps: 1 }, { id: 1, steps: 6 }], { itemId: 1, step: 4 }), { itemId: 1, step: 4 });
+  // Current item removed: the nearest following item that still exists.
+  assert.deepStrictEqual(L.clampPosition(old, [{ id: 1, steps: 6 }, { id: 4, steps: 1 }], { itemId: 2, step: 0 }), { itemId: 4, step: 0 });
+  // Nothing follows: the last item.
+  assert.deepStrictEqual(L.clampPosition(old, [{ id: 1, steps: 6 }, { id: 2, steps: 1 }], { itemId: 4, step: 0 }), { itemId: 2, step: 0 });
+  // Replaced by new items only: the last one.
+  assert.deepStrictEqual(L.clampPosition(old, [{ id: 9, steps: 1 }, { id: 10, steps: 2 }], { itemId: 3, step: 1 }), { itemId: 10, step: 0 });
+  // Empty setlist: no position; a setlist that gains items starts at the first.
+  assert.deepStrictEqual(L.clampPosition(old, [], { itemId: 1, step: 2 }), { itemId: null, step: 0 });
+  assert.deepStrictEqual(L.clampPosition([], [{ id: 7, steps: 2 }], { itemId: null, step: 0 }), { itemId: 7, step: 0 });
 });
 
 test('section codes, arrangements and defaults', () => {

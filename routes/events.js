@@ -12,7 +12,7 @@ const WHEN = ['upcoming', 'past', 'templates'];
 // Events and setlists, scoped to req.adminId. Writes: owner and leader. The team
 // (operator, member) only sees published, live and finished events, never templates.
 // Another admin's event does not exist here: 404.
-function createEventsRouter({ db, auth, logger }) {
+function createEventsRouter({ db, auth, logger, live }) {
   const router = express.Router();
   const events = createEventStore(db);
   const settings = createAdminSettings(db);
@@ -99,6 +99,7 @@ function createEventsRouter({ db, auth, logger }) {
     const { error, value } = validateEventMeta(req.body, req.t);
     if (error) return res.status(400).json({ error });
     events.updateMeta(req.adminId, found.event.id, value);
+    live.eventChanged(req.adminId, found.event.id);
     respond(req, res, found.event.id);
   });
 
@@ -106,6 +107,7 @@ function createEventsRouter({ db, auth, logger }) {
     const found = load(req, res);
     if (!found) return;
     events.remove(req.adminId, found.event.id);
+    live.eventChanged(req.adminId, found.event.id);
     logger.info(`Event #${found.event.id} deleted by user #${req.user.id} (admin #${req.adminId})`);
     res.json({ ok: true });
   });
@@ -115,11 +117,13 @@ function createEventsRouter({ db, auth, logger }) {
     if (!found) return;
     const { error, value } = validateItems((req.body || {}).items, req.t, (songId) => events.findSong(req.adminId, songId));
     if (error) return res.status(400).json({ error });
+    const before = live.setlistBefore(req.adminId, found.event.id);
     events.replaceItems(req.adminId, found.event.id, value);
+    live.setlistChanged(req.adminId, found.event.id, before);
     respond(req, res, found.event.id);
   });
 
-  // published <-> draft only; live and finished are set by live mode (stage 4).
+  // published <-> draft only; live and finished are set by live mode (socket/live.js).
   function changeStatus(from, to) {
     return (req, res) => {
       const found = load(req, res);
@@ -127,7 +131,10 @@ function createEventsRouter({ db, auth, logger }) {
       const { event } = found;
       if (event.isTemplate) return res.status(409).json({ error: req.t('errors.eventTemplateStatus') });
       if (event.status !== from && event.status !== to) return res.status(409).json({ error: req.t('errors.eventStatusLocked') });
-      if (event.status === from) events.setStatus(req.adminId, event.id, to);
+      if (event.status === from) {
+        events.setStatus(req.adminId, event.id, to);
+        live.eventChanged(req.adminId, event.id);
+      }
       respond(req, res, event.id);
     };
   }

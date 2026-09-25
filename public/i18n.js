@@ -135,6 +135,21 @@
         openVideo: 'Deschide videoclipul',
         empty: 'Programul acestui eveniment e gol.',
       },
+      live: {
+        errors: {
+          badCommand: 'Comandă invalidă.',
+          forbidden: 'Doar liderul sau proprietarul poate controla evenimentul live.',
+          notFound: 'Evenimentul nu a fost găsit.',
+          notJoined: 'Conexiunea nu este în camera acestui eveniment. Reîncarcă pagina.',
+          stale: 'Între timp, poziția s-a schimbat. Am afișat starea actuală; nimic nu a fost aplicat.',
+          notPublished: 'Publică evenimentul înainte de a-l porni.',
+          alreadyLive: 'Evenimentul este deja live.',
+          finished: 'Evenimentul s-a încheiat.',
+          notLive: 'Evenimentul nu este live.',
+          badPosition: 'Poziția aleasă nu există în program.',
+          internal: 'Eroare internă.',
+        },
+      },
       options: {
         keyLabel: 'Ton',
         keyDown: 'Coboară tonul cu un semiton',
@@ -553,6 +568,21 @@
         teamNote: 'Note for the team',
         openVideo: 'Open the video',
         empty: 'This event has no items yet.',
+      },
+      live: {
+        errors: {
+          badCommand: 'Invalid command.',
+          forbidden: 'Only the leader or the owner can control the live event.',
+          notFound: 'Event not found.',
+          notJoined: 'This connection is not in the event room. Reload the page.',
+          stale: 'The position changed in the meantime. The current state is shown; nothing was applied.',
+          notPublished: 'Publish the event before starting it.',
+          alreadyLive: 'The event is already live.',
+          finished: 'The event has ended.',
+          notLive: 'The event is not live.',
+          badPosition: 'That position does not exist in the setlist.',
+          internal: 'Internal error.',
+        },
       },
       options: {
         keyLabel: 'Key',

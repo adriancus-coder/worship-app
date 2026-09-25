@@ -9,7 +9,7 @@
   },
   "scripts": {
     "start": "node server.js",
-    "check": "node scripts/check-syntax.js && node scripts/check-i18n.js && node scripts/test-lib.js"
+    "check": "node scripts/check-syntax.js && node scripts/check-i18n.js && node scripts/test-lib.js && node scripts/test-live.js"
   },
   "dependencies": {
     "better-sqlite3": "^12.11.1",
@@ -19,5 +19,8 @@
     "fast-xml-parser": "^5.11.1",
     "helmet": "^8.3.0",
     "socket.io": "^4.8.3"
+  },
+  "devDependencies": {
+    "socket.io-client": "^4.8.4"
   }
 }

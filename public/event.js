@@ -54,6 +54,7 @@
     return items.map((item) => {
       const { type, songId, title, body, reference, url, durationMin } = item;
       const out = {
+        id: item.id || null, // saved items keep their id (live mode follows items by id)
         type,
         songId: type === 'song' ? songId : null,
         title: title || '',
