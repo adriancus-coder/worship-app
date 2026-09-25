@@ -1,13 +1,18 @@
 'use strict';
 
+// /library: ONE search field. Typing filters the library (debounced /api/songs?q=) under
+// "Din bibliotecă"; owner and leader can also search resursecrestine.ro with Enter or
+// "Caută și pe resurse" (public/library-online.js). Import / export of the whole library
+// live in the "⋯" menu of the header.
+
 (function () {
   const { api, el, canEdit } = window.PAGE;
   const { t } = window.I18N;
-  const input = document.getElementById('q');
-  const sort = document.getElementById('sort');
-  const status = document.getElementById('status');
-  const list = document.getElementById('songs');
-  const newSong = document.getElementById('new-song');
+  const $ = (id) => document.getElementById(id);
+  const input = $('q');
+  const sort = $('sort');
+  const status = $('status');
+  const list = $('songs');
   const SEARCH_DELAY_MS = 250;
 
   let me = null;
@@ -23,10 +28,17 @@
 
   function setStatus(text) {
     status.removeAttribute('data-i18n');
-    status.textContent = text;
+    status.textContent = text || '';
+    status.hidden = !text;
+  }
+
+  function renderChrome() {
+    input.placeholder = t('library.searchPlaceholder');
+    $('q-hint').textContent = t(canEdit(me) ? 'library.searchHintOnline' : 'library.searchHint');
   }
 
   function render() {
+    renderChrome();
     if (!songs) return;
     list.replaceChildren(...songs.map((song) => {
       const meta = [song.song_key ? t('library.key', { key: window.NOTATION.chord(song.song_key) }) : null, song.author].filter(Boolean).join(' · ');
@@ -36,8 +48,8 @@
           meta ? el('span', { class: 'song-meta', text: meta }) : null,
           song.matchedIn === 'lyrics' ? el('span', { class: 'song-hint', text: t('library.matchedInLyrics') }) : null));
     }));
-    if (songs.length === 1) setStatus(t('library.countOne'));
-    else if (songs.length > 1) setStatus(t('library.count', { n: songs.length }));
+    $('local-count').textContent = songs.length ? `(${songs.length})` : '';
+    if (songs.length) setStatus('');
     else if (lastQuery) setStatus(t('library.noResults', { q: lastQuery }));
     else setStatus(t(canEdit(me) ? 'library.empty' : 'library.emptyMember'));
   }
@@ -69,22 +81,60 @@
     clearTimeout(timer);
     timer = setTimeout(load, SEARCH_DELAY_MS);
   });
-  input.addEventListener('keydown', (event) => {
-    if (event.key === 'Enter') {
-      clearTimeout(timer);
-      load();
-    }
+  // A new tap replaces the old query: select all on focus, and keep the selection through the
+  // mouseup (also emulated after a tap) that would otherwise place the caret.
+  let keepSelection = false;
+  input.addEventListener('focus', () => {
+    input.select();
+    keepSelection = true;
+  });
+  input.addEventListener('mouseup', (event) => {
+    if (keepSelection) event.preventDefault();
+    keepSelection = false;
+  });
+  input.addEventListener('keydown', () => { keepSelection = false; });
+  // Enter: the library right away (the online search, if allowed, runs from library-online.js).
+  // After a search the field lets go of focus (on phones the keyboard closes and the results
+  // show); the next tap selects the whole query again.
+  $('search-form').addEventListener('submit', (event) => {
+    event.preventDefault();
+    clearTimeout(timer);
+    load();
+    input.blur();
   });
   sort.addEventListener('change', load);
   document.addEventListener('library:changed', load);
   document.addEventListener('i18n:change', render);
   document.addEventListener('notation:change', render);
 
+  // --- "⋯" menu (import / export) ----------------------------------------------------
+
+  const menu = $('library-menu');
+  const menuButton = $('library-menu-button');
+  const menuList = $('library-menu-list');
+  function openMenu(value) {
+    menuList.hidden = !value;
+    menuButton.setAttribute('aria-expanded', String(value));
+    if (value) menuList.querySelector('a, button').focus();
+  }
+  menuButton.addEventListener('click', () => openMenu(menuList.hidden));
+  menuList.addEventListener('click', () => openMenu(false));
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && !menuList.hidden) {
+      openMenu(false);
+      menuButton.focus();
+    }
+  });
+  document.addEventListener('pointerdown', (event) => {
+    if (!menuList.hidden && !menu.contains(event.target)) openMenu(false);
+  });
+
   (async () => {
     const res = await api('/api/auth/me');
     me = res.body;
-    newSong.hidden = !canEdit(me);
-    document.getElementById('library-actions').hidden = !canEdit(me);
+    $('new-song').hidden = !canEdit(me);
+    menu.hidden = !canEdit(me);
+    renderChrome();
     document.dispatchEvent(new CustomEvent('library:me', { detail: me }));
     load();
   })().catch(() => setStatus(t('common.networkError')));

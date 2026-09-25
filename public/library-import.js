@@ -19,7 +19,7 @@
   const runButton = document.getElementById('import-run');
   const resultBox = document.getElementById('import-result');
   const summary = document.getElementById('import-summary');
-  const libraryParts = ['library-tabs', 'panel-local', 'panel-online'].map((id) => document.getElementById(id));
+  const libraryParts = ['library-search', 'library-results'].map((id) => document.getElementById(id));
 
   const state = { name: '', text: null, status: null, error: null, plan: null, result: null, busy: false };
   let hiddenBefore = [];
@@ -87,7 +87,7 @@
     libraryParts.forEach((node, i) => { node.hidden = hiddenBefore[i]; });
     Object.assign(state, { name: '', text: null, status: null, error: null, plan: null, result: null, busy: false });
     fileInput.value = '';
-    document.getElementById('import-library').focus();
+    document.getElementById('library-menu-button').focus(); // the import button sits in the closed "⋯" menu
   }
 
   function serverError(res) {

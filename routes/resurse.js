@@ -60,9 +60,11 @@ function createResurseRouter({ db, auth, logger }) {
     };
   }
 
+  // Each result says whether a song with the same (normalized) title is already in the library.
   router.post('/api/resurse/search', asyncRoute(async (req, res) => {
     try {
-      res.json(await resurse.searchResurseCrestineSongs((req.body || {}).query));
+      const results = await resurse.searchResurseCrestineSongs((req.body || {}).query);
+      res.json(results.map((item) => ({ ...item, existingId: songs.findIdByTitle(req.adminId, item.title) })));
     } catch (err) {
       fail(req, res, err);
     }

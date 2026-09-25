@@ -1,90 +1,102 @@
 'use strict';
 
-// "Search online" tab of /library: resursecrestine.ro search, preview and import
-// (owner and leader). The server does all network access.
+// resursecrestine.ro from the library's one search field (owner and leader). Enter or
+// "Caută și pe resurse" searches the site (never on every keystroke) and shows "De pe
+// resurse" under the library results; the section disappears as soon as the query changes
+// (its results would be stale). A pasted resursecrestine.ro link opens its preview instead.
+// Each result: Previzualizare (a bottom sheet on phones, a dialog on wider screens, with
+// Importă) and a direct Importă; a title already in the library shows "Există deja".
+// The server does all network access.
 
 (function () {
   const { api, el, canEdit } = window.PAGE;
   const { t } = window.I18N;
-  const tabs = document.getElementById('library-tabs');
-  const tabButtons = [document.getElementById('tab-local'), document.getElementById('tab-online')];
-  const searchForm = document.getElementById('online-search-form');
-  const searchInput = document.getElementById('online-q');
-  const searchButton = document.getElementById('online-search');
-  const linkForm = document.getElementById('online-link-form');
-  const linkInput = document.getElementById('online-link');
-  const status = document.getElementById('online-status');
-  const errorBox = document.getElementById('online-error');
-  const resultsList = document.getElementById('online-results');
-  const preview = document.getElementById('online-preview');
-  const previewTitle = document.getElementById('preview-title');
-  const previewMeta = document.getElementById('preview-meta');
-  const previewSections = document.getElementById('preview-sections');
-  const previewMessage = document.getElementById('preview-message');
-  const importButton = document.getElementById('preview-import');
+  const $ = (id) => document.getElementById(id);
+  const input = $('q');
+  const form = $('search-form');
+  const button = $('online-search');
+  const section = $('online-section');
+  const status = $('online-status');
+  const errorBox = $('online-error');
+  const resultsList = $('online-results');
+  const dialog = $('online-preview');
+  const previewTitle = $('preview-title');
+  const previewMeta = $('preview-meta');
+  const previewSections = $('preview-sections');
+  const previewMessage = $('preview-message');
+  const importButton = $('preview-import');
 
   // Everything shown is rebuilt from this state, so a language switch re-renders it.
   const state = {
-    query: '',
+    allowed: false,
+    shown: false, // the "De pe resurse" section
+    query: '', // what the results (or the link preview) belong to
     results: null,
-    status: null, // { key, vars }
+    rows: new Map(), // result id -> { kind: 'imported' | 'exists', songId } | { kind: 'error', text }
+    status: null, // { key, vars, spin }
     error: null, // server text
-    preview: null, // { source, song, existingId, invalid }
+    preview: null, // { source, resultId, song, existingId, invalid }
     outcome: null, // { kind: 'imported' | 'exists' | 'error', id?, text? }
-    busy: false,
+    busy: false, // 'search' | 'preview' | 'import' | 'row:<id>'
   };
 
-  // --- tabs -----------------------------------------------------------------
+  const isLink = (text) => /^https?:\/\//i.test(text) || /(^|\.)resursecrestine\.ro\b/i.test(text);
 
-  function selectTab(index, focus) {
-    tabButtons.forEach((tab, i) => {
-      const selected = i === index;
-      tab.setAttribute('aria-selected', String(selected));
-      tab.tabIndex = selected ? 0 : -1;
-      document.getElementById(tab.getAttribute('aria-controls')).hidden = !selected;
-    });
-    if (focus) tabButtons[index].focus();
+  function failText(res) {
+    return (res && res.body && res.body.error) || t('common.networkError');
   }
 
-  tabButtons.forEach((tab, i) => {
-    tab.addEventListener('click', () => selectTab(i, false));
-    tab.addEventListener('keydown', (event) => {
-      const moves = { ArrowRight: 1, ArrowLeft: -1, Home: -i, End: tabButtons.length - 1 - i };
-      if (!(event.key in moves)) return;
-      event.preventDefault();
-      selectTab((i + moves[event.key] + tabButtons.length) % tabButtons.length, true);
-    });
-  });
+  // --- rendering ------------------------------------------------------------------
 
-  document.addEventListener('library:me', (event) => {
-    tabs.hidden = !canEdit(event.detail);
-  });
-
-  // --- rendering ------------------------------------------------------------
+  function rowActions(item) {
+    const row = state.rows.get(item.id);
+    const existing = (row && (row.kind === 'imported' || row.kind === 'exists')) ? row.songId : item.existingId;
+    if (existing) {
+      const imported = row && row.kind === 'imported';
+      return [
+        el('span', { class: `row-state${imported ? ' success' : ''}`, text: t(imported ? 'online.importedShort' : 'online.exists') }),
+        el('a', { class: 'button secondary', href: `/songs/${existing}`, text: t('online.open'), 'aria-label': t('online.openSongTitle', { title: item.title }) }),
+      ];
+    }
+    const busy = Boolean(state.busy);
+    return [
+      el('button', {
+        type: 'button', class: 'secondary', disabled: busy,
+        'aria-label': t('online.previewSong', { title: item.title }),
+        onclick: () => openPreview({ id: item.id }, item.id),
+      }, t('online.preview')),
+      el('button', {
+        type: 'button', disabled: busy,
+        'aria-label': t('online.importSong', { title: item.title }),
+        onclick: () => importRow(item),
+      }, state.busy === `row:${item.id}` ? t('online.importing') : t('online.import')),
+    ];
+  }
 
   function render() {
-    status.textContent = state.status ? t(state.status.key, state.status.vars) : '';
+    button.hidden = !state.allowed;
+    button.disabled = state.busy === 'search';
+    section.hidden = !state.shown;
+    const st = state.status;
+    status.replaceChildren(...(st ? [st.spin ? el('span', { class: 'spinner', 'aria-hidden': 'true' }) : null, t(st.key, st.vars)] : []));
+    status.hidden = !st;
     errorBox.textContent = state.error || '';
-    searchButton.textContent = state.busy === 'search' ? t('online.searching') : t('online.search');
-
-    resultsList.replaceChildren(...(state.results || []).map((item) => el('li', { class: 'result-row' },
-      el('div', { class: 'result-text' },
-        el('span', { class: 'song-title', text: item.title }),
-        item.author ? el('span', { class: 'song-meta', text: item.author }) : null),
-      el('button', {
-        type: 'button',
-        class: 'secondary',
-        'aria-label': t('online.previewSong', { title: item.title }),
-        disabled: Boolean(state.busy),
-        onclick: () => openPreview({ id: item.id }),
-      }, t('online.preview')))));
-
+    const results = state.results || [];
+    $('online-count').textContent = state.results && results.length ? `(${results.length})` : '';
+    resultsList.replaceChildren(...results.map((item) => {
+      const row = state.rows.get(item.id);
+      return el('li', { class: 'result-row' },
+        el('div', { class: 'result-text' },
+          el('span', { class: 'song-title', text: item.title }),
+          item.author ? el('span', { class: 'song-meta', text: item.author }) : null,
+          row && row.kind === 'error' ? el('span', { class: 'message error', role: 'alert', text: row.text }) : null),
+        el('div', { class: 'result-actions' }, ...rowActions(item)));
+    }));
     renderPreview();
   }
 
   function renderPreview() {
     const p = state.preview;
-    preview.hidden = !p;
     if (!p) return;
     const song = p.song;
     previewTitle.textContent = song.title;
@@ -120,36 +132,30 @@
     importButton.textContent = state.busy === 'import' ? t('online.importing') : t('online.import');
   }
 
-  function failText(res) {
-    return (res && res.body && res.body.error) || t('common.networkError');
-  }
+  // --- search / link ----------------------------------------------------------------
 
-  // --- actions --------------------------------------------------------------
-
-  searchForm.addEventListener('submit', async (event) => {
-    event.preventDefault();
-    const query = searchInput.value.trim();
+  async function search(query) {
+    state.shown = true;
+    state.query = query;
+    state.results = null;
+    state.rows = new Map();
     state.error = null;
     if (query.length < 2) {
+      state.status = null;
       state.error = t('errors.resurseQueryTooShort');
       render();
-      searchInput.focus();
       return;
     }
     state.busy = 'search';
-    state.status = { key: 'online.searching' };
-    state.preview = null;
+    state.status = { key: 'online.searching', spin: true };
     render();
     try {
       const res = await api('/api/resurse/search', { method: 'POST', body: { query } });
+      if (state.query !== query) return; // the query changed meanwhile
       if (res.ok) {
-        state.query = query;
         state.results = res.body;
-        state.status = res.body.length === 0
-          ? { key: 'online.noResults', vars: { q: query } }
-          : { key: res.body.length === 1 ? 'online.resultOne' : 'online.results', vars: { n: res.body.length } };
+        state.status = res.body.length === 0 ? { key: 'online.noResults', vars: { q: query } } : null;
       } else {
-        state.results = null;
         state.status = null;
         state.error = failText(res);
       }
@@ -160,30 +166,43 @@
       state.busy = false;
       render();
     }
-  });
+  }
 
-  linkForm.addEventListener('submit', (event) => {
-    event.preventDefault();
-    const url = linkInput.value.trim();
-    if (!url) {
-      state.error = t('errors.resurseInvalidUrl');
-      render();
-      linkInput.focus();
+  form.addEventListener('submit', () => {
+    if (!state.allowed) return;
+    const query = input.value.trim();
+    if (!query) return;
+    if (isLink(query)) {
+      // A pasted link: its preview (another host -> the server's clear error).
+      state.shown = true;
+      state.query = query;
+      state.results = null;
+      state.rows = new Map();
+      openPreview({ url: query }, null);
       return;
     }
-    openPreview({ url });
+    search(query);
   });
 
-  async function openPreview(source) {
+  // A different query makes the online results stale: hide them until the next Enter.
+  input.addEventListener('input', () => {
+    if (!state.shown || input.value.trim() === state.query) return;
+    Object.assign(state, { shown: false, query: '', results: null, rows: new Map(), status: null, error: null });
+    render();
+  });
+
+  // --- preview and import -------------------------------------------------------------
+
+  async function openPreview(source, resultId) {
     state.busy = 'preview';
     state.error = null;
     state.outcome = null;
-    state.status = { key: 'online.loadingPreview' };
+    state.status = { key: 'online.loadingPreview', spin: true };
     render();
     try {
       const res = await api('/api/resurse/preview', { method: 'POST', body: source });
       if (res.ok) {
-        state.preview = { source, song: res.body.song, existingId: res.body.existingId, invalid: res.body.invalid };
+        state.preview = { source, resultId, song: res.body.song, existingId: res.body.existingId, invalid: res.body.invalid };
         state.status = null;
       } else {
         state.status = null;
@@ -195,25 +214,49 @@
     } finally {
       state.busy = false;
       render();
-      if (state.preview) {
-        preview.scrollIntoView({ block: 'start' });
+      if (state.preview && !dialog.open) {
+        dialog.showModal();
         previewTitle.focus({ preventScroll: true });
       }
     }
   }
 
+  function imported(resultId, songId) {
+    if (resultId) state.rows.set(resultId, { kind: 'imported', songId });
+    document.dispatchEvent(new CustomEvent('library:changed'));
+  }
+
+  async function importRow(item) {
+    state.busy = `row:${item.id}`;
+    state.rows.delete(item.id);
+    render();
+    try {
+      const res = await api('/api/resurse/import', { method: 'POST', body: { id: item.id } });
+      if (res.status === 201) imported(item.id, res.body.song.id);
+      else if (res.status === 409) state.rows.set(item.id, { kind: 'exists', songId: res.body.existingId });
+      else state.rows.set(item.id, { kind: 'error', text: failText(res) });
+    } catch (err) {
+      state.rows.set(item.id, { kind: 'error', text: t('common.networkError') });
+    } finally {
+      state.busy = false;
+      render();
+    }
+  }
+
   importButton.addEventListener('click', async () => {
-    if (!state.preview) return;
+    const p = state.preview;
+    if (!p) return;
     state.busy = 'import';
     state.outcome = null;
     renderPreview();
     try {
-      const res = await api('/api/resurse/import', { method: 'POST', body: state.preview.source });
+      const res = await api('/api/resurse/import', { method: 'POST', body: p.source });
       if (res.status === 201) {
         state.outcome = { kind: 'imported', id: res.body.song.id };
-        document.dispatchEvent(new CustomEvent('library:changed'));
+        imported(p.resultId, res.body.song.id);
       } else if (res.status === 409) {
         state.outcome = { kind: 'exists', id: res.body.existingId };
+        if (p.resultId) state.rows.set(p.resultId, { kind: 'exists', songId: res.body.existingId });
       } else {
         state.outcome = { kind: 'error', text: failText(res) };
       }
@@ -221,24 +264,34 @@
       state.outcome = { kind: 'error', text: t('common.networkError') };
     } finally {
       state.busy = false;
-      renderPreview();
-      previewMessage.scrollIntoView({ block: 'nearest' });
+      render();
     }
   });
 
-  document.getElementById('preview-close').addEventListener('click', () => {
+  for (const close of [$('preview-close'), $('preview-close-x')]) close.addEventListener('click', () => dialog.close());
+  dialog.addEventListener('close', () => {
     state.preview = null;
     state.outcome = null;
     render();
-    (resultsList.querySelector('button') || searchInput).focus();
+  });
+  // A tap on the dimmed area closes it too.
+  dialog.addEventListener('click', (event) => {
+    if (event.target !== dialog) return;
+    const r = dialog.getBoundingClientRect();
+    const inside = event.clientX >= r.left && event.clientX <= r.right && event.clientY >= r.top && event.clientY <= r.bottom;
+    if (!inside) dialog.close();
   });
 
+  document.addEventListener('library:me', (event) => {
+    state.allowed = canEdit(event.detail);
+    render();
+  });
   document.addEventListener('notation:change', () => render());
-
   document.addEventListener('i18n:change', () => {
     // Server messages are in the previous language; drop them rather than mix languages.
     state.error = null;
     if (state.outcome && state.outcome.kind === 'error') state.outcome = null;
+    for (const [id, row] of state.rows) if (row.kind === 'error') state.rows.delete(id);
     render();
   });
 })();

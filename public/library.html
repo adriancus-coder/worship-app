@@ -9,85 +9,80 @@
 </head>
 <body data-shell="library">
   <main class="wide">
-    <div class="page-head">
+    <div class="page-head library-head">
       <h1 data-i18n="library.heading"></h1>
-      <a class="button" id="new-song" href="/songs/new" hidden data-i18n="library.newSong"></a>
+      <div class="head-actions">
+        <a class="button" id="new-song" href="/songs/new" hidden data-i18n="library.newSong"></a>
+        <div class="menu" id="library-menu" hidden>
+          <button type="button" class="secondary menu-button" id="library-menu-button" aria-haspopup="true" aria-expanded="false" aria-controls="library-menu-list" data-i18n-aria-label="library.moreActions"><span aria-hidden="true">⋯</span></button>
+          <div class="menu-list" id="library-menu-list" hidden>
+            <a class="menu-item" id="export-library" href="/api/songs/export" download data-i18n="library.export"></a>
+            <button type="button" class="menu-item" id="import-library" data-i18n="library.import"></button>
+          </div>
+          <input type="file" id="import-file" accept=".json,application/json" hidden>
+        </div>
+      </div>
     </div>
 
-    <div class="tabs" role="tablist" id="library-tabs" data-i18n-aria-label="library.tabsLabel" hidden>
-      <button type="button" role="tab" id="tab-local" aria-controls="panel-local" aria-selected="true" data-i18n="library.tabLocal"></button>
-      <button type="button" role="tab" id="tab-online" aria-controls="panel-online" aria-selected="false" tabindex="-1" data-i18n="library.tabOnline"></button>
-    </div>
-
-    <div id="panel-local" role="tabpanel" aria-labelledby="tab-local">
-      <div class="toolbar">
-        <div class="field grow">
-          <label for="q" data-i18n="library.searchLabel"></label>
-          <input type="search" id="q" autocomplete="off" autocapitalize="off" spellcheck="false"
+    <div id="library-search">
+      <form id="search-form" class="search-form" role="search" novalidate>
+        <label for="q" class="sr-only" data-i18n="library.searchLabel"></label>
+        <div class="input-row search-row">
+          <input type="search" id="q" enterkeyhint="search" autocomplete="off" autocapitalize="off" spellcheck="false"
             maxlength="200" aria-describedby="q-hint" aria-controls="songs">
-          <span class="hint" id="q-hint" data-i18n="library.searchHint"></span>
+          <button type="submit" class="secondary" id="online-search" hidden data-i18n="online.searchBoth"></button>
         </div>
-        <div class="field">
-          <label for="sort" data-i18n="library.sortLabel"></label>
-          <select id="sort">
-            <option value="az" data-i18n="library.sortAz"></option>
-            <option value="za" data-i18n="library.sortZa"></option>
-            <option value="recent" data-i18n="library.sortRecent"></option>
-          </select>
-        </div>
-      </div>
-
-      <p id="status" class="muted" role="status" aria-live="polite" data-i18n="library.loading"></p>
-      <ul id="songs" class="song-list"></ul>
-
-      <div class="library-actions" id="library-actions" hidden>
-        <a class="button secondary" id="export-library" href="/api/songs/export" download data-i18n="library.export"></a>
-        <button type="button" class="secondary" id="import-library" data-i18n="library.import"></button>
-        <input type="file" id="import-file" accept=".json,application/json" hidden>
-      </div>
+        <span class="hint" id="q-hint"></span>
+      </form>
     </div>
 
-    <div id="panel-online" role="tabpanel" aria-labelledby="tab-online" hidden>
-      <form id="online-search-form" novalidate>
-        <div class="field">
-          <label for="online-q" data-i18n="online.searchLabel"></label>
-          <div class="input-row">
-            <input type="search" id="online-q" maxlength="100" autocomplete="off" aria-describedby="online-q-hint">
-            <button type="submit" id="online-search" data-i18n="online.search"></button>
-          </div>
-          <span class="hint" id="online-q-hint" data-i18n="online.searchHint"></span>
+    <div id="library-results">
+      <section class="results-section" aria-labelledby="local-heading">
+        <div class="results-head">
+          <h2 id="local-heading" class="results-heading"><span data-i18n="library.localHeading"></span> <span id="local-count" class="results-count"></span></h2>
+          <label class="sort-field"><span class="sr-only" data-i18n="library.sortLabel"></span>
+            <select id="sort">
+              <option value="az" data-i18n="library.sortAz"></option>
+              <option value="za" data-i18n="library.sortZa"></option>
+              <option value="recent" data-i18n="library.sortRecent"></option>
+            </select>
+          </label>
         </div>
-      </form>
+        <p id="status" class="muted" role="status" aria-live="polite" data-i18n="library.loading"></p>
+        <ul id="songs" class="song-list"></ul>
+      </section>
 
-      <form id="online-link-form" novalidate>
-        <div class="field">
-          <label for="online-link" data-i18n="online.linkLabel"></label>
-          <div class="input-row">
-            <input type="url" id="online-link" inputmode="url" autocomplete="off" autocapitalize="off"
-              spellcheck="false" aria-describedby="online-link-hint">
-            <button type="submit" id="online-link-preview" class="secondary" data-i18n="online.preview"></button>
-          </div>
-          <span class="hint" id="online-link-hint" data-i18n="online.linkHint"></span>
+      <section class="results-section" id="online-section" aria-labelledby="online-heading" hidden>
+        <div class="results-head">
+          <h2 id="online-heading" class="results-heading"><span data-i18n="library.onlineHeading"></span> <span id="online-count" class="results-count"></span></h2>
         </div>
-      </form>
+        <p id="online-status" class="muted online-status" role="status" aria-live="polite"></p>
+        <p id="online-error" class="message error" role="alert"></p>
+        <ul id="online-results" class="song-list"></ul>
+      </section>
+    </div>
 
-      <p id="online-status" class="muted" role="status" aria-live="polite"></p>
-      <p id="online-error" class="message error" role="alert"></p>
-      <ul id="online-results" class="song-list"></ul>
-
-      <section id="online-preview" class="preview" hidden aria-labelledby="preview-title">
-        <p class="preview-kicker" data-i18n="online.previewHeading"></p>
-        <h2 id="preview-title" tabindex="-1"></h2>
-        <p id="preview-meta" class="muted"></p>
+    <dialog id="online-preview" class="preview-dialog" aria-labelledby="preview-title">
+      <div class="preview-dialog-head">
+        <div class="preview-dialog-title">
+          <p class="preview-kicker" data-i18n="online.previewHeading"></p>
+          <h2 id="preview-title" tabindex="-1"></h2>
+          <p id="preview-meta" class="muted"></p>
+        </div>
+        <button type="button" class="shell-close preview-close-x" id="preview-close-x" data-i18n-aria-label="online.close">✕</button>
+      </div>
+      <div class="preview-dialog-body">
         <div class="preview-tools"><span data-notation-switch></span></div>
-        <div id="preview-sections"></div>
+        <div id="preview-sections" class="preview-sections"></div>
+      </div>
+      <div class="preview-dialog-foot">
         <p id="preview-message" class="message" role="alert"></p>
         <div class="form-actions">
           <button type="button" id="preview-import" data-i18n="online.import"></button>
           <button type="button" id="preview-close" class="secondary" data-i18n="online.close"></button>
         </div>
-      </section>
-    </div>
+      </div>
+    </dialog>
 
     <section id="import-review" class="import-review" hidden aria-labelledby="import-heading">
       <h2 id="import-heading" tabindex="-1" data-i18n="import.heading"></h2>

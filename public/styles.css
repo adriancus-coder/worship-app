@@ -356,8 +356,6 @@ dialog .message:empty { display: none; }
   background: var(--surface);
 }
 
-#panel-online form { margin: 0 0 16px; }
-#panel-online .message:empty { display: none; }
 
 .result-row {
   display: flex;
@@ -372,20 +370,76 @@ dialog .message:empty { display: none; }
 .result-text { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .result-row button { flex: none; }
 
-.preview {
-  margin-top: 16px;
-  padding: 16px;
-  border: 1px solid var(--accent);
-  border-radius: var(--radius);
-}
-
-.preview h2 { margin: 0 0 4px; font-size: 1.35rem; }
-.preview h2:focus { outline: none; }
 .preview-kicker { margin: 0 0 4px; font-size: 0.8125rem; color: var(--accent); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
-.preview .form-actions { margin-top: 12px; }
 
-.library-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border); }
-.library-actions > * { flex: 1 1 160px; }
+/* --- library: one search field, two result sections ------------------------------ */
+
+.library-head .head-actions { display: flex; align-items: center; gap: 8px; }
+.menu { position: relative; }
+.menu-button { min-width: var(--touch); min-height: var(--touch); padding: 0 10px; font-size: 1.375rem; line-height: 1; }
+.menu-list {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 6px);
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  min-width: 230px;
+  padding: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
+}
+.menu-list[hidden] { display: none; }
+.menu-item { display: flex; align-items: center; min-height: var(--touch); padding: 0 12px; border: 0; border-radius: calc(var(--radius) - 2px); color: var(--text); background: none; font: inherit; font-weight: 600; text-align: left; text-decoration: none; cursor: pointer; justify-content: flex-start; }
+.menu-item:hover, .menu-item:focus-visible { background: var(--bg); }
+
+.search-form { margin: 0 0 8px; }
+.search-row { flex-wrap: wrap; }
+.search-row > input { flex: 1 1 220px; min-height: 48px; font-size: 1.0625rem; }
+.search-row > button { flex: 1 0 auto; min-height: 48px; }
+@media (min-width: 600px) { .search-row > button { flex: none; } }
+
+.results-section { margin-top: 20px; }
+.results-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.results-heading { margin: 0; font-size: 0.8125rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.results-count { font-weight: 600; letter-spacing: 0; }
+.sort-field select { min-height: var(--touch); }
+.results-section .message:empty { display: none; }
+.results-section p, .search-form .hint { overflow-wrap: anywhere; } /* a pasted link in "Nicio cântare găsită pentru …" */
+.online-status { display: flex; align-items: center; gap: 8px; }
+.result-row { flex-wrap: wrap; }
+.result-row .result-text { flex: 1 1 200px; } /* on phones the actions go under the title */
+.result-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 6px; flex: 1 0 auto; }
+.result-actions .button, .result-actions button { min-height: var(--touch); display: inline-flex; align-items: center; }
+.row-state { font-size: 0.875rem; font-weight: 600; color: var(--muted); }
+.row-state.success { color: var(--success); }
+.spinner { width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; flex: none; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }
+
+/* The preview: a dialog; on phones a bottom sheet. Fixed head and foot, the song scrolls. */
+.preview-dialog { width: min(720px, calc(100vw - 24px)); max-height: 85vh; padding: 0; overflow: hidden; }
+.preview-dialog[open] { display: flex; flex-direction: column; }
+.preview-dialog-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 16px 16px 10px 20px; border-bottom: 1px solid var(--border); }
+.preview-dialog-title { min-width: 0; }
+.preview-dialog h2 { margin: 0 0 2px; font-size: 1.35rem; overflow-wrap: anywhere; }
+.preview-dialog h2:focus { outline: none; }
+.preview-dialog-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 12px 20px; }
+.preview-dialog-foot { padding: 10px 20px calc(12px + env(safe-area-inset-bottom)); border-top: 1px solid var(--border); }
+.preview-dialog-foot .message:not(:empty) { margin-bottom: 8px; }
+.preview-dialog-foot .form-actions { margin: 0; }
+.preview-close-x { flex: none; }
+@media (max-width: 599px) {
+  dialog.preview-dialog {
+    width: 100%;
+    max-width: 100%;
+    margin: auto 0 0;
+    border-radius: 18px 18px 0 0;
+    border-bottom: 0;
+  }
+}
 
 /* --- library file import -------------------------------------------------- */
 
