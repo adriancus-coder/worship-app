@@ -869,3 +869,42 @@ button.live-item:disabled { opacity: 1; cursor: default; }
 .screen-name { font-weight: 600; overflow-wrap: anywhere; }
 .screen-meta { font-size: 0.875rem; color: var(--muted); }
 .screen-tools { display: flex; gap: 8px; }
+
+/* --- projector output (the /screen page and the leader's preview) --------------------------- */
+
+.projector { position: relative; overflow: hidden; background: #000; color: #fff; }
+.projector-stage { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; opacity: 0; }
+.projector-stage.visible { opacity: 1; }
+.projector-text {
+  width: 90%;
+  max-height: 90%;
+  text-align: center;
+  line-height: 1.22;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-weight: 600;
+  overflow-wrap: break-word;
+  text-shadow: 0 0 0.08em rgba(0, 0, 0, 0.6);
+}
+.projector-line { min-height: 1.22em; }
+.projector-reference { font-size: 0.62em; font-weight: 700; opacity: 0.85; margin-bottom: 0.45em; letter-spacing: 0.02em; }
+.projector-heading { font-weight: 800; margin-bottom: 0.35em; }
+.projector-body { font-weight: 500; }
+.projector-title { font-weight: 800; }
+.projector-logo { max-width: 60%; max-height: 60%; object-fit: contain; }
+
+/* --- the /screen page ------------------------------------------------------------------------- */
+
+body.screen-body { min-height: 100vh; background: #000; color: #fff; overflow: hidden; }
+body.screen-body.cursor-hidden, body.screen-body.cursor-hidden * { cursor: none; }
+.screen-output { position: fixed; inset: 0; }
+
+.pairing { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.6rem; padding: 5vh 5vw; text-align: center; background: var(--bg); }
+.pairing-app { margin: 0; color: var(--muted); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; font-size: clamp(0.9rem, 1.6vw, 1.4rem); }
+.pairing h1 { margin: 0; font-size: clamp(1.6rem, 3.5vw, 3rem); }
+.pairing-code { margin: 2vh 0; font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; font-weight: 800; font-size: clamp(3rem, 12vw, 11rem); letter-spacing: 0.08em; color: var(--accent); line-height: 1; white-space: nowrap; }
+.pairing-steps { margin: 0; max-width: 42em; font-size: clamp(1rem, 1.8vw, 1.6rem); }
+.pairing-expiry { margin: 0; color: var(--muted); font-size: clamp(0.9rem, 1.4vw, 1.2rem); font-variant-numeric: tabular-nums; }
+.pairing-error { margin: 0; color: var(--error); min-height: 1.5em; }
+
+.fullscreen-hint { position: fixed; left: 50%; bottom: 3vh; transform: translateX(-50%); margin: 0; padding: 0.4em 0.9em; font-size: 0.9rem; color: #bbb; background: rgba(255, 255, 255, 0.08); border-radius: 999px; }
+.offline-dot { position: fixed; right: 6px; bottom: 6px; width: 4px; height: 4px; border-radius: 50%; background: #a33; }

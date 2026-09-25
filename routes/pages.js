@@ -31,6 +31,11 @@ function createPagesRouter({ db, auth, sendPage }) {
     sendPage(req, res, 'app');
   });
 
+  // The projector screen: no user session (it pairs with a code or a claim link).
+  router.get('/screen', noStore, (req, res) => {
+    sendPage(req, res, 'screen');
+  });
+
   // Signed-in pages. Editing pages are only served to roles that may edit;
   // the API enforces the same rules.
   const signedIn = (req, res, next) => {

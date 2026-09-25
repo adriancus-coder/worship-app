@@ -141,6 +141,14 @@
         openVideo: 'Deschide videoclipul',
         empty: 'Programul acestui eveniment e gol.',
       },
+      screen: {
+        pageTitle: 'Ecran proiector — {appName}',
+        pairHeading: 'Împerechează acest ecran',
+        pairSteps: 'Pe telefon sau tabletă: Acasă → Ecrane proiector → introdu codul de mai sus.',
+        expiresIn: 'Codul expiră în {time}',
+        tooMany: 'Prea multe coduri cerute. Încercăm din nou în curând…',
+        fullscreenHint: 'Apasă pentru ecran complet',
+      },
       screens: {
         pageTitle: 'Ecrane proiector — {appName}',
         link: 'Ecrane proiector',
@@ -661,6 +669,14 @@
         teamNote: 'Note for the team',
         openVideo: 'Open the video',
         empty: 'This event has no items yet.',
+      },
+      screen: {
+        pageTitle: 'Projector screen — {appName}',
+        pairHeading: 'Pair this screen',
+        pairSteps: 'On a phone or tablet: Home → Projector screens → enter the code above.',
+        expiresIn: 'The code expires in {time}',
+        tooMany: 'Too many codes requested. Trying again soon…',
+        fullscreenHint: 'Click for full screen',
       },
       screens: {
         pageTitle: 'Projector screens — {appName}',
