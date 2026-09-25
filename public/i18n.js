@@ -64,8 +64,80 @@
         invalidLogin: 'Email sau parolă incorecte.',
         tooManyAttempts: 'Prea multe încercări eșuate. Încearcă din nou mai târziu.',
       },
+      roles: {
+        owner: 'proprietar',
+        leader: 'lider worship',
+        operator: 'operator',
+        member: 'membru',
+      },
+    },
+    en: {
+      common: {
+        networkError: 'The server is not responding. Please try again.',
+      },
+      setup: {
+        pageTitle: 'First-time setup — {appName}',
+        heading: 'First-time setup',
+        intro: 'Create the account for your church or team, and your owner account.',
+        tokenLabel: 'Setup code',
+        tokenHint: 'The SETUP_TOKEN value from the server configuration.',
+        adminLegend: 'Church / team',
+        adminNameLabel: 'Name',
+        ownerLegend: 'Your account (owner)',
+        ownerNameLabel: 'Name',
+        ownerEmailLabel: 'Email',
+        ownerPasswordLabel: 'Password',
+        passwordHint: 'At least {min} characters.',
+        submit: 'Create account',
+        done: 'Setup is complete. You can sign in now.',
+        goToLogin: 'Go to sign in',
+        failed: 'Setup failed.',
+      },
+      login: {
+        pageTitle: 'Sign in — {appName}',
+        heading: 'Sign in',
+        intro: 'Sign in to your account.',
+        emailLabel: 'Email',
+        passwordLabel: 'Password',
+        remember: 'Remember me',
+        submit: 'Sign in',
+        missingFields: 'Enter your email and password.',
+        failed: 'Sign-in failed.',
+      },
+      app: {
+        pageTitle: '{appName}',
+        heading: '{appName}',
+        loading: 'Loading…',
+        signedInAs: 'Signed in as {name} ({role}) — {adminName}',
+        logout: 'Sign out',
+        loadFailed: 'The server is not responding. Reload the page.',
+      },
+      errors: {
+        badRequest: 'Invalid request.',
+        internal: 'Internal error.',
+        notFound: 'Not found.',
+        unauthenticated: 'Not signed in.',
+        forbidden: 'Access denied.',
+        setupDisabled: 'First-time setup is disabled.',
+        setupBadToken: 'Invalid setup code.',
+        setupDone: 'The app is already set up.',
+        adminNameInvalid: 'The church / team name is required (max. {max} characters).',
+        ownerNameInvalid: 'Your name is required (max. {max} characters).',
+        emailInvalid: 'The email address is not valid.',
+        passwordTooShort: 'The password must be at least {min} characters.',
+        invalidLogin: 'Incorrect email or password.',
+        tooManyAttempts: 'Too many failed attempts. Please try again later.',
+      },
+      roles: {
+        owner: 'owner',
+        leader: 'worship leader',
+        operator: 'operator',
+        member: 'member',
+      },
     },
   };
+
+  const LANGS = Object.keys(STRINGS);
 
   function lookup(lang, key) {
     let node = STRINGS[lang];
@@ -82,7 +154,7 @@
     return text.replace(/\{(\w+)\}/g, (match, name) => (vars && name in vars ? String(vars[name]) : match));
   }
 
-  const I18N = { DEFAULT_LANG, STRINGS, t };
+  const I18N = { DEFAULT_LANG, LANGS, STRINGS, t };
 
   if (typeof module === 'object' && module.exports) {
     module.exports = I18N;

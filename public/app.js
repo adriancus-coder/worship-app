@@ -12,7 +12,7 @@
       return;
     }
     const { user, admin } = await res.json();
-    whoami.textContent = t('app.signedInAs', { name: user.name, role: user.role, adminName: admin.name });
+    whoami.textContent = t('app.signedInAs', { name: user.name, role: t(`roles.${user.role}`), adminName: admin.name });
     whoami.classList.remove('muted');
   }
 
