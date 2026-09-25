@@ -34,6 +34,7 @@
     saving: false,
     lastSaveError: null,
     songCache: new Map(), // songId -> song with sections (or 'loading' / 'error')
+    media: null, // the media library (videos), loaded for editors
   };
   let nextKey = 1;
 
@@ -52,11 +53,12 @@
 
   function payload(items) {
     return items.map((item) => {
-      const { type, songId, title, body, reference, url, durationMin } = item;
+      const { type, songId, mediaId, title, body, reference, url, durationMin } = item;
       const out = {
         id: item.id || null, // saved items keep their id (live mode follows items by id)
         type,
         songId: type === 'song' ? songId : null,
+        mediaId: type === 'video' && mediaId ? mediaId : null,
         title: title || '',
         body: body || '',
         reference: reference || '',
@@ -105,6 +107,8 @@
       }
     } else if (item.type === 'verse' && item.body) {
       parts.push(item.body.split('\n')[0].slice(0, 60));
+    } else if (item.type === 'video' && item.media) {
+      parts.push(t('setlist.mediaFromLibrary'));
     } else if (item.type === 'video' && item.url) {
       try { parts.push(new URL(item.url).hostname); } catch (err) { parts.push(item.url); }
     }
@@ -573,7 +577,7 @@
       case 'video':
         return [
           field('it-title', t('setlist.titleLabel'), input(item, 'title', 'it-title', { type: 'text', maxlength: '200' })),
-          field('it-url', t('setlist.urlLabel'), input(item, 'url', 'it-url', { type: 'url', maxlength: '500', inputmode: 'url', autocapitalize: 'off', spellcheck: 'false' })),
+          ...videoSourceFields(item),
           durationField(item),
         ];
       default:
@@ -586,12 +590,58 @@
     }
   }
 
+  // A video item plays a media library entry, or a link that can be saved into the library.
+  function videoSourceFields(item) {
+    const library = state.media || [];
+    const select = el('select', {
+      id: 'it-media',
+      onchange: () => {
+        const chosen = library.find((m) => String(m.id) === select.value);
+        item.mediaId = chosen ? chosen.id : null;
+        item.media = chosen ? { id: chosen.id, title: chosen.title, kind: chosen.kind } : null;
+        if (chosen && !item.title) item.title = chosen.title;
+        changed();
+        renderAll();
+      },
+    }, el('option', { value: '', text: t('setlist.mediaNone') }),
+    library.map((m) => el('option', { value: String(m.id), text: m.title })));
+    select.value = item.mediaId ? String(item.mediaId) : '';
+    const parts = [field('it-media', t('setlist.mediaLabel'), select, library.length ? null : t('setlist.mediaEmptyHint'))];
+    if (!item.mediaId) {
+      const message = el('p', { class: 'message', role: 'status' });
+      parts.push(field('it-url', t('setlist.urlLabel'), input(item, 'url', 'it-url', { type: 'url', maxlength: '500', inputmode: 'url', autocapitalize: 'off', spellcheck: 'false' }), t('setlist.videoUrlHint')));
+      parts.push(el('div', { class: 'field' },
+        el('button', {
+          type: 'button',
+          class: 'secondary',
+          text: t('setlist.mediaSaveUrl'),
+          onclick: async () => {
+            const res = await api('/api/media/url', { method: 'POST', body: { title: item.title || item.url, url: item.url } });
+            if (!res.ok) {
+              message.className = 'message error';
+              message.textContent = res.body.error || t('common.networkError');
+              return;
+            }
+            state.media = [...library, res.body.media];
+            item.mediaId = res.body.media.id;
+            item.media = { id: res.body.media.id, title: res.body.media.title, kind: res.body.media.kind };
+            item.url = '';
+            changed();
+            renderAll();
+          },
+        }),
+        message));
+    }
+    return parts;
+  }
+
   function viewFields(item) {
     const duration = item.durationMin ? el('p', { class: 'muted', text: t('setlist.minutes', { n: item.durationMin }) }) : null;
     switch (item.type) {
       case 'verse':
         return [readOnlyText(t('setlist.referenceLabel'), item.reference), readOnlyText(t('setlist.verseTextLabel'), item.body), duration];
       case 'video':
+        if (item.media) return [readOnlyText(t('setlist.mediaLabel'), item.media.title), duration];
         return [item.url ? el('p', null, el('a', { class: 'button secondary video-link', href: item.url, target: '_blank', rel: 'noopener noreferrer', text: item.url })) : null, duration];
       default:
         return [readOnlyText(t('setlist.bodyLabel'), item.body), duration];
@@ -1006,6 +1056,10 @@
     $('add-bar').hidden = !state.editing;
     $('danger-zone').hidden = !state.editing;
     applyEvent(eventRes.body, false);
+    if (state.editing) {
+      const mediaRes = await api('/api/media');
+      state.media = mediaRes.ok ? mediaRes.body.media : [];
+    }
     status.hidden = true;
     $('event').hidden = false;
     if (state.editing) checkDraft();

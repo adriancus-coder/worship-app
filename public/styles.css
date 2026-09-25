@@ -947,3 +947,10 @@ body.screen-body.cursor-hidden, body.screen-body.cursor-hidden * { cursor: none;
 .editor-preview h2 { margin: 0; }
 .editor-preview #editor-preview { margin-top: 12px; }
 .current-tools, .preview-tools { display: flex; justify-content: flex-end; margin-bottom: 8px; }
+
+/* --- media library ---------------------------------------------------------------------------- */
+
+.media-form .file-button { align-self: flex-start; }
+.upload-progress { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.upload-progress progress { flex: 1 1 160px; height: 12px; accent-color: var(--accent); }
+.upload-progress span:first-child { overflow-wrap: anywhere; }

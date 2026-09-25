@@ -23,6 +23,7 @@ const createEventsRouter = require('./routes/events');
 const createPagesRouter = require('./routes/pages');
 const { createScreensRouter } = require('./routes/screens');
 const createSettingsRouter = require('./routes/settings');
+const createMediaRouter = require('./routes/media');
 const { createLiveHub } = require('./socket/live');
 const { createScreensHub } = require('./socket/screens');
 
@@ -79,6 +80,7 @@ app.use(createResurseRouter({ db, auth, logger }));
 app.use(createEventsRouter({ db, auth, logger, live }));
 app.use(createScreensRouter({ db, auth, logger, screensHub }));
 app.use(createSettingsRouter({ db, auth, config, logger, screensHub }));
+app.use(createMediaRouter({ db, auth, config, logger }));
 app.use(createPagesRouter({ db, auth, sendPage }));
 
 app.use('/api', (req, res) => {

@@ -84,6 +84,12 @@ function createPagesRouter({ db, auth, sendPage }) {
     sendPage(req, res, 'screens');
   });
 
+  // Media library (videos for the projector): owner and leader.
+  router.get('/media', noStore, signedIn, (req, res) => {
+    if (!canEdit(req)) return res.redirect('/app');
+    sendPage(req, res, 'media');
+  });
+
   // Admin settings (the church logo): owner only.
   router.get('/settings', noStore, signedIn, (req, res) => {
     if (req.session.user.role !== 'owner') return res.redirect('/app');

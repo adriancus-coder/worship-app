@@ -573,7 +573,7 @@ test('validateItems: song options (transpose, arrangement, team note, reference 
   const findSong = (id) => (id === 5 ? { id: 5, title: 'Sfânt', sections } : null);
   const ok = evs.validateItems([{ type: 'song', songId: 5, transpose: -3, arrangement: 'v1, c c1 B', teamNote: ' încet ', referenceUrl: 'https://youtu.be/x' }], tro, findSong);
   assert.deepStrictEqual(ok.value[0], {
-    id: null, type: 'song', songId: 5, title: 'Sfânt', body: null, reference: null, url: null, durationMin: null,
+    id: null, type: 'song', songId: 5, mediaId: null, title: 'Sfânt', body: null, reference: null, url: null, durationMin: null,
     transpose: -3, arrangement: 'V1 C C B', teamNote: 'încet', referenceUrl: 'https://youtu.be/x',
   });
   assert.deepStrictEqual(evs.validateItems([{ type: 'song', songId: 5 }], tro, findSong).value[0].transpose, 0);
@@ -896,6 +896,44 @@ test('migration 009: users.chord_notation is letters, solfege or NULL', () => {
   settings.set(1, 'chord_notation_default', 'solfege');
   assert.strictEqual(settings.chordNotationDefault(1), 'solfege');
   mem.close();
+});
+
+test('media: video type from magic bytes, allowed video links', () => {
+  const M = require('../lib/media');
+  const mp4 = Buffer.concat([Buffer.from([0, 0, 0, 0x20]), Buffer.from('ftypisom'), Buffer.alloc(52)]);
+  const webm = Buffer.concat([Buffer.from([0x1a, 0x45, 0xdf, 0xa3, 0x9f, 0x42, 0x86, 0x81, 0x01]), Buffer.from('B\u0082\u0084webm'), Buffer.alloc(40)]);
+  const mkv = Buffer.concat([Buffer.from([0x1a, 0x45, 0xdf, 0xa3]), Buffer.from('matroska'), Buffer.alloc(52)]);
+  assert.strictEqual(M.sniffVideo(mp4), 'video/mp4');
+  assert.strictEqual(M.sniffVideo(webm), 'video/webm');
+  assert.strictEqual(M.sniffVideo(mkv), null, 'Matroska that is not WebM');
+  assert.strictEqual(M.sniffVideo(Buffer.from('not a video file, only text......')), null);
+  const ok = {
+    'https://www.youtube.com/watch?v=dQw4w9WgXcQ': { kind: 'youtube', id: 'dQw4w9WgXcQ' },
+    'https://youtu.be/dQw4w9WgXcQ?t=10': { kind: 'youtube', id: 'dQw4w9WgXcQ' },
+    'https://m.youtube.com/shorts/dQw4w9WgXcQ': { kind: 'youtube', id: 'dQw4w9WgXcQ' },
+    'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ': { kind: 'youtube', id: 'dQw4w9WgXcQ' },
+    'https://vimeo.com/76979871': { kind: 'vimeo', id: '76979871' },
+    'https://player.vimeo.com/video/76979871?h=abc': { kind: 'vimeo', id: '76979871' },
+    'https://cdn.example.org/clips/anunt.MP4': { kind: 'file', url: 'https://cdn.example.org/clips/anunt.MP4' },
+    'https://cdn.example.org/a.webm?x=1': { kind: 'file', url: 'https://cdn.example.org/a.webm?x=1' },
+  };
+  for (const [url, parsed] of Object.entries(ok)) assert.deepStrictEqual(M.parseVideoUrl(url), parsed, url);
+  for (const bad of ['http://youtu.be/dQw4w9WgXcQ', 'https://youtube.com/watch?v=short', 'https://example.com/page', 'https://vimeo.com/channels/x',
+    'https://example.com/v.mov', 'javascript:alert(1)', 'https://user:pw@example.com/a.mp4', '']) {
+    assert.strictEqual(M.parseVideoUrl(bad), null, bad);
+  }
+  assert.deepStrictEqual(M.sourceOf({ kind: 'url', url: 'youtube:dQw4w9WgXcQ' }), { type: 'youtube', id: 'dQw4w9WgXcQ' });
+  assert.deepStrictEqual(M.sourceOf({ kind: 'upload', mime: 'video/webm' }), { type: 'upload', mime: 'video/webm' });
+});
+
+test('validateItems: a video item from the media library', () => {
+  const findMedia = (id) => (id === 3 ? { id: 3, title: 'Anunț tabără' } : null);
+  const v = (item) => evs.validateItems([{ type: 'video', ...item }], tro, () => null, findMedia);
+  assert.deepStrictEqual([v({ mediaId: 3 }).value[0].mediaId, v({ mediaId: 3 }).value[0].title, v({ mediaId: 3 }).value[0].url], [3, 'Anunț tabără', null]);
+  assert.strictEqual(v({ mediaId: 3, title: 'Clip' }).value[0].title, 'Clip');
+  assert.ok(v({ mediaId: 9 }).error);
+  assert.strictEqual(v({ url: 'https://x.ro/v.mp4' }).value[0].mediaId, null);
+  assert.ok(v({}).error);
 });
 
 test('section codes, arrangements and defaults', () => {

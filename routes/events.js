@@ -115,7 +115,8 @@ function createEventsRouter({ db, auth, logger, live }) {
   router.put('/api/events/:id/items', canEdit, (req, res) => {
     const found = load(req, res);
     if (!found) return;
-    const { error, value } = validateItems((req.body || {}).items, req.t, (songId) => events.findSong(req.adminId, songId));
+    const { error, value } = validateItems((req.body || {}).items, req.t,
+      (songId) => events.findSong(req.adminId, songId), (mediaId) => events.findMedia(req.adminId, mediaId));
     if (error) return res.status(400).json({ error });
     const before = live.setlistBefore(req.adminId, found.event.id);
     events.replaceItems(req.adminId, found.event.id, value);

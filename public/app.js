@@ -19,6 +19,7 @@
       // Admin pages for owner / leader.
       const manager = ['owner', 'leader'].includes(me.user.role);
       document.getElementById('screens-link').hidden = !manager;
+      document.getElementById('media-link').hidden = !manager;
       document.getElementById('settings-link').hidden = me.user.role !== 'owner';
       document.getElementById('app-links').hidden = !manager;
     } else if (loadFailed) {
