@@ -1192,6 +1192,27 @@ test('events: the editor save keeps projector-only items where they were', () =>
   mem.close();
 });
 
+test('team: temporary passwords, validation', () => {
+  const T = require('../lib/team');
+  const seen = new Set();
+  for (let i = 0; i < 200; i++) {
+    const pw = T.temporaryPassword();
+    assert.strictEqual(pw.length, 12);
+    assert.ok(!/[0O1lI]/.test(pw), `readable: ${pw}`);
+    assert.ok([...pw].every((c) => T.TEMP_ALPHABET.includes(c)));
+    seen.add(pw);
+  }
+  assert.strictEqual(seen.size, 200, 'random');
+  const tro = (k, v) => t(k, v, 'ro');
+  assert.deepStrictEqual(T.validateEmail('  Ana@X.RO ', tro), { value: 'ana@x.ro' });
+  assert.ok(T.validateEmail('ana@x', tro).error);
+  assert.ok(T.validateName('   ', tro).error);
+  assert.ok(T.validateName('x'.repeat(101), tro).error);
+  assert.deepStrictEqual(T.validateRole('operator', tro), { value: 'operator' });
+  assert.ok(T.validateRole('owner', tro).error, 'never a second owner');
+  assert.ok(T.validateRole('admin', tro).error);
+});
+
 (async () => {
   for (const [name, fn] of asyncTests) {
     try {

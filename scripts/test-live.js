@@ -627,6 +627,60 @@ async function main() {
     await frameWhere(screen, () => true);
   });
 
+  await step('team: the owner creates and manages accounts; others cannot', async () => {
+    const created = await api('POST', '/api/team', owner, { name: 'Ion', email: 'Ion@X.ro', role: 'operator' });
+    assert.strictEqual(created.status, 201, JSON.stringify(created.body));
+    const temp = created.body.temporaryPassword;
+    assert.ok(/^[a-km-zA-HJ-NP-Z2-9]{12}$/.test(temp), temp);
+    assert.deepStrictEqual([created.body.user.email, created.body.user.role, created.body.user.mustChangePassword], ['ion@x.ro', 'operator', true]);
+    const ionId = created.body.user.id;
+    assert.strictEqual((await api('POST', '/api/team', owner, { name: 'Dublura', email: 'ion@x.ro', role: 'member' })).status, 409);
+    assert.strictEqual((await api('POST', '/api/team', owner, { name: 'Alt', email: 'alt@x.ro', role: 'member' })).status, 409, 'another admin\'s email');
+    assert.strictEqual((await api('POST', '/api/team', owner, { name: 'X', email: 'x@x.ro', role: 'owner' })).status, 400);
+    for (const cookie of [leader, member]) {
+      assert.strictEqual((await api('GET', '/api/team', cookie)).status, 403);
+      assert.strictEqual((await api('POST', '/api/team', cookie, { name: 'Y', email: 'y@x.ro', role: 'member' })).status, 403);
+    }
+    const list = (await api('GET', '/api/team', owner)).body.users;
+    assert.ok(list.some((u) => u.id === ionId) && list.every((u) => !('password_hash' in u) && !('passwordHash' in u)));
+    assert.ok(!list.some((u) => u.email === 'alt@x.ro'), 'only this admin');
+    const ownerId = list.find((u) => u.role === 'owner').id;
+    // owner row and other admins' users
+    assert.strictEqual((await api('PATCH', `/api/team/${ownerId}`, owner, { role: 'member' })).status, 403);
+    assert.strictEqual((await api('POST', `/api/team/${ownerId}/deactivate`, owner)).status, 403);
+    const otherId = (await api('GET', '/api/team', other)).body.users[0].id;
+    for (const path of [`/api/team/${otherId}/deactivate`, `/api/team/${otherId}/reset-password`]) {
+      assert.strictEqual((await api('POST', path, owner)).status, 404);
+    }
+    assert.strictEqual((await api('PATCH', `/api/team/${otherId}`, owner, { name: 'Z' })).status, 404);
+    // login with the temporary password; last login recorded; rename and role change
+    const ion = (await api('POST', '/api/auth/login', null, { email: 'ion@x.ro', password: temp }));
+    assert.strictEqual(ion.status, 200);
+    const ionCookie = /wa_sid=[0-9a-f]+/.exec(ion.headers.get('set-cookie'))[0];
+    assert.ok((await api('GET', '/api/team', owner)).body.users.find((u) => u.id === ionId).lastLoginAt > 0);
+    let patched = await api('PATCH', `/api/team/${ionId}`, owner, { name: 'Ion Pop', role: 'member' });
+    assert.deepStrictEqual([patched.body.user.name, patched.body.user.role], ['Ion Pop', 'member']);
+    assert.strictEqual((await api('PATCH', `/api/team/${ionId}`, owner, { role: 'boss' })).status, 400);
+    // deactivate: the socket closes, the session is gone, login refused; reactivate: login again
+    const ionSocket = connect(ionCookie);
+    await next(ionSocket, 'connect');
+    const closed = next(ionSocket, 'disconnect');
+    assert.strictEqual((await api('POST', `/api/team/${ionId}/deactivate`, owner)).body.user.active, false);
+    assert.strictEqual(await closed, 'io server disconnect');
+    assert.strictEqual((await api('GET', '/api/auth/me', ionCookie)).status, 401);
+    assert.strictEqual((await api('POST', '/api/auth/login', null, { email: 'ion@x.ro', password: temp })).status, 401);
+    assert.strictEqual((await api('POST', `/api/team/${ionId}/reactivate`, owner)).body.user.active, true);
+    const again = await api('POST', '/api/auth/login', null, { email: 'ion@x.ro', password: temp });
+    assert.strictEqual(again.status, 200);
+    const againCookie = /wa_sid=[0-9a-f]+/.exec(again.headers.get('set-cookie'))[0];
+    // reset: old sessions gone, the old password refused, the new one works
+    const reset = await api('POST', `/api/team/${ionId}/reset-password`, owner);
+    assert.ok(reset.body.temporaryPassword && reset.body.temporaryPassword !== temp);
+    assert.strictEqual((await api('GET', '/api/auth/me', againCookie)).status, 401);
+    assert.strictEqual((await api('POST', '/api/auth/login', null, { email: 'ion@x.ro', password: temp })).status, 401);
+    assert.strictEqual((await api('POST', '/api/auth/login', null, { email: 'ion@x.ro', password: reset.body.temporaryPassword })).status, 200);
+  });
+
   await step('end -> finished for the whole room; commands then refused', async () => {
     const l = await joined(leader, ev.id);
     const m = await joined(member, ev.id);

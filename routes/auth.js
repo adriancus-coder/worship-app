@@ -17,6 +17,7 @@ function createAuthRouter({ db, auth, config, logger, live }) {
     FROM users u JOIN admins a ON a.id = u.admin_id
     WHERE u.email = ? AND u.active = 1`);
   const updateLocale = db.prepare('UPDATE users SET locale = ? WHERE id = ? AND admin_id = ?');
+  const touchLogin = db.prepare('UPDATE users SET last_login_at = ? WHERE id = ? AND admin_id = ?');
 
   router.post('/api/auth/login', asyncRoute(async (req, res) => {
     const ip = req.ip;
@@ -44,6 +45,7 @@ function createAuthRouter({ db, auth, config, logger, live }) {
     if (previous) auth.deleteSession(previous);
 
     const session = auth.createSession(user, remember);
+    touchLogin.run(Date.now(), user.id, user.admin_id);
     auth.setSessionCookie(res, session.id, session.maxAgeMs);
 
     // A saved language wins; otherwise the current one becomes the user's preference.
