@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="{{LANG}}" data-app-name="{{APP_NAME}}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#141318">
+  <title>{{APP_NAME}}</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <nav class="topnav" data-i18n-aria-label="nav.label">
+      <a href="/app" data-i18n="nav.home"></a>
+      <a href="/library" data-i18n="nav.library"></a>
+      <a href="/events" aria-current="page" data-i18n="nav.events"></a>
+    </nav>
+    <div class="lang-switch" role="group" aria-label="Limbă / Language">
+      <button type="button" data-lang="ro" lang="ro" aria-pressed="false">RO</button>
+      <button type="button" data-lang="en" lang="en" aria-pressed="false">EN</button>
+    </div>
+  </header>
+  <main class="wide event-page">
+    <p class="back"><a href="/events" data-i18n="setlist.back"></a></p>
+    <p id="status" class="muted" role="status" aria-live="polite" data-i18n="events.loading"></p>
+
+    <div id="event" hidden>
+      <header class="event-head">
+        <h1 id="event-name"></h1>
+        <p id="event-when" class="event-when"></p>
+        <p class="event-summary"><span id="event-status" class="pill"></span> <span id="event-counts"></span></p>
+        <p id="event-notes" class="event-notes" hidden></p>
+        <div class="event-actions" id="event-actions">
+          <a class="button secondary" id="edit-link" hidden data-i18n="setlist.edit"></a>
+          <button type="button" class="secondary" id="details-button" hidden data-i18n="setlist.details"></button>
+          <button type="button" id="publish-button" hidden></button>
+          <button type="button" class="secondary" id="template-button" hidden data-i18n="setlist.saveTemplate"></button>
+        </div>
+        <p id="action-message" class="message" role="status" aria-live="polite"></p>
+      </header>
+
+      <div class="editor-grid">
+        <section class="setlist-pane" aria-labelledby="setlist-heading">
+          <h2 id="setlist-heading" data-i18n="setlist.heading"></h2>
+          <p id="reorder-hint" class="hint" hidden data-i18n="setlist.reorderHint"></p>
+          <p id="setlist-empty" class="muted" hidden data-i18n="setlist.empty"></p>
+          <ol id="items" class="setlist"></ol>
+          <div class="add-bar" id="add-bar" role="group" data-i18n-aria-label="setlist.addLabel" hidden>
+            <button type="button" class="secondary" data-add="song" data-i18n="setlist.addSong"></button>
+            <button type="button" class="secondary" data-add="verse" data-i18n="setlist.addVerse"></button>
+            <button type="button" class="secondary" data-add="video" data-i18n="setlist.addVideo"></button>
+            <button type="button" class="secondary" data-add="announcement" data-i18n="setlist.addAnnouncement"></button>
+            <button type="button" class="secondary" data-add="sermon" data-i18n="setlist.addSermon"></button>
+          </div>
+        </section>
+        <section class="detail-pane" id="detail-home" aria-live="polite">
+          <div id="detail" class="item-detail"></div>
+        </section>
+      </div>
+
+      <div class="save-bar" id="save-bar" hidden>
+        <p id="save-state" class="save-state" role="status" aria-live="polite"></p>
+        <button type="button" id="save-button" data-i18n="setlist.save"></button>
+      </div>
+
+      <section class="danger-zone" id="danger-zone" hidden>
+        <h2 data-i18n="setlist.dangerHeading"></h2>
+        <button type="button" class="danger" id="delete-button" data-i18n="setlist.deleteEvent"></button>
+      </section>
+    </div>
+
+    <dialog id="song-dialog" aria-labelledby="song-dialog-heading" class="wide-dialog">
+      <form method="dialog" id="song-form">
+        <h2 id="song-dialog-heading" data-i18n="setlist.pickSongHeading"></h2>
+        <div class="field">
+          <label for="song-q" data-i18n="setlist.pickSearchLabel"></label>
+          <input type="search" id="song-q" autocomplete="off" maxlength="200" aria-controls="song-results">
+        </div>
+        <p id="song-status" class="muted" role="status" aria-live="polite"></p>
+        <ul id="song-results" class="pick-list"></ul>
+        <div class="form-actions">
+          <button type="submit" class="secondary" value="cancel" data-i18n="setlist.pickClose"></button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="details-dialog" aria-labelledby="details-heading">
+      <form id="details-form" novalidate>
+        <h2 id="details-heading" data-i18n="setlist.detailsHeading"></h2>
+        <div class="field">
+          <label for="d-name" data-i18n="events.nameLabel"></label>
+          <input type="text" id="d-name" maxlength="120" required>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="d-date" data-i18n="events.dateLabel"></label>
+            <input type="date" id="d-date" required>
+          </div>
+          <div class="field">
+            <label for="d-time" data-i18n="events.timeLabel"></label>
+            <input type="time" id="d-time">
+          </div>
+        </div>
+        <div class="field">
+          <label for="d-notes" data-i18n="setlist.notesLabel"></label>
+          <textarea id="d-notes" rows="3" maxlength="2000"></textarea>
+        </div>
+        <p class="message error" id="details-message" role="alert"></p>
+        <div class="form-actions">
+          <button type="submit" data-i18n="setlist.detailsSave"></button>
+          <button type="button" class="secondary" data-close data-i18n="setlist.cancel"></button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="template-dialog" aria-labelledby="template-heading">
+      <form id="template-form" novalidate>
+        <h2 id="template-heading" data-i18n="setlist.templateHeading"></h2>
+        <div class="field">
+          <label for="t-name" data-i18n="setlist.templateNameLabel"></label>
+          <input type="text" id="t-name" maxlength="120" required>
+        </div>
+        <p class="message error" id="template-message" role="alert"></p>
+        <div class="form-actions">
+          <button type="submit" data-i18n="setlist.templateSave"></button>
+          <button type="button" class="secondary" data-close data-i18n="setlist.cancel"></button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="delete-dialog" aria-labelledby="delete-text">
+      <form method="dialog">
+        <p id="delete-text"></p>
+        <p class="muted" data-i18n="setlist.deleteWarning"></p>
+        <p class="message error" id="delete-message" role="alert"></p>
+        <div class="form-actions">
+          <button type="button" class="danger" id="confirm-delete" data-i18n="setlist.deleteConfirmButton"></button>
+          <button type="submit" class="secondary" value="cancel" data-i18n="setlist.cancel"></button>
+        </div>
+      </form>
+    </dialog>
+  </main>
+  <script src="/i18n.js"></script>
+  <script src="/chords.js"></script>
+  <script src="/sections.js"></script>
+  <script src="/page.js"></script>
+  <script src="/song-render.js"></script>
+  <script src="/event.js"></script>
+</body>
+</html>

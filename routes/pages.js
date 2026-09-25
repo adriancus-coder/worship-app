@@ -48,6 +48,16 @@ function createPagesRouter({ db, auth, sendPage }) {
     sendPage(req, res, 'events');
   });
 
+  // The API decides what the user may see; the edit page is only served to editors.
+  router.get('/events/:id(\\d+)', noStore, signedIn, (req, res) => {
+    sendPage(req, res, 'event');
+  });
+
+  router.get('/events/:id(\\d+)/edit', noStore, signedIn, (req, res) => {
+    if (!canEdit(req)) return res.redirect(`/events/${req.params.id}`);
+    sendPage(req, res, 'event');
+  });
+
   router.get('/songs/new', noStore, signedIn, (req, res) => {
     if (!canEdit(req)) return res.redirect('/library');
     sendPage(req, res, 'song-edit');

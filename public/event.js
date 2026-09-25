@@ -1,0 +1,659 @@
+'use strict';
+
+// Event page: /events/:id (read-only) and /events/:id/edit (owner, leader).
+// The setlist lives in `state.items`; the list and the detail pane are re-rendered from it.
+// Changes are saved explicitly; leaving with unsaved changes asks for confirmation.
+
+(function () {
+  const { api, el, canEdit, setTitle, formatDate } = window.PAGE;
+  const { t } = window.I18N;
+
+  const [, , eventId, editSegment] = window.location.pathname.split('/');
+  const $ = (id) => document.getElementById(id);
+  const status = $('status');
+  const itemsList = $('items');
+  const detail = $('detail');
+  const detailHome = $('detail-home');
+  const saveButton = $('save-button');
+  const saveState = $('save-state');
+  const actionMessage = $('action-message');
+  const publishButton = $('publish-button');
+  const templateButton = $('template-button');
+  const wide = window.matchMedia('(min-width: 900px)');
+
+  const state = {
+    me: null,
+    editing: false,
+    event: null,
+    today: null,
+    items: [], // { key, type, songId, title, body, reference, url, durationMin, song, songDeleted }
+    saved: '', // JSON of the last saved items, for the "unsaved changes" check
+    selected: -1,
+    saving: false,
+    lastSaveError: null,
+    songCache: new Map(), // songId -> song with sections (or 'loading' / 'error')
+  };
+  let nextKey = 1;
+
+  // --- helpers ----------------------------------------------------------------
+
+  function payload(items) {
+    return items.map(({ type, songId, title, body, reference, url, durationMin }) => ({
+      type,
+      songId: type === 'song' ? songId : null,
+      title: title || '',
+      body: body || '',
+      reference: reference || '',
+      url: url || '',
+      durationMin: durationMin === '' || durationMin === null || durationMin === undefined ? null : Number(durationMin),
+    }));
+  }
+
+  function isDirty() {
+    return state.editing && JSON.stringify(payload(state.items)) !== state.saved;
+  }
+
+  function fromServer(item) {
+    return { ...item, key: nextKey++ };
+  }
+
+  function itemTitle(item) {
+    if (item.type === 'song') return item.title || t('setlist.songDeleted');
+    if (item.type === 'verse') return item.reference || item.title || t('setlist.types.verse');
+    return item.title || (item.body ? item.body.split('\n')[0].slice(0, 80) : '') || t('setlist.untitled');
+  }
+
+  function itemSubline(item) {
+    const parts = [];
+    if (item.type === 'song') {
+      if (item.songDeleted) parts.push(t('setlist.songDeleted'));
+      else if (item.song) {
+        if (item.song.key) parts.push(t('setlist.songKey', { key: item.song.key }));
+        parts.push(t('setlist.sectionCount', { n: item.song.sectionCount }));
+      }
+    } else if (item.type === 'verse' && item.body) {
+      parts.push(item.body.split('\n')[0].slice(0, 60));
+    } else if (item.type === 'video' && item.url) {
+      try { parts.push(new URL(item.url).hostname); } catch (err) { parts.push(item.url); }
+    }
+    if (item.durationMin) parts.push(t('setlist.minutes', { n: item.durationMin }));
+    return parts.join(' · ');
+  }
+
+  function countText(n) {
+    if (n === 0) return t('events.itemCountZero');
+    return n === 1 ? t('events.itemCountOne') : t('events.itemCount', { n });
+  }
+
+  function lastSungText(lastSung) {
+    if (!lastSung || !state.today) return t('setlist.neverSung');
+    const days = Math.round((Date.parse(`${state.today}T00:00:00Z`) - Date.parse(`${lastSung}T00:00:00Z`)) / 86400000);
+    const weeks = Math.floor(days / 7);
+    if (weeks <= 0) return t('setlist.lastSungThisWeek');
+    if (weeks === 1) return t('setlist.lastSungOneWeek');
+    return t(weeks >= 20 ? 'setlist.lastSungManyWeeks' : 'setlist.lastSungWeeks', { n: weeks });
+  }
+
+  // --- header -------------------------------------------------------------------
+
+  function renderHeader() {
+    const ev = state.event;
+    setTitle('setlist.pageTitle', { name: ev.name });
+    $('event-name').textContent = ev.name;
+    $('event-when').textContent = ev.isTemplate
+      ? t('events.template')
+      : [formatDate(ev.eventDate, state.today && state.today.slice(0, 4)), ev.startTime].filter(Boolean).join(' · ');
+    const pill = $('event-status');
+    pill.className = ev.isTemplate ? 'pill pill-template' : `pill pill-${ev.status}`;
+    pill.textContent = ev.isTemplate ? t('events.template') : t(`events.status.${ev.status}`);
+    const minutes = state.items.reduce((sum, it) => sum + (Number(it.durationMin) || 0), 0);
+    const count = countText(state.items.length);
+    $('event-counts').textContent = minutes ? t('setlist.summary', { count, minutes }) : count;
+    $('event-notes').hidden = !ev.notes;
+    $('event-notes').textContent = ev.notes || '';
+
+    const editor = canEdit(state.me);
+    $('edit-link').hidden = !editor || state.editing;
+    $('edit-link').href = `/events/${ev.id}/edit`;
+    $('details-button').hidden = !state.editing;
+    templateButton.hidden = !state.editing;
+    publishButton.hidden = !state.editing || ev.isTemplate || !['draft', 'published'].includes(ev.status);
+    publishButton.className = ev.status === 'published' ? 'secondary' : '';
+    publishButton.textContent = ev.status === 'published' ? t('setlist.unpublish') : t('setlist.publish');
+    const dirty = isDirty();
+    publishButton.disabled = dirty;
+    templateButton.disabled = dirty;
+  }
+
+  function renderSaveBar() {
+    const bar = $('save-bar');
+    bar.hidden = !state.editing;
+    if (!state.editing) return;
+    const dirty = isDirty();
+    bar.classList.toggle('dirty', dirty);
+    saveButton.disabled = !dirty || state.saving;
+    saveButton.textContent = state.saving ? t('setlist.saving') : t('setlist.save');
+    saveState.className = `save-state${state.lastSaveError ? ' error' : ''}`;
+    saveState.textContent = state.lastSaveError
+      || (dirty ? `${t('setlist.unsaved')}. ${t('setlist.saveFirst')}` : (state.justSaved ? t('setlist.saved') : ''));
+  }
+
+  // --- setlist ------------------------------------------------------------------
+
+  function toolButton(action, index, symbol, label, disabled) {
+    return el('button', {
+      type: 'button',
+      class: 'secondary icon-button',
+      'data-action': action,
+      'data-index': index,
+      'aria-label': label,
+      disabled,
+      onclick: () => onTool(action, index),
+    }, el('span', { 'aria-hidden': 'true', text: symbol }));
+  }
+
+  function renderItems() {
+    const count = state.items.length;
+    $('setlist-empty').hidden = count > 0;
+    $('reorder-hint').hidden = !state.editing || count < 2;
+    itemsList.replaceChildren(...state.items.map((item, i) => {
+      const title = itemTitle(item);
+      const selected = i === state.selected;
+      const main = el('button', {
+        type: 'button',
+        class: 'item-main',
+        'aria-expanded': String(selected),
+        'aria-controls': 'detail',
+        'data-index': i,
+        onclick: () => select(selected ? -1 : i),
+        onkeydown: (event) => onItemKey(event, i),
+      },
+      el('span', { class: 'item-number', 'aria-hidden': 'true', text: String(i + 1) }),
+      el('span', { class: 'item-text' },
+        el('span', { class: `type-badge type-${item.type}`, text: t(`setlist.types.${item.type}`) }),
+        el('span', { class: `item-title${item.songDeleted ? ' deleted' : ''}`, text: title }),
+        itemSubline(item) ? el('span', { class: 'item-sub', text: itemSubline(item) }) : null));
+      const tools = state.editing
+        ? el('span', { class: 'item-tools' },
+          toolButton('up', i, '↑', t('setlist.moveUp', { title }), i === 0),
+          toolButton('down', i, '↓', t('setlist.moveDown', { title }), i === count - 1),
+          toolButton('remove', i, '✕', t('setlist.remove', { title }), false))
+        : null;
+      return el('li', { class: `setlist-item${selected ? ' selected' : ''}` }, el('div', { class: 'item-row' }, main, tools));
+    }));
+    placeDetail();
+  }
+
+  // Narrow screens: the detail opens under the selected item. Wide: in the side pane.
+  function placeDetail() {
+    const li = state.selected >= 0 ? itemsList.children[state.selected] : null;
+    if (!wide.matches && li) li.append(detail);
+    else if (detail.parentElement !== detailHome) detailHome.append(detail);
+  }
+
+  function renderAll() {
+    renderHeader();
+    renderItems();
+    renderDetail();
+    renderSaveBar();
+  }
+
+  function changed() {
+    state.justSaved = false;
+    state.lastSaveError = null;
+    renderHeader();
+    renderSaveBar();
+  }
+
+  function select(index, focusDetail) {
+    state.selected = index;
+    renderItems();
+    renderDetail();
+    if (focusDetail) {
+      const first = detail.querySelector('input, textarea, select, a');
+      if (first) first.focus();
+    }
+  }
+
+  function focusItem(index, action) {
+    const target = action && itemsList.querySelector(`[data-action="${action}"][data-index="${index}"]`);
+    if (target && !target.disabled) target.focus();
+    else itemsList.querySelector(`.item-main[data-index="${index}"]`)?.focus();
+  }
+
+  function move(from, to, action) {
+    if (to < 0 || to >= state.items.length) return;
+    const [item] = state.items.splice(from, 1);
+    state.items.splice(to, 0, item);
+    if (state.selected === from) state.selected = to;
+    else if (state.selected === to) state.selected = from;
+    renderItems();
+    renderDetail();
+    changed();
+    focusItem(to, action);
+  }
+
+  function onTool(action, index) {
+    if (action === 'up') move(index, index - 1, 'up');
+    else if (action === 'down') move(index, index + 1, 'down');
+    else if (action === 'remove') {
+      state.items.splice(index, 1);
+      if (state.selected === index) state.selected = -1;
+      else if (state.selected > index) state.selected -= 1;
+      renderItems();
+      renderDetail();
+      changed();
+      if (state.items.length) focusItem(Math.min(index, state.items.length - 1), 'remove');
+      else $('add-bar').querySelector('button').focus();
+    }
+  }
+
+  function onItemKey(event, index) {
+    if (!state.editing || !event.altKey) return;
+    if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      move(index, index - 1, null);
+    } else if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      move(index, index + 1, null);
+    }
+  }
+
+  function addItem(type) {
+    state.items.push({ key: nextKey++, type, songId: null, title: '', body: '', reference: '', url: '', durationMin: null, song: null, songDeleted: false });
+    changed();
+    select(state.items.length - 1, true);
+  }
+
+  // --- detail pane ----------------------------------------------------------------
+
+  function field(id, label, control, hint) {
+    return el('div', { class: 'field' },
+      el('label', { for: id, text: label }),
+      control,
+      hint ? el('span', { class: 'hint', id: `${id}-hint`, text: hint }) : null);
+  }
+
+  function bind(item, key, control, after) {
+    control.addEventListener('input', () => {
+      item[key] = control.value;
+      changed();
+      // Keep the list line in step without rebuilding the form being typed in.
+      const row = itemsList.children[state.selected];
+      if (row) {
+        row.querySelector('.item-title').textContent = itemTitle(item);
+        const sub = row.querySelector('.item-sub');
+        if (sub) sub.textContent = itemSubline(item);
+      }
+      const heading = detail.querySelector('.detail-head h3');
+      if (heading) heading.textContent = itemTitle(item);
+      if (after) after();
+    });
+    return control;
+  }
+
+  function input(item, key, id, attrs = {}) {
+    return bind(item, key, el('input', { id, value: item[key] ?? '', ...attrs }));
+  }
+
+  function textarea(item, key, id, rows) {
+    return bind(item, key, el('textarea', { id, rows: String(rows), maxlength: '5000', value: item[key] || '' }));
+  }
+
+  function durationField(item) {
+    return field('it-duration', t('setlist.durationLabel'),
+      input(item, 'durationMin', 'it-duration', { type: 'number', min: '0', max: '600', step: '1', inputmode: 'numeric' }));
+  }
+
+  function readOnlyText(label, value) {
+    return value ? el('div', { class: 'ro-field' }, el('span', { class: 'ro-label', text: label }), el('p', { class: 'lyrics', text: value })) : null;
+  }
+
+  function songDetail(item) {
+    const parts = [];
+    if (item.songDeleted || !item.songId) {
+      parts.push(el('p', { class: 'message error', text: t('setlist.songDeletedHint') }));
+    } else {
+      const cached = state.songCache.get(item.songId);
+      parts.push(el('p', null, el('a', { class: 'button secondary', href: `/songs/${item.songId}`, text: t('setlist.openSong') })));
+      if (!cached) {
+        state.songCache.set(item.songId, 'loading');
+        api(`/api/songs/${item.songId}`).then((res) => {
+          state.songCache.set(item.songId, res.ok ? res.body.song : 'error');
+          if (state.items[state.selected] === item) renderDetail();
+        }).catch(() => state.songCache.set(item.songId, 'error'));
+        parts.push(el('p', { class: 'muted', text: t('events.loading') }));
+      } else if (cached === 'loading') {
+        parts.push(el('p', { class: 'muted', text: t('events.loading') }));
+      } else if (cached === 'error') {
+        parts.push(el('p', { class: 'message error', text: t('common.networkError') }));
+      } else {
+        parts.push(el('div', { class: 'detail-sections' }, window.SONG_RENDER.sectionsView(cached.sections, { headingLevel: 4 })));
+      }
+    }
+    if (state.editing) parts.unshift(durationField(item));
+    return parts;
+  }
+
+  function editFields(item) {
+    const typeSelect = item.type === 'sermon' || item.type === 'other'
+      ? field('it-type', t('setlist.typeLabel'), bind(item, 'type', (() => {
+        const s = el('select', { id: 'it-type' },
+          ['sermon', 'other'].map((type) => el('option', { value: type, text: t(`setlist.types.${type}`) })));
+        s.value = item.type;
+        return s;
+      })(), () => {
+        const row = itemsList.children[state.selected];
+        const badges = [row && row.querySelector('.item-main .type-badge'), detail.querySelector('.detail-head .type-badge')];
+        for (const badge of badges.filter(Boolean)) {
+          badge.className = `type-badge type-${item.type}`;
+          badge.textContent = t(`setlist.types.${item.type}`);
+        }
+      }))
+      : null;
+    switch (item.type) {
+      case 'verse':
+        return [
+          field('it-reference', t('setlist.referenceLabel'), input(item, 'reference', 'it-reference', { type: 'text', maxlength: '100', 'aria-describedby': 'it-reference-hint' }), t('setlist.referenceHint')),
+          field('it-body', t('setlist.verseTextLabel'), textarea(item, 'body', 'it-body', 5)),
+          durationField(item),
+        ];
+      case 'video':
+        return [
+          field('it-title', t('setlist.titleLabel'), input(item, 'title', 'it-title', { type: 'text', maxlength: '200' })),
+          field('it-url', t('setlist.urlLabel'), input(item, 'url', 'it-url', { type: 'url', maxlength: '500', inputmode: 'url', autocapitalize: 'off', spellcheck: 'false' })),
+          durationField(item),
+        ];
+      default:
+        return [
+          typeSelect,
+          field('it-title', t('setlist.titleLabel'), input(item, 'title', 'it-title', { type: 'text', maxlength: '200' })),
+          field('it-body', t('setlist.bodyLabel'), textarea(item, 'body', 'it-body', 4)),
+          durationField(item),
+        ];
+    }
+  }
+
+  function viewFields(item) {
+    const duration = item.durationMin ? el('p', { class: 'muted', text: t('setlist.minutes', { n: item.durationMin }) }) : null;
+    switch (item.type) {
+      case 'verse':
+        return [readOnlyText(t('setlist.referenceLabel'), item.reference), readOnlyText(t('setlist.verseTextLabel'), item.body), duration];
+      case 'video':
+        return [item.url ? el('p', null, el('a', { class: 'button secondary video-link', href: item.url, target: '_blank', rel: 'noopener noreferrer', text: item.url })) : null, duration];
+      default:
+        return [readOnlyText(t('setlist.bodyLabel'), item.body), duration];
+    }
+  }
+
+  function renderDetail() {
+    const item = state.items[state.selected];
+    if (!item) {
+      detail.replaceChildren(el('p', { class: 'muted detail-empty', text: state.items.length ? t('setlist.selectHint') : '' }));
+      detail.classList.add('is-empty');
+      placeDetail();
+      return;
+    }
+    detail.classList.remove('is-empty');
+    detail.replaceChildren(
+      el('div', { class: 'detail-head' },
+        el('span', { class: `type-badge type-${item.type}`, text: t(`setlist.types.${item.type}`) }),
+        el('h3', { text: itemTitle(item) })),
+      ...(item.type === 'song' ? songDetail(item) : (state.editing ? editFields(item) : viewFields(item))).filter(Boolean),
+    );
+    placeDetail();
+  }
+
+  // --- saving, publishing, templates, delete --------------------------------------
+
+  async function save() {
+    state.saving = true;
+    state.lastSaveError = null;
+    renderSaveBar();
+    try {
+      const res = await api(`/api/events/${state.event.id}/items`, { method: 'PUT', body: { items: payload(state.items) } });
+      if (res.ok) {
+        applyEvent(res.body, true);
+        state.justSaved = true;
+      } else {
+        state.lastSaveError = res.body.error || t('common.networkError');
+      }
+    } catch (err) {
+      state.lastSaveError = t('common.networkError');
+    } finally {
+      state.saving = false;
+      renderSaveBar();
+      renderHeader();
+    }
+  }
+
+  // Server data -> state (keeps the selection by position after a save).
+  function applyEvent(body, keepSelection) {
+    state.event = body.event;
+    state.today = body.today;
+    state.items = body.items.map(fromServer);
+    state.saved = JSON.stringify(payload(state.items));
+    if (!keepSelection || state.selected >= state.items.length) state.selected = -1;
+    renderAll();
+  }
+
+  function showAction(text, link) {
+    actionMessage.replaceChildren(text, link ? ' ' : '', link || '');
+  }
+
+  publishButton.addEventListener('click', async () => {
+    const action = state.event.status === 'published' ? 'unpublish' : 'publish';
+    publishButton.disabled = true;
+    try {
+      const res = await api(`/api/events/${state.event.id}/${action}`, { method: 'POST' });
+      if (res.ok) {
+        state.event = res.body.event;
+        showAction('');
+      } else {
+        showAction(res.body.error || t('common.networkError'));
+      }
+    } catch (err) {
+      showAction(t('common.networkError'));
+    }
+    renderHeader();
+  });
+
+  function wireDialog(dialog) {
+    dialog.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', () => dialog.close()));
+  }
+  ['details-dialog', 'template-dialog'].forEach((id) => wireDialog($(id)));
+
+  $('details-button').addEventListener('click', () => {
+    const ev = state.event;
+    $('d-name').value = ev.name;
+    $('d-date').value = ev.eventDate;
+    $('d-time').value = ev.startTime || '';
+    $('d-notes').value = ev.notes || '';
+    $('details-message').textContent = '';
+    $('details-dialog').showModal();
+  });
+
+  $('details-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    try {
+      const res = await api(`/api/events/${state.event.id}`, {
+        method: 'PUT',
+        body: { name: $('d-name').value, eventDate: $('d-date').value, startTime: $('d-time').value, notes: $('d-notes').value },
+      });
+      if (!res.ok) {
+        $('details-message').textContent = res.body.error || t('common.networkError');
+        return;
+      }
+      state.event = res.body.event;
+      $('details-dialog').close();
+      renderHeader();
+    } catch (err) {
+      $('details-message').textContent = t('common.networkError');
+    }
+  });
+
+  templateButton.addEventListener('click', () => {
+    $('t-name').value = state.event.name;
+    $('template-message').textContent = '';
+    $('template-dialog').showModal();
+    $('t-name').select();
+  });
+
+  $('template-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    try {
+      const res = await api(`/api/events/${state.event.id}/save-as-template`, { method: 'POST', body: { name: $('t-name').value } });
+      if (res.status !== 201) {
+        $('template-message').textContent = res.body.error || t('common.networkError');
+        return;
+      }
+      $('template-dialog').close();
+      showAction(t('setlist.templateCreated'), el('a', { href: `/events/${res.body.event.id}/edit`, text: t('setlist.openTemplate') }));
+    } catch (err) {
+      $('template-message').textContent = t('common.networkError');
+    }
+  });
+
+  $('delete-button').addEventListener('click', () => {
+    $('delete-text').textContent = t('setlist.deleteConfirm', { name: state.event.name });
+    $('delete-message').textContent = '';
+    $('delete-dialog').showModal();
+  });
+
+  $('confirm-delete').addEventListener('click', async () => {
+    try {
+      const res = await api(`/api/events/${state.event.id}`, { method: 'DELETE' });
+      if (res.ok) {
+        state.saved = JSON.stringify(payload(state.items)); // nothing left to warn about
+        state.items = [];
+        state.editing = false;
+        window.location.assign('/events');
+        return;
+      }
+      $('delete-message').textContent = res.body.error || t('common.networkError');
+    } catch (err) {
+      $('delete-message').textContent = t('common.networkError');
+    }
+  });
+
+  saveButton.addEventListener('click', save);
+
+  // Ctrl/Cmd+S saves while editing.
+  document.addEventListener('keydown', (event) => {
+    if (state.editing && (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
+      event.preventDefault();
+      if (isDirty() && !state.saving) save();
+    }
+  });
+
+  window.addEventListener('beforeunload', (event) => {
+    if (!isDirty()) return;
+    event.preventDefault();
+    event.returnValue = '';
+  });
+
+  // --- song picker ------------------------------------------------------------------
+
+  const songDialog = $('song-dialog');
+  const songQuery = $('song-q');
+  const songResults = $('song-results');
+  const songStatus = $('song-status');
+  let pickTimer = null;
+  let pickRequest = 0;
+  let pickData = null;
+
+  function renderPick() {
+    if (!pickData) return;
+    songResults.replaceChildren(...pickData.songs.map((song) => el('li', null,
+      el('button', {
+        type: 'button',
+        class: 'pick-button',
+        onclick: () => {
+          state.items.push({
+            key: nextKey++, type: 'song', songId: song.id, title: song.title, body: '', reference: '', url: '',
+            durationMin: null, song: { id: song.id, title: song.title, key: song.song_key, sectionCount: song.section_count }, songDeleted: false,
+          });
+          songDialog.close();
+          changed();
+          renderItems();
+          renderDetail();
+          focusItem(state.items.length - 1, null);
+        },
+      },
+      el('span', { class: 'song-title', text: song.title }),
+      el('span', { class: 'song-meta', text: [song.song_key ? t('library.key', { key: song.song_key }) : null, song.author].filter(Boolean).join(' · ') }),
+      el('span', { class: 'song-hint', text: lastSungText(song.lastSung) })))));
+    songStatus.textContent = pickData.songs.length ? '' : t('setlist.pickNoResults');
+  }
+
+  async function searchSongs() {
+    const id = ++pickRequest;
+    const q = songQuery.value.trim();
+    try {
+      const res = await api(`/api/songs?${new URLSearchParams({ q, withHistory: '1' })}`);
+      if (id !== pickRequest) return;
+      if (!res.ok) {
+        songStatus.textContent = res.body.error || t('common.networkError');
+        return;
+      }
+      pickData = res.body;
+      if (res.body.today) state.today = res.body.today;
+      renderPick();
+    } catch (err) {
+      if (id === pickRequest) songStatus.textContent = t('common.networkError');
+    }
+  }
+
+  songQuery.addEventListener('input', () => {
+    clearTimeout(pickTimer);
+    pickTimer = setTimeout(searchSongs, 250);
+  });
+
+  $('add-bar').addEventListener('click', (event) => {
+    const button = event.target.closest('[data-add]');
+    if (!button) return;
+    if (button.dataset.add === 'song') {
+      songQuery.value = '';
+      pickData = null;
+      songResults.replaceChildren();
+      songStatus.textContent = t('events.loading');
+      songDialog.showModal();
+      songQuery.focus();
+      searchSongs();
+    } else {
+      addItem(button.dataset.add);
+    }
+  });
+
+  // --- start ------------------------------------------------------------------------
+
+  wide.addEventListener('change', placeDetail);
+
+  document.addEventListener('i18n:change', () => {
+    if (!state.event) return;
+    actionMessage.replaceChildren();
+    renderAll();
+    renderPick();
+    const focusedId = document.activeElement && document.activeElement.id;
+    if (focusedId) $(focusedId)?.focus();
+  });
+
+  (async () => {
+    const [meRes, eventRes] = await Promise.all([api('/api/auth/me'), api(`/api/events/${eventId}`)]);
+    state.me = meRes.body;
+    if (!eventRes.ok) {
+      status.removeAttribute('data-i18n');
+      status.textContent = eventRes.status === 404 ? t('setlist.notFound') : (eventRes.body.error || t('common.networkError'));
+      return;
+    }
+    state.editing = editSegment === 'edit' && canEdit(state.me);
+    $('add-bar').hidden = !state.editing;
+    $('danger-zone').hidden = !state.editing;
+    applyEvent(eventRes.body, false);
+    status.hidden = true;
+    $('event').hidden = false;
+  })().catch(() => {
+    status.removeAttribute('data-i18n');
+    status.textContent = t('common.networkError');
+  });
+})();
