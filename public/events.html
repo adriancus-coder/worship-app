@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="{{LANG}}" data-app-name="{{APP_NAME}}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#141318">
+  <title data-i18n="events.pageTitle">{{APP_NAME}}</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <nav class="topnav" data-i18n-aria-label="nav.label">
+      <a href="/app" data-i18n="nav.home"></a>
+      <a href="/library" data-i18n="nav.library"></a>
+      <a href="/events" aria-current="page" data-i18n="nav.events"></a>
+    </nav>
+    <div class="lang-switch" role="group" aria-label="Limbă / Language">
+      <button type="button" data-lang="ro" lang="ro" aria-pressed="false">RO</button>
+      <button type="button" data-lang="en" lang="en" aria-pressed="false">EN</button>
+    </div>
+  </header>
+  <main class="wide">
+    <div class="page-head">
+      <h1 data-i18n="events.heading"></h1>
+      <button type="button" id="new-event" hidden data-i18n="events.newEvent"></button>
+    </div>
+
+    <div class="tabs" role="tablist" data-i18n-aria-label="events.tabsLabel">
+      <button type="button" role="tab" id="tab-upcoming" aria-controls="events-panel" aria-selected="true" data-i18n="events.tabUpcoming"></button>
+      <button type="button" role="tab" id="tab-past" aria-controls="events-panel" aria-selected="false" tabindex="-1" data-i18n="events.tabPast"></button>
+      <button type="button" role="tab" id="tab-templates" aria-controls="events-panel" aria-selected="false" tabindex="-1" hidden data-i18n="events.tabTemplates"></button>
+    </div>
+
+    <div id="events-panel" role="tabpanel">
+      <p id="status" class="muted" role="status" aria-live="polite" data-i18n="events.loading"></p>
+      <ul id="events" class="event-list"></ul>
+    </div>
+
+    <dialog id="create-dialog" aria-labelledby="create-heading">
+      <form id="create-form" novalidate>
+        <h2 id="create-heading" data-i18n="events.createHeading"></h2>
+        <div class="field">
+          <label for="new-name" data-i18n="events.nameLabel"></label>
+          <input type="text" id="new-name" maxlength="120" required>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="new-date" data-i18n="events.dateLabel"></label>
+            <input type="date" id="new-date" required>
+          </div>
+          <div class="field">
+            <label for="new-time" data-i18n="events.timeLabel"></label>
+            <input type="time" id="new-time">
+          </div>
+        </div>
+        <fieldset class="choice">
+          <legend data-i18n="events.sourceLegend"></legend>
+          <label class="checkbox"><input type="radio" name="source" value="empty" checked><span data-i18n="events.sourceEmpty"></span></label>
+          <label class="checkbox"><input type="radio" name="source" value="template"><span data-i18n="events.sourceTemplate"></span></label>
+          <div class="field source-select" id="template-field" hidden>
+            <label for="new-template" data-i18n="events.templateLabel"></label>
+            <select id="new-template"></select>
+          </div>
+          <label class="checkbox"><input type="radio" name="source" value="event"><span data-i18n="events.sourceEvent"></span></label>
+          <div class="field source-select" id="event-field" hidden>
+            <label for="new-source-event" data-i18n="events.eventLabel"></label>
+            <select id="new-source-event"></select>
+          </div>
+        </fieldset>
+        <p class="message error" id="create-message" role="alert"></p>
+        <div class="form-actions">
+          <button type="submit" id="create-submit" data-i18n="events.create"></button>
+          <button type="button" class="secondary" id="create-cancel" data-i18n="events.cancel"></button>
+        </div>
+      </form>
+    </dialog>
+  </main>
+  <script src="/i18n.js"></script>
+  <script src="/page.js"></script>
+  <script src="/events.js"></script>
+</body>
+</html>

@@ -45,5 +45,56 @@
     document.title = window.I18N.t(key, { appName: document.documentElement.dataset.appName || '', ...vars });
   }
 
-  window.PAGE = { api, el, canEdit, setTitle };
+  // Calendar dates ("2026-10-11") shown in the page language:
+  // formatDate(d) -> "Duminică, 11 octombrie" / "Sunday, 11 October" (+ year when not thisYear).
+  const LOCALES = { ro: 'ro-RO', en: 'en-GB' };
+
+  function dateParts(dateStr, options) {
+    const [y, m, d] = String(dateStr).split('-').map(Number);
+    const locale = LOCALES[window.I18N.lang] || LOCALES.ro;
+    const parts = new Intl.DateTimeFormat(locale, { timeZone: 'UTC', ...options }).formatToParts(new Date(Date.UTC(y, m - 1, d)));
+    return Object.fromEntries(parts.filter((p) => p.type !== 'literal').map((p) => [p.type, p.value]));
+  }
+
+  const capitalize = (s) => s.charAt(0).toLocaleUpperCase() + s.slice(1);
+
+  function formatDate(dateStr, thisYear) {
+    const p = dateParts(dateStr, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const base = `${capitalize(p.weekday)}, ${p.day} ${p.month}`;
+    return thisYear && String(thisYear) !== p.year ? `${base} ${p.year}` : base;
+  }
+
+  // { weekday: "DUM", day: "11", month: "OCT" } for a date block.
+  function dateBlock(dateStr) {
+    const p = dateParts(dateStr, { weekday: 'short', day: 'numeric', month: 'short' });
+    const clean = (s) => s.replace(/\.$/, '').toLocaleUpperCase();
+    return { weekday: clean(p.weekday), day: p.day, month: clean(p.month) };
+  }
+
+  // ARIA tabs: click and arrow/Home/End keys select; onSelect(index) is called on change.
+  function setupTabs(buttons, onSelect) {
+    function select(index, focus) {
+      buttons.forEach((tab, i) => {
+        tab.setAttribute('aria-selected', String(i === index));
+        tab.tabIndex = i === index ? 0 : -1;
+      });
+      if (focus) buttons[index].focus();
+      onSelect(index);
+    }
+    buttons.forEach((tab, i) => {
+      tab.addEventListener('click', () => select(i, false));
+      tab.addEventListener('keydown', (event) => {
+        const visible = buttons.filter((b) => !b.hidden);
+        const at = visible.indexOf(tab);
+        const moves = { ArrowRight: at + 1, ArrowLeft: at - 1, Home: 0, End: visible.length - 1 };
+        if (!(event.key in moves)) return;
+        event.preventDefault();
+        const next = visible[(moves[event.key] + visible.length) % visible.length];
+        select(buttons.indexOf(next), true);
+      });
+    });
+    return { select };
+  }
+
+  window.PAGE = { api, el, canEdit, setTitle, formatDate, dateBlock, setupTabs };
 })();

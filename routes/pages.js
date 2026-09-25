@@ -44,6 +44,10 @@ function createPagesRouter({ db, auth, sendPage }) {
     sendPage(req, res, 'library');
   });
 
+  router.get('/events', noStore, signedIn, (req, res) => {
+    sendPage(req, res, 'events');
+  });
+
   router.get('/songs/new', noStore, signedIn, (req, res) => {
     if (!canEdit(req)) return res.redirect('/library');
     sendPage(req, res, 'song-edit');
