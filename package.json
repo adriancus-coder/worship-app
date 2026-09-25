@@ -1,0 +1,22 @@
+{
+  "name": "worship-app",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Worship team app: songs, events and live projection for churches.",
+  "main": "server.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "check": "node scripts/check-syntax.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.11.1",
+    "compression": "^1.8.2",
+    "dotenv": "^18.0.3",
+    "express": "^5.2.1",
+    "helmet": "^8.3.0",
+    "socket.io": "^4.8.3"
+  }
+}
