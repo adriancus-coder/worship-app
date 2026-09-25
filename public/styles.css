@@ -83,6 +83,16 @@ legend { font-weight: 600; color: var(--accent); margin-bottom: 8px; padding: 0;
 
 label { display: flex; flex-direction: column; gap: 6px; font-weight: 500; }
 
+/* A wrapper for a label + control pair when the label cannot wrap the control. */
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field > label { font-weight: 500; }
+
+.input-row { display: flex; gap: 8px; }
+.input-row > input { flex: 1; min-width: 0; }
+.input-row > button { flex: none; }
+
+button.secondary[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+
 label.checkbox { flex-direction: row; align-items: center; gap: 12px; min-height: var(--touch); cursor: pointer; }
 
 input[type="text"],

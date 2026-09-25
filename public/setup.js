@@ -7,6 +7,14 @@
   const button = form.querySelector('button[type="submit"]');
   const { t } = window.I18N;
   const MIN_PASSWORD_LENGTH = 10;
+  const tokenInput = document.getElementById('setup-token');
+  const toggleToken = document.getElementById('toggle-token');
+
+  toggleToken.addEventListener('click', () => {
+    const show = tokenInput.type === 'password';
+    tokenInput.type = show ? 'text' : 'password';
+    toggleToken.setAttribute('aria-pressed', String(show));
+  });
 
   // Messages from a dictionary key re-translate on a language switch;
   // server messages are cleared because they are in the previous language.

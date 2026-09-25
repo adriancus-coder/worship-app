@@ -19,11 +19,17 @@
     <p class="muted" data-i18n="setup.intro"></p>
 
     <form id="setup-form" novalidate>
-      <label>
-        <span data-i18n="setup.tokenLabel"></span>
-        <input type="password" name="setupToken" autocomplete="off" required>
-        <span class="hint" data-i18n="setup.tokenHint"></span>
-      </label>
+      <div class="field">
+        <label for="setup-token" data-i18n="setup.tokenLabel"></label>
+        <div class="input-row">
+          <input type="password" id="setup-token" name="setupToken" autocomplete="off"
+            autocapitalize="off" autocorrect="off" spellcheck="false"
+            aria-describedby="setup-token-hint" required>
+          <button type="button" id="toggle-token" class="secondary" aria-pressed="false"
+            aria-controls="setup-token" data-i18n="setup.showToken"></button>
+        </div>
+        <span class="hint" id="setup-token-hint" data-i18n="setup.tokenHint"></span>
+      </div>
 
       <fieldset>
         <legend data-i18n="setup.adminLegend"></legend>

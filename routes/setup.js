@@ -52,7 +52,7 @@ function createSetupRouter({ db, config, logger, sendPage }) {
     return { adminId, userId };
   });
 
-  if (!config.SETUP_TOKEN && countAdmins.get() === 0) {
+  if (!config.SETUP_TOKEN.trim() && countAdmins.get() === 0) {
     logger.warn('No admin account exists and SETUP_TOKEN is not set: set SETUP_TOKEN to enable first-run setup at /setup');
   }
 
@@ -63,12 +63,14 @@ function createSetupRouter({ db, config, logger, sendPage }) {
 
   router.post('/api/setup', asyncRoute(async (req, res) => {
     const body = req.body || {};
+    // Pasted codes often carry stray whitespace; ignore it on both sides.
+    const expectedToken = config.SETUP_TOKEN.trim();
 
-    if (!config.SETUP_TOKEN) {
+    if (!expectedToken) {
       logger.warn('Setup attempt rejected: SETUP_TOKEN is not set, first-run setup is disabled');
       return res.status(403).json({ error: req.t('errors.setupDisabled') });
     }
-    if (typeof body.setupToken !== 'string' || !safeEqual(body.setupToken, config.SETUP_TOKEN)) {
+    if (typeof body.setupToken !== 'string' || !safeEqual(body.setupToken.trim(), expectedToken)) {
       logger.warn(`Setup attempt rejected: invalid setup token from ${req.ip}`);
       return res.status(403).json({ error: req.t('errors.setupBadToken') });
     }
