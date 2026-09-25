@@ -660,6 +660,26 @@ test('transposeContent: +n then -n returns the original on 5 samples', () => {
   }
 });
 
+test('chord spelling by scale degree in the target key', () => {
+  // C -> D: the b6 chord Ab becomes Bb (not A#); b7 and b3 stay flat, #4 stays sharp.
+  assert.strictEqual(chords.transposeContent('[C]Da [Ab]și [Bb]amin [Eb]Tu [F#dim]o', 2, 'D'), '[D]Da [Bb]și [C]amin [F]Tu [G#dim]o');
+  // A Bb chord in G, up 2 and back down 2, is Bb again (never A#).
+  const g = '[G]Tu [Bb]ești [C]Domn [D/F#]mare';
+  const up = chords.transposeContent(g, 2, chords.keyAfter('G', 2));
+  assert.strictEqual(up, '[A]Tu [C]ești [D]Domn [E/G#]mare');
+  assert.strictEqual(chords.transposeContent(up, -2, 'G'), g);
+  // Minor keys use the relative major; the leading tone stays sharp.
+  assert.strictEqual(chords.transposeContent('[Am]În [F]noaptea [C]grea [G]Tu [E/G#]vii [Dm]la [E7]noi', 2, 'Bm'),
+    '[Bm]În [G]noaptea [D]grea [A]Tu [F#/A#]vii [Em]la [F#7]noi');
+  assert.strictEqual(chords.transposeChord('D/F#', 2, 'A'), 'E/G#');
+  assert.strictEqual(chords.transposeChord('Ab', 2, 'D'), 'Bb');
+  // Flat keys spell diatonic notes with flats; #4 is written sharp or natural.
+  assert.strictEqual(chords.transposeContent('[C]a [F]b [G]c [F#m7b5]d [Bb]e', 5, 'F'), '[F]a [Bb]b [C]c [Bm7b5]d [Eb]e');
+  // No key: plain sharps, as before; transpose 0 never changes the text.
+  assert.strictEqual(chords.transposeContent('[Ab]x', 2, null), '[A#]x');
+  assert.strictEqual(chords.transposeContent('[Ab]x [A#]y', 0, 'D'), '[Ab]x [A#]y');
+});
+
 test('section codes, arrangements and defaults', () => {
   const S = require('../lib/sections');
   const mixed = [{ type: 'intro' }, { type: 'verse' }, { type: 'chorus' }, { type: 'verse' }, { type: 'pre_chorus' },

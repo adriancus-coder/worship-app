@@ -157,29 +157,54 @@
     return usesFlats(flat) ? flat : SHARP_NAMES[index] + m[3];
   }
 
-  // One chord, e.g. transposeChord('D/F#', 2) -> 'E/G#'. N.C. and anything that is not a
-  // chord are returned unchanged. useFlats picks Bb over A# etc.
-  function transposeChord(chord, semitones, useFlats) {
+  // Degrees (semitones above the major tonic) that belong to the major scale.
+  const MAJOR_DEGREES = [0, 2, 4, 5, 7, 9, 11];
+
+  // { tonic, flats, minor } for a key like 'G', 'Bb', 'F#m'; null when not a key.
+  // A minor key is measured from its relative major (Am -> C).
+  function parseKey(key) {
+    const m = /^([A-G])([#b]?)(m?)$/.exec(String(key || ''));
+    if (!m) return null;
+    const minor = m[3] === 'm';
+    return { tonic: mod12(noteIndex(m[1], m[2]) + (minor ? 3 : 0)), flats: usesFlats(key), minor };
+  }
+
+  // Name of a note in a key, by scale degree: diatonic notes use the key's own spelling
+  // (sharp or flat family); chromatic b2, b3, b6, b7 use flats and #4 uses a sharp.
+  // In a minor key the raised 7th (the leading tone, e.g. G# in Am) stays sharp.
+  function spellNote(index, key) {
+    const degree = mod12(index - key.tonic);
+    if (MAJOR_DEGREES.includes(degree)) return (key.flats ? FLAT_NAMES : SHARP_NAMES)[index];
+    if (degree === 6 || (degree === 8 && key.minor)) return SHARP_NAMES[index];
+    return FLAT_NAMES[index];
+  }
+
+  // One chord, e.g. transposeChord('D/F#', 2, 'A') -> 'E/G#'. N.C. and anything that is not
+  // a chord are returned unchanged. `spelling` is the target key (notes named by scale
+  // degree), or a boolean: true = flats, false = sharps (used when there is no key).
+  function transposeChord(chord, semitones, spelling) {
     const text = String(chord);
     const shift = mod12(Number(semitones) || 0);
     if (!shift || /^N\.?C\.?$/.test(text) || !isChord(text)) return text;
     const m = CHORD_PARTS_RE.exec(text);
     if (!m) return text;
-    const names = useFlats ? FLAT_NAMES : SHARP_NAMES;
-    const root = names[mod12(noteIndex(m[1], m[2]) + shift)];
-    const bass = m[4] ? `/${names[mod12(noteIndex(m[4], m[5]) + shift)]}` : '';
+    const key = typeof spelling === 'string' ? parseKey(spelling) : null;
+    const names = spelling === true ? FLAT_NAMES : SHARP_NAMES;
+    const name = (index) => (key ? spellNote(index, key) : names[index]);
+    const root = name(mod12(noteIndex(m[1], m[2]) + shift));
+    const bass = m[4] ? `/${name(mod12(noteIndex(m[4], m[5]) + shift))}` : '';
     return root + m[3] + bass;
   }
 
-  // Inline ChordPro content with every chord moved by `semitones`; sharps or flats follow
-  // targetKey (the key after transposing; no key -> sharps).
+  // Inline ChordPro content with every chord moved by `semitones`, spelled for targetKey
+  // (the key after transposing). A song without a key keeps plain sharps.
   function transposeContent(content, semitones, targetKey) {
     const shift = mod12(Number(semitones) || 0);
     if (!shift) return String(content || '');
-    const flats = usesFlats(targetKey);
+    const spelling = parseKey(targetKey) ? targetKey : false;
     return String(content || '').replace(INLINE_CHORD_RE, (match, chord) => {
       const trimmed = chord.trim();
-      return trimmed ? `[${transposeChord(trimmed, shift, flats)}]` : match;
+      return trimmed ? `[${transposeChord(trimmed, shift, spelling)}]` : match;
     });
   }
 
