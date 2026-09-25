@@ -68,6 +68,9 @@ Actions and selection must never look alike (styles in `public/styles.css`, "UI 
   such as "Doar text" keeps its own border). The selected option gets the accent fill + a
   check mark + bold; the others are flat.
 - Never give an action `aria-pressed`, and never style a selection option as a button.
+- **Colours only through the tokens** in `public/styles.css` `:root` (dark) and
+  `[data-theme="light"]`; never a literal colour elsewhere (CSS, inline, JS). New text /
+  background pairs go into `scripts/check-contrast.js` (WCAG AA in both themes).
 
 ## Reporting
 Every task ends with a final report **inside one triple-backtick code block**

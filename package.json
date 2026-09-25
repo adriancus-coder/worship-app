@@ -9,7 +9,7 @@
   },
   "scripts": {
     "start": "node server.js",
-    "check": "node scripts/check-syntax.js && node scripts/check-i18n.js && node scripts/test-lib.js && node scripts/test-live.js"
+    "check": "node scripts/check-syntax.js && node scripts/check-i18n.js && node scripts/check-contrast.js && node scripts/test-lib.js && node scripts/test-live.js"
   },
   "dependencies": {
     "better-sqlite3": "^12.11.1",
