@@ -1299,6 +1299,44 @@ test('backgrounds: resolution order, "none" stops lower levels, deleted media fa
   mem.close();
 });
 
+test('arrange sheet: insert after the chosen row, move, remove, reset, key, flow with repeats', () => {
+  const A = require('../public/arrange-sheet.js');
+  const song = {
+    song_key: 'G',
+    sections: [
+      { type: 'verse', content: '[G]Ne ridici din [D]noaptea grea\n[Em]Tu ești lumina mea' },
+      { type: 'chorus', content: '\n[C]Sfânt, [G/B]sfânt, [D]sfânt' },
+      { type: 'verse', content: '[G]A doua strofă' },
+      { type: 'bridge', content: '[Em]Punte' },
+    ],
+  };
+  const def = ['V1', 'C', 'V2', 'C', 'B', 'C'];
+  // + Adaugă: after the chosen row (V2 = index 2), at the start (-1) or at the end
+  assert.deepStrictEqual(A.insert(def, 'C', 2), ['V1', 'C', 'V2', 'C', 'C', 'B', 'C']);
+  assert.deepStrictEqual(A.insert(def, 'B', -1), ['B', ...def]);
+  assert.deepStrictEqual(A.insert(def, 'V1', null), [...def, 'V1']);
+  assert.deepStrictEqual(A.insert([], 'C', null), ['C']);
+  // ↑ / ↓ / ✕; out of range changes nothing; the input is never modified
+  assert.deepStrictEqual(A.move(def, 4, -1), ['V1', 'C', 'V2', 'B', 'C', 'C']);
+  assert.deepStrictEqual(A.move(def, 0, -1), def);
+  assert.deepStrictEqual(A.move(def, 5, 1), def);
+  assert.deepStrictEqual(A.remove(def, 3), ['V1', 'C', 'V2', 'B', 'C']);
+  assert.deepStrictEqual(def, ['V1', 'C', 'V2', 'C', 'B', 'C']);
+  assert.strictEqual(A.sameCodes(def, def.slice()), true);
+  assert.strictEqual(A.sameCodes(def, A.remove(def, 0)), false);
+  // key −/+ stays within ±11 semitones; the offset reads "+2" / "-1" / "0"
+  assert.deepStrictEqual([A.clampTranspose(14), A.clampTranspose(-12), A.clampTranspose('3'), A.clampTranspose('x')], [11, -11, 3, 0]);
+  assert.deepStrictEqual([A.offsetText(2), A.offsetText(-1), A.offsetText(0)], ['+2', '-1', '0']);
+  // "Cum va curge": arrangement order with repeats; unknown codes left out
+  assert.deepStrictEqual(A.flow(song.sections, ['V1', 'C', 'X9', 'C', 'B']).map((x) => `${x.code}:${x.index}`), ['V1:0', 'C:1', 'C:1', 'B:3']);
+  // the first lyric line of a row, chords stripped (empty lines skipped)
+  assert.deepStrictEqual(song.sections.map((sec) => A.firstLine(sec.content)), ['Ne ridici din noaptea grea', 'Sfânt, sfânt, sfânt', 'A doua strofă', 'Punte']);
+  // transposed sections: +2 moves G to A, the lyrics stay
+  const up = A.transposed(song, 2);
+  assert.strictEqual(up[0].content, '[A]Ne ridici din [E]noaptea grea\n[F#m]Tu ești lumina mea');
+  assert.strictEqual(song.sections[0].content.startsWith('[G]'), true, 'the song itself is untouched');
+});
+
 test('media: image magic bytes; file names and kinds', () => {
   const M = require('../lib/media');
   assert.strictEqual(M.sniffImage(Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 0, 0, 0, 0, 0, 0, 0])), 'image/jpeg');
