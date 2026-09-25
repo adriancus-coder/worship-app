@@ -819,6 +819,19 @@ test('projector frames: sources, items, no chords, idle', () => {
   assert.strictEqual(projectorFrame({ ...state(1, 0), status: 'finished' }, { items }, new Map()).kind, 'idle');
 });
 
+test('logo: type from magic bytes only (PNG, JPEG, WebP; never SVG)', () => {
+  const { sniff, isLogoFile } = require('../lib/logo');
+  const pad = (bytes) => Buffer.concat([Buffer.from(bytes), Buffer.alloc(16)]);
+  assert.strictEqual(sniff(pad([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])), 'png');
+  assert.strictEqual(sniff(pad([0xff, 0xd8, 0xff, 0xe0])), 'jpg');
+  assert.strictEqual(sniff(Buffer.concat([Buffer.from('RIFF'), Buffer.alloc(4), Buffer.from('WEBPVP8 '), Buffer.alloc(8)])), 'webp');
+  assert.strictEqual(sniff(Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"></svg>')), null);
+  assert.strictEqual(sniff(Buffer.from('not really a png, just text......')), null);
+  assert.strictEqual(sniff(Buffer.alloc(3)), null);
+  assert.ok(isLogoFile('logo-0123456789abcdef.png'));
+  for (const bad of ['../x.png', 'logo-0123456789abcdef.svg', 'logo-xyz.png', 'logo-0123456789abcdef.png/..']) assert.ok(!isLogoFile(bad), bad);
+});
+
 test('section codes, arrangements and defaults', () => {
   const S = require('../lib/sections');
   const mixed = [{ type: 'intro' }, { type: 'verse' }, { type: 'chorus' }, { type: 'verse' }, { type: 'pre_chorus' },

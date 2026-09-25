@@ -115,12 +115,22 @@
 
   // --- paired: output -----------------------------------------------------------------
 
-  // The logo needs the screen token: fetched once and shown from a local object URL.
+  // The logo needs the screen token: fetched once, shown as a data: URL (the page's
+  // Content-Security-Policy allows data: images, not blob:).
+  function toDataUrl(blob) {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  }
+
   async function resolveLogo(url) {
     if (!state.logos.has(url)) {
       state.logos.set(url, fetch(url, { headers: { 'X-Screen-Token': state.token } })
         .then((res) => (res.ok ? res.blob() : null))
-        .then((blob) => (blob ? URL.createObjectURL(blob) : null))
+        .then((blob) => (blob ? toDataUrl(blob) : null))
         .catch(() => null));
     }
     const src = await state.logos.get(url);
@@ -128,8 +138,6 @@
     return src;
   }
 
-  // A 4px dot in a corner after 30 s without the server; nothing else changes on screen.
-  // Reconnect attempts keep failing meanwhile: the timer runs from the first one.
   function showOffline(offline) {
     if (!offline) {
       clearTimeout(state.offlineTimer);

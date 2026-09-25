@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="{{LANG}}" data-app-name="{{APP_NAME}}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#141318">
+  <title>{{APP_NAME}}</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <nav class="topnav" data-i18n-aria-label="nav.label">
+      <a href="/app" data-i18n="nav.home"></a>
+      <a href="/library" data-i18n="nav.library"></a>
+      <a href="/events" data-i18n="nav.events"></a>
+    </nav>
+    <div class="lang-switch" role="group" aria-label="Limbă / Language">
+      <button type="button" data-lang="ro" lang="ro" aria-pressed="false">RO</button>
+      <button type="button" data-lang="en" lang="en" aria-pressed="false">EN</button>
+    </div>
+  </header>
+  <main class="wide">
+    <p class="back"><a href="/app" data-i18n="screens.back"></a></p>
+    <h1 data-i18n="settings.heading"></h1>
+
+    <section class="settings-section" aria-labelledby="logo-heading">
+      <h2 id="logo-heading" data-i18n="settings.logoHeading"></h2>
+      <p class="hint" data-i18n="settings.logoHint"></p>
+      <div class="logo-preview projector" id="logo-preview">
+        <img id="logo-image" alt="" hidden>
+        <span id="logo-empty" class="muted" data-i18n="settings.logoNone"></span>
+      </div>
+      <div class="form-actions">
+        <label class="button file-button">
+          <span data-i18n="settings.logoUpload"></span>
+          <input type="file" id="logo-file" accept="image/png,image/jpeg,image/webp" class="sr-only">
+        </label>
+        <button type="button" class="secondary" id="logo-remove" hidden data-i18n="settings.logoRemove"></button>
+      </div>
+      <p id="logo-message" class="message" role="status" aria-live="polite"></p>
+    </section>
+  </main>
+  <script src="/i18n.js"></script>
+  <script src="/page.js"></script>
+  <script src="/settings.js"></script>
+</body>
+</html>
