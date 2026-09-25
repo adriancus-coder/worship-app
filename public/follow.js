@@ -56,8 +56,15 @@
       state.items = res.body.items;
       state.songs.clear();
       state.loadedKey = snap.setlistKey;
-      // Every song now, so the whole event is here if the connection drops.
-      for (const item of state.items) if (item.type === 'song' && item.songId) loadSong(item);
+      // Every song now, so the whole event is here if the connection drops (and saved on the
+      // device for a reload without the server).
+      const key = snap.setlistKey;
+      const songs = state.items.filter((item) => item.type === 'song' && item.songId)
+        .map(async (item) => [item.id, await loadSong(item)]);
+      Promise.all(songs).then((pairs) => {
+        if (state.loadedKey !== key) return;
+        window.EVENT_CACHE.save({ eventId, setlistKey: key, event: state.event, items: state.items, songs: pairs.filter(([, song]) => song) });
+      });
     });
     // Unreachable server: forget the attempt (the next snapshot tries again), keep the data.
     promise.catch(() => { if (state.loading && state.loading.promise === promise) state.loading = null; });
@@ -269,7 +276,7 @@
 
   document.addEventListener('i18n:change', () => {
     if (!state.snap) return;
-    renderConnection(client.connection);
+    renderConnection(client ? client.connection : 'connecting');
     const key = state.loadedKey;
     state.loadedKey = null; // labels come from the server in the page language
     syncSetlist(state.snap).catch(() => { state.loadedKey = key; }).then(render); // offline: old labels
@@ -277,22 +284,49 @@
 
   // --- start ------------------------------------------------------------------------
 
-  const client = window.LIVE.connect({
-    eventId,
-    onState: (snap) => {
-      state.snap = snap;
-      state.manual = null; // back online: follow the team again
-      syncSetlist(snap).then(() => {
-        if (state.snap !== snap || !state.event) return;
-        $('status').hidden = true;
-        $('follow').hidden = false;
-        render();
-      }).catch(() => {}); // server unreachable meanwhile: the next snapshot tries again
-    },
-    onConnection: renderConnection,
-    onGone: gone,
-    onLongOffline: goOffline,
-  });
+  // Loaded without the server (the installed app reloaded offline): the event saved on this
+  // device, in manual mode at once.
+  async function cachedStart() {
+    if (!window.EVENT_CACHE.offline()) return null;
+    const record = await window.EVENT_CACHE.load(eventId);
+    if (!record || !record.snap || !record.event || !record.items) return null;
+    state.event = record.event;
+    state.items = record.items;
+    state.songs = new Map((record.songs || []).map(([id, song]) => [id, Promise.resolve(song)]));
+    state.loadedKey = record.setlistKey;
+    return record.snap;
+  }
+
+  let client = null;
+  function start(initialState) {
+    client = window.LIVE.connect({
+      eventId,
+      initialState,
+      onState: (snap) => {
+        state.snap = snap;
+        state.manual = null; // back online: follow the team again
+        if (!initialState || snap !== initialState) window.EVENT_CACHE.save({ eventId, snap });
+        syncSetlist(snap).then(() => {
+          if (state.snap !== snap || !state.event) return;
+          $('status').hidden = true;
+          $('follow').hidden = false;
+          if (snap === initialState) goOffline(true);
+          render();
+        }).catch(() => {}); // server unreachable meanwhile: the next snapshot tries again
+      },
+      onConnection: renderConnection,
+      onGone: gone,
+      onLongOffline: goOffline,
+    });
+  }
+
+  cachedStart().then((snap) => {
+    if (!snap && window.EVENT_CACHE.offline()) {
+      $('status').removeAttribute('data-i18n');
+      $('status').textContent = t('offline.text');
+    }
+    start(snap || undefined);
+  }, () => start(undefined));
   renderConnection('connecting');
   keepScreenOn();
 })();

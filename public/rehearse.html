@@ -11,6 +11,7 @@
   <main class="wide rehearse-page">
     <p class="back"><a id="back-link" href="/events"></a></p>
     <p id="status" class="muted" role="status" aria-live="polite" data-i18n="events.loading"></p>
+    <p id="offline-note" class="offline-note" role="status" hidden data-i18n="offline.cachedNote"></p>
 
     <div id="rehearse" hidden>
       <div class="rehearse-bar">
@@ -40,6 +41,7 @@
   <script src="/notation.js"></script>
   <script src="/shell.js"></script>
   <script src="/song-render.js"></script>
+  <script src="/event-cache.js"></script>
   <script src="/rehearse.js"></script>
 </body>
 </html>

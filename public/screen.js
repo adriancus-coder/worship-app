@@ -10,6 +10,7 @@
   const { t } = window.I18N;
   const $ = (id) => document.getElementById(id);
   const TOKEN_KEY = 'wa_screen_token';
+  const ADMIN_KEY = 'wa_screen_admin';
   const POLL_MS = 3000;
   const CURSOR_IDLE_MS = 2000;
   const HINT_MS = 5000;
@@ -24,6 +25,22 @@
       return window.localStorage.getItem(TOKEN_KEY);
     } catch (err) {
       return null;
+    }
+  }
+
+  function stored(key) {
+    try {
+      return window.localStorage.getItem(key);
+    } catch (err) {
+      return null;
+    }
+  }
+
+  function remember(key, value) {
+    try {
+      window.localStorage.setItem(key, value);
+    } catch (err) {
+      // no storage: the channel opens once the server says hello
     }
   }
 
@@ -216,6 +233,21 @@
     show(frame);
   }
 
+  // Offline start: load the socket.io client again every few seconds; then connect as usual
+  // (local frames stay until the leader's page has synced the server, see releaseLocal).
+  function retryConnect() {
+    setTimeout(() => {
+      const script = document.createElement('script');
+      script.src = '/socket.io/socket.io.js';
+      script.onload = () => { if (window.io && !state.socket) connect(); };
+      script.onerror = () => {
+        script.remove();
+        retryConnect();
+      };
+      document.head.append(script);
+    }, 5000);
+  }
+
   function connect() {
     $('pairing').hidden = true;
     $('output').hidden = false;
@@ -226,6 +258,16 @@
         onStatus: (status) => { if (state.socket) state.socket.emit('screen:video-status', status); },
         onLocalChosen: (name) => { if (state.socket) state.socket.emit('screen:video-local', { name }); },
       });
+    }
+    if (!window.io) {
+      // Reloaded without the server (installed app, offline): stay black and take the frames
+      // the leader's page sends from this browser (emergency mode) until the network is back.
+      showOffline(true);
+      const adminId = stored(ADMIN_KEY);
+      if (adminId) openChannel(adminId);
+      keepScreenOn();
+      retryConnect();
+      return;
     }
     const socket = window.io('/screens', {
       auth: { token: state.token },
@@ -238,7 +280,11 @@
       showOffline(false);
       if (state.local && !state.holdTimer) state.holdTimer = setTimeout(releaseLocal, LOCAL_HOLD_MS);
     });
-    socket.on('screen:hello', (hello) => { if (hello && hello.adminId) openChannel(hello.adminId); });
+    socket.on('screen:hello', (hello) => {
+      if (!hello || !hello.adminId) return;
+      remember(ADMIN_KEY, String(hello.adminId)); // for a reload without the server
+      openChannel(hello.adminId);
+    });
     socket.on('projector:frame', onServerFrame);
     socket.on('screen:revoked', dropToken);
     socket.on('connect_error', (err) => {

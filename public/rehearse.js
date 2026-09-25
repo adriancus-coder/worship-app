@@ -213,15 +213,45 @@
 
   // --- start ------------------------------------------------------------------------
 
+  // The event and every song are saved on the device, so the installed app can reopen the
+  // rehearsal without internet.
+  function saveForOffline() {
+    const songs = state.items.filter((it) => it.type === 'song' && it.songId).map(async (it) => [it.id, await loadSong(it)]);
+    Promise.all(songs).then((pairs) => window.EVENT_CACHE.save({
+      eventId, event: state.event, items: state.items, songs: pairs.filter(([, song]) => song),
+    }));
+  }
+
+  async function fromCache() {
+    const record = await window.EVENT_CACHE.load(eventId);
+    if (!record || !record.event || !record.items) return false;
+    state.event = record.event;
+    state.items = record.items;
+    state.songs = new Map((record.songs || []).map(([id, song]) => [id, Promise.resolve(song)]));
+    $('offline-note').hidden = false;
+    return true;
+  }
+
   (async () => {
-    const res = await api(`/api/events/${eventId}`);
-    if (!res.ok) {
+    let res = null;
+    try {
+      res = await api(`/api/events/${eventId}`);
+    } catch (err) {
+      res = null; // no network: the copy on this device, if any
+    }
+    if (res && res.ok) {
+      state.event = res.body.event;
+      state.items = res.body.items;
+      saveForOffline();
+    } else if (res && res.status === 404) {
       $('status').removeAttribute('data-i18n');
-      $('status').textContent = res.status === 404 ? t('setlist.notFound') : (res.body.error || t('common.networkError'));
+      $('status').textContent = t('setlist.notFound');
+      return;
+    } else if (!(await fromCache())) {
+      $('status').removeAttribute('data-i18n');
+      $('status').textContent = res ? (res.body.error || t('common.networkError')) : t('offline.text');
       return;
     }
-    state.event = res.body.event;
-    state.items = res.body.items;
     const url = new URL(window.location.href);
     const asked = Number(url.searchParams.get('i'));
     if (Number.isInteger(asked) && asked >= 1 && asked <= state.items.length) {

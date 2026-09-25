@@ -1400,3 +1400,11 @@ button.op-step:disabled { opacity: 1; cursor: default; }
 .result-card dd + dt { margin-top: 6px; }
 .result-message-label { margin-top: 12px; }
 .result-message-label textarea { width: 100%; resize: vertical; }
+
+/* --- /offline ------------------------------------------------------------------------- */
+.offline-page { max-width: 460px; padding-top: 12vh; text-align: center; }
+.offline-icon { border-radius: 16px; }
+.offline-page h1 { margin: 16px 0 8px; }
+.offline-page p { margin: 0 0 12px; }
+.offline-page button { min-width: 200px; margin: 8px 0 16px; }
+.offline-note { margin: 0 0 12px; padding: 8px 12px; border: 1px solid var(--accent); border-radius: var(--radius); color: var(--accent); font-weight: 600; font-size: 0.9375rem; }

@@ -332,14 +332,38 @@
 
   // --- start ------------------------------------------------------------------------
 
+  // Loaded without the server (the installed app reloaded offline): the last snapshot saved
+  // on this device, shown read-only until the connection is back.
+  async function cachedSnapshot() {
+    const record = await window.EVENT_CACHE.load(eventId);
+    if (!record || !record.event || !record.snap) return null;
+    state.event = record.event;
+    return { ...record.snap, items: record.snap.items || record.items || [] };
+  }
+
   (async () => {
-    const res = await api(`/api/events/${eventId}`);
-    if (!res.ok) return gone();
-    state.event = res.body.event;
+    let initialState;
+    let res = null;
+    if (!window.EVENT_CACHE.offline()) res = await api(`/api/events/${eventId}`).catch(() => null);
+    if (res && res.ok) {
+      state.event = res.body.event;
+      window.EVENT_CACHE.save({ eventId, event: state.event });
+    } else if (res && res.status === 404) {
+      return gone();
+    } else {
+      initialState = await cachedSnapshot();
+      if (!initialState) {
+        $('status').removeAttribute('data-i18n');
+        $('status').textContent = t('offline.text');
+        return;
+      }
+    }
     state.client = window.LIVE.connect({
       eventId,
+      initialState,
       onState: (snap) => {
         state.snap = snap;
+        if (snap !== initialState) window.EVENT_CACHE.save({ eventId, snap });
         $('status').hidden = true;
         $('console').hidden = false;
         render();

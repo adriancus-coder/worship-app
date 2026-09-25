@@ -371,6 +371,7 @@
 
   function openChannel(adminId) {
     if (!adminId || emergency.adminId === adminId || !('BroadcastChannel' in window)) return;
+    window.EVENT_CACHE.save({ eventId, adminId }); // for a reload without the server
     if (emergency.channel) emergency.channel.close();
     emergency.adminId = adminId;
     emergency.channel = new BroadcastChannel(`wa-projector-${adminId}`);
@@ -524,40 +525,68 @@
   // --- start ------------------------------------------------------------------------
 
   $('status').hidden = false;
-  state.client = window.LIVE.connect({
-    eventId,
-    onState: (snap) => {
-      if (emergency.reconnected) reconcile(snap);
-      state.snap = snap;
-      syncSetlist(snap).then(() => {
-        if (state.snap !== snap || !state.event) return;
-        $('status').hidden = true;
-        $('live').hidden = false;
-        render();
-        renderProjector();
-        videoPanel.setSetlist(state.items);
-        videoPanel.update(snap);
-        requests.update(snap);
-      }).catch(() => {}); // server unreachable meanwhile: the next snapshot tries again
-    },
-    onPresence: (presence) => {
-      if (state.snap) state.snap = { ...state.snap, presence };
-      if (state.event) renderPresence();
-    },
-    onConnection: renderConnection,
-    onGone: gone,
-    onConnect: watchProjector,
-    onLongOffline: (offline) => {
-      if (offline) enterEmergency();
-      else if (emergency.active) emergency.reconnected = true; // reconciled on the next snapshot
-    },
-  });
-  state.client.socket.on('projector:frame', showServerFrame);
-  state.client.socket.on('projector:screens', ({ count }) => {
-    projector.screens = count;
-    videoPanel.setScreens(count);
-    renderProjector();
-  });
-  state.client.socket.on('projector:video-status', (status) => videoPanel.status(status));
-  renderConnection('connecting');
+  // Loaded without the server (the installed app reloaded offline): start from the copy of
+  // the event saved on this device; emergency mode takes over after 5 s as usual.
+  async function cachedStart() {
+    if (!window.EVENT_CACHE.offline()) return null;
+    const record = await window.EVENT_CACHE.load(eventId);
+    if (!record || !record.snap || !record.event || !record.items) return null;
+    state.event = record.event;
+    state.items = record.items;
+    state.songs = new Map((record.songs || []).map(([id, song]) => [id, Promise.resolve(song)]));
+    state.loadedKey = record.setlistKey;
+    state.cached = record;
+    projector.logoUrl = record.logo ? record.logo.url : null;
+    openChannel(record.adminId);
+    return record.snap;
+  }
+
+  function start(initialState) {
+    state.client = window.LIVE.connect({
+      eventId,
+      initialState,
+      onState: (snap) => {
+        if (emergency.reconnected) reconcile(snap);
+        state.snap = snap;
+        if (!emergency.active) window.EVENT_CACHE.save({ eventId, snap });
+        syncSetlist(snap).then(() => {
+          if (state.snap !== snap || !state.event) return;
+          $('status').hidden = true;
+          $('live').hidden = false;
+          render();
+          renderProjector();
+          videoPanel.setSetlist(state.items);
+          videoPanel.update(snap);
+          requests.update(snap);
+        }).catch(() => {}); // server unreachable meanwhile: the next snapshot tries again
+      },
+      onPresence: (presence) => {
+        if (state.snap) state.snap = { ...state.snap, presence };
+        if (state.event) renderPresence();
+      },
+      onConnection: renderConnection,
+      onGone: gone,
+      onConnect: watchProjector,
+      onLongOffline: (offline) => {
+        if (offline) enterEmergency();
+        else if (emergency.active) emergency.reconnected = true; // reconciled on the next snapshot
+      },
+    });
+    state.client.socket.on('projector:frame', showServerFrame);
+    state.client.socket.on('projector:screens', ({ count }) => {
+      projector.screens = count;
+      videoPanel.setScreens(count);
+      renderProjector();
+    });
+    state.client.socket.on('projector:video-status', (status) => videoPanel.status(status));
+    renderConnection('connecting');
+  }
+
+  cachedStart().then((snap) => {
+    if (!snap && window.EVENT_CACHE.offline()) {
+      $('status').removeAttribute('data-i18n');
+      $('status').textContent = t('offline.text');
+    }
+    start(snap || undefined);
+  }, () => start(undefined));
 })();

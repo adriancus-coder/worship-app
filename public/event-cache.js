@@ -1,8 +1,10 @@
 'use strict';
 
-// The event data a live page needs to keep working without the server (emergency mode):
-// kept in IndexedDB, one record per event, replaced whenever the setlist changes.
-//   { eventId, setlistKey, event, items, songs: [[itemId, song]], logo: { url, dataUrl } | null, savedAt }
+// The event data the live pages need to keep working without the server (emergency mode,
+// and reloading an installed app offline): kept in IndexedDB, one record per event. Pages
+// save the parts they have; save() merges them into the record.
+//   { eventId, setlistKey, event, items, songs: [[itemId, song]], logo: { url, dataUrl } | null,
+//     snap (the last live snapshot), adminId, savedAt }
 // Every call resolves (null / false) instead of failing: a private window or a browser
 // without IndexedDB simply has no cache.
 
@@ -49,8 +51,16 @@
   }
 
   function save(record) {
-    return run('readwrite', (store) => { store.put({ ...record, savedAt: Date.now() }); return null; })
-      .then((ok) => ok === true);
+    return load(record.eventId).then((existing) => run('readwrite', (store) => {
+      store.put({ ...(existing || {}), ...record, savedAt: Date.now() });
+      return null;
+    })).then((ok) => ok === true);
+  }
+
+  // Whether this page load has no server to talk to (the socket.io client did not load, which
+  // is what an installed app reloaded offline looks like, or the browser says so).
+  function offline() {
+    return !window.io || navigator.onLine === false;
   }
 
   // A small logo as a data URL (works with no server); null when missing, too large or offline.
@@ -72,5 +82,5 @@
     }
   }
 
-  window.EVENT_CACHE = { load, save, logoData, LOGO_MAX_BYTES };
+  window.EVENT_CACHE = { load, save, logoData, offline, LOGO_MAX_BYTES };
 })();

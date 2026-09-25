@@ -79,8 +79,8 @@ app.use((req, res, next) => (req.path.endsWith('.html') ? res.status(404).end() 
 app.use(express.static(path.join(__dirname, 'public'), { index: false }));
 
 app.use(createHealthRouter({ config }));
-app.use(createPwaRouter({ config }));
 const sendPage = createPageRenderer({ config });
+app.use(createPwaRouter({ config, logger, sendPage }));
 
 app.use(createSetupRouter({ db, config, logger, sendPage }));
 app.use(createAuthRouter({ db, auth, config, logger, live }));

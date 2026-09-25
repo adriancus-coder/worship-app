@@ -243,6 +243,15 @@
         mismatch: 'Parolele noi nu sunt la fel.',
         done: 'Parola a fost schimbată.',
       },
+      offline: {
+        pageTitle: 'Fără internet — {appName}',
+        heading: 'Fără internet',
+        text: 'Pagina aceasta nu a fost deschisă înainte pe acest dispozitiv, așa că nu poate fi afișată fără conexiune.',
+        hint: 'Paginile deschise deja (live, urmărește, repetiție, ecranul proiectorului) merg și fără internet.',
+        retry: 'Reîncearcă',
+        help: 'Ce merge fără internet',
+        cachedNote: 'Fără internet — se afișează varianta salvată pe acest dispozitiv.',
+      },
       shell: {
         more: 'Mai mult',
         media: 'Media',
@@ -1122,6 +1131,15 @@
         submit: 'Save password',
         mismatch: 'The new passwords do not match.',
         done: 'Your password has been changed.',
+      },
+      offline: {
+        pageTitle: 'No internet — {appName}',
+        heading: 'No internet',
+        text: 'This page was not opened before on this device, so it cannot be shown without a connection.',
+        hint: 'Pages you already opened (live, follow, rehearsal, the projector screen) work without internet too.',
+        retry: 'Try again',
+        help: 'What works without internet',
+        cachedNote: 'No internet — showing the copy saved on this device.',
       },
       shell: {
         more: 'More',
