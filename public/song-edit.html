@@ -44,10 +44,9 @@
       </div>
     </form>
 
-    <section class="danger-zone" id="danger-zone" hidden>
-      <h2 data-i18n="editor.dangerHeading"></h2>
-      <button type="button" class="danger" id="delete-song" data-i18n="editor.deleteSong"></button>
-    </section>
+    <div class="delete-area" id="delete-area" hidden>
+      <button type="button" class="delete-link" id="delete-song"><svg class="delete-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg><span data-i18n="editor.deleteSong"></span></button>
+    </div>
 
     <dialog id="delete-dialog" aria-labelledby="delete-dialog-text">
       <form method="dialog">

@@ -299,15 +299,25 @@ button.danger {
   background: #b3261e;
 }
 
-.danger-zone {
-  margin-top: 40px;
-  padding: 16px;
-  border: 1px solid #6e2a26;
-  border-radius: var(--radius);
-}
+.delete-area { margin-top: 48px; padding-top: 12px; border-top: 1px solid var(--border); }
 
-.danger-zone h2 { margin: 0 0 12px; font-size: 1rem; color: var(--error); }
-.danger-zone button { width: 100%; }
+/* A quiet delete: red text, no fill, no border; the confirmation dialog keeps the red button. */
+button.delete-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  min-height: var(--touch);
+  padding: 0 8px;
+  margin-left: -8px;
+  font-weight: 600;
+  color: var(--error);
+  background: none;
+  border: 0;
+}
+button.delete-link:hover { text-decoration: underline; }
+button.delete-link:focus-visible { outline: 3px solid var(--error); outline-offset: 2px; }
+.delete-icon { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
 dialog {
   width: min(420px, calc(100vw - 32px));

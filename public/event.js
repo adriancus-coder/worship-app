@@ -1060,7 +1060,7 @@
     }
     state.editing = editSegment === 'edit' && canEdit(state.me);
     $('add-bar').hidden = !state.editing;
-    $('danger-zone').hidden = !state.editing;
+    $('delete-area').hidden = !state.editing;
     applyEvent(eventRes.body, false);
     if (state.editing) {
       const mediaRes = await api('/api/media');

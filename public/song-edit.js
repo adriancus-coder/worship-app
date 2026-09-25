@@ -18,7 +18,7 @@
   const message = document.getElementById('message');
   const saveButton = document.getElementById('save');
   const cancelLink = document.getElementById('cancel');
-  const dangerZone = document.getElementById('danger-zone');
+  const deleteArea = document.getElementById('delete-area');
   const deleteDialog = document.getElementById('delete-dialog');
   const deleteText = document.getElementById('delete-dialog-text');
   const deleteMessage = document.getElementById('delete-message');
@@ -306,7 +306,7 @@
       renderKeys();
       keySelect.value = song.song_key || '';
       cancelLink.href = `/songs/${song.id}`;
-      dangerZone.hidden = false;
+      deleteArea.hidden = false;
     }
     renderPage();
     form.hidden = false;
