@@ -1229,3 +1229,39 @@ button.op-step:disabled { opacity: 1; cursor: default; }
 .request-list li { display: flex; align-items: center; gap: 10px; padding: 8px 10px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); }
 .request-list-text { display: flex; flex-direction: column; min-width: 0; flex: 1 1 auto; overflow-wrap: anywhere; }
 .request-list button { flex: none; }
+
+/* --- Team (/team) ----------------------------------------------------------------------- */
+.team-list { list-style: none; margin: 16px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.team-row { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 10px 16px; padding: 12px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+.team-row.inactive { opacity: 0.75; border-style: dashed; }
+.team-main { flex: 1 1 260px; min-width: 0; }
+.team-main p { margin: 0; overflow-wrap: anywhere; }
+.team-name { font-weight: 700; font-size: 1.0625rem; }
+.team-email { color: var(--muted); font-size: 0.9375rem; }
+.team-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 6px !important; font-size: 0.875rem; }
+.team-actions { display: flex; flex-wrap: wrap; gap: 8px; flex: 1 1 100%; }
+.team-actions button { flex: 1 1 auto; min-height: var(--touch); }
+@media (min-width: 720px) { .team-actions { flex: 0 1 auto; } .team-actions button { flex: none; } }
+.role-pill { border-color: var(--border); color: var(--text); }
+.role-owner { color: var(--accent-text); background: var(--accent); border-color: var(--accent); }
+.role-leader { color: var(--accent); border-color: var(--accent); }
+.role-operator { color: var(--worship, #6cb4ff); border-color: var(--worship, #6cb4ff); }
+.status-active { color: var(--success); border-color: var(--success); }
+.status-inactive { color: var(--muted); border-color: var(--border); }
+.status-mustChange { color: var(--accent); border-color: var(--accent); }
+.danger-text { color: var(--error); }
+.role-choice { margin: 4px 0 12px; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius); }
+.role-choice legend { padding: 0 6px; font-weight: 600; }
+.role-option { flex-direction: row; align-items: flex-start; gap: 12px; padding: 8px 0; cursor: pointer; }
+.role-option input { width: 22px; height: 22px; margin-top: 2px; flex: none; accent-color: var(--accent); }
+.role-option > span { display: flex; flex-direction: column; gap: 2px; }
+.result-dialog { width: min(560px, calc(100vw - 24px)); }
+.result-warning { padding: 8px 12px; border: 2px solid var(--accent); border-radius: var(--radius); color: var(--accent); font-weight: 600; }
+.result-card { margin: 12px 0; display: grid; grid-template-columns: 1fr; gap: 2px 12px; align-items: baseline; }
+@media (min-width: 520px) { .result-card { grid-template-columns: auto 1fr; gap: 6px 12px; } }
+.result-card dt { color: var(--muted); font-size: 0.875rem; }
+.result-card dd { margin: 0; font-weight: 700; overflow-wrap: anywhere; }
+.result-password { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: clamp(1.25rem, 7vw, 1.75rem); letter-spacing: 0.06em; white-space: nowrap; color: var(--accent); }
+.result-card dd + dt { margin-top: 6px; }
+.result-message-label { margin-top: 12px; }
+.result-message-label textarea { width: 100%; resize: vertical; }

@@ -87,7 +87,7 @@ app.use(createSongsRouter({ db, auth, config, logger, live }));
 app.use(createResurseRouter({ db, auth, logger }));
 app.use(createEventsRouter({ db, auth, logger, live }));
 app.use(createHomeRouter({ db, auth }));
-app.use(createTeamRouter({ db, auth, logger, live }));
+app.use(createTeamRouter({ db, auth, config, logger, live }));
 app.use(createScreensRouter({ db, auth, logger, screensHub }));
 app.use(createSettingsRouter({ db, auth, config, logger, screensHub }));
 app.use(createMediaRouter({ db, auth, config, logger }));

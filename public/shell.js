@@ -121,6 +121,7 @@
   const pageLinks = [
     { id: 'media', href: '/media', key: 'shell.media', roles: EDITOR_ROLES },
     { id: 'screens', href: '/screens', key: 'shell.screens', roles: EDITOR_ROLES },
+    { id: 'team', href: '/team', key: 'shell.team', roles: ['owner'] },
     { id: 'settings', href: '/settings', key: 'shell.settings', roles: ['owner'] },
     { id: 'password', href: '/change-password', key: 'shell.password', roles: ['owner', 'leader', 'operator', 'member'] },
   ].map((p) => {

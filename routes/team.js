@@ -8,7 +8,7 @@ const { temporaryPassword, validateName, validateEmail, validateRole, createTeam
 // The owner manages the admin's team: accounts with temporary passwords (shown once, never
 // logged), role and name changes, deactivation, password resets. Owner only; another admin's
 // users do not exist here (404). The owner's own row cannot be changed here.
-function createTeamRouter({ db, auth, logger, live }) {
+function createTeamRouter({ db, auth, config, logger, live }) {
   const router = express.Router();
   const team = createTeamStore(db);
 
@@ -35,7 +35,8 @@ function createTeamRouter({ db, auth, logger, live }) {
   }
 
   router.get('/api/team', (req, res) => {
-    res.json({ users: team.list(req.adminId) });
+    // baseUrl: the address in the welcome message (null: the page uses its own origin).
+    res.json({ users: team.list(req.adminId), baseUrl: config.PUBLIC_BASE_URL });
   });
 
   router.post('/api/team', asyncRoute(async (req, res) => {

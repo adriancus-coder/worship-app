@@ -108,6 +108,12 @@ function createPagesRouter({ db, auth, sendPage }) {
     sendPage(req, res, 'media');
   });
 
+  // The team (accounts, roles, temporary passwords): owner only.
+  router.get('/team', noStore, signedIn, (req, res) => {
+    if (req.session.user.role !== 'owner') return res.redirect('/app');
+    sendPage(req, res, 'team');
+  });
+
   // Admin settings (the church logo): owner only.
   router.get('/settings', noStore, signedIn, (req, res) => {
     if (req.session.user.role !== 'owner') return res.redirect('/app');
