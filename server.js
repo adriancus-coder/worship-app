@@ -82,7 +82,7 @@ const sendPage = createPageRenderer({ config });
 
 app.use(createSetupRouter({ db, config, logger, sendPage }));
 app.use(createAuthRouter({ db, auth, config, logger, live }));
-app.use(createMeRouter({ db, auth, config }));
+app.use(createMeRouter({ db, auth, config, logger, live }));
 app.use(createSongsRouter({ db, auth, config, logger, live }));
 app.use(createResurseRouter({ db, auth, logger }));
 app.use(createEventsRouter({ db, auth, logger, live }));

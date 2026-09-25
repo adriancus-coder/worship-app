@@ -36,7 +36,7 @@ function createMediaRouter({ db, auth, config, logger }) {
     const id = mediaId(req);
     const owner = id ? adminOf.get(id) : undefined;
     if (owner === undefined) return notFound(req, res);
-    const session = auth.getSession(req);
+    const session = auth.getActiveSession(req);
     const screen = session ? null : screens.findByToken(req.get('x-screen-token'));
     const allowed = (session && session.admin.id === owner)
       || (screen && screen.adminId === owner)

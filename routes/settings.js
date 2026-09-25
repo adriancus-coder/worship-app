@@ -65,7 +65,7 @@ function createSettingsRouter({ db, auth, config, logger, screensHub }) {
   // Session user of that admin, or one of its screens (X-Screen-Token). Else 404.
   router.get('/api/logo/:file', (req, res) => {
     const found = logos.find(req.params.file);
-    const session = auth.getSession(req);
+    const session = auth.getActiveSession(req);
     const screen = session ? null : screens.findByToken(req.get('x-screen-token'));
     const adminId = session ? session.admin.id : screen && screen.adminId;
     if (!found || !adminId || found.adminId !== adminId) return res.status(404).json({ error: req.t('errors.notFound') });

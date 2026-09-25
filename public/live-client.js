@@ -51,6 +51,7 @@
 
     function join() {
       socket.emit('live:join', { eventId }, (reply) => {
+        if (reply && reply.code === 'mustChangePassword') window.location.replace('/change-password');
         if (reply && reply.ok === false && reply.code === 'notFound' && onGone) onGone();
       });
     }

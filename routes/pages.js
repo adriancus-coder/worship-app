@@ -26,10 +26,6 @@ function createPagesRouter({ db, auth, sendPage }) {
     sendPage(req, res, 'login');
   });
 
-  router.get('/app', noStore, (req, res) => {
-    if (!auth.getSession(req)) return res.redirect('/login');
-    sendPage(req, res, 'app');
-  });
 
   // The projector screen: no user session (it pairs with a code or a claim link).
   router.get('/screen', noStore, (req, res) => {
@@ -43,11 +39,22 @@ function createPagesRouter({ db, auth, sendPage }) {
 
   // Signed-in pages. Editing pages are only served to roles that may edit;
   // the API enforces the same rules.
+  // A temporary password must be changed first: every page leads to /change-password.
   const signedIn = (req, res, next) => {
     req.session = auth.getSession(req);
     if (!req.session) return res.redirect('/login');
+    if (req.session.user.mustChangePassword && req.path !== '/change-password') return res.redirect('/change-password');
     next();
   };
+
+  router.get('/app', noStore, signedIn, (req, res) => {
+    sendPage(req, res, 'app');
+  });
+
+  // Forced after a temporary password; later from "Mai mult" → "Schimbă parola".
+  router.get('/change-password', noStore, signedIn, (req, res) => {
+    sendPage(req, res, 'change-password');
+  });
   const canEdit = (req) => EDITOR_ROLES.includes(req.session.user.role);
 
   router.get('/library', noStore, signedIn, (req, res) => {

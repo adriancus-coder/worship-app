@@ -84,6 +84,7 @@ function createLiveHub({ db, auth, logger, screensHub }) {
       return false;
     }
     socket.data.role = session.user.role;
+    socket.data.mustChangePassword = session.user.mustChangePassword;
     return true;
   }
 
@@ -91,8 +92,16 @@ function createLiveHub({ db, auth, logger, screensHub }) {
     if (typeof ack === 'function') ack(payload);
   }
 
+  // A valid session that may use live mode (not one with a temporary password to change).
+  function ready(socket, ack) {
+    if (!refresh(socket)) return false;
+    if (!socket.data.mustChangePassword) return true;
+    reply(ack, { ok: false, code: 'mustChangePassword', error: tr(socket, 'errors.mustChangePassword') });
+    return false;
+  }
+
   function onJoin(socket, payload, ack) {
-    if (!refresh(socket)) return;
+    if (!ready(socket, ack)) return;
     const eventId = payload && /^\d{1,15}$/.test(String(payload.eventId)) ? Number(payload.eventId) : null;
     if (!eventId) return reply(ack, { ok: false, code: 'badRequest', error: tr(socket, 'errors.badRequest') });
     const { adminId, role } = socket.data;
@@ -143,7 +152,7 @@ function createLiveHub({ db, auth, logger, screensHub }) {
   // live:command { type, eventId, expectedVersion?, itemId?, step? } -> ack { ok, version }
   // or { ok: false, code, error } (+ state when the expected version was stale).
   function onCommand(socket, payload, ack) {
-    if (!refresh(socket)) return;
+    if (!ready(socket, ack)) return;
     const cmd = payload && typeof payload === 'object' ? payload : {};
     const { adminId, role, userId } = socket.data;
     if (!COMMANDS.includes(cmd.type) || !isId(cmd.eventId)) return fail(socket, ack, 'badCommand');
@@ -198,13 +207,13 @@ function createLiveHub({ db, auth, logger, screensHub }) {
     // The leader's projector panel and the operator console: the frame the screens show and
     // how many are connected.
     socket.on('projector:watch', (payload, ack) => {
-      if (!refresh(socket)) return;
+      if (!ready(socket, ack)) return;
       if (!COMMAND_ROLES.includes(socket.data.role)) return fail(socket, ack, 'forbidden');
       reply(ack, { ok: true, ...screensHub.watch(socket) });
     });
     // The home page: an admin-level room, no event room needed.
     socket.on('home:watch', (payload, ack) => {
-      if (!refresh(socket)) return;
+      if (!ready(socket, ack)) return;
       socket.join(homeRoom(socket.data.adminId));
       reply(ack, { ok: true });
     });
@@ -230,6 +239,7 @@ function createLiveHub({ db, auth, logger, screensHub }) {
         adminId: session.admin.id,
         role: session.user.role,
         lang: resolveLang(socket.request),
+        mustChangePassword: session.user.mustChangePassword,
         eventId: null,
       };
       next();

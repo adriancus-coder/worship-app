@@ -16,6 +16,11 @@
       return new Promise(() => {});
     }
     const body = await res.json().catch(() => ({}));
+    // A temporary password must be changed first.
+    if (res.status === 403 && body.code === 'mustChangePassword') {
+      window.location.replace('/change-password');
+      return new Promise(() => {});
+    }
     return { ok: res.ok, status: res.status, body };
   }
 

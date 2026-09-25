@@ -681,6 +681,48 @@ async function main() {
     assert.strictEqual((await api('POST', '/api/auth/login', null, { email: 'ion@x.ro', password: reset.body.temporaryPassword })).status, 200);
   });
 
+  await step('first login: a temporary password must be changed before anything else', async () => {
+    const created = await api('POST', '/api/team', owner, { name: 'Maria', email: 'maria@x.ro', role: 'member' });
+    const temp = created.body.temporaryPassword;
+    const loginAs = async (password) => {
+      const res = await api('POST', '/api/auth/login', null, { email: 'maria@x.ro', password });
+      assert.strictEqual(res.status, 200);
+      return /wa_sid=[0-9a-f]+/.exec(res.headers.get('set-cookie'))[0];
+    };
+    const first = await loginAs(temp);
+    const second = await loginAs(temp); // another device
+    const me = await api('GET', '/api/auth/me', first);
+    assert.deepStrictEqual([me.status, me.body.user.mustChangePassword], [200, true]);
+    for (const [method, url] of [['GET', '/api/events'], ['GET', '/api/songs'], ['GET', '/api/home'], ['PUT', '/api/me/locale']]) {
+      const res = await api(method, url, first, method === 'PUT' ? { locale: 'en' } : undefined);
+      assert.deepStrictEqual([res.status, res.body.code], [403, 'mustChangePassword'], url);
+    }
+    for (const path of ['/app', '/events', `/events/${ev.id}/follow`]) {
+      const page = await fetch(base() + path, { headers: { Cookie: first }, redirect: 'manual' });
+      assert.deepStrictEqual([page.status, page.headers.get('location')], [302, '/change-password'], path);
+    }
+    assert.strictEqual((await fetch(base() + '/change-password', { headers: { Cookie: first }, redirect: 'manual' })).status, 200);
+    const socket = connect(first);
+    await next(socket, 'connect');
+    assert.strictEqual((await emit(socket, 'live:join', { eventId: ev.id })).code, 'mustChangePassword');
+    assert.strictEqual((await emit(socket, 'home:watch', {})).code, 'mustChangePassword');
+    // wrong current, too short, same as the temporary one
+    assert.strictEqual((await api('POST', '/api/me/password', first, { current: 'nope', password: 'parola-noua-1' })).body.code, 'wrongPassword');
+    assert.strictEqual((await api('POST', '/api/me/password', first, { current: temp, password: 'scurta' })).body.code, 'tooShort');
+    assert.strictEqual((await api('POST', '/api/me/password', first, { current: temp, password: temp })).body.code, 'samePassword');
+    assert.strictEqual((await api('POST', '/api/me/password', first, { current: temp, password: 'parola-mariei-1' })).status, 200);
+    // now normal access for a member; the other device is signed out; the temporary password is gone
+    assert.strictEqual((await api('GET', '/api/events', first)).status, 200);
+    assert.strictEqual((await api('GET', '/api/team', first)).status, 403, 'member: no team page');
+    assert.strictEqual((await api('GET', '/api/auth/me', second)).status, 401);
+    assert.strictEqual((await api('POST', '/api/auth/login', null, { email: 'maria@x.ro', password: temp })).status, 401);
+    const afterSocket = connect(first);
+    await next(afterSocket, 'connect');
+    assert.strictEqual((await emit(afterSocket, 'live:join', { eventId: ev.id })).ok, true);
+    // a later voluntary change needs the current password
+    assert.strictEqual((await api('POST', '/api/me/password', first, { current: 'parola-mariei-1', password: 'parola-mariei-2' })).status, 200);
+  });
+
   await step('end -> finished for the whole room; commands then refused', async () => {
     const l = await joined(leader, ev.id);
     const m = await joined(member, ev.id);
