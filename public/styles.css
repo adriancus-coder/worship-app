@@ -715,3 +715,122 @@ main.rehearse-page { flex: 1 0 auto; display: flex; flex-direction: column; padd
 
 .rehearse-nav button { flex: 1 1 0; }
 .rehearse-nav button:disabled { opacity: 0.35; cursor: not-allowed; }
+
+/* --- live: leader control ---------------------------------------------------------------- */
+
+main.live-page { max-width: 1400px; }
+.live-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-bottom: 16px; }
+.live-title { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; flex: 1 1 260px; min-width: 0; }
+.live-title h1 { margin: 0; overflow-wrap: anywhere; }
+.live-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; }
+.live-meta p { margin: 0; }
+.live-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.live-actions:empty { display: none; }
+#live-message { flex: 1 0 100%; }
+#live-message:empty { display: none; }
+.presence { color: var(--muted); font-size: 0.875rem; }
+
+.connection { display: inline-flex; align-items: center; gap: 6px; font-size: 0.875rem; font-weight: 600; color: var(--muted); }
+.connection .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); }
+.connection[data-state="connected"] .dot { background: var(--success); }
+.connection[data-state="reconnecting"] { color: var(--accent); }
+.connection[data-state="reconnecting"] .dot { background: var(--accent); }
+.connection[data-state="offline"] { color: var(--error); }
+.connection[data-state="offline"] .dot { background: var(--error); }
+
+.live-grid { display: flex; flex-direction: column; gap: 24px; }
+.live-grid h2 { margin-top: 0; }
+.live-current { min-width: 0; }
+
+.live-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+
+.live-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  font-weight: 400;
+  text-align: left;
+  justify-content: flex-start;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.live-item.current { border-color: var(--accent); background: #3a2d18; }
+button.live-item:disabled { opacity: 1; cursor: default; }
+
+.live-badge {
+  flex: none;
+  margin-left: auto;
+  padding: 1px 8px;
+  font-size: 0.6875rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #fff;
+  background: #c62828;
+  border-radius: 999px;
+}
+
+.current-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 12px; }
+.current-title { margin: 0; font-size: 1.5rem; overflow-wrap: anywhere; flex: 1 1 200px; }
+
+.step-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; }
+
+.step {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  min-height: 64px;
+  padding: 8px 10px;
+  font-weight: 400;
+  text-align: left;
+  justify-content: flex-start;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.step.current { border: 2px solid var(--accent); background: #3a2d18; }
+.step .live-badge { position: absolute; top: 6px; right: 6px; }
+.step-code { font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; font-weight: 700; color: var(--accent); }
+.step-label { font-size: 0.8125rem; color: var(--muted); overflow-wrap: anywhere; }
+.current-section { margin-top: 16px; padding: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+.current-section .song-section { margin-bottom: 0; }
+
+.live-note { padding: 16px; font-size: 1.125rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+
+.live-nav {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  display: flex;
+  gap: 12px;
+  margin: 16px -16px 0;
+  padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+  background: var(--bg);
+  border-top: 1px solid var(--border);
+}
+
+.live-nav button { flex: 1 1 0; min-height: 64px; font-size: 1.0625rem; overflow-wrap: anywhere; }
+.live-nav button:disabled { opacity: 0.35; cursor: not-allowed; }
+.key-hint { display: none; margin: 8px 0 0; }
+
+.upcoming .ro-label { margin-bottom: 2px; }
+.arr-strip li.current { color: var(--accent-text); background: var(--accent); border-color: var(--accent); }
+.live-info .arr-strip { margin-bottom: 12px; }
+.live-info > div > * + * { margin-top: 12px; }
+
+/* Tablet landscape and wider: setlist left, current song in the middle, info right. */
+@media (min-width: 900px) {
+  .live-grid { display: grid; grid-template-columns: minmax(220px, 1fr) minmax(0, 2.2fr) minmax(200px, 1fr); grid-template-areas: "setlist current info"; align-items: start; }
+  .live-setlist { grid-area: setlist; }
+  .live-current { grid-area: current; }
+  .live-info { grid-area: info; }
+  .live-nav { position: static; margin: 16px 0 0; padding: 0; border-top: 0; background: transparent; }
+  .key-hint { display: block; }
+}

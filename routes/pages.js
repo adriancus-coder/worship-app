@@ -57,6 +57,12 @@ function createPagesRouter({ db, auth, sendPage }) {
     sendPage(req, res, 'rehearse');
   });
 
+  // Live control: owner and leader only; the team follows the event page instead.
+  router.get('/events/:id(\\d+)/live', noStore, signedIn, (req, res) => {
+    if (!canEdit(req)) return res.redirect(`/events/${req.params.id}`);
+    sendPage(req, res, 'live');
+  });
+
   router.get('/events/:id(\\d+)/edit', noStore, signedIn, (req, res) => {
     if (!canEdit(req)) return res.redirect(`/events/${req.params.id}`);
     sendPage(req, res, 'event');
