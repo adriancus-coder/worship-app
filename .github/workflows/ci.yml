@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run check
+
+      - name: Start server and check /api/health
+        env:
+          PORT: 3000
+          SETUP_TOKEN: ci-setup-token
+        run: |
+          export DATA_DIR="$(mktemp -d)"
+          node server.js > server.log 2>&1 &
+          SERVER_PID=$!
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:3000/api/health -o health.json; then break; fi
+            sleep 1
+          done
+          kill "$SERVER_PID" || true
+          cat server.log
+          test -f health.json || { echo "Server did not answer /api/health"; exit 1; }
+          cat health.json
+          node -e "const h = require('./health.json'); if (h.ok !== true) { console.error('health not ok'); process.exit(1); }"
