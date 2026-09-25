@@ -744,6 +744,12 @@ main.live-page { max-width: 1400px; }
 .emergency-banner p { margin: 0; overflow-wrap: anywhere; }
 .emergency-title { font-weight: 700; color: var(--accent); }
 .emergency-detail { margin-top: 4px !important; font-size: 0.9375rem; }
+.emergency-link { display: inline-flex; align-items: center; min-height: 44px; color: var(--accent); font-weight: 600; }
+
+/* Help pages: plain readable text. */
+.help-page h2 { margin-top: 28px; }
+.help-page li { margin: 6px 0; overflow-wrap: anywhere; }
+.help-page p { overflow-wrap: anywhere; }
 
 .live-grid { display: flex; flex-direction: column; gap: 24px; }
 .live-grid h2 { margin-top: 0; }

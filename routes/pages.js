@@ -36,6 +36,11 @@ function createPagesRouter({ db, auth, sendPage }) {
     sendPage(req, res, 'screen');
   });
 
+  // Help for an internet outage during a service: no session needed (nothing private).
+  router.get('/help/emergency', (req, res) => {
+    sendPage(req, res, 'help-emergency');
+  });
+
   // Signed-in pages. Editing pages are only served to roles that may edit;
   // the API enforces the same rules.
   const signedIn = (req, res, next) => {
