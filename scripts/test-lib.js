@@ -514,6 +514,60 @@ test('dates: validation and today in a timezone', () => {
   assert.ok(isValidTimezone('Europe/Oslo') && !isValidTimezone('Mars/Base'));
 });
 
+// --- events -------------------------------------------------------------------
+
+const evs = require('../lib/events');
+
+test('validateEventMeta: name, date, time, notes', () => {
+  const ok = { name: ' Serviciu duminică ', eventDate: '2026-10-11', startTime: '10:00', notes: '' };
+  assert.deepStrictEqual(evs.validateEventMeta(ok, tro).value, { name: 'Serviciu duminică', eventDate: '2026-10-11', startTime: '10:00', notes: null });
+  assert.strictEqual(evs.validateEventMeta({ ...ok, startTime: '' }, tro).value.startTime, null);
+  assert.strictEqual(evs.validateEventMeta({ ...ok, name: '' }, tEn).error, 'The event name is required (max. 120 characters).');
+  assert.ok(evs.validateEventMeta({ ...ok, name: 'x'.repeat(121) }, tro).error);
+  assert.ok(evs.validateEventMeta({ ...ok, eventDate: '2026-02-30' }, tro).error);
+  assert.ok(evs.validateEventMeta({ ...ok, startTime: '25:00' }, tro).error);
+  assert.ok(evs.validateEventMeta({ ...ok, notes: 'x'.repeat(2001) }, tro).error);
+});
+
+test('validateItems: one of each type, per-type fields, limits', () => {
+  const findSong = (id) => (id === 5 ? { id: 5, title: 'Sfânt' } : null);
+  const items = [
+    { type: 'song', songId: 5, title: 'ignored', durationMin: 5 },
+    { type: 'verse', reference: 'Psalmul 23:1-4', body: 'Domnul este Păstorul meu', url: 'https://x.ro' },
+    { type: 'video', title: 'Clip', url: 'https://example.com/v.mp4', durationMin: '3' },
+    { type: 'announcement', title: 'Anunț', body: 'Agapă după serviciu' },
+    { type: 'sermon', title: 'Predica', durationMin: 40 },
+    { type: 'other', body: 'Rugăciune' },
+    { type: 'song', songId: null, title: 'Cântare veche' },
+  ];
+  const { value, error } = evs.validateItems(items, tro, findSong);
+  assert.strictEqual(error, undefined);
+  assert.deepStrictEqual(value.map((x) => [x.type, x.songId, x.title, x.reference, x.url, x.durationMin]), [
+    ['song', 5, 'Sfânt', null, null, 5],
+    ['verse', null, null, 'Psalmul 23:1-4', null, null],
+    ['video', null, 'Clip', null, 'https://example.com/v.mp4', 3],
+    ['announcement', null, 'Anunț', null, null, null],
+    ['sermon', null, 'Predica', null, null, 40],
+    ['other', null, null, null, null, null],
+    ['song', null, 'Cântare veche', null, null, null],
+  ]);
+  const err = (item, tf = tro) => evs.validateItems([item], tf, findSong).error;
+  assert.strictEqual(err({ type: 'song', songId: 6 }, tEn), 'Item 1: the song is not in the library.');
+  assert.ok(err({ type: 'song' }));
+  assert.ok(err({ type: 'dance', title: 'x' }));
+  assert.ok(err({ type: 'video', url: 'http://example.com' }));
+  assert.ok(err({ type: 'video', url: 'javascript:alert(1)' }));
+  assert.ok(err({ type: 'video', title: 'fără link' }));
+  assert.ok(err({ type: 'verse' }));
+  assert.ok(err({ type: 'announcement', title: 'x', durationMin: 601 }));
+  assert.ok(err({ type: 'announcement', title: 'x', durationMin: 1.5 }));
+  assert.ok(err({ type: 'announcement', title: 'x'.repeat(201) }));
+  assert.ok(err({ type: 'announcement', body: 'x'.repeat(5001) }));
+  assert.ok(err({ type: 'verse', reference: 'x'.repeat(101) }));
+  assert.ok(evs.validateItems(Array(61).fill({ type: 'other', title: 'x' }), tro, findSong).error);
+  assert.strictEqual(evs.validateItems(Array(60).fill({ type: 'other', title: 'x' }), tro, findSong).error, undefined);
+});
+
 // --- sections -------------------------------------------------------------
 
 test('sectionLabels: numbered verses, repeated types, custom labels, both languages', () => {

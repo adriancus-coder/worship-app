@@ -4,6 +4,9 @@ const express = require('express');
 const { requireRole } = require('../lib/auth');
 const { LIMITS, SORT_MODES, DuplicateTitleError, validateSong, createSongStore } = require('../lib/songs');
 const { MAX_SONGS, LibraryFileError, parseLibraryFile, planImport } = require('../lib/library-import');
+const { createEventStore } = require('../lib/events');
+const { createAdminSettings } = require('../lib/admin-settings');
+const { todayIn } = require('../lib/dates');
 
 // The import route parses its own body (the global JSON limit is 100 kB, see server.js).
 const IMPORT_BODY_LIMIT = '10mb';
@@ -13,7 +16,10 @@ const IMPORT_BODY_LIMIT = '10mb';
 function createSongsRouter({ db, auth, config, logger }) {
   const router = express.Router();
   const songs = createSongStore(db);
+  const events = createEventStore(db);
+  const settings = createAdminSettings(db);
   const canEdit = requireRole('owner', 'leader');
+  const today = (req) => todayIn(settings.timezone(req.adminId));
 
   function songId(req) {
     return /^\d{1,15}$/.test(req.params.id) ? Number(req.params.id) : null;
@@ -35,7 +41,14 @@ function createSongsRouter({ db, auth, config, logger }) {
   router.get('/api/songs', (req, res) => {
     const q = typeof req.query.q === 'string' ? req.query.q.slice(0, LIMITS.queryMax) : '';
     const sort = SORT_MODES.includes(req.query.sort) ? req.query.sort : 'az';
-    res.json({ songs: songs.list(req.adminId, { q, sort }) });
+    const list = songs.list(req.adminId, { q, sort });
+    // ?withHistory=1 adds lastSung (last date in a published event, up to today).
+    if (req.query.withHistory === '1') {
+      const day = today(req);
+      const last = events.lastSungMap(req.adminId, day);
+      return res.json({ today: day, songs: list.map((s) => ({ ...s, lastSung: last.get(s.id) || null })) });
+    }
+    res.json({ songs: list });
   });
 
   // Library file import. ?dryRun=1 only reports; otherwise mode=skip (default) keeps
@@ -97,6 +110,16 @@ function createSongsRouter({ db, auth, config, logger }) {
     res.set('Content-Type', 'application/json; charset=utf-8');
     res.set('Content-Disposition', `attachment; filename="${filename}"`);
     res.send(JSON.stringify(payload, null, 2));
+  });
+
+  // Dates this song appeared in published, live or finished events (newest first).
+  router.get('/api/songs/:id/history', (req, res) => {
+    const id = songId(req);
+    if (!id || !songs.findTitle(req.adminId, id)) return notFound(req, res);
+    const day = today(req);
+    const dates = events.songHistory(req.adminId, id);
+    const lastSung = dates.find((d) => d.eventDate <= day);
+    res.json({ songId: id, today: day, lastSung: lastSung ? lastSung.eventDate : null, dates });
   });
 
   router.get('/api/songs/:id', (req, res) => {
