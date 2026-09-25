@@ -23,6 +23,7 @@ const createEventsRouter = require('./routes/events');
 const createPagesRouter = require('./routes/pages');
 const { createScreensRouter } = require('./routes/screens');
 const { createLiveHub } = require('./socket/live');
+const { createScreensHub } = require('./socket/screens');
 
 const db = openDb(config.DATA_DIR);
 const applied = runMigrations(db);
@@ -42,8 +43,9 @@ function cleanupSessions() {
 cleanupSessions();
 setInterval(cleanupSessions, SESSION_CLEANUP_MS).unref();
 
-// Live rooms: routes notify the hub; it is attached to socket.io below.
-const live = createLiveHub({ db, auth, logger });
+// Live rooms and projector screens: routes notify the hubs; they attach to socket.io below.
+const screensHub = createScreensHub({ db, logger });
+const live = createLiveHub({ db, auth, logger, screensHub });
 
 const app = express();
 app.disable('x-powered-by');
@@ -74,7 +76,7 @@ app.use(createMeRouter({ db, auth, config }));
 app.use(createSongsRouter({ db, auth, config, logger, live }));
 app.use(createResurseRouter({ db, auth, logger }));
 app.use(createEventsRouter({ db, auth, logger, live }));
-app.use(createScreensRouter({ db, auth, logger }));
+app.use(createScreensRouter({ db, auth, logger, screensHub }));
 app.use(createPagesRouter({ db, auth, sendPage }));
 
 app.use('/api', (req, res) => {
@@ -94,7 +96,9 @@ app.use((err, req, res, next) => {
 });
 
 const server = http.createServer(app);
-live.attach(new SocketServer(server));
+const io = new SocketServer(server);
+live.attach(io);
+screensHub.attach(io);
 
 server.listen(config.PORT, () => {
   logger.info(`${config.APP_NAME} v${config.VERSION} listening on port ${config.PORT} (${config.NODE_ENV})`);

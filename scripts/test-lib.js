@@ -784,6 +784,41 @@ test('migration 008 and screen tokens: only the hash is stored, unique', () => {
   mem.close();
 });
 
+test('projector frames: sources, items, no chords, idle', () => {
+  const { projectorFrame } = require('../lib/projector');
+  const items = [
+    { id: 1, type: 'song', songId: 9, title: 'Sfânt' },
+    { id: 2, type: 'verse', reference: 'Psalmul 23:1', body: 'Domnul este Păstorul meu.' },
+    { id: 3, type: 'announcement', title: 'Agapă', body: 'După serviciu' },
+    { id: 4, type: 'sermon', title: 'Predica' },
+    { id: 5, type: 'other', body: 'Rugăciune\npentru țară' },
+    { id: 6, type: 'video', title: 'Clip', url: 'https://x.ro/v.mp4' },
+    { id: 7, type: 'song', songId: null, title: 'Cântare ștearsă' },
+  ];
+  const song = {
+    sections: [{ id: 11, content: '[A]Ne ridici din [E]noaptea grea\n[F#m]Tu ești [D]lumina mea\n' }, { id: 12, content: '[D]Sfânt, [A/C#]sfânt' }],
+    arrangement: [{ sectionId: 11 }, { sectionId: 12 }, { sectionId: 11 }],
+  };
+  const state = (itemId, step, source = 'content') => ({ version: 7, eventId: 3, status: 'live',
+    worship: { itemId, step }, projector: { follows: 'worship', itemId: null, step: 0, source } });
+  const frame = (itemId, step, source, logoUrl) => projectorFrame(state(itemId, step, source), { items }, new Map([[1, song]]), { logoUrl });
+  assert.deepStrictEqual(frame(1, 0), { kind: 'lyrics', lines: ['Ne ridici din noaptea grea', 'Tu ești lumina mea'], version: 7, eventId: 3 });
+  assert.deepStrictEqual(frame(1, 1).lines, ['Sfânt, sfânt']);
+  assert.ok(!/\[[A-G]/.test(frame(1, 2).lines.join('\n')), 'no chords reach the projector');
+  assert.deepStrictEqual(frame(2, 0), { kind: 'verse', reference: 'Psalmul 23:1', text: 'Domnul este Păstorul meu.', version: 7, eventId: 3 });
+  assert.deepStrictEqual(frame(3, 0), { kind: 'announcement', title: 'Agapă', body: 'După serviciu', version: 7, eventId: 3 });
+  assert.strictEqual(frame(4, 0).title, 'Predica');
+  assert.deepStrictEqual([frame(5, 0).kind, frame(5, 0).title], ['title', 'Rugăciune']);
+  assert.strictEqual(frame(6, 0).kind, 'black', 'video: black until stage 5b');
+  assert.deepStrictEqual([frame(7, 0).kind, frame(7, 0).title], ['title', 'Cântare ștearsă']);
+  assert.deepStrictEqual(frame(1, 0, 'black'), { kind: 'black', version: 7, eventId: 3 });
+  assert.deepStrictEqual(frame(1, 0, 'logo', '/api/logo/x.png'), { kind: 'logo', logoUrl: '/api/logo/x.png', version: 7, eventId: 3 });
+  assert.strictEqual(frame(1, 0, 'logo').logoUrl, null);
+  assert.strictEqual(frame(99, 0).kind, 'black', 'no item at the position');
+  assert.deepStrictEqual(projectorFrame(null, null, null, { logoUrl: '/api/logo/x.png' }), { kind: 'idle', logoUrl: '/api/logo/x.png', version: 0, eventId: null });
+  assert.strictEqual(projectorFrame({ ...state(1, 0), status: 'finished' }, { items }, new Map()).kind, 'idle');
+});
+
 test('section codes, arrangements and defaults', () => {
   const S = require('../lib/sections');
   const mixed = [{ type: 'intro' }, { type: 'verse' }, { type: 'chorus' }, { type: 'verse' }, { type: 'pre_chorus' },

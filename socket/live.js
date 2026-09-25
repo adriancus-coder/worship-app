@@ -11,13 +11,13 @@ const ROLES = ['owner', 'leader', 'operator', 'member'];
 const PRESENCE_DEBOUNCE_MS = 1000;
 const SESSION_SWEEP_MS = 30 * 1000;
 
-const COMMANDS = ['event.start', 'event.end', 'worship.next', 'worship.prev', 'worship.goto'];
+const COMMANDS = ['event.start', 'event.end', 'worship.next', 'worship.prev', 'worship.goto', 'projector.source'];
 
 const roomName = (adminId, eventId) => `admin:${adminId}:event:${eventId}`;
 const isId = (value) => Number.isInteger(value) && value > 0;
 
 // Created before the HTTP routes (they notify it), attached to socket.io once it exists.
-function createLiveHub({ db, auth, logger }) {
+function createLiveHub({ db, auth, logger, screensHub }) {
   const store = createLiveStore(db);
   const presenceTimers = new Map();
   let io = null;
@@ -97,9 +97,12 @@ function createLiveHub({ db, auth, logger }) {
     reply(ack, { ok: true, version: state.version });
   }
 
+  // Every change goes to the event room and, if it changes what the projector shows, to
+  // the admin's screens.
   function broadcast(adminId, eventId) {
     const state = fullSnapshot(adminId, eventId);
     if (state) io.to(roomName(adminId, eventId)).emit('live:state', state);
+    screensHub.update(adminId);
   }
 
   function fail(socket, ack, code, extra) {

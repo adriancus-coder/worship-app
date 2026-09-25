@@ -8,13 +8,12 @@ const { validateScreenName, createScreenStore } = require('../lib/screens');
 const EDITOR_ROLES = ['owner', 'leader'];
 const TEN_MINUTES = 10 * 60 * 1000;
 const SCREEN_TOKEN_HEADER = 'x-screen-token';
-const ONLINE_MS = 2 * 60 * 1000; // seen this recently = online
 
 // Projector screens.
 //   /api/screen/...  called by the screen itself (no user session): pairing, claim links
 //                    and "who am I" with its screen token (X-Screen-Token header).
 //   /api/screens/... owner/leader: claim a code, create a claim link, list, rename, revoke.
-function createScreensRouter({ db, auth, logger }) {
+function createScreensRouter({ db, auth, logger, screensHub }) {
   const router = express.Router();
   const screens = createScreenStore(db);
   const canManage = requireRole(...EDITOR_ROLES);
@@ -101,8 +100,8 @@ function createScreensRouter({ db, auth, logger }) {
   });
 
   router.get('/api/screens', (req, res) => {
-    const now = Date.now();
-    res.json({ screens: screens.list(req.adminId).map((s) => ({ ...s, online: Boolean(s.lastSeenAt && now - s.lastSeenAt < ONLINE_MS) })) });
+    const online = screensHub.onlineIds(req.adminId);
+    res.json({ screens: screens.list(req.adminId).map((s) => ({ ...s, online: online.has(s.id) })) });
   });
 
   router.put('/api/screens/:id', (req, res) => {
@@ -117,6 +116,7 @@ function createScreensRouter({ db, auth, logger }) {
   router.delete('/api/screens/:id', (req, res) => {
     const id = screenId(req);
     if (!id || !screens.revoke(req.adminId, id)) return res.status(404).json({ error: req.t('errors.screenNotFound') });
+    screensHub.revoked(req.adminId, id);
     logger.info(`Screen #${id} revoked by user #${req.user.id} (admin #${req.adminId})`);
     res.json({ ok: true });
   });

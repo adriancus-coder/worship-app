@@ -249,6 +249,70 @@ async function main() {
     assert.ok(reply.error);
   });
 
+  // --- projector screens ----------------------------------------------------------
+  async function pairScreen(cookie, name) {
+    const pairing = (await api('POST', '/api/screen/pairings')).body;
+    assert.strictEqual((await api('POST', '/api/screens/claim', cookie, { code: pairing.code, name })).status, 201);
+    return (await api('GET', `/api/screen/pairings/${pairing.pairingId}`)).body;
+  }
+  function connectScreen(token) {
+    const socket = io(`${base()}/screens`, { transports: ['websocket'], auth: { token }, reconnection: false });
+    sockets.push(socket);
+    socket.frames = [];
+    socket.on('projector:frame', (frame) => socket.frames.push(frame));
+    return socket;
+  }
+  const frameWhere = (socket, test) => {
+    const found = socket.frames.find(test);
+    return found ? Promise.resolve(found) : next(socket, 'projector:frame', test);
+  };
+  let screen;
+  let otherScreen;
+
+  await step('screens: bad token refused; a paired screen gets the current frame (lyrics, no chords)', async () => {
+    const bad = io(`${base()}/screens`, { transports: ['websocket'], auth: { token: 'f'.repeat(64) }, reconnection: false });
+    sockets.push(bad);
+    assert.strictEqual((await next(bad, 'connect_error')).message, 'unauthorized');
+    const paired = await pairScreen(owner, 'Proiector sală');
+    screen = connectScreen(paired.token);
+    const frame = await frameWhere(screen, () => true);
+    assert.deepStrictEqual([frame.kind, frame.eventId, frame.lines], ['lyrics', ev.id, ['verse']]);
+    // Another admin's screen: idle, and it never gets this admin's frames.
+    const otherPaired = await pairScreen(other, 'Alt proiector');
+    otherScreen = connectScreen(otherPaired.token);
+    assert.strictEqual((await frameWhere(otherScreen, () => true)).kind, 'idle');
+  });
+
+  await step('worship moves and projector.source change the screen frame; member refused', async () => {
+    await send(lead.socket, { type: 'worship.goto', itemId: i2, step: 0 });
+    let frame = await frameWhere(screen, (f) => f.kind === 'verse');
+    assert.deepStrictEqual([frame.reference, frame.version], ['Psalmul 23', version]);
+    await send(lead.socket, { type: 'projector.source', source: 'black' });
+    assert.strictEqual((await frameWhere(screen, (f) => f.version === version)).kind, 'black');
+    await send(ownerSocket, { type: 'projector.source', source: 'logo' });
+    frame = await frameWhere(screen, (f) => f.version === version);
+    assert.deepStrictEqual([frame.kind, frame.logoUrl], ['logo', null]);
+    assert.strictEqual((await send(lead.socket, { type: 'projector.source', source: 'video' })).code, 'badCommand');
+    const refused = await emit(mem.socket, 'live:command', { type: 'projector.source', eventId: ev.id, source: 'black' });
+    assert.deepStrictEqual([refused.ok, refused.code], [false, 'forbidden']);
+    await send(lead.socket, { type: 'projector.source', source: 'content' });
+    assert.strictEqual((await frameWhere(screen, (f) => f.version === version)).kind, 'verse');
+    const snap = await memberAt(version);
+    assert.strictEqual(snap.projector.source, 'content');
+    await send(lead.socket, { type: 'worship.goto', itemId: i1, step: 0 });
+    await memberAt(version);
+    await new Promise((r) => setTimeout(r, 100));
+    assert.ok(otherScreen.frames.every((f) => f.kind === 'idle'), 'other admin screen saw only idle');
+  });
+
+  await step('a second event cannot start while one is live', async () => {
+    const ev2 = (await api('POST', '/api/events', owner, { name: 'Seara', eventDate: '2026-10-04' })).body.event;
+    await api('POST', `/api/events/${ev2.id}/publish`, owner);
+    const { socket } = await joined(leader, ev2.id);
+    assert.strictEqual((await emit(socket, 'live:command', { type: 'event.start', eventId: ev2.id })).code, 'anotherLive');
+    socket.emit('live:leave', {});
+  });
+
   await step('setlist saved without the current song -> position moves to the next item', async () => {
     await send(lead.socket, { type: 'worship.goto', itemId: i1, step: 3 });
     await memberAt(version);
@@ -302,12 +366,27 @@ async function main() {
     assert.strictEqual(await closed, 'io server disconnect');
   });
 
+  await step('revoking a screen disconnects it at once', async () => {
+    const list = (await api('GET', '/api/screens', owner)).body.screens;
+    assert.deepStrictEqual(list.map((x) => [x.name, x.online]), [['Proiector sală', false]], 'the restart dropped the socket');
+    const again = connectScreen((await pairScreen(owner, 'Proiector 2')).token);
+    await frameWhere(again, () => true);
+    const online = (await api('GET', '/api/screens', owner)).body.screens.find((x) => x.name === 'Proiector 2');
+    assert.strictEqual(online.online, true);
+    const closed = next(again, 'disconnect');
+    assert.strictEqual((await api('DELETE', `/api/screens/${online.id}`, leader)).status, 200);
+    assert.strictEqual(await closed, 'io server disconnect');
+    screen = connectScreen((await pairScreen(owner, 'Proiector 3')).token);
+    await frameWhere(screen, () => true);
+  });
+
   await step('end -> finished for the whole room; commands then refused', async () => {
     const l = await joined(leader, ev.id);
     const m = await joined(member, ev.id);
     const ended = next(m.socket, 'live:state', (s) => s.status === 'finished');
     assert.strictEqual((await emit(l.socket, 'live:command', { type: 'event.end', eventId: ev.id })).ok, true);
     await ended;
+    assert.strictEqual((await frameWhere(screen, (f) => f.kind === 'idle')).eventId, null, 'screens go idle');
     assert.strictEqual((await emit(l.socket, 'live:command', { type: 'worship.next', eventId: ev.id })).code, 'notLive');
     assert.strictEqual((await emit(l.socket, 'live:command', { type: 'event.start', eventId: ev.id })).code, 'finished');
   });
