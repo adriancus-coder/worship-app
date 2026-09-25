@@ -7,7 +7,7 @@
 // beforeunload prompt) and a local draft backup restored on the next visit.
 
 (function () {
-  const { api, el, canEdit, setTitle, formatDate } = window.PAGE;
+  const { api, el, canEdit, setTitle, formatDate, backLink, keepFrom } = window.PAGE;
   const { t } = window.I18N;
 
   const [, , eventId, editSegment] = window.location.pathname.split('/');
@@ -150,8 +150,11 @@
 
     const editor = canEdit(state.me);
     $('edit-link').hidden = !editor || state.editing;
-    $('edit-link').href = `/events/${ev.id}/edit`;
-    $('rehearse-link').href = `/events/${ev.id}/rehearse`;
+    $('edit-link').href = keepFrom(`/events/${ev.id}/edit`);
+    $('rehearse-link').href = keepFrom(`/events/${ev.id}/rehearse`);
+    const back = backLink();
+    $('back-link').href = back.href;
+    $('back-link').textContent = back.text;
     // Live control for owner / leader once the event is published (or already live).
     $('live-link').hidden = !editor || ev.isTemplate || !['published', 'live'].includes(ev.status);
     $('live-link').href = `/events/${ev.id}/live`;

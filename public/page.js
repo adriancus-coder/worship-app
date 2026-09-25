@@ -96,5 +96,20 @@
     return { select };
   }
 
-  window.PAGE = { api, el, canEdit, setTitle, formatDate, dateBlock, setupTabs };
+  // Back paths: pages reached from the home page carry ?from=home and lead back there;
+  // everything else leads back to Evenimente.
+  const cameFromHome = () => new URLSearchParams(window.location.search).get('from') === 'home';
+
+  function backLink() {
+    return cameFromHome()
+      ? { href: '/app', text: window.I18N.t('nav.backHome') }
+      : { href: '/events', text: window.I18N.t('nav.backEvents') };
+  }
+
+  // A link to another page of the same trip (event -> editor / rehearsal), keeping ?from.
+  function keepFrom(url) {
+    return cameFromHome() ? `${url}${url.includes('?') ? '&' : '?'}from=home` : url;
+  }
+
+  window.PAGE = { api, el, canEdit, setTitle, formatDate, dateBlock, setupTabs, backLink, keepFrom };
 })();

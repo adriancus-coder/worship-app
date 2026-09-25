@@ -194,8 +194,9 @@
   function renderChrome() {
     const ev = state.event;
     setTitle('rehearse.pageTitle', { name: ev.name });
-    $('back-link').textContent = t('rehearse.back', { name: ev.name });
-    $('back-link').href = `/events/${ev.id}`;
+    const back = window.PAGE.backLink();
+    $('back-link').textContent = back.text;
+    $('back-link').href = back.href;
   }
 
   document.addEventListener('notation:change', () => {

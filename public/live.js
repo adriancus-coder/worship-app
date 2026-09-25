@@ -510,7 +510,8 @@
     $('end-dialog').showModal();
   });
   $('end-dialog').addEventListener('close', () => {
-    if ($('end-dialog').returnValue === 'end') send('event.end');
+    if ($('end-dialog').returnValue !== 'end') return;
+    send('event.end').then((reply) => { if (reply && reply.ok) window.location.assign('/app'); });
   });
 
   document.addEventListener('keydown', (event) => {

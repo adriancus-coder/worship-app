@@ -43,9 +43,7 @@
       },
       app: {
         pageTitle: '{appName}',
-        heading: '{appName}',
         loading: 'Se încarcă…',
-        signedInAs: 'Conectat ca {name} ({role}) — {adminName}',
         logout: 'Deconectare',
         loadFailed: 'Serverul nu răspunde. Reîncarcă pagina.',
       },
@@ -132,6 +130,8 @@
         home: 'Acasă',
         library: 'Bibliotecă',
         events: 'Evenimente',
+        backHome: '← Acasă',
+        backEvents: '← Evenimente',
       },
       home: {
         pageTitle: 'Acum — {appName}',
@@ -165,7 +165,6 @@
       rehearse: {
         pageTitle: 'Repetiție: {name} — {appName}',
         link: 'Repetiție',
-        back: '← {name}',
         position: 'Elementul {n} din {total}',
         navLabel: 'Elementul anterior / următor',
         prev: '← Anterior',
@@ -214,7 +213,6 @@
       },
       media: {
         pageTitle: 'Video — {appName}',
-        link: 'Video',
         heading: 'Biblioteca video',
         usage: 'Spațiu folosit: {used} din {max}',
         uploadHeading: 'Încarcă un video',
@@ -245,7 +243,6 @@
       },
       settings: {
         pageTitle: 'Setări — {appName}',
-        link: 'Setări',
         heading: 'Setări',
         notationHeading: 'Notație acorduri implicită',
         notationHint: 'Pentru cei care nu și-au ales singuri notația. Fiecare o poate schimba oricând din butonul „C · Do”.',
@@ -272,8 +269,6 @@
       },
       screens: {
         pageTitle: 'Ecrane proiector — {appName}',
-        link: 'Ecrane proiector',
-        back: '← Acasă',
         heading: 'Ecrane proiector',
         intro: 'Un ecran este o fereastră de browser pe calculatorul proiectorului, împerecheată cu biserica ta.',
         pairHeading: 'Împerechează un ecran',
@@ -467,7 +462,6 @@
       },
       setlist: {
         pageTitle: '{name} — {appName}',
-        back: '← Evenimente',
         notFound: 'Evenimentul nu există sau nu este publicat.',
         summary: '{count} · aprox. {minutes} min',
         heading: 'Program',
@@ -768,9 +762,7 @@
       },
       app: {
         pageTitle: '{appName}',
-        heading: '{appName}',
         loading: 'Loading…',
-        signedInAs: 'Signed in as {name} ({role}) — {adminName}',
         logout: 'Sign out',
         loadFailed: 'The server is not responding. Reload the page.',
       },
@@ -857,6 +849,8 @@
         home: 'Home',
         library: 'Library',
         events: 'Events',
+        backHome: '← Home',
+        backEvents: '← Events',
       },
       home: {
         pageTitle: 'Now — {appName}',
@@ -890,7 +884,6 @@
       rehearse: {
         pageTitle: 'Rehearsal: {name} — {appName}',
         link: 'Rehearsal',
-        back: '← {name}',
         position: 'Item {n} of {total}',
         navLabel: 'Previous / next item',
         prev: '← Previous',
@@ -939,7 +932,6 @@
       },
       media: {
         pageTitle: 'Video — {appName}',
-        link: 'Video',
         heading: 'Video library',
         usage: 'Space used: {used} of {max}',
         uploadHeading: 'Upload a video',
@@ -970,7 +962,6 @@
       },
       settings: {
         pageTitle: 'Settings — {appName}',
-        link: 'Settings',
         heading: 'Settings',
         notationHeading: 'Default chord notation',
         notationHint: 'For people who have not picked their own. Anyone can change it at any time with the “C · Do” switch.',
@@ -997,8 +988,6 @@
       },
       screens: {
         pageTitle: 'Projector screens — {appName}',
-        link: 'Projector screens',
-        back: '← Home',
         heading: 'Projector screens',
         intro: 'A screen is a browser window on the projector PC, paired with your church.',
         pairHeading: 'Pair a screen',
@@ -1192,7 +1181,6 @@
       },
       setlist: {
         pageTitle: '{name} — {appName}',
-        back: '← Events',
         notFound: 'This event does not exist or is not published.',
         summary: '{count} · about {minutes} min',
         heading: 'Running order',
