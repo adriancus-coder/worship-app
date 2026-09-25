@@ -53,6 +53,12 @@
     return text;
   }
 
+  // One chord line + one lyric line -> inline ChordPro, chords inserted at their columns.
+  // The chord line is trusted as-is (e.g. OpenSong "." lines), even with unusual chord names.
+  function mergeChordLine(chordLine, lyric) {
+    return insertChords(lyric || '', chordPositions(chordLine)).trimEnd();
+  }
+
   // "Chord line above lyric line" -> inline ChordPro, keeping chord columns.
   // A chord line without a lyric line below becomes an inline chord-only line.
   // Text that is already inline (or has no chord lines) is returned unchanged.
@@ -123,6 +129,7 @@
     isChordLine,
     stripChords,
     chordsOverLyricsToInline,
+    mergeChordLine,
     inlineToChordsOverLyrics,
     inlineLinePairs,
   };

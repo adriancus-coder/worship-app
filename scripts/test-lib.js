@@ -199,6 +199,218 @@ test('validateSong: limits and messages in both languages', () => {
   assert.strictEqual(KEYS.length, 34);
 });
 
+// --- resursecrestine / OpenSong (no network) -------------------------------
+
+const resurse = require('../lib/resurse');
+
+// Chords, standard markers, a comment, presentation and a valid key.
+const OPENSONG_CHORDS = `<?xml version="1.0" encoding="UTF-8"?>
+<song>
+  <title>Isus, Tu ești lumina</title>
+  <author>Autor &amp; Co</author>
+  <key>G</key>
+  <presentation>V1 C V2 C</presentation>
+  <lyrics>[V1]
+.G             D
+ Ne ridici din noaptea grea
+.Em      C
+ Tu ești lumina mea
+[C]
+;Refrenul se cântă de două ori
+.C       G/B    Am7
+ Sfânt, sfânt e Domnul
+[V2]
+ A doua strofă fără acorduri
+ pe două rânduri</lyrics>
+</song>`;
+
+// Multi-verse numbered block with a shared line, "||" splitter, unknown markers,
+// a chord-only line and an invalid key.
+const OPENSONG_NUMBERED = `<song>
+<title>Cântec cu strofe numerotate</title>
+<key>H</key>
+<presentation>V  C   Coda</presentation>
+<lyrics>
+[V]
+.D            A
+1Prima strofă începe
+2A doua strofă începe
+3A treia strofă începe
+ Toți cântăm aici
+[C]
+ Refren simplu || cu separator
+|
+[Coda]
+.G  D  G
+[X2]
+ ultima linie
+</lyrics>
+</song>`;
+
+// No marker at the start, CRLF, lines without a leading space, "|" inside a lyric line,
+// every standard marker type, comments only in one block.
+const OPENSONG_MIXED = '<song><title>Fără marcaje</title><author></author><key></key><lyrics>'
+  + 'Primul rând fără marcaj\r\n'
+  + '[P]\r\n.F\r\n Pre-refren | cu bară\r\n'
+  + '[B1]\r\n Punte\r\n'
+  + '[I]\r\n.G   D\r\n'
+  + '[O]\r\n Final\r\n'
+  + '[T]\r\n Tag\r\n'
+  + '[V9]\r\n;doar un comentariu\r\n'
+  + '</lyrics></song>';
+
+test('OpenSong: chords merged column-accurately, markers mapped, comments dropped', () => {
+  const song = resurse.parseOpenSongXml(OPENSONG_CHORDS);
+  assert.strictEqual(song.title, 'Isus, Tu ești lumina');
+  assert.strictEqual(song.author, 'Autor & Co');
+  assert.strictEqual(song.key, 'G');
+  assert.strictEqual(song.presentation, 'V1 C V2 C');
+  assert.deepStrictEqual(song.sections, [
+    { type: 'verse', label: null, content: '[G]Ne ridici din [D]noaptea grea\n[Em]Tu ești [C]lumina mea' },
+    { type: 'chorus', label: null, content: '[C]Sfânt, s[G/B]fânt e [Am7]Domnul' },
+    { type: 'verse', label: null, content: 'A doua strofă fără acorduri\npe două rânduri' },
+  ]);
+  // Display puts every chord back on its original column.
+  assert.strictEqual(chords.inlineToChordsOverLyrics(song.sections[0].content),
+    'G             D\nNe ridici din noaptea grea\nEm      C\nTu ești lumina mea');
+});
+
+test('OpenSong: numbered multi-verse block split into verses, unknown markers kept as labels', () => {
+  const song = resurse.parseOpenSongXml(OPENSONG_NUMBERED);
+  assert.strictEqual(song.key, null);
+  assert.strictEqual(song.author, null);
+  assert.strictEqual(song.presentation, 'V C Coda');
+  assert.strictEqual(chords.inlineToChordsOverLyrics('[G]   [D]   [G]'), 'G  D  G');
+  assert.deepStrictEqual(song.sections, [
+    { type: 'verse', label: null, content: '[D]Prima strofă [A]începe\nToți cântăm aici' },
+    // Same chord columns for every numbered verse, as in OpenSong.
+    { type: 'verse', label: null, content: '[D]A doua strofă[A] începe\nToți cântăm aici' },
+    { type: 'verse', label: null, content: '[D]A treia strof[A]ă începe\nToți cântăm aici' },
+    { type: 'chorus', label: null, content: 'Refren simplu cu separator' },
+    { type: 'other', label: 'Coda', content: '[G]   [D]   [G]' },
+    { type: 'other', label: 'X2', content: 'ultima linie' },
+  ]);
+});
+
+test('OpenSong: text before the first marker, CRLF, "|" inside lines, all marker types', () => {
+  const song = resurse.parseOpenSongXml(OPENSONG_MIXED);
+  assert.deepStrictEqual(song.sections.map((s) => [s.type, s.label, s.content]), [
+    ['verse', null, 'Primul rând fără marcaj'],
+    ['pre_chorus', null, '[F]Pre-refren cu bară'],
+    ['bridge', null, 'Punte'],
+    ['intro', null, '[G]    [D]'],
+    ['outro', null, 'Final'],
+    ['tag', null, 'Tag'],
+  ]);
+  assert.strictEqual(song.key, null);
+  assert.strictEqual(song.presentation, null);
+});
+
+test('OpenSong: invalid documents are rejected', () => {
+  const code = (fn) => { try { fn(); } catch (err) { return err.code; } return 'no error'; };
+  assert.strictEqual(code(() => resurse.parseOpenSongXml('<html><body>Not found</body></html> padding padding')), 'bad_response');
+  assert.strictEqual(code(() => resurse.parseOpenSongXml('<song><title>Fără versuri</title><lyrics>;doar comentariu</lyrics></song>')), 'bad_response');
+  assert.strictEqual(code(() => resurse.parseOpenSongXml('short')), 'bad_response');
+});
+
+test('resursecrestine URLs: only https on the two allowed hosts', () => {
+  const id = resurse.extractResurseCrestineSongId;
+  assert.strictEqual(id('https://www.resursecrestine.ro/cantece/12345/isus-tu-esti'), '12345');
+  assert.strictEqual(id('https://resursecrestine.ro/cantece/12345'), '12345');
+  assert.strictEqual(id('https://WWW.ResurseCrestine.ro/cantece/7/x'), '7');
+  for (const bad of [
+    'http://www.resursecrestine.ro/cantece/1/x', 'https://evil.example/cantece/1/x',
+    'https://www.resursecrestine.ro.evil.example/cantece/1', 'https://user:pw@www.resursecrestine.ro/cantece/1',
+    'https://www.resursecrestine.ro:8443/cantece/1', 'https://www.resursecrestine.ro/poezii/1/x',
+    'javascript:alert(1)', 'not a url', '',
+  ]) {
+    assert.strictEqual(id(bad), null, bad);
+  }
+});
+
+function fakeResponse(status, body, headers = {}) {
+  return {
+    status,
+    ok: status >= 200 && status < 300,
+    headers: { get: (name) => headers[name.toLowerCase()] ?? null },
+    body: null,
+    text: async () => body,
+  };
+}
+
+async function asyncCode(promise) {
+  try {
+    await promise;
+    return 'no error';
+  } catch (err) {
+    return err.code || err.message;
+  }
+}
+
+const asyncTests = [];
+function testAsync(name, fn) {
+  asyncTests.push([name, fn]);
+}
+
+testAsync('safeFetchText: redirects stay on the allowed hosts, body capped at 1 MB', async () => {
+  const hops = [];
+  const redirectTo = (target) => async (url) => {
+    hops.push(url);
+    return hops.length === 1 ? fakeResponse(302, '', { location: target }) : fakeResponse(200, 'ok');
+  };
+  assert.strictEqual(await resurse.safeFetchText('https://www.resursecrestine.ro/a', { fetchImpl: redirectTo('https://resursecrestine.ro/b') }), 'ok');
+  assert.deepStrictEqual(hops, ['https://www.resursecrestine.ro/a', 'https://resursecrestine.ro/b']);
+  hops.length = 0;
+  assert.strictEqual(await asyncCode(resurse.safeFetchText('https://www.resursecrestine.ro/a', { fetchImpl: redirectTo('https://evil.example/x') })), 'blocked_host');
+  assert.strictEqual(hops.length, 1);
+  hops.length = 0;
+  assert.strictEqual(await asyncCode(resurse.safeFetchText('https://www.resursecrestine.ro/a', { fetchImpl: redirectTo('http://www.resursecrestine.ro/x') })), 'blocked_host');
+  assert.strictEqual(await asyncCode(resurse.safeFetchText('https://evil.example/', { fetchImpl: async () => fakeResponse(200, 'x') })), 'blocked_host');
+  assert.strictEqual(await asyncCode(resurse.safeFetchText('https://www.resursecrestine.ro/a', {
+    fetchImpl: async () => fakeResponse(200, 'x', { 'content-length': String(resurse.MAX_BODY_BYTES + 1) }),
+  })), 'too_large');
+  assert.strictEqual(await asyncCode(resurse.safeFetchText('https://www.resursecrestine.ro/a', {
+    fetchImpl: async () => fakeResponse(200, 'x'.repeat(resurse.MAX_BODY_BYTES + 1)),
+  })), 'too_large');
+  assert.strictEqual(await asyncCode(resurse.safeFetchText('https://www.resursecrestine.ro/a', { fetchImpl: async () => fakeResponse(404, '') })), 'not_found');
+  assert.strictEqual(await asyncCode(resurse.safeFetchText('https://www.resursecrestine.ro/a', {
+    fetchImpl: async () => { const e = new Error('timeout'); e.name = 'TimeoutError'; throw e; },
+  })), 'timeout');
+  assert.strictEqual(await asyncCode(resurse.safeFetchText('https://www.resursecrestine.ro/a', {
+    fetchImpl: async () => { throw new Error('ECONNREFUSED'); },
+  })), 'unreachable');
+});
+
+testAsync('search and import use the ported endpoints', async () => {
+  const seen = [];
+  const fetchImpl = async (url) => {
+    seen.push(url);
+    if (url.includes('/web-api-search')) {
+      return fakeResponse(200, JSON.stringify({ Results: [
+        { id: '101', title: 'Isus e Domnul', title_slug: 'isus-e-domnul', author: 'X', slug: 'cantece' },
+        { id: '5', title: 'Un verset', slug: 'versete' },
+        { id: 'abc', title: 'Fără id numeric', slug: 'cantece' },
+      ] }));
+    }
+    return fakeResponse(200, OPENSONG_CHORDS);
+  };
+  const results = await resurse.searchResurseCrestineSongs('Isus', { fetchImpl });
+  assert.deepStrictEqual(results, [{ id: '101', title: 'Isus e Domnul', author: 'X', url: 'https://www.resursecrestine.ro/cantece/101/isus-e-domnul' }]);
+  const search = new URL(seen[0]);
+  assert.strictEqual(search.searchParams.get('output'), 'json2');
+  assert.strictEqual(search.searchParams.get('search_in'), '2');
+  assert.strictEqual(search.searchParams.get('search_by'), 'filtru-titlu');
+  assert.strictEqual(await asyncCode(resurse.searchResurseCrestineSongs('I', { fetchImpl })), 'query_too_short');
+
+  const song = await resurse.importFromUrl({ url: 'https://www.resursecrestine.ro/cantece/101/isus-e-domnul' }, { fetchImpl });
+  assert.strictEqual(seen[1], 'https://www.resursecrestine.ro/cantece/opensong/101');
+  assert.strictEqual(song.sourceProvider, 'resursecrestine');
+  assert.strictEqual(song.sourceUrl, 'https://www.resursecrestine.ro/cantece/101');
+  assert.strictEqual((await resurse.importFromUrl({ id: 7 }, { fetchImpl })).sourceUrl, 'https://www.resursecrestine.ro/cantece/7');
+  assert.strictEqual(await asyncCode(resurse.importFromUrl({ url: 'https://evil.example/cantece/1' }, { fetchImpl })), 'invalid_url');
+  assert.strictEqual(await asyncCode(resurse.importFromUrl({ id: '1; drop' }, { fetchImpl })), 'invalid_url');
+});
+
 // --- sections -------------------------------------------------------------
 
 test('sectionLabels: numbered verses, repeated types, custom labels, both languages', () => {
@@ -208,8 +420,22 @@ test('sectionLabels: numbered verses, repeated types, custom labels, both langua
   assert.deepStrictEqual(sectionLabels([{ type: 'chorus' }, { type: 'chorus' }], (k, v) => t(k, v, 'ro')), ['Refren 1', 'Refren 2']);
 });
 
+(async () => {
+  for (const [name, fn] of asyncTests) {
+    try {
+      await fn();
+      passed += 1;
+    } catch (err) {
+      failures.push(`${name}\n    ${err.message.split('\n').join('\n    ')}`);
+    }
+  }
+  report();
+})();
+
+function report() {
 if (failures.length > 0) {
   console.error(`test-lib: ${failures.length} failed, ${passed} passed\n  ${failures.join('\n  ')}`);
   process.exit(1);
 }
 console.log(`test-lib: ${passed} tests passed`);
+}

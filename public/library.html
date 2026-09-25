@@ -24,28 +24,80 @@
       <a class="button" id="new-song" href="/songs/new" hidden data-i18n="library.newSong"></a>
     </div>
 
-    <div class="toolbar">
-      <div class="field grow">
-        <label for="q" data-i18n="library.searchLabel"></label>
-        <input type="search" id="q" autocomplete="off" autocapitalize="off" spellcheck="false"
-          maxlength="200" aria-describedby="q-hint" aria-controls="songs">
-        <span class="hint" id="q-hint" data-i18n="library.searchHint"></span>
-      </div>
-      <div class="field">
-        <label for="sort" data-i18n="library.sortLabel"></label>
-        <select id="sort">
-          <option value="az" data-i18n="library.sortAz"></option>
-          <option value="za" data-i18n="library.sortZa"></option>
-          <option value="recent" data-i18n="library.sortRecent"></option>
-        </select>
-      </div>
+    <div class="tabs" role="tablist" id="library-tabs" data-i18n-aria-label="library.tabsLabel" hidden>
+      <button type="button" role="tab" id="tab-local" aria-controls="panel-local" aria-selected="true" data-i18n="library.tabLocal"></button>
+      <button type="button" role="tab" id="tab-online" aria-controls="panel-online" aria-selected="false" tabindex="-1" data-i18n="library.tabOnline"></button>
     </div>
 
-    <p id="status" class="muted" role="status" aria-live="polite" data-i18n="library.loading"></p>
-    <ul id="songs" class="song-list"></ul>
+    <div id="panel-local" role="tabpanel" aria-labelledby="tab-local">
+      <div class="toolbar">
+        <div class="field grow">
+          <label for="q" data-i18n="library.searchLabel"></label>
+          <input type="search" id="q" autocomplete="off" autocapitalize="off" spellcheck="false"
+            maxlength="200" aria-describedby="q-hint" aria-controls="songs">
+          <span class="hint" id="q-hint" data-i18n="library.searchHint"></span>
+        </div>
+        <div class="field">
+          <label for="sort" data-i18n="library.sortLabel"></label>
+          <select id="sort">
+            <option value="az" data-i18n="library.sortAz"></option>
+            <option value="za" data-i18n="library.sortZa"></option>
+            <option value="recent" data-i18n="library.sortRecent"></option>
+          </select>
+        </div>
+      </div>
+
+      <p id="status" class="muted" role="status" aria-live="polite" data-i18n="library.loading"></p>
+      <ul id="songs" class="song-list"></ul>
+    </div>
+
+    <div id="panel-online" role="tabpanel" aria-labelledby="tab-online" hidden>
+      <form id="online-search-form" novalidate>
+        <div class="field">
+          <label for="online-q" data-i18n="online.searchLabel"></label>
+          <div class="input-row">
+            <input type="search" id="online-q" maxlength="100" autocomplete="off" aria-describedby="online-q-hint">
+            <button type="submit" id="online-search" data-i18n="online.search"></button>
+          </div>
+          <span class="hint" id="online-q-hint" data-i18n="online.searchHint"></span>
+        </div>
+      </form>
+
+      <form id="online-link-form" novalidate>
+        <div class="field">
+          <label for="online-link" data-i18n="online.linkLabel"></label>
+          <div class="input-row">
+            <input type="url" id="online-link" inputmode="url" autocomplete="off" autocapitalize="off"
+              spellcheck="false" aria-describedby="online-link-hint">
+            <button type="submit" id="online-link-preview" class="secondary" data-i18n="online.preview"></button>
+          </div>
+          <span class="hint" id="online-link-hint" data-i18n="online.linkHint"></span>
+        </div>
+      </form>
+
+      <p id="online-status" class="muted" role="status" aria-live="polite"></p>
+      <p id="online-error" class="message error" role="alert"></p>
+      <ul id="online-results" class="song-list"></ul>
+
+      <section id="online-preview" class="preview" hidden aria-labelledby="preview-title">
+        <p class="preview-kicker" data-i18n="online.previewHeading"></p>
+        <h2 id="preview-title" tabindex="-1"></h2>
+        <p id="preview-meta" class="muted"></p>
+        <div id="preview-sections"></div>
+        <p id="preview-message" class="message" role="alert"></p>
+        <div class="form-actions">
+          <button type="button" id="preview-import" data-i18n="online.import"></button>
+          <button type="button" id="preview-close" class="secondary" data-i18n="online.close"></button>
+        </div>
+      </section>
+    </div>
   </main>
   <script src="/i18n.js"></script>
+  <script src="/chords.js"></script>
+  <script src="/sections.js"></script>
   <script src="/page.js"></script>
+  <script src="/song-render.js"></script>
   <script src="/library.js"></script>
+  <script src="/library-online.js"></script>
 </body>
 </html>

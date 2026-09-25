@@ -76,12 +76,14 @@
     }
   });
   sort.addEventListener('change', load);
+  document.addEventListener('library:changed', load);
   document.addEventListener('i18n:change', render);
 
   (async () => {
     const res = await api('/api/auth/me');
     me = res.body;
     newSong.hidden = !canEdit(me);
+    document.dispatchEvent(new CustomEvent('library:me', { detail: me }));
     load();
   })().catch(() => setStatus(t('common.networkError')));
 })();

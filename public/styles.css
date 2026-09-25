@@ -118,6 +118,7 @@ input[type="text"],
 input[type="email"],
 input[type="password"],
 input[type="search"],
+input[type="url"],
 select,
 textarea {
   min-height: var(--touch);
@@ -141,7 +142,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
   outline-offset: 2px;
 }
 
-.hint { font-size: 0.875rem; font-weight: 400; color: var(--muted); }
+.hint { font-size: 0.875rem; font-weight: 400; color: var(--muted); overflow-wrap: anywhere; }
 
 button, .button {
   display: inline-flex;
@@ -300,3 +301,54 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
 dialog form { margin: 0; gap: 12px; }
 dialog p { margin: 0; }
 dialog .message:empty { display: none; }
+
+/* --- library tabs and online import -------------------------------------- */
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  margin: 0 0 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.tabs [role="tab"] {
+  flex: 1 1 0;
+  color: var(--muted);
+  background: transparent;
+  border-radius: var(--radius) var(--radius) 0 0;
+  border-bottom: 3px solid transparent;
+}
+
+.tabs [role="tab"][aria-selected="true"] {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+  background: var(--surface);
+}
+
+#panel-online form { margin: 0 0 16px; }
+#panel-online .message:empty { display: none; }
+
+.result-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 8px 8px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.result-text { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.result-row button { flex: none; }
+
+.preview {
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+}
+
+.preview h2 { margin: 0 0 4px; font-size: 1.35rem; }
+.preview h2:focus { outline: none; }
+.preview-kicker { margin: 0 0 4px; font-size: 0.8125rem; color: var(--accent); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+.preview .form-actions { margin-top: 12px; }
