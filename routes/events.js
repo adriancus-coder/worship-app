@@ -63,8 +63,8 @@ function createEventsRouter({ db, auth, logger, live }) {
     const found = load(req, res);
     if (!found) return;
     const itemId = /^\d{1,15}$/.test(req.params.itemId) ? Number(req.params.itemId) : null;
-    // The operator's projector-only items (and the requests the leader previews) too, for
-    // the roles that see them in live mode; team phones see the shared setlist only.
+    // The projector-only items too, for the event roles; team phones see the shared
+    // setlist only.
     const scope = isEditor(req) ? 'all' : 'shared';
     const result = itemId && events.itemSong(req.adminId, found.event.id, itemId, req.t, { scope });
     if (!result) return res.status(404).json({ error: req.t('errors.songNotFound') });

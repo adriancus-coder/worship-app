@@ -13,9 +13,10 @@ const PRESENCE_DEBOUNCE_MS = 1000;
 const SESSION_SWEEP_MS = 30 * 1000;
 
 const COMMANDS = ['event.start', 'event.end', 'worship.next', 'worship.prev', 'worship.goto',
-  'projector.follow', 'projector.next', 'projector.prev', 'projector.goto', 'projector.syncToWorship', 'projector.source',
+  'live.mode', 'team.mode',
+  'projector.next', 'projector.prev', 'projector.goto', 'projector.syncToWorship', 'projector.source',
   'video.prepare', 'video.play', 'video.pause', 'video.restart', 'video.stop', 'video.volume',
-  'operator.addItem', 'request.accept', 'request.refuse'];
+  'operator.addItem'];
 // Roles that may send commands at all; the store decides the rest (lib/live.js permission).
 const COMMAND_ROLES = EVENT_ROLES;
 
@@ -47,14 +48,13 @@ function createLiveHub({ db, auth, logger, screensHub }) {
     return counts;
   }
 
-  // role, lang: the receiver's. Operator, owner and leader also get every item (with the
-  // operator's projector-only ones, section labels in their language) and the requests;
-  // team phones never see those.
+  // role, lang: the receiver's. The event roles also get every item (with the projector-only
+  // ones, section labels in their language); team phones never see those.
   function fullSnapshot(adminId, eventId, role, lang) {
     const state = store.snapshot(adminId, eventId);
     if (!state) return null;
     const extra = COMMAND_ROLES.includes(role)
-      ? { items: store.items(adminId, eventId, 'all', (key, vars) => translate(key, vars, lang)), requests: store.requests(adminId, eventId) }
+      ? { items: store.items(adminId, eventId, 'all', (key, vars) => translate(key, vars, lang)) }
       : {};
     return { ...state, ...extra, presence: presence(roomName(adminId, eventId)), serverTime: Date.now() };
   }
@@ -142,6 +142,15 @@ function createLiveHub({ db, auth, logger, screensHub }) {
     screensHub.update(adminId);
   }
 
+  // A short info for the event roles in the room ("<name> a adăugat <title>"); never for
+  // team phones (a projector-only item is not theirs to see).
+  function notice(adminId, eventId, payload) {
+    for (const id of io.sockets.adapter.rooms.get(roomName(adminId, eventId)) || []) {
+      const socket = io.sockets.sockets.get(id);
+      if (socket && COMMAND_ROLES.includes(socket.data.role)) socket.emit('live:notice', { eventId, ...payload });
+    }
+  }
+
   function notifyHome(adminId, eventId) {
     io.to(homeRoom(adminId)).emit('home:changed', { eventId });
   }
@@ -169,7 +178,7 @@ function createLiveHub({ db, auth, logger, screensHub }) {
     const command = cmd.type === 'video.pause' ? { ...cmd, position: screensHub.lastVideoPosition(adminId) } : cmd;
     let result;
     try {
-      result = store.command(adminId, cmd.eventId, command, expected, role, userId);
+      result = store.command(adminId, cmd.eventId, command, expected, role);
     } catch (err) {
       if (!(err instanceof LiveError)) throw err;
       if (err.code === 'stale') return fail(socket, ack, 'stale', { state: fullSnapshot(adminId, cmd.eventId, role, socket.data.lang) });
@@ -179,6 +188,7 @@ function createLiveHub({ db, auth, logger, screensHub }) {
       logger.info(`Event #${cmd.eventId} ${cmd.type === 'event.start' ? 'started' : 'ended'} by user #${userId} (admin #${adminId})`);
     }
     if (result.changed) broadcast(adminId, cmd.eventId);
+    if (result.notice) notice(adminId, cmd.eventId, { ...result.notice, by: socket.data.userName, byUserId: userId });
     if (result.changed && (cmd.type === 'event.start' || cmd.type === 'event.end')) notifyHome(adminId, cmd.eventId);
     reply(ack, { ok: true, version: result.version });
   }
@@ -237,6 +247,7 @@ function createLiveHub({ db, auth, logger, screensHub }) {
       socket.data = {
         sessionId: session.sessionId,
         userId: session.user.id,
+        userName: session.user.name,
         adminId: session.admin.id,
         role: session.user.role,
         lang: resolveLang(socket.request),

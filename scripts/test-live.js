@@ -418,7 +418,39 @@ async function main() {
     watchers.close();
   });
 
-  await step('projector control: worship mode refuses the operator; operator mode is independent; unticking returns', async () => {
+  await step('together: leader and operator move ONE position, applied in order with versions', async () => {
+    const op = await joined(operator, ev.id);
+    const opStates = [];
+    op.socket.on('live:state', (st) => opStates.push(st));
+    await send(lead.socket, { type: 'worship.goto', itemId: i1, step: 0 });
+    await memberAt(version);
+    const start = version;
+    // concurrent moves from both pages, no expectedVersion: each is applied once, in order
+    const replies = await Promise.all([
+      emit(lead.socket, 'live:command', { eventId: ev.id, type: 'worship.next' }),
+      emit(op.socket, 'live:command', { eventId: ev.id, type: 'worship.next' }),
+      emit(lead.socket, 'live:command', { eventId: ev.id, type: 'worship.next' }),
+      emit(op.socket, 'live:command', { eventId: ev.id, type: 'worship.next' }),
+    ]);
+    assert.ok(replies.every((r) => r.ok), JSON.stringify(replies));
+    assert.deepStrictEqual(replies.map((r) => r.version).sort((x, y) => x - y), [start + 1, start + 2, start + 3, start + 4]);
+    version = start + 4;
+    const snap = await memberAt(version);
+    assert.deepStrictEqual([snap.mode, snap.worship.itemId, snap.worship.step], ['together', i1, 4]);
+    const frame = await frameWhere(screen, (f) => f.version === version);
+    assert.deepStrictEqual([frame.kind, frame.lines], ['lyrics', ['bridge']], 'the projector follows every move');
+    const seen = memberStates.filter((st) => st.version > start && st.version <= version).map((st) => st.version);
+    assert.deepStrictEqual(seen, [start + 1, start + 2, start + 3, start + 4], 'the member saw each version once, in order');
+    // a stale move from one page does not apply
+    const stale = await emit(op.socket, 'live:command', { eventId: ev.id, type: 'worship.next', expectedVersion: start });
+    assert.deepStrictEqual([stale.ok, stale.code], [false, 'stale']);
+    // together: no separate projector position
+    assert.strictEqual((await emit(op.socket, 'live:command', { eventId: ev.id, type: 'projector.next' })).code, 'notSplitMode');
+    assert.strictEqual((await send(lead.socket, { type: 'projector.next' })).code, 'notSplitMode');
+    op.socket.close();
+  });
+
+  await step('split: team and projector positions apart; back to together shows the main position', async () => {
     const op = await joined(operator, ev.id);
     const opCode = async (cmd) => (await emit(op.socket, 'live:command', { eventId: ev.id, ...cmd })).code || 'ok';
     const opSend = async (cmd) => {
@@ -428,95 +460,100 @@ async function main() {
     };
     await send(lead.socket, { type: 'worship.goto', itemId: i1, step: 0 });
     await frameWhere(screen, (f) => f.version === version || (f.kind === 'lyrics' && f.lines[0] === 'verse'));
-    // worship mode: the projector belongs to worship
-    assert.strictEqual(await opCode({ type: 'projector.next' }), 'notOperatorMode');
-    assert.strictEqual((await send(lead.socket, { type: 'projector.next' })).code, 'notOperatorMode');
-    assert.strictEqual((await emit(mem.socket, 'live:command', { eventId: ev.id, type: 'projector.follow', mode: 'operator' })).code, 'forbidden');
-    // the leader hands the projector over
-    await send(lead.socket, { type: 'projector.follow', mode: 'operator' });
+    assert.strictEqual((await emit(mem.socket, 'live:command', { eventId: ev.id, type: 'live.mode', mode: 'split' })).code, 'forbidden');
+    // the operator switches to split: the projector starts at the main position
+    await opSend({ type: 'live.mode', mode: 'split' });
     let snap = await memberAt(version);
-    assert.deepStrictEqual([snap.projector.follows, snap.projector.itemId, snap.projector.step], ['operator', i1, 0]);
+    assert.deepStrictEqual([snap.mode, snap.projector.follows, snap.projector.itemId, snap.projector.step], ['split', 'operator', i1, 0]);
     await opSend({ type: 'projector.goto', itemId: i2, step: 0 });
     assert.strictEqual((await frameWhere(screen, (f) => f.version === version)).kind, 'verse');
     snap = await memberAt(version);
-    assert.deepStrictEqual([snap.worship.itemId, snap.worship.step], [i1, 0], 'team phones stay on worship');
-    // worship moves: the projector does not
+    assert.deepStrictEqual([snap.worship.itemId, snap.worship.step], [i1, 0], 'team phones stay on the main position');
+    // the leader moves the team; the projector does not move
     await send(lead.socket, { type: 'worship.next' });
     snap = await memberAt(version);
     assert.deepStrictEqual([snap.worship.itemId, snap.worship.step, snap.projector.itemId], [i1, 1, i2]);
     await new Promise((r) => setTimeout(r, 100));
-    assert.strictEqual(screen.frames[screen.frames.length - 1].kind, 'verse', 'screen unchanged by worship');
-    // W: jump to worship
+    assert.strictEqual(screen.frames[screen.frames.length - 1].kind, 'verse', 'screen unchanged by the team move');
+    // "Sari acolo" both ways: projector -> team, team -> projector
     await opSend({ type: 'projector.syncToWorship' });
     let frame = await frameWhere(screen, (f) => f.version === version);
     assert.deepStrictEqual([frame.kind, frame.lines], ['lyrics', ['chorus']]);
-    await opSend({ type: 'projector.next' });
-    assert.deepStrictEqual((await frameWhere(screen, (f) => f.version === version)).lines, ['verse']);
-    // another song on the projector while worship stays on the first one: its lyrics, not its title
-    // (the frame the screens show now, read through projector:watch: an unchanged picture is not re-sent)
-    const shown = async () => (await emit(lead.socket, 'projector:watch', {})).frame;
     await opSend({ type: 'projector.goto', itemId: i3, step: 1 });
-    frame = await shown();
-    assert.deepStrictEqual([frame.kind, frame.lines, frame.version], ['lyrics', ['chorus'], version]);
-    assert.strictEqual((await memberAt(version)).worship.itemId, i1);
+    await send(lead.socket, { type: 'worship.goto', itemId: i3, step: 1 });
+    snap = await memberAt(version);
+    assert.deepStrictEqual([snap.worship.itemId, snap.worship.step], [i3, 1]);
+    // the leader moves the projector too (event rights), sources from either page
+    await send(lead.socket, { type: 'projector.goto', itemId: i2, step: 0 });
+    assert.strictEqual((await frameWhere(screen, (f) => f.version === version)).kind, 'verse');
     await opSend({ type: 'projector.source', source: 'black' });
     assert.strictEqual((await frameWhere(screen, (f) => f.version === version)).kind, 'black');
-    await opSend({ type: 'projector.source', source: 'content' });
+    await send(lead.socket, { type: 'projector.source', source: 'content' });
     await frameWhere(screen, (f) => f.version === version);
-    // the leader unticks: back to the worship position at once
-    await opSend({ type: 'projector.goto', itemId: i2, step: 0 });
-    await frameWhere(screen, (f) => f.version === version && f.kind === 'verse');
-    await send(lead.socket, { type: 'projector.follow', mode: 'worship' });
+    // back to together: the projector shows the main position at once
+    await send(lead.socket, { type: 'live.mode', mode: 'together' });
     frame = await frameWhere(screen, (f) => f.version === version);
     assert.deepStrictEqual([frame.kind, frame.lines], ['lyrics', ['chorus']]);
-    assert.strictEqual(await opCode({ type: 'projector.next' }), 'notOperatorMode');
+    assert.strictEqual(await opCode({ type: 'projector.next' }), 'notSplitMode');
     await send(lead.socket, { type: 'worship.goto', itemId: i1, step: 0 });
     await memberAt(version);
     op.socket.close();
   });
 
-  await step('operator items: projector-only for the team; requests answered by the leader', async () => {
+  await step('team mode: follow / free from any event role, broadcast to the team', async () => {
+    const op = await joined(operator, ev.id);
+    assert.strictEqual((await emit(mem.socket, 'live:command', { eventId: ev.id, type: 'team.mode', mode: 'free' })).code, 'forbidden');
+    let reply = await emit(op.socket, 'live:command', { eventId: ev.id, type: 'team.mode', mode: 'free' });
+    assert.strictEqual(reply.ok, true);
+    version = reply.version;
+    assert.strictEqual((await memberAt(version)).teamMode, 'free');
+    reply = await send(lead.socket, { type: 'team.mode', mode: 'follow' });
+    assert.strictEqual((await memberAt(version)).teamMode, 'follow');
+    op.socket.close();
+  });
+
+  await step('additions: "Doar pe proiector" never reaches the team; "În setlist" at once; a notice, no approval', async () => {
     const op = await joined(operator, ev.id);
     const opStates = [];
     op.socket.on('live:state', (st) => opStates.push(st));
-    const leadStates = [];
-    lead.socket.on('live:state', (st) => leadStates.push(st));
+    const notices = { leader: [], member: [] };
+    lead.socket.on('live:notice', (n) => notices.leader.push(n));
+    mem.socket.on('live:notice', (n) => notices.member.push(n));
     const memberKey = (await memberAt(version)).setlistKey;
-    const add = (socket, item, propose) => emit(socket, 'live:command', { eventId: ev.id, type: 'operator.addItem', item, propose });
-    let reply = await add(op.socket, { type: 'song', songId: s2.id }, false);
+    const add = (socket, target, item) => emit(socket, 'live:command', { eventId: ev.id, type: 'operator.addItem', target, item });
+    let reply = await add(op.socket, 'projector', { type: 'song', songId: s2.id });
     assert.strictEqual(reply.ok, true, JSON.stringify(reply));
     version = reply.version;
     let snap = await memberAt(version);
     assert.strictEqual(snap.setlistKey, memberKey, 'team phones do not reload');
     assert.deepStrictEqual([snap.items, snap.requests], [undefined, undefined], 'team snapshots carry no operator items');
     const opSnap = opStates.find((st) => st.version === version) || await next(op.socket, 'live:state', (st) => st.version === version);
+    assert.strictEqual(opSnap.requests, undefined, 'no requests any more');
     const added = opSnap.items.find((it) => it.scope === 'projector');
     assert.deepStrictEqual([opSnap.items.map((it) => it.id).indexOf(added.id), added.title], [1, 'Mare ești'], 'right after the current item');
-    // members, the rehearsal view and the event page never see it
     const memberEvent = (await api('GET', `/api/events/${ev.id}`, member)).body;
     assert.ok(!memberEvent.items.some((it) => it.id === added.id));
     assert.strictEqual((await api('GET', `/api/events/${ev.id}/items/${added.id}/song`, member)).status, 404);
     assert.strictEqual((await api('GET', `/api/events/${ev.id}/items/${added.id}/song`, leader)).status, 200, 'the leader can preview it');
-    // proposals
-    reply = await add(op.socket, { type: 'verse', reference: 'Ioan 3:16', body: 'Fiindcă' }, true);
-    version = reply.version;
-    const leadSnap = leadStates.find((st) => st.version === version) || await next(lead.socket, 'live:state', (st) => st.version === version);
-    const proposal = leadSnap.requests.find((r) => r.status === 'pending');
-    assert.deepStrictEqual([proposal.title, proposal.requestedBy], ['Ioan 3:16', 'Operator']);
-    assert.strictEqual((await add(mem.socket, { type: 'verse', reference: 'x' }, true)).code, 'forbidden');
-    assert.strictEqual((await emit(mem.socket, 'live:command', { eventId: ev.id, type: 'request.accept', itemId: proposal.itemId, position: 'end' })).code, 'forbidden');
-    reply = await send(lead.socket, { type: 'request.accept', itemId: proposal.itemId, position: 'afterCurrent' });
+    await new Promise((r) => setTimeout(r, 100));
+    assert.deepStrictEqual(notices.leader.map((n) => [n.type, n.by, n.title, n.target]), [['itemAdded', 'Operator', 'Mare ești', 'projector']]);
+    assert.deepStrictEqual(notices.member, [], 'team phones get no notice');
+    // În setlist: shared right after the main item, members reload at once
+    reply = await add(op.socket, 'setlist', { type: 'verse', reference: 'Ioan 3:16', body: 'Fiindcă' });
     assert.strictEqual(reply.ok, true);
+    version = reply.version;
     snap = await memberAt(version);
     assert.notStrictEqual(snap.setlistKey, memberKey, 'team phones reload the setlist');
     const after = (await api('GET', `/api/events/${ev.id}`, member)).body.items.map((it) => it.reference || it.title);
-    assert.deepStrictEqual(after.slice(0, 2), ['Sfânt', 'Ioan 3:16'], 'accepted after the current worship item');
-    // 10 pending at most
-    for (let i = 0; i < 10; i++) assert.strictEqual((await add(op.socket, { type: 'verse', reference: `R${i}` }, true)).ok, true);
-    assert.strictEqual((await add(op.socket, { type: 'verse', reference: 'R10' }, true)).code, 'tooManyRequests');
-    const last = await add(op.socket, { type: 'verse', reference: 'R' }, false);
-    version = last.version;
-    await memberAt(version);
+    assert.deepStrictEqual(after.slice(0, 2), ['Sfânt', 'Ioan 3:16'], 'after the current main item');
+    await new Promise((r) => setTimeout(r, 100));
+    assert.deepStrictEqual(notices.leader[1] && [notices.leader[1].title, notices.leader[1].target], ['Ioan 3:16', 'setlist']);
+    // the approval commands are gone; members add nothing
+    assert.strictEqual((await send(lead.socket, { type: 'request.accept', itemId: added.id, position: 'end' })).code, 'badCommand');
+    assert.strictEqual((await add(mem.socket, 'setlist', { type: 'verse', reference: 'x' })).code, 'forbidden');
+    assert.strictEqual((await add(op.socket, undefined, { type: 'verse', reference: 'x' })).code, 'badCommand');
+    lead.socket.off('live:notice');
+    mem.socket.off('live:notice');
     op.socket.close();
   });
 
@@ -634,7 +671,12 @@ async function main() {
     mem.socket = again.socket;
   });
 
-  await step('server restart: clients reconnect to the persisted position', async () => {
+  await step('server restart: clients reconnect to the persisted position, mode and team mode', async () => {
+    let r = await send(lead.socket, { type: 'live.mode', mode: 'split' });
+    assert.strictEqual(r.ok, true, JSON.stringify(r));
+    r = await send(lead.socket, { type: 'team.mode', mode: 'free' });
+    assert.strictEqual(r.ok, true);
+    await memberAt(version);
     const auto = connect(member, { reconnection: true, reconnectionDelay: 100, reconnectionDelayMax: 300 });
     await next(auto, 'connect');
     auto.on('connect', () => auto.emit('live:join', { eventId: ev.id }));
@@ -644,7 +686,7 @@ async function main() {
     const restored = next(auto, 'live:state', () => true, 8000);
     await startServer();
     const s = await restored;
-    assert.deepStrictEqual([s.version, s.status, s.worship.itemId, s.worship.step], [version, 'live', i3, 0]);
+    assert.deepStrictEqual([s.version, s.status, s.worship.itemId, s.worship.step, s.mode, s.teamMode], [version, 'live', i3, 0, 'split', 'free']);
   });
 
   await step('logout closes that session\'s sockets', async () => {
