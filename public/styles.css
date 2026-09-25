@@ -1341,7 +1341,13 @@ main.operator-page { max-width: 1600px; padding-top: 4px; }
 .op-item.on-projector { border: 2px solid var(--accent-fill); background: var(--accent-soft); }
 .op-item.at-worship:not(.on-projector) { border: 2px dashed var(--worship); }
 button.op-item:disabled { opacity: 1; cursor: default; }
-.op-markers { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; margin-left: auto; flex: none; }
+.op-item .item-text, .live-item .item-text { flex: 1 1 auto; align-items: stretch; }
+.live-item .item-sub { align-self: flex-start; }
+.op-item-top { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 4px 8px; min-width: 0; }
+.op-item-top .type-badge { max-width: 100%; }
+.op-markers { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; margin-left: auto; max-width: 100%; min-width: 0; }
+.op-markers:empty { display: none; }
+.op-item .op-tag { align-self: flex-start; max-width: 100%; }
 .marker { padding: 1px 8px; font-size: 0.6875rem; font-weight: 800; letter-spacing: 0.06em; border-radius: 999px; white-space: nowrap; }
 .marker.projector { color: var(--on-accent); background: var(--accent-fill); }
 .marker.worship { color: var(--worship); border: 1px dashed var(--worship); }
@@ -1364,8 +1370,8 @@ button.op-item:disabled { opacity: 1; cursor: default; }
 button.op-step:disabled { opacity: 1; cursor: default; }
 .op-step .marker { font-size: 0.625rem; }
 .op-step .step-code:empty { display: none; }
-.op-legend { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
-.legend-chip { padding: 2px 10px; font-size: 0.75rem; font-weight: 800; border-radius: 999px; }
+.op-legend { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; min-width: 0; }
+.legend-chip { max-width: 100%; padding: 2px 10px; font-size: 0.75rem; font-weight: 800; border-radius: 999px; overflow-wrap: anywhere; }
 .legend-chip.projector { color: var(--on-accent); background: var(--accent-fill); }
 .legend-chip.worship { color: var(--worship); border: 1px dashed var(--worship); }
 .op-nav { position: static; margin: 12px 0 0; padding: 0; border: 0; background: none; }

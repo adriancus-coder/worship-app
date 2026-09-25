@@ -151,13 +151,16 @@
         onclick: () => goto(item, 0),
       },
       el('span', { class: 'item-number', text: String(i + 1) }),
+      // Top row: the type, and the status badges at the top right (they wrap, never clip);
+      // the title below at the full width.
       el('span', { class: 'item-text' },
-        el('span', { class: `type-badge type-${item.type}`, text: t(`setlist.types.${item.type}`) }),
+        el('span', { class: 'op-item-top' },
+          el('span', { class: `type-badge type-${item.type}`, text: t(`setlist.types.${item.type}`) }),
+          el('span', { class: 'op-markers' },
+            onProjector ? el('span', { class: 'marker projector', text: t('operator.onProjector') }) : null,
+            item.id === worship.itemId ? el('span', { class: 'marker worship', text: t('operator.worship') }) : null)),
         el('span', { class: 'item-title', text: itemTitle(item) }),
-        tag ? el('span', { class: `op-tag tag-${tag}`, text: t(`operator.tags.${tag}`) }) : null),
-      el('span', { class: 'op-markers' },
-        onProjector ? el('span', { class: 'marker projector', text: t('operator.onProjector') }) : null,
-        item.id === worship.itemId ? el('span', { class: 'marker worship', text: t('operator.worship') }) : null)));
+        tag ? el('span', { class: `op-tag tag-${tag}`, text: t(`operator.tags.${tag}`) }) : null)));
     }));
     if (!list.length) $('op-list').replaceChildren(el('li', { class: 'muted', text: t('setlist.empty') }));
   }

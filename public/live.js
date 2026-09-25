@@ -158,11 +158,13 @@
         onclick: () => send('worship.goto', { itemId: item.id, step: 0 }),
       },
       el('span', { class: 'item-number', text: String(i + 1) }),
+      // Top row: the type and, at the top right, the status badge; the title below.
       el('span', { class: 'item-text' },
-        el('span', { class: `type-badge type-${item.type}`, text: t(`setlist.types.${item.type}`) }),
+        el('span', { class: 'op-item-top' },
+          el('span', { class: `type-badge type-${item.type}`, text: t(`setlist.types.${item.type}`) }),
+          isCurrent ? el('span', { class: 'op-markers' }, el('span', { class: 'live-badge', text: t('live.liveBadge') })) : null),
         el('span', { class: 'item-title', text: itemTitle(item) }),
-        item.type === 'song' && item.displayKey ? el('span', { class: 'item-sub', text: t('options.songKeyShort', { key: window.NOTATION.chord(item.displayKey) }) }) : null),
-      isCurrent ? el('span', { class: 'live-badge', text: t('live.liveBadge') }) : null));
+        item.type === 'song' && item.displayKey ? el('span', { class: 'item-sub', text: t('options.songKeyShort', { key: window.NOTATION.chord(item.displayKey) }) }) : null)));
     }));
     if (!state.items.length) $('setlist').replaceChildren(el('li', { class: 'muted', text: t('setlist.empty') }));
   }
