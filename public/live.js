@@ -421,6 +421,7 @@
     return window.FRAMES.projectorFrame(state.snap, { items: cache.items }, new Map(cache.songs), {
       logoUrl,
       videoMedia: last && last.video ? last.video.media : null, // keeps a prepared video loaded
+      backgrounds: state.snap.backgrounds || null, // the event's backgrounds, from the last snapshot
     });
   }
 

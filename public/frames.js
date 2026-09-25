@@ -64,13 +64,13 @@
   }
 
   // The background of the item on the projector (see above). backgrounds: { items: { itemId:
-  // mediaId | null }, media: { id: { kind, url, dim, blur, shadow } } } or null.
+  // mediaId | null }, media: { id: { id, kind, url, dim, blur, shadow } } } or null.
   function backgroundFor(state, item, backgrounds) {
     if (!backgrounds) return null;
     const media = backgrounds.media || {};
     const pick = (id) => {
       const m = id === null || id === undefined ? null : media[id];
-      return m ? { kind: m.kind, url: m.url, dim: m.dim, blur: m.blur, shadow: m.shadow } : null;
+      return m ? { id: m.id, kind: m.kind, url: m.url, dim: m.dim, blur: m.blur, shadow: m.shadow } : null;
     };
     const override = state.backgroundOverride;
     if (override === 'none') return null;
@@ -106,7 +106,11 @@
     const item = (event && event.items || []).find((it) => it.id === pos.itemId);
     const content = contentFrame(item, pos.step, item && songs ? songs.get(item.id) : null);
     const background = content.kind === 'black' ? null : backgroundFor(state, item, backgrounds);
-    return { ...content, ...base, background };
+    // The next item's background, when another one, so the screens can load it ahead.
+    const items = (event && event.items) || [];
+    const next = item ? backgroundFor(state, items[items.indexOf(item) + 1], backgrounds) : null;
+    const preload = next && (!background || next.id !== background.id) ? { nextBackground: next } : {};
+    return { ...content, ...base, background, ...preload };
   }
 
   const FRAMES = { SOURCES, LEADER_SOURCES, projectorFrame, backgroundFor, lyricLines };

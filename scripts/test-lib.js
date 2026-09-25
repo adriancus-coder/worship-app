@@ -1275,7 +1275,11 @@ test('backgrounds: resolution order, "none" stops lower levels, deleted media fa
     worship: { itemId, step: 0 }, projector: { follows: 'worship', itemId: null, step: 0, source }, video: { state: 'none' } },
   { items }, new Map([[1, song]]), { backgrounds: store.forEvent(1, 1, override) });
   assert.strictEqual(frame(null).background.url, '/m/10/display');
-  assert.deepStrictEqual(frame(13).background, { kind: 'image', url: '/m/13/display', dim: 70, blur: 8, shadow: false });
+  assert.deepStrictEqual(frame(13).background, { id: 13, kind: 'image', url: '/m/13/display', dim: 70, blur: 8, shadow: false });
+  // the next item's background rides along for preloading, only when another one
+  assert.strictEqual(frame(null).nextBackground.url, '/m/14/display');
+  assert.strictEqual(frame(13).nextBackground, undefined, 'the override covers the next item too');
+  assert.strictEqual(frame(null, 'content', 2).nextBackground, undefined, 'the last item');
   assert.strictEqual(frame(13, 'content', 2).background.url, '/m/13/display', 'the override applies to every item');
   assert.strictEqual(frame('none').background, null);
   assert.strictEqual(frame(99).background.url, '/m/10/display', 'a deleted override falls back');
