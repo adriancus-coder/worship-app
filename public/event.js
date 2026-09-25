@@ -7,7 +7,7 @@
 // beforeunload prompt) and a local draft backup restored on the next visit.
 
 (function () {
-  const { api, el, canEdit: canEditLibrary, canEditEvents: canEdit, EVENT_ROLES, setTitle, formatDate, backLink, keepFrom } = window.PAGE;
+  const { api, el, canEdit: canEditLibrary, canEditEvents: canEdit, setTitle, formatDate, backLink, keepFrom } = window.PAGE;
   const { t } = window.I18N;
 
   const [, , eventId, editSegment] = window.location.pathname.split('/');
@@ -148,30 +148,66 @@
     $('event-notes').hidden = !ev.notes;
     $('event-notes').textContent = ev.notes || '';
 
-    const editor = canEdit(state.me);
-    $('edit-link').hidden = !editor || state.editing;
-    $('edit-link').href = keepFrom(`/events/${ev.id}/edit`);
-    $('rehearse-link').href = keepFrom(`/events/${ev.id}/rehearse`);
     const back = backLink();
     $('back-link').href = back.href;
     $('back-link').textContent = back.text;
-    // Live control for owner / leader once the event is published (or already live).
-    $('live-link').hidden = !editor || ev.isTemplate || !['published', 'live'].includes(ev.status);
-    $('live-link').href = `/events/${ev.id}/live`;
-    $('follow-link').hidden = ev.status !== 'live';
-    $('follow-link').href = `/events/${ev.id}/follow`;
-    // The operator console for the roles that run the projector, while the event is live.
-    $('operator-link').hidden = ev.status !== 'live' || !EVENT_ROLES.includes(state.me && state.me.user.role);
-    $('operator-link').href = `/events/${ev.id}/operator`;
+    renderActions();
     $('details-button').hidden = !state.editing;
     templateButton.hidden = !state.editing;
     publishButton.hidden = !state.editing || ev.isTemplate || !['draft', 'published'].includes(ev.status);
-    publishButton.className = ev.status === 'published' ? 'secondary' : '';
+    publishButton.className = 'secondary'; // the save bar holds the editor's primary action
     publishButton.dataset.icon = ev.status === 'published' ? 'unpublish' : 'publish';
     publishButton.textContent = ev.status === 'published' ? t('setlist.unpublish') : t('setlist.publish');
     const dirty = isDirty();
     publishButton.disabled = dirty;
     templateButton.disabled = dirty;
+  }
+
+  // The event's actions: one row, exactly one primary, chosen by the moment.
+  //   event roles  live -> "Intră live"; published today / tomorrow -> "Pornește live";
+  //                otherwise "Editează" (Live, if it can start, is then secondary).
+  //                "Repetiție" is always secondary. The operator's live page is the console.
+  //   members      live -> "Urmărește live", else "Repetiție": the only action.
+  function renderActions() {
+    const ev = state.event;
+    const editor = canEdit(state.me);
+    const role = state.me && state.me.user.role;
+    const livePage = `/events/${ev.id}/${role === 'operator' ? 'operator' : 'live'}`;
+    const rehearse = { key: 'rehearse.link', icon: 'rehearse', href: keepFrom(`/events/${ev.id}/rehearse`) };
+    const actions = [];
+    if (!editor) {
+      actions.push(ev.status === 'live'
+        ? { key: 'follow.link', icon: 'follow', href: `/events/${ev.id}/follow` }
+        : rehearse);
+    } else {
+      const edit = state.editing ? null : { key: 'setlist.edit', icon: 'edit', href: keepFrom(`/events/${ev.id}/edit`) };
+      const soon = state.today && [state.today, dayAfter(state.today)].includes(ev.eventDate);
+      if (!ev.isTemplate && ev.status === 'live') {
+        actions.push({ key: 'home.enterLive', icon: 'play', href: livePage }, rehearse, edit);
+      } else if (!ev.isTemplate && ev.status === 'published' && soon) {
+        actions.push({ key: 'home.startLive', icon: 'play', href: livePage }, rehearse, edit);
+      } else {
+        const live = !ev.isTemplate && ev.status === 'published' ? { key: 'live.link', icon: 'play', href: livePage } : null;
+        actions.push(edit, live, rehearse);
+      }
+    }
+    const list = actions.filter(Boolean);
+    // In the editor "Salvează" (the save bar) is the primary action, unless the moment says
+    // live: then the row keeps its "Intră / Pornește live".
+    const primary = !state.editing || ['home.enterLive', 'home.startLive'].includes(list[0] && list[0].key);
+    $('event-actions').replaceChildren(...list.map((a, i) => el('a', {
+      class: i === 0 && primary ? 'button primary-action' : 'button secondary',
+      href: a.href,
+      'data-icon': a.icon,
+      text: t(a.key),
+    })));
+    $('event-actions').hidden = !list.length;
+  }
+
+  function dayAfter(date) {
+    const d = new Date(`${date}T12:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + 1);
+    return d.toISOString().slice(0, 10);
   }
 
   function renderSaveBar() {

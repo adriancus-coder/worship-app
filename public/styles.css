@@ -529,10 +529,24 @@ dialog .choice { margin: 4px 0; }
 main.wide.event-page { max-width: 1200px; }
 .event-head h1 { margin-bottom: 4px; overflow-wrap: anywhere; }
 .event-when { margin: 0 0 6px; font-weight: 600; }
-.event-summary { margin: 0 0 8px; color: var(--muted); display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.event-summary { margin: 8px 0 14px; color: var(--muted); display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
 .event-notes { white-space: pre-line; color: var(--muted); font-style: italic; }
-.event-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
-.event-actions:empty { display: none; }
+/* One row of actions, equal widths, the primary first; under 360 px it may wrap into two
+   lines with the primary alone on the first. */
+.event-actions { display: flex; gap: 8px; margin: 0 0 10px; }
+.event-actions[hidden], .event-actions:empty { display: none; }
+.event-actions > .button { flex: 1 1 0; min-width: 0; padding: 10px 12px; text-align: center; overflow-wrap: break-word; }
+/* Phones: the icon above the label, so three actions fit without breaking words. */
+@media (max-width: 480px) {
+  .event-actions > .button { flex-direction: column; gap: 2px; padding: 8px 6px; line-height: 1.2; }
+}
+@media (max-width: 359px) {
+  .event-actions > .primary-action { flex-direction: row; gap: 0.5em; }
+  .event-actions { flex-wrap: wrap; }
+  .event-actions > .primary-action { flex-basis: 100%; }
+}
+.event-tools { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 8px; }
+.event-tools:not(:has(> :not([hidden]))) { display: none; }
 #action-message:empty { display: none; }
 
 .editor-grid { display: flex; flex-direction: column; gap: 16px; }
