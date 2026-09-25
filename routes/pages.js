@@ -53,6 +53,10 @@ function createPagesRouter({ db, auth, sendPage }) {
     sendPage(req, res, 'event');
   });
 
+  router.get('/events/:id(\\d+)/rehearse', noStore, signedIn, (req, res) => {
+    sendPage(req, res, 'rehearse');
+  });
+
   router.get('/events/:id(\\d+)/edit', noStore, signedIn, (req, res) => {
     if (!canEdit(req)) return res.redirect(`/events/${req.params.id}`);
     sendPage(req, res, 'event');

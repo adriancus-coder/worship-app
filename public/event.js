@@ -146,6 +146,7 @@
     const editor = canEdit(state.me);
     $('edit-link').hidden = !editor || state.editing;
     $('edit-link').href = `/events/${ev.id}/edit`;
+    $('rehearse-link').href = `/events/${ev.id}/rehearse`;
     $('details-button').hidden = !state.editing;
     templateButton.hidden = !state.editing;
     publishButton.hidden = !state.editing || ev.isTemplate || !['draft', 'published'].includes(ev.status);
