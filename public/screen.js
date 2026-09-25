@@ -3,7 +3,8 @@
 // The projector screen (/screen). Unpaired: shows a 6-digit pairing code (renewed when it
 // expires) and waits for an owner/leader to claim it. Paired: a black page with no UI that
 // renders the frames the server sends. It never shows an error over the output: when the
-// connection drops it keeps the last frame and reconnects quietly.
+// connection drops it keeps the last frame and reconnects quietly. In the meantime it shows
+// the frames the leader's live page computes in this same browser (emergency mode).
 
 (function () {
   const { t } = window.I18N;
@@ -13,8 +14,10 @@
   const CURSOR_IDLE_MS = 2000;
   const HINT_MS = 5000;
   const OFFLINE_DOT_MS = 30000;
+  const LOCAL_HOLD_MS = 10000;
 
-  const state = { token: null, pairing: null, pollTimer: null, countdown: null, socket: null, view: null, player: null, offlineTimer: null, logos: new Map() };
+  const state = { token: null, pairing: null, pollTimer: null, countdown: null, socket: null, view: null, player: null, offlineTimer: null, logos: new Map(),
+    channel: null, serverFrame: null, local: null, holdTimer: null };
 
   function readToken() {
     try {
@@ -127,6 +130,7 @@
   }
 
   async function resolveLogo(url) {
+    if (url.startsWith('data:')) return url; // a frame computed by the leader's page offline
     if (!state.logos.has(url)) {
       state.logos.set(url, fetch(url, { headers: { 'X-Screen-Token': state.token } })
         .then((res) => (res.ok ? res.blob() : null))
@@ -160,6 +164,58 @@
     startPairing();
   }
 
+  function show(frame) {
+    state.view.show(frame);
+    // A prepared video is loaded without being shown; a 'video' frame shows and plays it.
+    state.player.apply(frame.video || null, frame.kind === 'video');
+    updateHint();
+  }
+
+  // --- emergency mode -------------------------------------------------------------------
+  // The leader's live page, when it cannot reach the server, computes the frames itself and
+  // posts them on a BroadcastChannel (same browser only). They are shown only while this
+  // screen's own connection is down. The local frame then stays until this screen gets a
+  // server frame newer than the one the local frames started from, or, once the leader's
+  // page has synced the server ("resync"), any server frame of the new connection; at most
+  // LOCAL_HOLD_MS after reconnecting. The projector never jumps back on its own.
+
+  function openChannel(adminId) {
+    if (state.channel || !('BroadcastChannel' in window)) return;
+    state.channel = new BroadcastChannel(`wa-projector-${adminId}`);
+    state.channel.onmessage = ({ data }) => {
+      if (!data || typeof data !== 'object') return;
+      const online = Boolean(state.socket && state.socket.connected);
+      if (data.type === 'frame' && data.frame && !online) {
+        state.local = { baseVersion: data.baseVersion, resynced: false, fresh: null };
+        show(data.frame);
+      } else if (data.type === 'resync' && state.local) {
+        state.local.resynced = true;
+        if (online && state.local.fresh) releaseLocal(); // else: at this screen's next server frame
+      }
+    };
+  }
+
+  function releaseLocal() {
+    clearTimeout(state.holdTimer);
+    state.holdTimer = null;
+    if (!state.local) return;
+    const fresh = state.local.fresh;
+    state.local = null;
+    if (fresh) show(fresh);
+  }
+
+  function onServerFrame(frame) {
+    state.serverFrame = frame;
+    if (state.local) {
+      state.local.fresh = frame; // a frame of the current connection
+      const newer = frame.version > state.local.baseVersion || frame.eventId === null;
+      if (!newer && !state.local.resynced) return; // held
+      releaseLocal();
+      return;
+    }
+    show(frame);
+  }
+
   function connect() {
     $('pairing').hidden = true;
     $('output').hidden = false;
@@ -178,13 +234,12 @@
       reconnectionDelayMax: 15000,
     });
     state.socket = socket;
-    socket.on('connect', () => showOffline(false));
-    socket.on('projector:frame', (frame) => {
-      state.view.show(frame);
-      // A prepared video is loaded without being shown; a 'video' frame shows and plays it.
-      state.player.apply(frame.video || null, frame.kind === 'video');
-      updateHint();
+    socket.on('connect', () => {
+      showOffline(false);
+      if (state.local && !state.holdTimer) state.holdTimer = setTimeout(releaseLocal, LOCAL_HOLD_MS);
     });
+    socket.on('screen:hello', (hello) => { if (hello && hello.adminId) openChannel(hello.adminId); });
+    socket.on('projector:frame', onServerFrame);
     socket.on('screen:revoked', dropToken);
     socket.on('connect_error', (err) => {
       if (err && err.message === 'unauthorized') dropToken(); // revoked or unknown token
@@ -192,6 +247,7 @@
     });
     socket.on('disconnect', async (reason) => {
       showOffline(true);
+      if (state.local) state.local.fresh = null; // frames of the old connection do not count
       if (reason !== 'io server disconnect') return; // socket.io reconnects by itself
       // Closed by the server: revoked (-> pair again) or a restart (-> reconnect).
       try {

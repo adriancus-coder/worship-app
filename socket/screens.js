@@ -106,6 +106,7 @@ function createScreensHub({ db, logger, config }) {
       screens: screenCount(adminId),
       videoStatus: [...(videoStatus.get(adminId) || new Map()).values()],
       logoUrl: logoUrl(adminId), // for pages that compute frames themselves (public/frames.js)
+      adminId, // names the BroadcastChannel to this admin's projector windows (emergency mode)
     };
   }
 
@@ -178,7 +179,7 @@ function createScreensHub({ db, logger, config }) {
       const { adminId, screenId } = socket.data;
       screens.touch(screenId);
       socket.join(screensRoom(adminId));
-      socket.emit('screen:hello', { screen: { id: screenId } });
+      socket.emit('screen:hello', { screen: { id: screenId }, adminId });
       socket.emit('projector:frame', frameFor(adminId));
       sendCount(adminId);
       socket.on('screen:video-status', (payload) => onScreenVideoStatus(socket, payload));

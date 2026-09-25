@@ -6,14 +6,35 @@
 // Needs /socket.io/socket.io.js (served by the app's own server: no external service).
 
 (function () {
+  // Without the server for this long, pages switch to their emergency mode (onLongOffline).
+  const LONG_OFFLINE_MS = 5000;
+
   // connection: 'connecting' | 'connected' | 'reconnecting' | 'offline'
-  function connect({ eventId, onState, onPresence, onConnection, onGone, onConnect }) {
+  // onLongOffline(true) after LONG_OFFLINE_MS without the server, onLongOffline(false) when
+  // it is back (before the first snapshot of the new connection arrives).
+  function connect({ eventId, onState, onPresence, onConnection, onGone, onConnect, onLongOffline }) {
     const socket = window.io({ transports: ['websocket', 'polling'], reconnectionDelayMax: 4000 });
     let state = null;
     let connection = 'connecting';
+    let longOffline = false;
+    let offlineTimer = null;
 
     function setConnection(value) {
       const next = navigator.onLine === false && value !== 'connected' ? 'offline' : value;
+      if (next === 'connected') {
+        clearTimeout(offlineTimer);
+        offlineTimer = null;
+        if (longOffline) {
+          longOffline = false;
+          if (onLongOffline) onLongOffline(false);
+        }
+      } else if (state && !offlineTimer && !longOffline) {
+        offlineTimer = setTimeout(() => {
+          offlineTimer = null;
+          longOffline = true;
+          if (onLongOffline) onLongOffline(true);
+        }, LONG_OFFLINE_MS);
+      }
       if (next === connection) return;
       connection = next;
       if (onConnection) onConnection(connection);
@@ -87,6 +108,7 @@
       socket,
       get state() { return state; },
       get connection() { return connection; },
+      get longOffline() { return longOffline; },
     };
   }
 

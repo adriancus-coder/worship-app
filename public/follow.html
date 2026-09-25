@@ -28,6 +28,10 @@
         <p class="follow-event"><span id="event-name"></span> <span id="event-status" class="pill"></span></p>
         <p id="connection" class="connection" role="status" aria-live="polite"><span class="dot" aria-hidden="true"></span><span id="connection-text"></span></p>
       </header>
+      <div id="offline-banner" class="emergency-banner" role="alert" hidden>
+        <p class="emergency-title" data-i18n="follow.offline.banner"></p>
+        <p class="emergency-detail" data-i18n="follow.offline.detail"></p>
+      </div>
       <p id="wake-hint" class="hint wake-hint" hidden>
         <span data-i18n="follow.wakeHint"></span>
         <button type="button" class="secondary" id="wake-hint-close" data-i18n="follow.wakeHintClose"></button>
@@ -46,6 +50,10 @@
       </div>
 
       <article id="slide" class="rehearse-slide follow-slide"></article>
+      <div id="manual-nav" class="live-nav manual-nav" role="group" data-i18n-aria-label="follow.offline.navLabel" hidden>
+        <button type="button" class="secondary" id="manual-prev" data-i18n="live.prev"></button>
+        <button type="button" class="secondary" id="manual-next" data-i18n="follow.offline.next"></button>
+      </div>
     </div>
   </main>
   <script src="/socket.io/socket.io.js"></script>
@@ -55,6 +63,7 @@
   <script src="/page.js"></script>
   <script src="/notation.js"></script>
   <script src="/song-render.js"></script>
+  <script src="/positions.js"></script>
   <script src="/live-client.js"></script>
   <script src="/follow.js"></script>
 </body>

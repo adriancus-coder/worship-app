@@ -2,12 +2,14 @@
 
 // Team phones (/events/:id/follow): follow the worship position live. Shows the current
 // section with chords (transposed) and what comes next; it never moves on its own and
-// sends no commands.
+// sends no commands. Without the server for more than 5 s it keeps the event it holds
+// (every song is loaded up front) and offers manual Back / Next until it reconnects.
 
 (function () {
   const { api, el, setTitle } = window.PAGE;
   const { t } = window.I18N;
   const { nextPosition } = window.LIVE;
+  const POS = window.POSITIONS;
   const $ = (id) => document.getElementById(id);
   const eventId = Number(window.location.pathname.split('/')[2]);
   const slide = $('slide');
@@ -18,7 +20,7 @@
   const WAKE_HINT_KEY = 'wa_wake_hint_seen';
   const SCALE = { min: 0.8, max: 1.8, step: 0.1 };
 
-  const state = { event: null, items: [], loadedKey: null, loading: null, songs: new Map(), snap: null, textOnly: false, scale: 1, renderId: 0 };
+  const state = { event: null, items: [], loadedKey: null, loading: null, songs: new Map(), snap: null, textOnly: false, scale: 1, renderId: 0, manual: null };
 
   function stored(key) {
     try {
@@ -54,16 +56,22 @@
       state.items = res.body.items;
       state.songs.clear();
       state.loadedKey = snap.setlistKey;
+      // Every song now, so the whole event is here if the connection drops.
+      for (const item of state.items) if (item.type === 'song' && item.songId) loadSong(item);
     });
+    // Unreachable server: forget the attempt (the next snapshot tries again), keep the data.
+    promise.catch(() => { if (state.loading && state.loading.promise === promise) state.loading = null; });
     state.loading = { key: snap.setlistKey, promise };
     return promise;
   }
 
   function loadSong(item) {
     if (!state.songs.has(item.id)) {
-      state.songs.set(item.id, api(`/api/events/${eventId}/items/${item.id}/song`)
+      const promise = api(`/api/events/${eventId}/items/${item.id}/song`)
         .then((res) => (res.ok ? res.body.song : null))
-        .catch(() => null));
+        .catch(() => null);
+      state.songs.set(item.id, promise);
+      promise.then((song) => { if (!song && state.songs.get(item.id) === promise) state.songs.delete(item.id); }); // retried later
     }
     return state.songs.get(item.id);
   }
@@ -138,7 +146,7 @@
       }
       return;
     }
-    const pos = snap.worship;
+    const pos = state.manual || snap.worship;
     const item = state.items.find((it) => it.id === pos.itemId);
     if (!item) {
       $('position').textContent = '';
@@ -178,10 +186,38 @@
       upNext(pos));
   }
 
+  function renderOffline() {
+    const manual = Boolean(state.manual);
+    $('offline-banner').hidden = !manual;
+    $('manual-nav').hidden = !manual;
+    if (!manual) return;
+    const layout = POS.layoutOf(state.items);
+    $('manual-prev').disabled = POS.samePosition(POS.prevPosition(layout, state.manual), state.manual);
+    $('manual-next').disabled = POS.samePosition(POS.nextPosition(layout, state.manual), state.manual);
+  }
+
   function render() {
     if (!state.event || !state.snap) return;
     renderHead();
+    renderOffline();
     renderSlide();
+  }
+
+  // Offline for a while: the team member moves on their own (from where the team was).
+  function goOffline(offline) {
+    if (offline && state.snap && state.snap.status === 'live' && state.event) {
+      state.manual = state.manual || { ...state.snap.worship };
+    } else if (!offline) {
+      return; // manual mode ends with the first snapshot of the new connection
+    }
+    render();
+  }
+
+  function moveManual(step) {
+    if (!state.manual) return;
+    const layout = POS.layoutOf(state.items);
+    state.manual = step > 0 ? POS.nextPosition(layout, state.manual) : POS.prevPosition(layout, state.manual);
+    render();
   }
 
   function gone() {
@@ -226,6 +262,8 @@
     store(SCALE_KEY, String(state.scale));
     render();
   }
+  $('manual-prev').addEventListener('click', () => moveManual(-1));
+  $('manual-next').addEventListener('click', () => moveManual(1));
   $('text-smaller').addEventListener('click', () => setScale(-SCALE.step));
   $('text-larger').addEventListener('click', () => setScale(SCALE.step));
 
@@ -234,8 +272,9 @@
   document.addEventListener('i18n:change', () => {
     if (!state.snap) return;
     renderConnection(client.connection);
+    const key = state.loadedKey;
     state.loadedKey = null; // labels come from the server in the page language
-    syncSetlist(state.snap).then(render);
+    syncSetlist(state.snap).catch(() => { state.loadedKey = key; }).then(render); // offline: old labels
   });
 
   // --- start ------------------------------------------------------------------------
@@ -244,15 +283,17 @@
     eventId,
     onState: (snap) => {
       state.snap = snap;
+      state.manual = null; // back online: follow the team again
       syncSetlist(snap).then(() => {
         if (state.snap !== snap || !state.event) return;
         $('status').hidden = true;
         $('follow').hidden = false;
         render();
-      });
+      }).catch(() => {}); // server unreachable meanwhile: the next snapshot tries again
     },
     onConnection: renderConnection,
     onGone: gone,
+    onLongOffline: goOffline,
   });
   renderConnection('connecting');
   keepScreenOn();

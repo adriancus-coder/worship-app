@@ -738,6 +738,13 @@ main.live-page { max-width: 1400px; }
 .connection[data-state="offline"] { color: var(--error); }
 .connection[data-state="offline"] .dot { background: var(--error); }
 
+/* Emergency mode: the live page runs the projector without the server; the follow page
+   navigates manually. */
+.emergency-banner { border: 2px solid var(--accent); border-radius: 10px; padding: 10px 14px; margin: 0 0 16px; background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.emergency-banner p { margin: 0; overflow-wrap: anywhere; }
+.emergency-title { font-weight: 700; color: var(--accent); }
+.emergency-detail { margin-top: 4px !important; font-size: 0.9375rem; }
+
 .live-grid { display: flex; flex-direction: column; gap: 24px; }
 .live-grid h2 { margin-top: 0; }
 .live-current { min-width: 0; }

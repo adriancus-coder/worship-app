@@ -39,6 +39,10 @@
         </div>
         <p id="live-message" class="message" role="status" aria-live="polite"></p>
       </header>
+      <div id="emergency-banner" class="emergency-banner" role="alert" hidden>
+        <p class="emergency-title" data-i18n="live.emergency.banner"></p>
+        <p id="emergency-detail" class="emergency-detail"></p>
+      </div>
 
       <div class="live-grid">
         <section class="live-current" aria-labelledby="current-heading">
@@ -97,6 +101,7 @@
   <script src="/page.js"></script>
   <script src="/notation.js"></script>
   <script src="/song-render.js"></script>
+  <script src="/positions.js"></script>
   <script src="/frames.js"></script>
   <script src="/projector-render.js"></script>
   <script src="/event-cache.js"></script>

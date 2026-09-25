@@ -2,7 +2,7 @@
 
 // Leader control (/events/:id/live, owner and leader): moves the worship position. The page
 // never moves on its own: every change is a command, and it renders only the live:state
-// snapshots the server broadcasts.
+// snapshots the server broadcasts, except in emergency mode (below).
 
 (function () {
   const { api, el, setTitle } = window.PAGE;
@@ -30,6 +30,8 @@
       state.loadedKey = snap.setlistKey;
       cacheEvent();
     });
+    // Unreachable server: forget the attempt (the next snapshot tries again), keep the data.
+    promise.catch(() => { if (state.loading && state.loading.promise === promise) state.loading = null; });
     state.loading = { key: snap.setlistKey, promise };
     return promise;
   }
@@ -100,6 +102,7 @@
 
   // Commands are sent one after another, each against the newest version.
   function send(type, extra) {
+    if (emergency.active) return Promise.resolve(localCommand(type, extra));
     state.queue = state.queue.then(async () => {
       const reply = await state.client.command(type, extra);
       if (reply.ok) showMessage('');
@@ -289,7 +292,7 @@
   const preview = window.PROJECTOR_RENDER.create($('projector-preview'), { videoPlaceholder: true });
   // Video controls (a module the operator console will reuse in stage 6).
   const videoPanel = window.VIDEO_PANEL.create($('video-panel'), { send, api, t, el });
-  const projector = { screens: 0, details: null, logoUrl: null };
+  const projector = { screens: 0, details: null, logoUrl: null, frame: null };
 
   function renderProjector() {
     const snap = state.snap;
@@ -316,7 +319,8 @@
   function watchProjector(socket) {
     socket.emit('projector:watch', {}, (reply) => {
       if (!reply || !reply.ok) return;
-      preview.show(reply.frame);
+      openChannel(reply.adminId);
+      showServerFrame(reply.frame);
       projector.screens = reply.screens;
       videoPanel.setScreens(reply.screens);
       if (reply.videoStatus && reply.videoStatus.length) videoPanel.status(reply.videoStatus);
@@ -384,6 +388,120 @@
     projectorMessage(target ? t('live.projector.placed') : t('live.projector.dragHint'), target ? 'success' : null);
   });
 
+  // --- emergency mode ---------------------------------------------------------------
+  // Without the server for more than 5 s the leader keeps moving the projector: positions and
+  // frames are computed here (public/positions.js, public/frames.js) from the cached event
+  // and sent to the projector windows of this browser over a BroadcastChannel; screens show
+  // them only while their own connection is down. Back online: if nobody moved meanwhile
+  // (the server version is unchanged) this page's position is sent to the server; otherwise
+  // the server wins.
+
+  const { layoutOf, nextPosition: stepNext, prevPosition: stepPrev, gotoPosition, samePosition } = window.POSITIONS;
+  const emergency = { active: false, reconnected: false, base: null, dirty: false, channel: null, adminId: null };
+
+  function openChannel(adminId) {
+    if (!adminId || emergency.adminId === adminId || !('BroadcastChannel' in window)) return;
+    if (emergency.channel) emergency.channel.close();
+    emergency.adminId = adminId;
+    emergency.channel = new BroadcastChannel(`wa-projector-${adminId}`);
+  }
+
+  function post(message) {
+    if (emergency.channel) emergency.channel.postMessage(message);
+  }
+
+  function showServerFrame(frame) {
+    projector.frame = frame;
+    if (!emergency.active) preview.show(frame);
+  }
+
+  // Emergency is possible only for a live event whose data is cached.
+  const canRunLocally = () => Boolean(emergency.base && emergency.base.status === 'live' && state.cached
+    && state.cached.setlistKey === emergency.base.setlistKey);
+
+  function renderEmergency() {
+    $('emergency-banner').hidden = !emergency.active;
+    $('emergency-detail').textContent = emergency.active
+      ? t(canRunLocally() ? 'live.emergency.detail' : 'live.emergency.noCache')
+      : '';
+  }
+
+  function enterEmergency() {
+    if (emergency.active || !state.snap) return;
+    emergency.active = true;
+    emergency.base = state.snap;
+    emergency.dirty = false;
+    renderEmergency();
+    showMessage('');
+  }
+
+  // The frame the screens would get from the server for the local state.
+  function localFrame() {
+    const cache = state.cached;
+    const logoUrl = cache.logo ? cache.logo.dataUrl || cache.logo.url : null;
+    const last = projector.frame;
+    return window.FRAMES.projectorFrame(state.snap, { items: cache.items }, new Map(cache.songs), {
+      logoUrl,
+      videoMedia: last && last.video ? last.video.media : null, // keeps a prepared video loaded
+    });
+  }
+
+  function localCommand(type, extra = {}) {
+    if (!canRunLocally()) {
+      showMessage(t('live.emergency.noCache'), true);
+      return { ok: false, code: 'offline' };
+    }
+    const snap = state.snap;
+    const layout = layoutOf(state.cached.items);
+    let worship = snap.worship;
+    let source = snap.projector.source;
+    if (type === 'worship.next') worship = stepNext(layout, worship);
+    else if (type === 'worship.prev') worship = stepPrev(layout, worship);
+    else if (type === 'worship.goto') worship = gotoPosition(layout, extra.itemId, extra.step) || worship;
+    else if (type === 'projector.source' && window.FRAMES.LEADER_SOURCES.includes(extra.source)) source = extra.source;
+    else {
+      showMessage(t('live.emergency.unavailable'), true);
+      return { ok: false, code: 'offline' };
+    }
+    showMessage('');
+    if (samePosition(worship, snap.worship) && source === snap.projector.source) return { ok: true, local: true };
+    state.snap = { ...snap, worship, projector: { ...snap.projector, source } };
+    emergency.dirty = true;
+    render();
+    renderProjector();
+    const frame = localFrame();
+    preview.show(frame);
+    post({ type: 'frame', eventId, baseVersion: emergency.base.version, frame });
+    return { ok: true, local: true };
+  }
+
+  // The first snapshot after the connection came back.
+  async function reconcile(server) {
+    const local = state.snap;
+    const { base, dirty } = emergency;
+    emergency.active = false;
+    emergency.reconnected = false;
+    renderEmergency();
+    if (projector.frame) preview.show(projector.frame);
+    if (!dirty) {
+      post({ type: 'resync', eventId });
+      return;
+    }
+    let pushed = false;
+    if (server.version === base.version && server.status === 'live') {
+      // Nobody moved meanwhile: this page's position goes to the server.
+      pushed = true;
+      if (!samePosition(local.worship, server.worship)) {
+        pushed = (await send('worship.goto', { itemId: local.worship.itemId, step: local.worship.step })).ok;
+      }
+      if (pushed && local.projector.source !== server.projector.source) {
+        pushed = (await send('projector.source', { source: local.projector.source })).ok;
+      }
+    }
+    showMessage(t(pushed ? 'live.emergency.pushed' : 'live.emergency.synced'));
+    post({ type: 'resync', eventId });
+  }
+
   // --- controls ---------------------------------------------------------------------
 
   $('prev-button').addEventListener('click', () => send('worship.prev'));
@@ -422,11 +540,13 @@
   document.addEventListener('i18n:change', () => {
     if (!state.snap) return;
     renderConnection(state.client.connection);
+    renderEmergency();
     renderProjector();
     videoPanel.render();
     // Section labels come from the server in the page language: reload.
+    const key = state.loadedKey;
     state.loadedKey = null;
-    syncSetlist(state.snap).then(render);
+    syncSetlist(state.snap).catch(() => { state.loadedKey = key; }).then(render); // offline: old labels
   });
 
   // --- start ------------------------------------------------------------------------
@@ -435,6 +555,7 @@
   state.client = window.LIVE.connect({
     eventId,
     onState: (snap) => {
+      if (emergency.reconnected) reconcile(snap);
       state.snap = snap;
       syncSetlist(snap).then(() => {
         if (state.snap !== snap || !state.event) return;
@@ -444,7 +565,7 @@
         renderProjector();
         videoPanel.setSetlist(state.items);
         videoPanel.update(snap);
-      });
+      }).catch(() => {}); // server unreachable meanwhile: the next snapshot tries again
     },
     onPresence: (presence) => {
       if (state.snap) state.snap = { ...state.snap, presence };
@@ -453,8 +574,12 @@
     onConnection: renderConnection,
     onGone: gone,
     onConnect: watchProjector,
+    onLongOffline: (offline) => {
+      if (offline) enterEmergency();
+      else if (emergency.active) emergency.reconnected = true; // reconciled on the next snapshot
+    },
   });
-  state.client.socket.on('projector:frame', (frame) => preview.show(frame));
+  state.client.socket.on('projector:frame', showServerFrame);
   state.client.socket.on('projector:screens', ({ count }) => {
     projector.screens = count;
     videoPanel.setScreens(count);
