@@ -1,15 +1,16 @@
 'use strict';
 
 // "Acum" (/app): the live event, else the next one, with ONE big button for what this
-// role does with it; then the next few events and, for owner / leader, quick actions.
+// role does with it; then the next few events and, for the event roles, quick actions.
+// The operator gets the leader's buttons, with the console as its live page.
 // The page watches its admin's home room: an event starting or ending swaps the card
 // without a reload.
 
 (function () {
-  const { api, el, formatDate } = window.PAGE;
+  const { api, el, formatDate, canEdit: canEditLibrary, EVENT_ROLES } = window.PAGE;
   const { t } = window.I18N;
   const $ = (id) => document.getElementById(id);
-  const EDITOR_ROLES = ['owner', 'leader'];
+  const EDITOR_ROLES = EVENT_ROLES;
 
   const state = { me: null, home: null, failed: false };
 
@@ -31,14 +32,15 @@
   // [primary, secondary?] actions for the card, by role and state.
   function actions(event, live) {
     const role = state.me.user.role;
+    // The live page of this role: the console for the operator.
+    const livePage = `/events/${event.id}/${role === 'operator' ? 'operator' : 'live'}`;
     if (live) {
-      if (EDITOR_ROLES.includes(role)) return [{ text: t('home.enterLive'), href: `/events/${event.id}/live` }];
-      if (role === 'operator') return [{ text: t('home.operatorConsole'), href: `/events/${event.id}/operator` }];
+      if (EDITOR_ROLES.includes(role)) return [{ text: t('home.enterLive'), href: livePage }];
       return [{ text: t('home.follow'), href: `/events/${event.id}/follow` }];
     }
     if (EDITOR_ROLES.includes(role)) {
       const list = [{ text: t('home.prepare'), href: eventUrl(event, '/edit') }];
-      if (event.status === 'published') list.push({ text: t('home.startLive'), href: `/events/${event.id}/live` });
+      if (event.status === 'published') list.push({ text: t('home.startLive'), href: livePage });
       return list;
     }
     return [{ text: t('home.rehearse'), href: eventUrl(event, '/rehearse') }];
@@ -90,6 +92,7 @@
           el('span', { class: 'home-row-when', text: when(event) })),
         el('span', { class: `pill pill-${event.status}`, text: t(`events.status.${event.status}`) })))));
     $('quick-section').hidden = !editor() || !top;
+    $('quick-new-song').hidden = !canEditLibrary(state.me); // the library: owner and leader
   }
 
   async function load() {

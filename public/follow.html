@@ -16,6 +16,10 @@
         <p class="follow-event"><span id="event-name"></span> <span id="event-status" class="pill"></span></p>
         <p id="connection" class="connection" role="status" aria-live="polite"><span class="dot" aria-hidden="true"></span><span id="connection-text"></span></p>
       </header>
+      <div id="live-bar" class="live-bar" hidden>
+        <p id="live-bar-text" aria-live="polite"></p>
+        <button type="button" class="secondary" id="go-live" data-i18n="follow.goLive"></button>
+      </div>
       <div id="offline-banner" class="emergency-banner" role="alert" hidden>
         <p class="emergency-title" data-i18n="follow.offline.banner"></p>
         <p class="emergency-detail" data-i18n="follow.offline.detail"></p>
@@ -38,10 +42,15 @@
       </div>
 
       <article id="slide" class="rehearse-slide follow-slide"></article>
-      <div id="manual-nav" class="live-nav manual-nav" role="group" data-i18n-aria-label="follow.offline.navLabel" hidden>
+      <div id="manual-nav" class="live-nav manual-nav" role="group" data-i18n-aria-label="follow.navLabel" hidden>
         <button type="button" class="secondary" id="manual-prev" data-i18n="live.prev"></button>
         <button type="button" class="secondary" id="manual-next" data-i18n="follow.offline.next"></button>
       </div>
+      <nav id="jump-nav" class="follow-jump" aria-labelledby="jump-heading" hidden>
+        <h2 id="jump-heading" class="follow-setlist-heading" data-i18n="follow.setlistNav"></h2>
+        <ol id="jump-list"></ol>
+      </nav>
+      <button type="button" class="back-live" id="back-live" hidden data-i18n="follow.back"></button>
     </div>
   </main>
   <script src="/socket.io/socket.io.js"></script>

@@ -142,12 +142,13 @@ function createLiveHub({ db, auth, logger, screensHub }) {
     screensHub.update(adminId);
   }
 
-  // A short info for the event roles in the room ("<name> a adăugat <title>"); never for
-  // team phones (a projector-only item is not theirs to see).
-  function notice(adminId, eventId, payload) {
+  // A short info for the other event-role pages in the room ("<name> a adăugat <title>");
+  // never for team phones (a projector-only item is not theirs to see), nor for the page that
+  // made the change (it shows its own confirmation).
+  function notice(adminId, eventId, payload, fromSocketId) {
     for (const id of io.sockets.adapter.rooms.get(roomName(adminId, eventId)) || []) {
       const socket = io.sockets.sockets.get(id);
-      if (socket && COMMAND_ROLES.includes(socket.data.role)) socket.emit('live:notice', { eventId, ...payload });
+      if (socket && id !== fromSocketId && COMMAND_ROLES.includes(socket.data.role)) socket.emit('live:notice', { eventId, ...payload });
     }
   }
 
@@ -188,7 +189,7 @@ function createLiveHub({ db, auth, logger, screensHub }) {
       logger.info(`Event #${cmd.eventId} ${cmd.type === 'event.start' ? 'started' : 'ended'} by user #${userId} (admin #${adminId})`);
     }
     if (result.changed) broadcast(adminId, cmd.eventId);
-    if (result.notice) notice(adminId, cmd.eventId, { ...result.notice, by: socket.data.userName, byUserId: userId });
+    if (result.notice) notice(adminId, cmd.eventId, { ...result.notice, by: socket.data.userName, byUserId: userId }, socket.id);
     if (result.changed && (cmd.type === 'event.start' || cmd.type === 'event.end')) notifyHome(adminId, cmd.eventId);
     reply(ack, { ok: true, version: result.version });
   }

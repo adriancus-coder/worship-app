@@ -1,8 +1,13 @@
 'use strict';
 
-// Leader control (/events/:id/live, owner and leader): moves the worship position. The page
-// never moves on its own: every change is a command, and it renders only the live:state
+// Leader control (/events/:id/live, the event roles): moves the main (team) position. The
+// page never moves on its own: every change is a command, and it renders only the live:state
 // snapshots the server broadcasts, except in emergency mode (below).
+// Live control "Împreună · Separat": together, the operator console moves the same position;
+// separate, the projector has its own position (moved from the console) and this page shows
+// where it is, with "Sari acolo" to bring the team there. "Echipa: Urmărește live ·
+// Derulează liber" sets how team phones follow. Additions made from the console show a short
+// info toast.
 
 (function () {
   const { api, el, setTitle } = window.PAGE;
@@ -303,25 +308,28 @@
     $('projector-screens').textContent = projector.screens === 1
       ? t('live.projector.screensOne')
       : t('live.projector.screens', { n: projector.screens });
-    // "Proiectorul controlat de operator": the preview then shows the operator's position.
-    const operatorMode = live && snap.projector.follows === 'operator';
-    $('operator-toggle-row').hidden = !live;
-    $('operator-toggle').checked = operatorMode;
-    $('projector-follows').hidden = !operatorMode;
-    if (operatorMode) {
-      // (shared items from the setlist loaded in the page language; the operator's own from the snapshot)
-      const item = state.items.find((it) => it.id === snap.projector.itemId)
-        || (snap.items || []).find((it) => it.id === snap.projector.itemId);
-      const step = item && item.arrangementResolved && item.arrangementResolved[snap.projector.step];
+    modes.update(snap);
+    // Separate: where the projector is, and "Sari acolo" (the team goes there).
+    const split = live && snap.mode === 'split';
+    $('cross').hidden = !split;
+    if (split) {
+      const at = { itemId: snap.projector.itemId, step: snap.projector.step };
+      // (shared items from the setlist loaded in the page language; projector-only ones from the snapshot)
+      const shared = state.items.find((it) => it.id === at.itemId);
+      const item = shared || (snap.items || []).find((it) => it.id === at.itemId);
+      const step = item && item.arrangementResolved && item.arrangementResolved[at.step];
       const label = item ? [itemTitle(item), step ? step.label : null].filter(Boolean).join(' · ') : '—';
-      $('projector-follows').textContent = t('live.requests.operatorAt', { label });
+      $('cross-text').textContent = shared || !item
+        ? t('live.modes.projectorAt', { label })
+        : `${t('live.modes.projectorAt', { label })} — ${t('live.modes.projectorOnlyNote')}`;
+      const here = snap.worship.itemId === at.itemId && snap.worship.step === at.step;
+      $('cross-jump').disabled = !shared || here; // the team cannot go to a projector-only item
     }
   }
 
-  $('operator-toggle').addEventListener('change', (event) => {
-    send('projector.follow', { mode: event.target.checked ? 'operator' : 'worship' }).then((reply) => {
-      if (!reply || !reply.ok) renderProjector(); // put the box back
-    });
+  $('cross-jump').addEventListener('click', () => {
+    const snap = state.snap;
+    if (snap && snap.mode === 'split') send('worship.goto', { itemId: snap.projector.itemId, step: snap.projector.step });
   });
 
   function toggleSource(source) {
@@ -353,10 +361,9 @@
     button: $('open-projector'), hint: $('projector-permission'), message: $('projector-message'), api, t,
   });
 
-  // Proposals from the operator: toast, badge, preview dialog.
-  const requests = window.LIVE_REQUESTS.create({
-    badge: $('requests-badge'), toast: $('request-toast'), dialog: $('request-dialog'), eventId, api, send, t, el,
-  });
+  // Together / separate and the team mode; the info toast for additions from the console.
+  const modes = window.LIVE_MODES.controls($('mode-controls'), { send, t, el });
+  const toast = window.LIVE_MODES.toast($('info-toast'), { t });
 
   // --- emergency mode ---------------------------------------------------------------
   // Without the server for more than 5 s the leader keeps moving the projector: positions and
@@ -515,7 +522,7 @@
     renderEmergency();
     renderProjector();
     videoPanel.render();
-    requests.render();
+    modes.render();
     // Section labels come from the server in the page language: reload.
     const key = state.loadedKey;
     state.loadedKey = null;
@@ -559,7 +566,6 @@
           renderProjector();
           videoPanel.setSetlist(state.items);
           videoPanel.update(snap);
-          requests.update(snap);
         }).catch(() => {}); // server unreachable meanwhile: the next snapshot tries again
       },
       onPresence: (presence) => {
@@ -581,6 +587,7 @@
       renderProjector();
     });
     state.client.socket.on('projector:video-status', (status) => videoPanel.status(status));
+    state.client.socket.on('live:notice', toast.show);
     renderConnection('connecting');
   }
 

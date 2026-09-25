@@ -1,9 +1,16 @@
 'use strict';
 
-// Team phones (/events/:id/follow): follow the worship position live. Shows the current
-// section with chords (transposed) and what comes next; it never moves on its own and
-// sends no commands. Without the server for more than 5 s it keeps the event it holds
-// (every song is loaded up front) and offers manual Back / Next until it reconnects.
+// Team phones (/events/:id/follow): the live position of the team. Shows the current
+// section with chords (transposed) and what comes next; it sends no commands. The team mode
+// (set from the leader page or the console) decides how it follows:
+//   follow  it moves with live. A person who moves away here (swipe, ← / →) sees their own
+//           place with a floating "Revino la live"; a tap, or 30 s without touching it,
+//           brings them back.
+//   free    it never jumps: everyone navigates on their own (← / →, the setlist), with a
+//           slim "Live: <song> · <section>" bar and "Mergi la live". Switching modes keeps
+//           the person's place in free mode and jumps to live in follow mode.
+// Without the server for more than 5 s it keeps the event it holds (every song is loaded
+// up front) and offers manual Back / Next until it reconnects.
 
 (function () {
   const { api, el, setTitle } = window.PAGE;
@@ -19,8 +26,13 @@
   const SCALE_KEY = 'wa_rehearse_scale';
   const WAKE_HINT_KEY = 'wa_wake_hint_seen';
   const SCALE = { min: 0.8, max: 1.8, step: 0.1 };
+  const REATTACH_MS = 30 * 1000;
+  const SWIPE_PX = 60;
 
-  const state = { event: null, items: [], loadedKey: null, loading: null, songs: new Map(), snap: null, textOnly: false, scale: 1, renderId: 0, manual: null };
+  // manual: the place while offline; away: the person's own place online (moved away in
+  // follow mode, or anywhere in free mode); null = live.
+  const state = { event: null, items: [], loadedKey: null, loading: null, songs: new Map(), snap: null, textOnly: false, scale: 1, renderId: 0,
+    manual: null, away: null, reattach: null };
 
   function stored(key) {
     try {
@@ -151,7 +163,7 @@
       }
       return;
     }
-    const pos = state.manual || snap.worship;
+    const pos = shownPosition();
     const item = state.items.find((it) => it.id === pos.itemId);
     if (!item) {
       $('position').textContent = '';
@@ -191,21 +203,122 @@
       upNext(pos));
   }
 
-  function renderOffline() {
+  const live = () => Boolean(state.snap) && state.snap.status === 'live';
+  const free = () => live() && state.snap.teamMode === 'free';
+  // What this phone shows: offline its own place, else the person's place, else live.
+  const shownPosition = () => state.manual || state.away || state.snap.worship;
+
+  function liveLabel() {
+    const pos = state.snap.worship;
+    const item = state.items.find((it) => it.id === pos.itemId);
+    if (!item) return '—';
+    const entry = item.type === 'song' && item.arrangementResolved ? item.arrangementResolved[pos.step] : null;
+    return entry ? `${itemTitle(item)} · ${entry.label}` : itemTitle(item);
+  }
+
+  function renderNav() {
     const manual = Boolean(state.manual);
+    const online = live() && !manual;
     $('offline-banner').hidden = !manual;
-    $('manual-nav').hidden = !manual;
-    if (!manual) return;
-    const layout = POS.layoutOf(state.items);
-    $('manual-prev').disabled = POS.samePosition(POS.prevPosition(layout, state.manual), state.manual);
-    $('manual-next').disabled = POS.samePosition(POS.nextPosition(layout, state.manual), state.manual);
+    // Own navigation: always while live (moving away in follow mode detaches this phone).
+    $('manual-nav').hidden = !live();
+    if (live()) {
+      const layout = POS.layoutOf(state.items);
+      const pos = shownPosition();
+      $('manual-prev').disabled = POS.samePosition(POS.prevPosition(layout, pos), pos);
+      $('manual-next').disabled = POS.samePosition(POS.nextPosition(layout, pos), pos);
+    }
+    // Free: the live bar and the whole setlist; follow: "Revino la live" while away.
+    $('live-bar').hidden = !(online && free());
+    if (online && free()) {
+      $('live-bar-text').textContent = t('follow.liveBar', { label: liveLabel() });
+      const at = shownPosition();
+      $('go-live').disabled = POS.samePosition(at, state.snap.worship);
+    }
+    $('back-live').hidden = !(online && !free() && state.away);
+    $('jump-nav').hidden = !(live() && (free() || manual));
+    if (!$('jump-nav').hidden) {
+      const current = shownPosition().itemId;
+      $('jump-list').replaceChildren(...state.items.map((item) => el('li', null, el('button', {
+        type: 'button',
+        class: `jump-item${item.id === current ? ' current' : ''}`,
+        'aria-current': item.id === current ? 'true' : null,
+        onclick: () => jumpTo({ itemId: item.id, step: 0 }),
+      },
+      el('span', { class: `type-badge type-${item.type}`, text: t(`setlist.types.${item.type}`) }),
+      el('span', { class: 'follow-setlist-title', text: itemTitle(item) }),
+      item.id === state.snap.worship.itemId ? el('span', { class: 'live-badge', text: t('live.liveBadge') }) : null))));
+    }
   }
 
   function render() {
     if (!state.event || !state.snap) return;
     renderHead();
-    renderOffline();
+    renderNav();
     renderSlide();
+  }
+
+  // --- the person's own place ---------------------------------------------------------
+
+  function stopReattach() {
+    clearTimeout(state.reattach);
+    state.reattach = null;
+  }
+
+  // Follow mode: back to live after 30 s without touching the page.
+  function armReattach() {
+    stopReattach();
+    if (free() || !state.away) return;
+    state.reattach = setTimeout(backToLive, REATTACH_MS);
+  }
+
+  function backToLive() {
+    stopReattach();
+    if (free()) state.away = { ...state.snap.worship }; // free: go there, stay free
+    else state.away = null;
+    render();
+  }
+
+  function jumpTo(pos) {
+    if (state.manual) state.manual = pos;
+    else state.away = pos;
+    armReattach();
+    render();
+    window.scrollTo({ top: 0 });
+  }
+
+  function moveLocal(step) {
+    if (!live()) return;
+    const layout = POS.layoutOf(state.items);
+    const from = shownPosition();
+    const to = step > 0 ? POS.nextPosition(layout, from) : POS.prevPosition(layout, from);
+    if (POS.samePosition(to, from)) return;
+    jumpTo(to);
+  }
+
+  // A new snapshot: team mode switches, a changed setlist, live moving on.
+  function followSnapshot(previous, snap) {
+    const wasFree = previous && previous.status === 'live' && previous.teamMode === 'free';
+    const isFree = snap.status === 'live' && snap.teamMode === 'free';
+    if (snap.status !== 'live') {
+      state.away = null;
+      stopReattach();
+    } else if (isFree && !wasFree) {
+      // Free now: everyone stays where they are.
+      state.away = state.away || (previous && previous.status === 'live' ? { ...previous.worship } : { ...snap.worship });
+      stopReattach();
+    } else if (!isFree && wasFree) {
+      state.away = null; // follow again: straight to live
+      stopReattach();
+    }
+  }
+
+  // The person's place no longer exists (the setlist changed): back to live.
+  function checkAway() {
+    if (state.away && !state.items.some((it) => it.id === state.away.itemId)) {
+      state.away = free() ? { ...state.snap.worship } : null;
+      stopReattach();
+    }
   }
 
   // Offline for a while: the team member moves on their own (from where the team was).
@@ -215,13 +328,6 @@
     } else if (!offline) {
       return; // manual mode ends with the first snapshot of the new connection
     }
-    render();
-  }
-
-  function moveManual(step) {
-    if (!state.manual) return;
-    const layout = POS.layoutOf(state.items);
-    state.manual = step > 0 ? POS.nextPosition(layout, state.manual) : POS.prevPosition(layout, state.manual);
     render();
   }
 
@@ -267,8 +373,27 @@
     store(SCALE_KEY, String(state.scale));
     render();
   }
-  $('manual-prev').addEventListener('click', () => moveManual(-1));
-  $('manual-next').addEventListener('click', () => moveManual(1));
+  $('manual-prev').addEventListener('click', () => moveLocal(-1));
+  $('manual-next').addEventListener('click', () => moveLocal(1));
+  $('back-live').addEventListener('click', backToLive);
+  $('go-live').addEventListener('click', backToLive);
+
+  // A horizontal swipe on the slide moves this phone on its own.
+  let swipe = null;
+  slide.addEventListener('pointerdown', (event) => {
+    if (event.pointerType === 'mouse') return;
+    swipe = { x: event.clientX, y: event.clientY, id: event.pointerId };
+  });
+  slide.addEventListener('pointerup', (event) => {
+    if (!swipe || swipe.id !== event.pointerId) return;
+    const dx = event.clientX - swipe.x;
+    const dy = event.clientY - swipe.y;
+    swipe = null;
+    if (Math.abs(dx) >= SWIPE_PX && Math.abs(dx) > Math.abs(dy) * 1.5) moveLocal(dx < 0 ? 1 : -1);
+  });
+  slide.addEventListener('pointercancel', () => { swipe = null; });
+  // Any touch on the page while away restarts the 30 s (reading is not idling).
+  document.addEventListener('pointerdown', () => { if (state.away && !free()) armReattach(); });
   $('text-smaller').addEventListener('click', () => setScale(-SCALE.step));
   $('text-larger').addEventListener('click', () => setScale(SCALE.step));
 
@@ -303,16 +428,20 @@
       eventId,
       initialState,
       onState: (snap) => {
+        const previous = state.snap;
         state.snap = snap;
         // While the event is live the "new version" toast waits (public/pwa.js).
         document.documentElement.toggleAttribute('data-pwa-hold', snap.status === 'live');
+        if (state.manual && snap !== initialState && snap.teamMode === 'free') state.away = state.manual; // keep the place
         state.manual = null; // back online: follow the team again
+        followSnapshot(previous, snap);
         if (!initialState || snap !== initialState) window.EVENT_CACHE.save({ eventId, snap });
         syncSetlist(snap).then(() => {
           if (state.snap !== snap || !state.event) return;
           $('status').hidden = true;
           $('follow').hidden = false;
           if (snap === initialState) goOffline(true);
+          checkAway();
           render();
         }).catch(() => {}); // server unreachable meanwhile: the next snapshot tries again
       },

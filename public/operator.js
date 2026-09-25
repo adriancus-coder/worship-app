@@ -1,12 +1,14 @@
 'use strict';
 
-// Operator console (/events/:id/operator: operator, owner, leader), on the projector PC.
-// While the leader has ticked "Proiectorul controlat de operator" the operator moves the
-// projector on its own (projector.* commands) and sees where worship is; otherwise the page
-// is a read-only mirror of what the projector shows. The operator can add songs that go to
-// the projector only, optionally proposed to the leader for the shared setlist.
+// Operator console (/events/:id/operator: the event roles), on the projector PC. Full
+// controls, like the leader page: start / end, the live mode and the team mode.
+//   Împreună  the console moves the ONE main position (worship.*): projector and team follow
+//   Separat   the console moves the projector (projector.*); it shows where the team is, with
+//             "Sari acolo" (W) to bring the projector there
+// Additions go where the operator chooses: "Doar pe proiector" (a projector-only item) or
+// "În setlist" (shared, the team sees it at once). No approval.
 // Like every live page it renders only the server's snapshots (which, for these roles,
-// carry every item, projector-only ones included, and the requests).
+// carry every item, projector-only ones included).
 
 (function () {
   const { api, el, setTitle } = window.PAGE;
@@ -22,15 +24,27 @@
 
   const items = () => (state.snap && state.snap.items) || [];
   const live = () => Boolean(state.snap) && state.snap.status === 'live';
-  const operatorMode = () => live() && state.snap.projector.follows === 'operator';
+  const split = () => live() && state.snap.mode === 'split';
 
-  // Where the projector is: its own position in operator mode, else worship's.
+  // Where the projector is: its own position when separate, else the main one.
   function projectorPos() {
     const snap = state.snap;
-    return snap.projector.follows === 'operator'
+    return snap.mode === 'split'
       ? { itemId: snap.projector.itemId, step: snap.projector.step }
       : snap.worship;
   }
+
+  // Moves from this page: the projector when separate, the main position together. A
+  // projector-only item can only be shown on its own: choosing it switches to separate.
+  async function goto(item, step) {
+    if (split()) return send('projector.goto', { itemId: item.id, step });
+    if (item.scope === 'projector') {
+      const reply = await send('live.mode', { mode: 'split' });
+      return reply.ok ? send('projector.goto', { itemId: item.id, step }) : reply;
+    }
+    return send('worship.goto', { itemId: item.id, step });
+  }
+  const move = (dir) => send(split() ? `projector.${dir}` : `worship.${dir}`);
 
   function itemTitle(item) {
     if (!item) return '';
@@ -50,11 +64,8 @@
     return steps && steps[pos.step] ? `${itemTitle(item)} · ${steps[pos.step].label}` : itemTitle(item);
   }
 
-  // The tag of an operator item: projector-only, waiting for worship, accepted, refused.
-  function tagOf(item) {
-    if (item.request) return { pending: 'pending', accepted: 'accepted', refused: 'refused' }[item.request.status];
-    return item.scope === 'projector' ? 'projectorOnly' : null;
-  }
+  // The tag of an operator item.
+  const tagOf = (item) => (item.scope === 'projector' ? 'projectorOnly' : null);
 
   function nextPos(pos) {
     const list = items();
@@ -76,12 +87,13 @@
     return text === key ? reply.error || t('live.errors.internal') : text;
   }
 
-  // Commands go one after another. A stale version (worship moved meanwhile) is retried once
-  // against the new state: the operator's commands do not depend on the worship position.
+  // Commands go one after another. A stale version (someone moved meanwhile) is retried once
+  // against the new state, except for moves of the main position (a second "next" would skip
+  // a section the other page just moved to).
   function send(type, extra) {
     state.queue = state.queue.then(async () => {
       let reply = await state.client.command(type, extra);
-      if (!reply.ok && reply.code === 'stale') reply = await state.client.command(type, extra);
+      if (!reply.ok && reply.code === 'stale' && !type.startsWith('worship.')) reply = await state.client.command(type, extra);
       message('op-message', reply.ok ? '' : errorText(reply), reply.ok ? null : 'error');
       return reply;
     });
@@ -91,7 +103,7 @@
   // --- rendering --------------------------------------------------------------------
 
   function renderBanner() {
-    const mode = !live() ? 'notLive' : operatorMode() ? 'operator' : 'worship';
+    const mode = !live() ? 'notLive' : state.snap.mode;
     $('mode-banner').dataset.mode = mode;
     $('mode-title').textContent = t(`operator.banner.${mode}`);
     $('mode-detail').textContent = t(`operator.banner.${mode}Detail`);
@@ -105,12 +117,22 @@
   function renderHead() {
     setTitle('operator.pageTitle', { name: state.event.name });
     $('event-name').textContent = state.event.name;
-    $('worship-at').textContent = live() ? positionLabel(state.snap.worship) : '—';
+    const status = state.snap.status;
+    $('start-button').hidden = status !== 'published';
+    $('end-button').hidden = status !== 'live';
+    modes.update(state.snap);
+    // Separate: where the team is, and "Sari acolo" (the projector goes there, W).
+    $('cross').hidden = !split();
+    if (split()) {
+      $('cross-text').textContent = t('live.modes.teamAt', { label: positionLabel(state.snap.worship) });
+      const pos = projectorPos();
+      $('cross-jump').disabled = pos.itemId === state.snap.worship.itemId && pos.step === state.snap.worship.step;
+    }
     $('op-screens').textContent = state.screens === 1 ? t('live.projector.screensOne') : t('live.projector.screens', { n: state.screens });
   }
 
   function renderList() {
-    const enabled = operatorMode();
+    const enabled = live();
     const pos = live() ? projectorPos() : { itemId: null };
     const worship = live() ? state.snap.worship : { itemId: null };
     const list = items();
@@ -122,7 +144,7 @@
         class: `op-item${onProjector ? ' on-projector' : ''}${item.id === worship.itemId ? ' at-worship' : ''}${item.scope === 'projector' ? ' projector-only' : ''}`,
         'aria-current': onProjector ? 'step' : null,
         disabled: !enabled,
-        onclick: () => send('projector.goto', { itemId: item.id, step: 0 }),
+        onclick: () => goto(item, 0),
       },
       el('span', { class: 'item-number', text: String(i + 1) }),
       el('span', { class: 'item-text' },
@@ -137,7 +159,7 @@
   }
 
   function renderCenter() {
-    const enabled = operatorMode();
+    const enabled = live();
     const pos = live() ? projectorPos() : { itemId: null, step: 0 };
     const worship = live() ? state.snap.worship : { itemId: null, step: 0 };
     const item = items().find((it) => it.id === pos.itemId);
@@ -157,7 +179,7 @@
         'aria-current': here ? 'step' : null,
         'aria-label': t('live.stepLabel', { n: step + 1, label: entry.label }),
         disabled: !enabled,
-        onclick: () => send('projector.goto', { itemId: item.id, step }),
+        onclick: () => goto(item, step),
       },
       el('span', { class: 'step-code', text: entry.code }),
       el('span', { class: 'step-label', text: entry.label }),
@@ -171,11 +193,12 @@
     $('op-next').disabled = !enabled || !after;
     $('op-next').textContent = after ? t('live.next', { label: after.itemId === pos.itemId ? stepsOf(item)[after.step].label : itemTitle(list.find((it) => it.id === after.itemId)) }) : t('live.nextEnd');
     const synced = live() && pos.itemId === worship.itemId && pos.step === worship.step;
-    $('op-sync').disabled = !enabled || synced;
+    $('op-sync').hidden = !split();
+    $('op-sync').disabled = !split() || synced;
   }
 
   function renderSources() {
-    const enabled = operatorMode();
+    const enabled = live();
     const source = live() ? state.snap.projector.source : 'content';
     const video = live() ? state.snap.video : null;
     for (const button of document.querySelectorAll('[data-source]')) {
@@ -187,10 +210,10 @@
   }
 
   function renderAdd() {
-    const enabled = operatorMode();
+    const enabled = live();
     $('add-search').disabled = !enabled;
-    $('add-propose').disabled = !enabled;
-    $('add-button').disabled = !enabled || !state.selected;
+    $('add-projector').disabled = !enabled || !state.selected;
+    $('add-setlist').disabled = !enabled || !state.selected;
     $('add-search').placeholder = t('operator.searchPlaceholder');
     $('add-results').replaceChildren(...state.results.map((song) => el('li', null, el('button', {
       type: 'button',
@@ -216,7 +239,7 @@
     renderAdd();
     videoPanel.setSetlist(items());
     videoPanel.update(state.snap);
-    videoPanel.setLocked(!operatorMode());
+    videoPanel.setLocked(!live());
   }
 
   function gone() {
@@ -234,6 +257,8 @@
     canAddUrl: false, // adding to the media library: owner / leader, on /media
   });
   window.PROJECTOR_WINDOW.setup({ button: $('open-projector'), hint: $('projector-permission'), message: $('projector-message'), api, t });
+  const modes = window.LIVE_MODES.controls($('mode-controls'), { send, t, el });
+  const toast = window.LIVE_MODES.toast($('info-toast'), { t });
 
   function watchProjector(socket) {
     socket.emit('projector:watch', {}, (reply) => {
@@ -259,21 +284,31 @@
       else send('projector.source', { source: button.dataset.source });
     });
   }
-  $('op-prev').addEventListener('click', () => send('projector.prev'));
-  $('op-next').addEventListener('click', () => send('projector.next'));
+  $('op-prev').addEventListener('click', () => move('prev'));
+  $('op-next').addEventListener('click', () => move('next'));
   $('op-sync').addEventListener('click', () => send('projector.syncToWorship'));
+  $('cross-jump').addEventListener('click', () => send('projector.syncToWorship'));
+  $('start-button').addEventListener('click', () => send('event.start'));
+  $('end-button').addEventListener('click', () => {
+    $('end-dialog').returnValue = '';
+    $('end-dialog').showModal();
+  });
+  $('end-dialog').addEventListener('close', () => {
+    if ($('end-dialog').returnValue !== 'end') return;
+    send('event.end').then((reply) => { if (reply && reply.ok) window.location.assign('/app'); });
+  });
 
   document.addEventListener('keydown', (event) => {
-    if (!operatorMode() || event.altKey || event.ctrlKey || event.metaKey) return;
+    if (!live() || event.altKey || event.ctrlKey || event.metaKey) return;
     if (event.target.closest('input, textarea, select, dialog')) return;
     if (event.key === ' ' && event.target.closest('button, a')) return; // Space clicks the focused button
     const keys = {
-      ArrowRight: () => send('projector.next'),
-      ' ': () => send('projector.next'),
-      ArrowLeft: () => send('projector.prev'),
+      ArrowRight: () => move('next'),
+      ' ': () => move('next'),
+      ArrowLeft: () => move('prev'),
       b: () => toggleSource('black'),
       l: () => toggleSource('logo'),
-      w: () => send('projector.syncToWorship'),
+      w: () => { if (split()) send('projector.syncToWorship'); },
     };
     const action = keys[event.key.length === 1 ? event.key.toLowerCase() : event.key];
     if (!action) return;
@@ -304,22 +339,22 @@
     }, SEARCH_DELAY_MS);
   });
 
-  $('add-button').addEventListener('click', async () => {
+  async function addSelected(target) {
     if (!state.selected) {
       message('add-message', t('operator.addNeedsSong'), 'error');
       return;
     }
-    const propose = $('add-propose').checked;
-    const reply = await send('operator.addItem', { item: { type: 'song', songId: state.selected }, propose });
+    const reply = await send('operator.addItem', { target, item: { type: 'song', songId: state.selected } });
     if (!reply.ok) {
       message('add-message', errorText(reply), 'error');
       return;
     }
-    message('add-message', t(propose ? 'operator.proposed' : 'operator.added'), 'success');
+    message('add-message', t(target === 'setlist' ? 'operator.addedSetlist' : 'operator.addedProjector'), 'success');
     state.selected = null;
-    $('add-propose').checked = false;
     renderAdd();
-  });
+  }
+  $('add-projector').addEventListener('click', () => addSelected('projector'));
+  $('add-setlist').addEventListener('click', () => addSelected('setlist'));
 
   document.addEventListener('i18n:change', () => {
     if (!state.snap) return;
@@ -381,6 +416,7 @@
       if (state.event) renderHead();
     });
     state.client.socket.on('projector:video-status', (status) => videoPanel.status(status));
+    state.client.socket.on('live:notice', toast.show);
     renderConnection('connecting');
   })().catch(() => {
     $('status').textContent = t('common.networkError');

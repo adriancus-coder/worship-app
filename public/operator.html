@@ -22,7 +22,15 @@
           <h1 id="event-name"></h1>
           <p id="connection" class="connection" role="status" aria-live="polite"><span class="dot" aria-hidden="true"></span><span id="connection-text"></span></p>
         </div>
-        <p class="op-worship" aria-live="polite"><span class="ro-label" data-i18n="operator.worshipAt"></span> <strong id="worship-at"></strong></p>
+        <div class="live-actions op-actions">
+          <button type="button" id="start-button" hidden data-i18n="live.start"></button>
+          <button type="button" class="danger" id="end-button" hidden data-i18n="live.end"></button>
+        </div>
+        <div id="mode-controls" hidden></div>
+        <div id="cross" class="cross-line" hidden>
+          <p id="cross-text" aria-live="polite"></p>
+          <button type="button" class="secondary" id="cross-jump" data-i18n="live.modes.jump"></button>
+        </div>
         <div class="op-screen">
           <span id="op-screens" class="projector-screens"></span>
           <button type="button" class="secondary" id="open-projector" data-i18n="live.projector.open"></button>
@@ -42,8 +50,11 @@
             <label for="add-search" class="field-label" data-i18n="operator.searchLabel"></label>
             <input type="search" id="add-search" autocomplete="off" maxlength="100">
             <ul id="add-results" class="op-results" data-i18n-aria-label="operator.resultsLabel"></ul>
-            <label class="checkbox"><input type="checkbox" id="add-propose"> <span data-i18n="operator.propose"></span></label>
-            <button type="button" id="add-button" data-i18n="operator.add"></button>
+            <p class="hint" data-i18n="operator.addHint"></p>
+            <div class="op-add-actions">
+              <button type="button" class="secondary" id="add-projector" data-i18n="operator.addProjector"></button>
+              <button type="button" id="add-setlist" data-i18n="operator.addSetlist"></button>
+            </div>
             <p id="add-message" class="message" role="status" aria-live="polite"></p>
           </section>
         </section>
@@ -79,6 +90,19 @@
         </aside>
       </div>
     </div>
+
+    <div id="info-toast" hidden></div>
+
+    <dialog id="end-dialog" aria-labelledby="end-heading">
+      <form method="dialog">
+        <h2 id="end-heading" data-i18n="live.endHeading"></h2>
+        <p data-i18n="live.endText"></p>
+        <div class="form-actions">
+          <button type="submit" class="danger" value="end" data-i18n="live.endConfirm"></button>
+          <button type="submit" class="secondary" value="cancel" data-i18n="live.endCancel"></button>
+        </div>
+      </form>
+    </dialog>
   </main>
   <script src="/socket.io/socket.io.js"></script>
   <script src="/i18n.js"></script>
@@ -89,6 +113,7 @@
   <script src="/projector-window.js"></script>
   <script src="/event-cache.js"></script>
   <script src="/live-client.js"></script>
+  <script src="/live-modes.js"></script>
   <script src="/operator.js"></script>
 </body>
 </html>
