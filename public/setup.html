@@ -1,58 +1,59 @@
 <!doctype html>
-<html lang="ro">
+<html lang="ro" data-app-name="{{APP_NAME}}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#141318">
-  <title>Configurare inițială</title>
+  <title data-i18n="setup.pageTitle">{{APP_NAME}}</title>
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
   <main>
-    <h1>Configurare inițială</h1>
-    <p class="muted">Creează contul bisericii sau al echipei și contul tău de proprietar.</p>
+    <h1 data-i18n="setup.heading"></h1>
+    <p class="muted" data-i18n="setup.intro"></p>
 
     <form id="setup-form" novalidate>
       <label>
-        Cod de configurare
+        <span data-i18n="setup.tokenLabel"></span>
         <input type="password" name="setupToken" autocomplete="off" required>
-        <span class="hint">Valoarea SETUP_TOKEN din configurația serverului.</span>
+        <span class="hint" data-i18n="setup.tokenHint"></span>
       </label>
 
       <fieldset>
-        <legend>Biserica / echipa</legend>
+        <legend data-i18n="setup.adminLegend"></legend>
         <label>
-          Nume
+          <span data-i18n="setup.adminNameLabel"></span>
           <input type="text" name="adminName" maxlength="100" required>
         </label>
       </fieldset>
 
       <fieldset>
-        <legend>Contul tău (proprietar)</legend>
+        <legend data-i18n="setup.ownerLegend"></legend>
         <label>
-          Nume
+          <span data-i18n="setup.ownerNameLabel"></span>
           <input type="text" name="ownerName" autocomplete="name" maxlength="100" required>
         </label>
         <label>
-          Email
+          <span data-i18n="setup.ownerEmailLabel"></span>
           <input type="email" name="ownerEmail" autocomplete="email" inputmode="email" required>
         </label>
         <label>
-          Parolă
+          <span data-i18n="setup.ownerPasswordLabel"></span>
           <input type="password" name="ownerPassword" autocomplete="new-password" minlength="10" required>
-          <span class="hint">Cel puțin 10 caractere.</span>
+          <span class="hint" data-i18n="setup.passwordHint" data-i18n-vars='{"min":10}'></span>
         </label>
       </fieldset>
 
       <p class="message" id="message" role="alert" aria-live="polite"></p>
-      <button type="submit">Creează contul</button>
+      <button type="submit" data-i18n="setup.submit"></button>
     </form>
 
     <div id="done" hidden>
-      <p class="message success">Configurarea s-a încheiat. Te poți autentifica acum.</p>
-      <a class="button" href="/login">Mergi la autentificare</a>
+      <p class="message success" data-i18n="setup.done"></p>
+      <a class="button" href="/login" data-i18n="setup.goToLogin"></a>
     </div>
   </main>
+  <script src="/i18n.js"></script>
   <script src="/setup.js"></script>
 </body>
 </html>

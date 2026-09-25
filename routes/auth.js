@@ -4,8 +4,7 @@ const express = require('express');
 const asyncRoute = require('../lib/async-route');
 const { DUMMY_HASH, verifyPassword } = require('../lib/auth');
 const { createFailureLimiter } = require('../lib/rate-limit');
-
-const INVALID_LOGIN = 'Email sau parolă incorecte.';
+const { t } = require('../lib/i18n');
 
 function createAuthRouter({ db, auth, logger }) {
   const router = express.Router();
@@ -21,7 +20,7 @@ function createAuthRouter({ db, auth, logger }) {
     const retryAfter = limiter.retryAfterSeconds(ip);
     if (retryAfter > 0) {
       res.set('Retry-After', String(retryAfter));
-      return res.status(429).json({ error: 'Prea multe încercări eșuate. Încearcă din nou mai târziu.' });
+      return res.status(429).json({ error: t('errors.tooManyAttempts') });
     }
 
     const body = req.body || {};
@@ -34,7 +33,7 @@ function createAuthRouter({ db, auth, logger }) {
     if (!user || !valid) {
       limiter.recordFailure(ip);
       logger.info(`Failed login from ${ip}`);
-      return res.status(401).json({ error: INVALID_LOGIN });
+      return res.status(401).json({ error: t('errors.invalidLogin') });
     }
 
     limiter.reset(ip);

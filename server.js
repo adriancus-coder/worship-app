@@ -11,6 +11,8 @@ const config = require('./lib/config');
 const logger = require('./lib/logger');
 const { openDb, runMigrations } = require('./lib/db');
 const { createAuth } = require('./lib/auth');
+const { createPageRenderer } = require('./lib/pages');
+const { t } = require('./lib/i18n');
 const createHealthRouter = require('./routes/health');
 const createSetupRouter = require('./routes/setup');
 const createAuthRouter = require('./routes/auth');
@@ -52,21 +54,23 @@ app.use((req, res, next) => (req.path.endsWith('.html') ? res.status(404).end() 
 app.use(express.static(path.join(__dirname, 'public'), { index: false }));
 
 app.use(createHealthRouter({ config }));
-app.use(createSetupRouter({ db, config, logger }));
+const sendPage = createPageRenderer({ config });
+
+app.use(createSetupRouter({ db, config, logger, sendPage }));
 app.use(createAuthRouter({ db, auth, logger }));
-app.use(createPagesRouter({ db, auth }));
+app.use(createPagesRouter({ db, auth, sendPage }));
 
 app.use('/api', (req, res) => {
-  res.status(404).json({ error: 'Not found' });
+  res.status(404).json({ error: t('errors.notFound') });
 });
 
 app.use((err, req, res, next) => {
   if (res.headersSent) return next(err);
   if (err.type === 'entity.parse.failed' || err.type === 'entity.too.large') {
-    return res.status(err.status || 400).json({ error: 'Cerere invalidă.' });
+    return res.status(err.status || 400).json({ error: t('errors.badRequest') });
   }
   logger.error('Unhandled error on', req.method, req.path, err);
-  res.status(500).json({ error: 'Eroare internă.' });
+  res.status(500).json({ error: t('errors.internal') });
 });
 
 const server = http.createServer(app);

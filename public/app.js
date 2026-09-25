@@ -3,6 +3,7 @@
 (function () {
   const whoami = document.getElementById('whoami');
   const logout = document.getElementById('logout');
+  const { t } = window.I18N;
 
   async function load() {
     const res = await fetch('/api/auth/me', { cache: 'no-store' });
@@ -11,7 +12,7 @@
       return;
     }
     const { user, admin } = await res.json();
-    whoami.textContent = `Conectat ca ${user.name} (${user.role}) — ${admin.name}`;
+    whoami.textContent = t('app.signedInAs', { name: user.name, role: user.role, adminName: admin.name });
     whoami.classList.remove('muted');
   }
 
@@ -25,6 +26,6 @@
   });
 
   load().catch(() => {
-    whoami.textContent = 'Serverul nu răspunde. Reîncarcă pagina.';
+    whoami.textContent = t('app.loadFailed');
   });
 })();

@@ -1,17 +1,19 @@
 <!doctype html>
-<html lang="ro">
+<html lang="ro" data-app-name="{{APP_NAME}}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#141318">
-  <title>Worship App</title>
+  <title data-i18n="app.pageTitle">{{APP_NAME}}</title>
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
   <main>
-    <p id="whoami" class="muted">Se încarcă…</p>
-    <button type="button" id="logout" class="secondary">Deconectare</button>
+    <h1 data-i18n="app.heading"></h1>
+    <p id="whoami" class="muted" data-i18n="app.loading"></p>
+    <button type="button" id="logout" class="secondary" data-i18n="app.logout"></button>
   </main>
+  <script src="/i18n.js"></script>
   <script src="/app.js"></script>
 </body>
 </html>

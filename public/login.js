@@ -4,6 +4,7 @@
   const form = document.getElementById('login-form');
   const message = document.getElementById('message');
   const button = form.querySelector('button[type="submit"]');
+  const { t } = window.I18N;
 
   function showError(text) {
     message.textContent = text;
@@ -20,7 +21,7 @@
       remember: form.elements.remember.checked,
     };
     if (!data.email || !data.password) {
-      showError('Completează emailul și parola.');
+      showError(t('login.missingFields'));
       return;
     }
 
@@ -36,9 +37,9 @@
         return;
       }
       const body = await res.json().catch(() => ({}));
-      showError(body.error || 'Autentificarea a eșuat.');
+      showError(body.error || t('login.failed'));
     } catch (err) {
-      showError('Serverul nu răspunde. Încearcă din nou.');
+      showError(t('common.networkError'));
     } finally {
       button.disabled = false;
     }

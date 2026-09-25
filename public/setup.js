@@ -5,6 +5,8 @@
   const message = document.getElementById('message');
   const done = document.getElementById('done');
   const button = form.querySelector('button[type="submit"]');
+  const { t } = window.I18N;
+  const MIN_PASSWORD_LENGTH = 10;
 
   function showError(text) {
     message.textContent = text;
@@ -16,8 +18,8 @@
     message.textContent = '';
 
     const data = Object.fromEntries(new FormData(form));
-    if (data.ownerPassword.length < 10) {
-      showError('Parola trebuie să aibă cel puțin 10 caractere.');
+    if (data.ownerPassword.length < MIN_PASSWORD_LENGTH) {
+      showError(t('errors.passwordTooShort', { min: MIN_PASSWORD_LENGTH }));
       return;
     }
 
@@ -30,13 +32,13 @@
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
-        showError(body.error || 'Configurarea a eșuat.');
+        showError(body.error || t('setup.failed'));
         return;
       }
       form.hidden = true;
       done.hidden = false;
     } catch (err) {
-      showError('Serverul nu răspunde. Încearcă din nou.');
+      showError(t('common.networkError'));
     } finally {
       button.disabled = false;
     }

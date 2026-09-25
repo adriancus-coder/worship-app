@@ -1,9 +1,9 @@
 'use strict';
 
-const path = require('path');
 const express = require('express');
 const asyncRoute = require('../lib/async-route');
 const { safeEqual, hashPassword } = require('../lib/auth');
+const { t } = require('../lib/i18n');
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD_LENGTH = 10;
@@ -22,21 +22,21 @@ function validate(body) {
   const ownerPassword = typeof body.ownerPassword === 'string' ? body.ownerPassword : '';
 
   if (!adminName || adminName.length > MAX_NAME_LENGTH) {
-    return { error: 'Numele bisericii / echipei este obligatoriu (max. 100 de caractere).' };
+    return { error: t('errors.adminNameInvalid', { max: MAX_NAME_LENGTH }) };
   }
   if (!ownerName || ownerName.length > MAX_NAME_LENGTH) {
-    return { error: 'Numele tău este obligatoriu (max. 100 de caractere).' };
+    return { error: t('errors.ownerNameInvalid', { max: MAX_NAME_LENGTH }) };
   }
   if (ownerEmail.length > 254 || !EMAIL_RE.test(ownerEmail)) {
-    return { error: 'Adresa de email nu este validă.' };
+    return { error: t('errors.emailInvalid') };
   }
   if (ownerPassword.length < MIN_PASSWORD_LENGTH) {
-    return { error: `Parola trebuie să aibă cel puțin ${MIN_PASSWORD_LENGTH} caractere.` };
+    return { error: t('errors.passwordTooShort', { min: MIN_PASSWORD_LENGTH }) };
   }
   return { value: { adminName, ownerName, ownerEmail, ownerPassword } };
 }
 
-function createSetupRouter({ db, config, logger }) {
+function createSetupRouter({ db, config, logger, sendPage }) {
   const router = express.Router();
 
   const countAdmins = db.prepare('SELECT COUNT(*) FROM admins').pluck();
@@ -59,7 +59,7 @@ function createSetupRouter({ db, config, logger }) {
 
   router.get('/setup', (req, res) => {
     if (countAdmins.get() > 0) return res.redirect('/');
-    res.sendFile(path.join(__dirname, '..', 'public', 'setup.html'));
+    sendPage(res, 'setup');
   });
 
   router.post('/api/setup', asyncRoute(async (req, res) => {
@@ -67,14 +67,14 @@ function createSetupRouter({ db, config, logger }) {
 
     if (!config.SETUP_TOKEN) {
       logger.warn('Setup attempt rejected: SETUP_TOKEN is not set, first-run setup is disabled');
-      return res.status(403).json({ error: 'Configurarea inițială este dezactivată.' });
+      return res.status(403).json({ error: t('errors.setupDisabled') });
     }
     if (typeof body.setupToken !== 'string' || !safeEqual(body.setupToken, config.SETUP_TOKEN)) {
       logger.warn(`Setup attempt rejected: invalid setup token from ${req.ip}`);
-      return res.status(403).json({ error: 'Cod de configurare invalid.' });
+      return res.status(403).json({ error: t('errors.setupBadToken') });
     }
     if (countAdmins.get() > 0) {
-      return res.status(409).json({ error: 'Aplicația este deja configurată.' });
+      return res.status(409).json({ error: t('errors.setupDone') });
     }
 
     const { error, value } = validate(body);
@@ -87,7 +87,7 @@ function createSetupRouter({ db, config, logger }) {
       return res.json({ ok: true });
     } catch (err) {
       if (err instanceof SetupConflict) {
-        return res.status(409).json({ error: 'Aplicația este deja configurată.' });
+        return res.status(409).json({ error: t('errors.setupDone') });
       }
       throw err;
     }

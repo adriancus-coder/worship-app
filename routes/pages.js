@@ -1,11 +1,8 @@
 'use strict';
 
-const path = require('path');
 const express = require('express');
 
-const PUBLIC_DIR = path.join(__dirname, '..', 'public');
-
-function createPagesRouter({ db, auth }) {
+function createPagesRouter({ db, auth, sendPage }) {
   const router = express.Router();
   const selectAnyAdmin = db.prepare('SELECT 1 FROM admins LIMIT 1');
   const hasAdmin = () => selectAnyAdmin.get() !== undefined;
@@ -24,12 +21,12 @@ function createPagesRouter({ db, auth }) {
   router.get('/login', noStore, (req, res) => {
     if (!hasAdmin()) return res.redirect('/setup');
     if (auth.getSession(req)) return res.redirect('/app');
-    res.sendFile(path.join(PUBLIC_DIR, 'login.html'));
+    sendPage(res, 'login');
   });
 
   router.get('/app', noStore, (req, res) => {
     if (!auth.getSession(req)) return res.redirect('/login');
-    res.sendFile(path.join(PUBLIC_DIR, 'app.html'));
+    sendPage(res, 'app');
   });
 
   return router;
