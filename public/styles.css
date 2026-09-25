@@ -919,3 +919,16 @@ body.screen-body.cursor-hidden, body.screen-body.cursor-hidden * { cursor: none;
 .logo-preview .muted { padding: 16px; text-align: center; }
 .file-button { position: relative; cursor: pointer; }
 .file-button:focus-within { outline: 2px solid var(--text); outline-offset: 2px; }
+
+/* --- live: projector panel -------------------------------------------------------------------- */
+
+.projector-panel { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+.projector-panel h2 { margin: 0; }
+.projector-panel p { margin: 0; }
+.projector-preview { width: 100%; aspect-ratio: 16 / 9; border: 1px solid var(--border); border-radius: 6px; }
+.projector-screens { font-size: 0.875rem; color: var(--muted); }
+.source-buttons { display: flex; flex-wrap: wrap; gap: 6px; }
+.source-buttons button { flex: 1 1 auto; padding: 8px 10px; }
+.source-buttons button[aria-pressed="true"] { color: var(--accent-text); background: var(--accent); border-color: var(--accent); }
+.source-buttons button[data-source="black"][aria-pressed="true"] { color: #fff; background: #000; border-color: var(--text); }
+.source-buttons button:disabled { opacity: 0.45; cursor: not-allowed; }

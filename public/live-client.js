@@ -7,7 +7,7 @@
 
 (function () {
   // connection: 'connecting' | 'connected' | 'reconnecting' | 'offline'
-  function connect({ eventId, onState, onPresence, onConnection, onGone }) {
+  function connect({ eventId, onState, onPresence, onConnection, onGone, onConnect }) {
     const socket = window.io({ transports: ['websocket', 'polling'], reconnectionDelayMax: 4000 });
     let state = null;
     let connection = 'connecting';
@@ -37,6 +37,7 @@
     socket.on('connect', () => {
       setConnection('connected');
       join();
+      if (onConnect) onConnect(socket); // e.g. subscribe again after a reconnect
     });
     socket.on('live:state', accept);
     socket.on('live:presence', (payload) => {
@@ -83,6 +84,7 @@
 
     return {
       command,
+      socket,
       get state() { return state; },
       get connection() { return connection; },
     };

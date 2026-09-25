@@ -148,6 +148,12 @@ function createLiveHub({ db, auth, logger, screensHub }) {
         fail(socket, ack, 'internal');
       }
     });
+    // The leader's projector panel: the frame the screens show and how many are connected.
+    socket.on('projector:watch', (payload, ack) => {
+      if (!refresh(socket)) return;
+      if (!EDITOR_ROLES.includes(socket.data.role)) return fail(socket, ack, 'forbidden');
+      reply(ack, { ok: true, ...screensHub.watch(socket) });
+    });
     socket.on('live:leave', (payload, ack) => {
       if (!refresh(socket)) return;
       leaveRoom(socket);

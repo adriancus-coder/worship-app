@@ -266,6 +266,99 @@
     $('status').textContent = t('setlist.notFound');
   }
 
+  // --- projector panel --------------------------------------------------------------
+
+  // The small preview renders exactly the frame the screens get (same render module).
+  const preview = window.PROJECTOR_RENDER.create($('projector-preview'));
+  const projector = { screens: 0, details: null };
+
+  function renderProjector() {
+    const snap = state.snap;
+    const live = Boolean(snap) && snap.status === 'live';
+    const source = snap ? snap.projector.source : 'content';
+    for (const button of document.querySelectorAll('[data-source]')) {
+      button.setAttribute('aria-pressed', String(live && button.dataset.source === source));
+      button.disabled = !live;
+    }
+    $('projector-screens').textContent = projector.screens === 1
+      ? t('live.projector.screensOne')
+      : t('live.projector.screens', { n: projector.screens });
+  }
+
+  function toggleSource(source) {
+    const currentSource = state.snap && state.snap.projector.source;
+    send('projector.source', { source: currentSource === source ? 'content' : source });
+  }
+
+  for (const button of document.querySelectorAll('[data-source]')) {
+    button.addEventListener('click', () => send('projector.source', { source: button.dataset.source }));
+  }
+
+  function watchProjector(socket) {
+    socket.emit('projector:watch', {}, (reply) => {
+      if (!reply || !reply.ok) return;
+      preview.show(reply.frame);
+      projector.screens = reply.screens;
+      renderProjector();
+    });
+  }
+
+  function projectorMessage(text, kind) {
+    $('projector-message').className = `message${kind ? ` ${kind}` : ''}`;
+    $('projector-message').textContent = text || '';
+  }
+
+  // Window Management API (Chrome / Edge): with the one-time permission the projector window
+  // opens directly, fullscreen, on a screen other than this one.
+  const canPlace = 'getScreenDetails' in window;
+  $('projector-permission').hidden = !canPlace;
+
+  async function screenDetails(ask) {
+    if (!canPlace) return null;
+    if (projector.details) return projector.details;
+    try {
+      const permission = await navigator.permissions.query({ name: 'window-management' });
+      if (permission.state === 'denied' || (permission.state === 'prompt' && !ask)) return null;
+    } catch (err) {
+      if (!ask) return null; // permission name unknown: only ask on a click
+    }
+    try {
+      projector.details = await window.getScreenDetails();
+    } catch (err) {
+      projector.details = null; // denied
+    }
+    return projector.details;
+  }
+  screenDetails(false); // already granted earlier: no prompt, the window opens at once
+
+  function otherScreen(details) {
+    if (!details) return null;
+    const others = details.screens.filter((s) => s !== details.currentScreen);
+    return others.find((s) => !s.isPrimary) || others[0] || null;
+  }
+
+  $('open-projector').addEventListener('click', async () => {
+    projectorMessage('');
+    const target = otherScreen(await screenDetails(true));
+    const features = target
+      ? `popup,left=${target.availLeft},top=${target.availTop},width=${target.availWidth},height=${target.availHeight},fullscreen`
+      : 'popup,width=1280,height=720';
+    // Opened right away (still inside the click); the claim link is filled in after.
+    const win = window.open('about:blank', 'wa-projector', features);
+    if (!win) {
+      projectorMessage(t('live.projector.blocked'), 'error');
+      return;
+    }
+    const res = await api('/api/screens/auto-claim', { method: 'POST', body: { name: t('live.projector.windowName') } });
+    if (!res.ok) {
+      win.close();
+      projectorMessage(res.body.error || t('common.networkError'), 'error');
+      return;
+    }
+    win.location.href = res.body.claimUrl;
+    projectorMessage(target ? t('live.projector.placed') : t('live.projector.dragHint'), target ? 'success' : null);
+  });
+
   // --- controls ---------------------------------------------------------------------
 
   $('prev-button').addEventListener('click', () => send('worship.prev'));
@@ -290,12 +383,17 @@
     } else if (event.key === 'ArrowLeft') {
       event.preventDefault();
       send('worship.prev');
+    } else if (event.key === 'b' || event.key === 'B') {
+      toggleSource('black'); // black <-> content
+    } else if (event.key === 'l' || event.key === 'L') {
+      toggleSource('logo'); // logo <-> content
     }
   });
 
   document.addEventListener('i18n:change', () => {
     if (!state.snap) return;
     renderConnection(state.client.connection);
+    renderProjector();
     // Section labels come from the server in the page language: reload.
     state.loadedKey = null;
     syncSetlist(state.snap).then(render);
@@ -313,6 +411,7 @@
         $('status').hidden = true;
         $('live').hidden = false;
         render();
+        renderProjector();
       });
     },
     onPresence: (presence) => {
@@ -321,6 +420,12 @@
     },
     onConnection: renderConnection,
     onGone: gone,
+    onConnect: watchProjector,
+  });
+  state.client.socket.on('projector:frame', (frame) => preview.show(frame));
+  state.client.socket.on('projector:screens', ({ count }) => {
+    projector.screens = count;
+    renderProjector();
   });
   renderConnection('connecting');
 })();

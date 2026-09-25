@@ -57,6 +57,20 @@
         </section>
 
         <aside class="live-info" aria-labelledby="info-heading">
+          <section class="projector-panel" aria-labelledby="projector-heading">
+            <h2 id="projector-heading" data-i18n="live.projector.heading"></h2>
+            <div id="projector-preview" class="projector-preview" role="img" data-i18n-aria-label="live.projector.previewLabel"></div>
+            <p id="projector-screens" class="projector-screens"></p>
+            <div class="source-buttons" role="group" data-i18n-aria-label="live.projector.sourceLabel">
+              <button type="button" class="secondary" data-source="content" aria-pressed="false" data-i18n="live.projector.content"></button>
+              <button type="button" class="secondary" data-source="logo" aria-pressed="false" data-i18n="live.projector.logo"></button>
+              <button type="button" class="secondary" data-source="black" aria-pressed="false" data-i18n="live.projector.black"></button>
+            </div>
+            <p class="hint" data-i18n="live.projector.keysHint"></p>
+            <button type="button" class="secondary" id="open-projector" data-i18n="live.projector.open"></button>
+            <p class="hint" id="projector-permission" data-i18n="live.projector.permissionHint"></p>
+            <p id="projector-message" class="message" role="status" aria-live="polite"></p>
+          </section>
           <h2 id="info-heading" data-i18n="live.infoHeading"></h2>
           <div id="info"></div>
         </aside>
@@ -80,6 +94,7 @@
   <script src="/sections.js"></script>
   <script src="/page.js"></script>
   <script src="/song-render.js"></script>
+  <script src="/projector-render.js"></script>
   <script src="/live-client.js"></script>
   <script src="/live.js"></script>
 </body>

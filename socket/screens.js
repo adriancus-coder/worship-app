@@ -15,6 +15,8 @@ const NAMESPACE = '/screens';
 const SEEN_EVERY_MS = 60 * 1000;
 
 const screensRoom = (adminId) => `admin:${adminId}:screens`;
+// Owner / leader pages watching the projector (main namespace): same frames, screen count.
+const watchersRoom = (adminId) => `admin:${adminId}:projector`;
 
 function createScreensHub({ db, logger }) {
   const screens = createScreenStore(db);
@@ -23,6 +25,7 @@ function createScreensHub({ db, logger }) {
   const settings = createAdminSettings(db);
   const lastSent = new Map(); // adminId -> JSON of the last frame (without its version)
   let nsp = null;
+  let mainIo = null;
 
   function logoUrl(adminId) {
     const file = settings.get(adminId, 'logo');
@@ -54,10 +57,26 @@ function createScreensHub({ db, logger }) {
     if (lastSent.get(adminId) === key) return;
     lastSent.set(adminId, key);
     nsp.to(screensRoom(adminId)).emit('projector:frame', frame);
+    mainIo.to(watchersRoom(adminId)).emit('projector:frame', frame);
   }
 
   function socketsOf(adminId) {
     return [...(nsp ? nsp.sockets.values() : [])].filter((s) => s.data.adminId === adminId);
+  }
+
+  function screenCount(adminId) {
+    return onlineIds(adminId).size;
+  }
+
+  function sendCount(adminId) {
+    if (mainIo) mainIo.to(watchersRoom(adminId)).emit('projector:screens', { count: screenCount(adminId) });
+  }
+
+  // An owner / leader page (main namespace socket) starts watching the projector.
+  function watch(socket) {
+    const { adminId } = socket.data;
+    socket.join(watchersRoom(adminId));
+    return { frame: frameFor(adminId), screens: screenCount(adminId) };
   }
 
   // Ids of the admin's screens that are connected now.
@@ -76,6 +95,7 @@ function createScreensHub({ db, logger }) {
   }
 
   function attach(io) {
+    mainIo = io;
     nsp = io.of(NAMESPACE);
     nsp.use((socket, next) => {
       const screen = screens.findByToken(socket.handshake.auth && socket.handshake.auth.token);
@@ -89,6 +109,8 @@ function createScreensHub({ db, logger }) {
       socket.join(screensRoom(adminId));
       socket.emit('screen:hello', { screen: { id: screenId } });
       socket.emit('projector:frame', frameFor(adminId));
+      sendCount(adminId);
+      socket.on('disconnect', () => sendCount(adminId));
       logger.debug(`screen #${screenId} connected (admin #${adminId})`);
     });
     // last_seen_at while connected; a screen revoked meanwhile is dropped.
@@ -101,7 +123,7 @@ function createScreensHub({ db, logger }) {
     }, SEEN_EVERY_MS).unref();
   }
 
-  return { attach, update, frameFor, onlineIds, revoked };
+  return { attach, update, frameFor, onlineIds, revoked, watch };
 }
 
 module.exports = { NAMESPACE, screensRoom, createScreensHub };
