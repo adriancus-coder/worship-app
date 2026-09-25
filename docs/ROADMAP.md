@@ -7,7 +7,7 @@ never implement a later stage early. Mockups: claude.ai design canvas
 ## Product decisions
 
 - **Standalone worship app** for churches, no speech recognition or translation in core.
-  Translation is an optional bridge to Sanctuary Voice (stage 8).
+  Translation is an optional two-way bridge to Sanctuary Voice (stage 8, see below).
 - **Customer = "admin"** (one church/group). Subscription per admin, paid outside
   the app (website). The app itself never shows prices, buy buttons or payment links.
 - **PWA first.** App Store / Google Play later, possibly via Capacitor; not planned yet.
@@ -52,6 +52,28 @@ never implement a later stage early. Mockups: claude.ai design canvas
 - A full local-server mode is NOT planned now; keep the live path free of external
   services so it stays possible (see CLAUDE.md rule 8).
 
+## Bridge to Sanctuary Voice (optional, two-way)
+
+- Connection: Sanctuary Voice generates a short-lived **connection code** for its event
+  (separate from the public participant code). Entered in the worship event, it is exchanged
+  server-to-server for a **bridge token** scoped to that event pair; expires when the event
+  ends; either side can disconnect. Projector PCs and phones never talk to Sanctuary Voice.
+- Two independent switches on the connection:
+  - **SV → worship:** live translated text becomes a projector source
+    ("Traducere · limba X"); shown only when the operator/leader picks it explicitly.
+  - **worship → SV:** worship sends the current song + section (title, section label,
+    section text in the source language) whenever the **worship position** changes, and
+    "no song" when leaving songs. Sanctuary Voice translates with its own pipeline and cache
+    and shows the translated lyrics to its participants in their language.
+- **Pre-translation:** when the bridge connects (or the setlist changes), worship sends
+  the whole setlist's song sections in advance so Sanctuary Voice can translate them
+  before they are sung (instant display, lower cost). Content hashes identify sections.
+- Worship never holds translation/AI keys; all translation happens in Sanctuary Voice.
+- If the bridge drops, both apps continue on their own; the projector never switches
+  source automatically.
+- Lyrics sent for translation may be copyrighted; the admin enables worship → SV
+  explicitly and is responsible for having the rights.
+
 ## Event preparation
 
 - Events: name, date, time; create from a template or copy a previous event.
@@ -73,5 +95,8 @@ never implement a later stage early. Mockups: claude.ai design canvas
 5. Projector screen: pairing, open-on-second-display, sources, video, emergency mode.
 6. Operator console: independent control, requests to the leader.
 7. Team: user invites, roles, assignments, confirmations, rehearsal view, push.
-8. Bridge to Sanctuary Voice via event code (read-only live text as a projector source).
+8. Bridge to Sanctuary Voice via event code:
+   8a. SV → worship: live translated text as a projector source.
+   8b. worship → SV: current song/section + setlist pre-translation for SV participants.
+   (Requires matching work in the sanctuary-voice-app repo.)
 9. Pilot at Maranata, then 1–2 other churches.
