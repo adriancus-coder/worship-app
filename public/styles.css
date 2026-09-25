@@ -1710,3 +1710,7 @@ button.bg-field { justify-content: flex-start; gap: 10px; min-height: var(--touc
 }
 .bg-live-row { display: flex; }
 .bg-live-row .bg-field { flex: 1 1 auto; min-width: 0; }
+
+/* --- Song search in pick mode (event editor, operator console) ---------------------------- */
+.preview-actions { display: contents; }
+.pick-results .result-row { align-items: center; }

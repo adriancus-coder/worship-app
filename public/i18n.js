@@ -907,6 +907,7 @@
         imported: 'Cântarea a fost importată.',
         openSong: 'Deschide cântarea',
         alreadyExists: 'Există deja o cântare cu acest titlu în bibliotecă.',
+        alreadyExistsUse: 'Există deja în bibliotecă: se folosește cântarea de acolo.',
         openExisting: 'Deschide cântarea existentă',
       },
       song: {
@@ -1871,6 +1872,7 @@
         imported: 'The song was imported.',
         openSong: 'Open the song',
         alreadyExists: 'A song with this title is already in the library.',
+        alreadyExistsUse: 'Already in the library: that song is used.',
         openExisting: 'Open the existing song',
       },
       song: {
