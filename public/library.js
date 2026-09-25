@@ -1,12 +1,13 @@
 'use strict';
 
 // /library: ONE search field (public/song-search.js): typing filters the library under
-// "Din bibliotecă"; owner and leader can also search resursecrestine.ro with Enter or
-// "Caută și pe resurse". Import / export of the whole library live in the "⋯" menu of the
+// "Din bibliotecă"; owner, leader and operator can also search resursecrestine.ro with
+// Enter or "Caută și pe resurse" and import from there. New songs, editing and the "⋯"
+// menu stay with owner and leader. Import / export of the whole library live in the "⋯" menu of the
 // header (public/library-import.js).
 
 (function () {
-  const { api, canEdit } = window.PAGE;
+  const { api, canEdit, canEditEvents } = window.PAGE;
   const { t } = window.I18N;
   const $ = (id) => document.getElementById(id);
 
@@ -46,7 +47,8 @@
     $('new-song').hidden = !canEdit(me);
     menu.hidden = !canEdit(me);
     search.setMe(me);
-    search.setOnline(canEdit(me));
+    // resursecrestine.ro: the event roles (operators import, but never write songs by hand).
+    search.setOnline(canEditEvents(me));
     search.reload();
   })().catch(() => {
     $('status').removeAttribute('data-i18n');

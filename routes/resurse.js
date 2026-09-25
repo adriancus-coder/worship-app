@@ -5,6 +5,7 @@ const asyncRoute = require('../lib/async-route');
 const { requireRole } = require('../lib/auth');
 const { createRequestLimiter } = require('../lib/rate-limit');
 const { validateSong, createSongStore, DuplicateTitleError } = require('../lib/songs');
+const { EVENT_ROLES } = require('../lib/events');
 const resurse = require('../lib/resurse');
 
 const RATE_LIMIT = { maxRequests: 30, windowMs: 10 * 60 * 1000 };
@@ -22,13 +23,15 @@ const ERRORS = {
   bad_response: [502, 'errors.resurseBadResponse'],
 };
 
-// Search, preview and import from resursecrestine.ro (owner and leader).
+// Search, preview and import from resursecrestine.ro: the event roles (owner, leader,
+// operator), so a song can be brought in while preparing or during the service. Writing
+// songs by hand (/api/songs) stays with owner and leader. Rate limited per user.
 function createResurseRouter({ db, auth, logger }) {
   const router = express.Router();
   const songs = createSongStore(db);
   const limiter = createRequestLimiter(RATE_LIMIT);
 
-  router.use('/api/resurse', auth.requireUser, requireRole('owner', 'leader'), (req, res, next) => {
+  router.use('/api/resurse', auth.requireUser, requireRole(...EVENT_ROLES), (req, res, next) => {
     const retryAfter = limiter.take(`user:${req.user.id}`);
     if (retryAfter > 0) {
       res.set('Retry-After', String(retryAfter));

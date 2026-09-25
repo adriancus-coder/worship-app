@@ -196,6 +196,16 @@ async function main() {
     assert.strictEqual((await api('GET', `/api/events/${ev.id}`, member)).status, 404, 'member: no drafts');
     // the library, media, screens, team and settings keep their rules
     assert.strictEqual((await api('POST', '/api/songs', operator, { title: 'X', sections: [{ type: 'verse', content: 'x' }] })).status, 403);
+    for (const method of ['PUT', 'DELETE']) assert.strictEqual((await api(method, '/api/songs/1', operator, { title: 'X' })).status, 403);
+    assert.strictEqual((await api('POST', '/api/songs/import', operator, { songs: [] })).status, 403);
+    assert.strictEqual((await api('GET', '/api/songs/export', operator)).status, 403);
+    // ... but resursecrestine.ro is open to the event roles (a too-short query stops before
+    // any network access, past the role check); members stay out
+    for (const path of ['search', 'preview', 'import']) {
+      const body = path === 'search' ? { query: 'a' } : { url: 'https://example.com/x' };
+      assert.strictEqual((await api('POST', `/api/resurse/${path}`, operator, body)).status, 400, `operator ${path}`);
+      assert.strictEqual((await api('POST', `/api/resurse/${path}`, member, body)).status, 403, `member ${path}`);
+    }
     assert.strictEqual((await api('POST', '/api/media/url', operator, { title: 'X', url: 'https://youtu.be/dQw4w9WgXcQ' })).status, 403);
     assert.strictEqual((await api('GET', '/api/team', operator)).status, 403);
     assert.strictEqual((await api('GET', '/api/settings', operator)).status, 403);
