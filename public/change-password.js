@@ -76,7 +76,8 @@
       // The usual menu (under "Mai mult").
       document.body.dataset.shell = 'more';
       const script = document.createElement('script');
-      script.src = '/shell.js';
+      const build = document.documentElement.dataset.build;
+      script.src = build ? `/shell.js?v=${encodeURIComponent(build)}` : '/shell.js';
       document.body.append(script);
     }
     render();

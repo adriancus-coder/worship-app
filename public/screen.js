@@ -84,6 +84,7 @@
     state.pairing = null;
     $('output').hidden = true;
     $('pairing').hidden = false;
+    markHold();
     $('pairing-code').textContent = '— — —';
     $('pairing-expiry').textContent = '';
     for (let attempt = 0; ; attempt++) {
@@ -160,6 +161,7 @@
   }
 
   function showOffline(offline) {
+    markHold();
     if (!offline) {
       clearTimeout(state.offlineTimer);
       state.offlineTimer = null;
@@ -181,7 +183,16 @@
     startPairing();
   }
 
+  // A pending app update waits while this screen is busy: pairing, offline, emergency frames
+  // or an event live. Otherwise it applies silently after a minute (public/pwa.js).
+  function markHold() {
+    const busy = !$('pairing').hidden || Boolean(state.local) || !(state.socket && state.socket.connected)
+      || Boolean(state.serverFrame && state.serverFrame.eventId);
+    document.documentElement.toggleAttribute('data-pwa-hold', busy);
+  }
+
   function show(frame) {
+    markHold();
     state.view.show(frame);
     // A prepared video is loaded without being shown; a 'video' frame shows and plays it.
     state.player.apply(frame.video || null, frame.kind === 'video');

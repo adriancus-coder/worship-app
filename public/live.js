@@ -548,6 +548,8 @@
       onState: (snap) => {
         if (emergency.reconnected) reconcile(snap);
         state.snap = snap;
+        // While the event is live the "new version" toast waits (public/pwa.js).
+        document.documentElement.toggleAttribute('data-pwa-hold', snap.status === 'live');
         if (!emergency.active) window.EVENT_CACHE.save({ eventId, snap });
         syncSetlist(snap).then(() => {
           if (state.snap !== snap || !state.event) return;

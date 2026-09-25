@@ -1408,3 +1408,26 @@ button.op-step:disabled { opacity: 1; cursor: default; }
 .offline-page p { margin: 0 0 12px; }
 .offline-page button { min-width: 200px; margin: 8px 0 16px; }
 .offline-note { margin: 0 0 12px; padding: 8px 12px; border: 1px solid var(--accent); border-radius: var(--radius); color: var(--accent); font-weight: 600; font-size: 0.9375rem; }
+
+/* --- Installed app: "new version" toast ------------------------------------------------ */
+.update-toast {
+  position: fixed;
+  z-index: 70;
+  left: 50%;
+  bottom: calc(var(--shell-bottom, env(safe-area-inset-bottom, 0px)) + 12px);
+  transform: translateX(-50%);
+  display: flex;
+  align-items: stretch;
+  width: max-content;
+  max-width: calc(100vw - 24px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px));
+  background: var(--surface);
+  border: 2px solid var(--accent);
+  border-radius: 999px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+}
+.update-toast[hidden] { display: none; }
+.update-toast button { min-height: var(--touch); border: 0; border-radius: 0; background: transparent; color: var(--text); }
+.update-toast-reload { flex: 1 1 auto; min-width: 0; padding: 8px 8px 8px 18px; text-align: left; overflow-wrap: anywhere; font-weight: 400; }
+.update-toast-reload strong { color: var(--accent); }
+.update-toast-close { flex: 0 0 var(--touch); min-width: var(--touch); padding: 0; color: var(--muted); }

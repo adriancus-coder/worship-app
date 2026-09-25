@@ -304,6 +304,8 @@
       initialState,
       onState: (snap) => {
         state.snap = snap;
+        // While the event is live the "new version" toast waits (public/pwa.js).
+        document.documentElement.toggleAttribute('data-pwa-hold', snap.status === 'live');
         state.manual = null; // back online: follow the team again
         if (!initialState || snap !== initialState) window.EVENT_CACHE.save({ eventId, snap });
         syncSetlist(snap).then(() => {

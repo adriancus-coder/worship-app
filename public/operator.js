@@ -363,6 +363,8 @@
       initialState,
       onState: (snap) => {
         state.snap = snap;
+        // While the event is live the "new version" toast waits (public/pwa.js).
+        document.documentElement.toggleAttribute('data-pwa-hold', snap.status === 'live');
         if (snap !== initialState) window.EVENT_CACHE.save({ eventId, snap });
         $('status').hidden = true;
         $('console').hidden = false;

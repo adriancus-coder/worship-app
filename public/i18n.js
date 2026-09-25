@@ -252,6 +252,11 @@
         help: 'Ce merge fără internet',
         cachedNote: 'Fără internet — se afișează varianta salvată pe acest dispozitiv.',
       },
+      pwa: {
+        updateAvailable: 'Versiune nouă disponibilă',
+        updateReload: 'Reîncarcă',
+        updateLater: 'Mai târziu',
+      },
       shell: {
         more: 'Mai mult',
         media: 'Media',
@@ -1140,6 +1145,11 @@
         retry: 'Try again',
         help: 'What works without internet',
         cachedNote: 'No internet — showing the copy saved on this device.',
+      },
+      pwa: {
+        updateAvailable: 'New version available',
+        updateReload: 'Reload',
+        updateLater: 'Later',
       },
       shell: {
         more: 'More',
