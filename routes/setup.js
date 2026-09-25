@@ -2,6 +2,7 @@
 
 const path = require('path');
 const express = require('express');
+const asyncRoute = require('../lib/async-route');
 const { safeEqual, hashPassword } = require('../lib/auth');
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -61,7 +62,7 @@ function createSetupRouter({ db, config, logger }) {
     res.sendFile(path.join(__dirname, '..', 'public', 'setup.html'));
   });
 
-  router.post('/api/setup', async (req, res) => {
+  router.post('/api/setup', asyncRoute(async (req, res) => {
     const body = req.body || {};
 
     if (!config.SETUP_TOKEN) {
@@ -90,7 +91,7 @@ function createSetupRouter({ db, config, logger }) {
       }
       throw err;
     }
-  });
+  }));
 
   return router;
 }

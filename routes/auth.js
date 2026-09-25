@@ -1,6 +1,7 @@
 'use strict';
 
 const express = require('express');
+const asyncRoute = require('../lib/async-route');
 const { DUMMY_HASH, verifyPassword } = require('../lib/auth');
 const { createFailureLimiter } = require('../lib/rate-limit');
 
@@ -15,7 +16,7 @@ function createAuthRouter({ db, auth, logger }) {
     FROM users u JOIN admins a ON a.id = u.admin_id
     WHERE u.email = ? AND u.active = 1`);
 
-  router.post('/api/auth/login', async (req, res) => {
+  router.post('/api/auth/login', asyncRoute(async (req, res) => {
     const ip = req.ip;
     const retryAfter = limiter.retryAfterSeconds(ip);
     if (retryAfter > 0) {
@@ -47,7 +48,7 @@ function createAuthRouter({ db, auth, logger }) {
       user: { id: user.id, name: user.name, email: user.email, role: user.role },
       admin: { id: user.admin_id, name: user.admin_name },
     });
-  });
+  }));
 
   router.post('/api/auth/logout', (req, res) => {
     const sessionId = auth.getSessionId(req);
