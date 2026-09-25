@@ -1,7 +1,9 @@
 'use strict';
 
 const express = require('express');
+const { EVENT_ROLES } = require('../lib/events');
 
+// Library, media and screens pages: owner and leader.
 const EDITOR_ROLES = ['owner', 'leader'];
 
 function createPagesRouter({ db, auth, sendPage }) {
@@ -56,6 +58,7 @@ function createPagesRouter({ db, auth, sendPage }) {
     sendPage(req, res, 'change-password');
   });
   const canEdit = (req) => EDITOR_ROLES.includes(req.session.user.role);
+  const eventRights = (req) => EVENT_ROLES.includes(req.session.user.role);
 
   router.get('/library', noStore, signedIn, (req, res) => {
     sendPage(req, res, 'library');
@@ -79,20 +82,20 @@ function createPagesRouter({ db, auth, sendPage }) {
     sendPage(req, res, 'follow');
   });
 
-  // Live control: owner and leader only; the team follows the event page instead.
+  // Live control: the event roles; the team follows the event page instead.
   router.get('/events/:id(\\d+)/live', noStore, signedIn, (req, res) => {
-    if (!canEdit(req)) return res.redirect(`/events/${req.params.id}`);
+    if (!eventRights(req)) return res.redirect(`/events/${req.params.id}`);
     sendPage(req, res, 'live');
   });
 
-  // Operator console: operator, owner and leader; the team follows the event instead.
+  // Operator console: the event roles; the team follows the event instead.
   router.get('/events/:id(\\d+)/operator', noStore, signedIn, (req, res) => {
-    if (!['owner', 'leader', 'operator'].includes(req.session.user.role)) return res.redirect(`/events/${req.params.id}`);
+    if (!eventRights(req)) return res.redirect(`/events/${req.params.id}`);
     sendPage(req, res, 'operator');
   });
 
   router.get('/events/:id(\\d+)/edit', noStore, signedIn, (req, res) => {
-    if (!canEdit(req)) return res.redirect(`/events/${req.params.id}`);
+    if (!eventRights(req)) return res.redirect(`/events/${req.params.id}`);
     sendPage(req, res, 'event');
   });
 

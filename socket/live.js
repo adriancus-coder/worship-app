@@ -5,6 +5,7 @@
 // full `live:state` snapshots from the server (the single source of truth).
 
 const { LiveError, createLiveStore } = require('../lib/live');
+const { EVENT_ROLES } = require('../lib/events');
 const { resolveLang, t: translate } = require('../lib/i18n');
 
 const ROLES = ['owner', 'leader', 'operator', 'member'];
@@ -16,7 +17,7 @@ const COMMANDS = ['event.start', 'event.end', 'worship.next', 'worship.prev', 'w
   'video.prepare', 'video.play', 'video.pause', 'video.restart', 'video.stop', 'video.volume',
   'operator.addItem', 'request.accept', 'request.refuse'];
 // Roles that may send commands at all; the store decides the rest (lib/live.js permission).
-const COMMAND_ROLES = ['owner', 'leader', 'operator'];
+const COMMAND_ROLES = EVENT_ROLES;
 
 const roomName = (adminId, eventId) => `admin:${adminId}:event:${eventId}`;
 // Home pages ("Acum") of an admin: told when an event starts, ends or changes status.

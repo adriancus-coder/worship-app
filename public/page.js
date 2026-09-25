@@ -42,8 +42,16 @@
     return node;
   }
 
+  // Library writing (songs, resursecrestine), media and screens: owner and leader.
   function canEdit(me) {
     return Boolean(me && ['owner', 'leader'].includes(me.user.role));
+  }
+
+  // Full rights over events (create, edit, publish, templates, live): mirrors EVENT_ROLES in
+  // lib/events.js.
+  const EVENT_ROLES = ['owner', 'leader', 'operator'];
+  function canEditEvents(me) {
+    return Boolean(me && EVENT_ROLES.includes(me.user.role));
   }
 
   function setTitle(key, vars) {
@@ -116,5 +124,5 @@
     return cameFromHome() ? `${url}${url.includes('?') ? '&' : '?'}from=home` : url;
   }
 
-  window.PAGE = { api, el, canEdit, setTitle, formatDate, dateBlock, setupTabs, backLink, keepFrom };
+  window.PAGE = { api, el, canEdit, canEditEvents, EVENT_ROLES, setTitle, formatDate, dateBlock, setupTabs, backLink, keepFrom };
 })();

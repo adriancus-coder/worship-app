@@ -1011,19 +1011,22 @@ function liveFixture() {
   return { mem, evs, live, eventId, items, save };
 }
 
-test('live permissions: by role and by who controls the projector', () => {
+test('live permissions: the event roles (owner, leader, operator) alike; member nothing', () => {
   const { permission } = require('../lib/live');
+  const E = ['owner', 'leader', 'operator'];
   const rows = {
-    'worship.next': ['owner', 'leader'],
-    'event.start': ['owner', 'leader'],
-    'projector.follow': ['owner', 'leader'],
+    'worship.next': E,
+    'event.start': E,
+    'event.end': E,
+    'projector.follow': E,
     'projector.next': [],
     'projector.syncToWorship': [],
-    'projector.source': ['owner', 'leader'],
-    'video.play': ['owner', 'leader'],
+    'projector.source': E,
+    'video.play': E,
+    'operator.addItem': E,
+    'request.accept': E,
   };
-  const operatorRows = { ...rows, 'projector.next': ['owner', 'leader', 'operator'], 'projector.syncToWorship': ['owner', 'leader', 'operator'],
-    'projector.source': ['owner', 'leader', 'operator'], 'video.play': ['owner', 'leader', 'operator'] };
+  const operatorRows = { ...rows, 'projector.next': E, 'projector.syncToWorship': E };
   for (const [follows, table] of [['worship', rows], ['operator', operatorRows]]) {
     for (const [type, allowed] of Object.entries(table)) {
       for (const role of ['owner', 'leader', 'operator', 'member']) {
@@ -1034,8 +1037,8 @@ test('live permissions: by role and by who controls the projector', () => {
   }
   assert.strictEqual(permission('operator', 'projector.next', 'worship'), 'notOperatorMode');
   assert.strictEqual(permission('leader', 'projector.goto', 'worship'), 'notOperatorMode');
-  assert.strictEqual(permission('operator', 'worship.next', 'operator'), 'forbidden');
   assert.strictEqual(permission('member', 'projector.next', 'operator'), 'forbidden');
+  assert.strictEqual(permission('member', 'event.start', 'worship'), 'forbidden');
   assert.strictEqual(permission(undefined, 'video.ended', 'worship'), null, 'the server itself');
 });
 
@@ -1051,9 +1054,8 @@ test('live store: projector follows worship or the operator, two independent pos
   // worship mode: the projector commands are refused for everyone
   assert.strictEqual(code({ type: 'projector.next' }, 'operator'), 'notOperatorMode');
   assert.strictEqual(code({ type: 'projector.next' }, 'leader'), 'notOperatorMode');
-  assert.strictEqual(code({ type: 'projector.source', source: 'black' }, 'operator'), 'notOperatorMode');
-  assert.strictEqual(code({ type: 'video.volume', volume: 0.5 }, 'operator'), 'notOperatorMode');
-  assert.strictEqual(code({ type: 'projector.follow', mode: 'operator' }, 'operator'), 'forbidden');
+  assert.strictEqual(code({ type: 'projector.source', source: 'content' }, 'operator'), 'ok', 'event rights: sources');
+  assert.strictEqual(code({ type: 'video.volume', volume: 0.5 }, 'operator'), 'ok', 'event rights: video');
   cmd({ type: 'worship.next' });
   // hand over: the projector starts where worship is
   cmd({ type: 'projector.follow', mode: 'operator' });
@@ -1068,7 +1070,6 @@ test('live store: projector follows worship or the operator, two independent pos
   assert.strictEqual(code({ type: 'projector.goto', itemId: v2, step: 3 }, 'operator'), 'badPosition');
   assert.strictEqual(code({ type: 'projector.source', source: 'black' }, 'operator'), 'ok');
   assert.strictEqual(code({ type: 'video.volume', volume: 0.5 }, 'operator'), 'ok');
-  assert.strictEqual(code({ type: 'worship.next' }, 'operator'), 'forbidden');
   assert.strictEqual(code({ type: 'projector.next' }, 'member'), 'forbidden');
   // W: jump to worship
   cmd({ type: 'projector.syncToWorship' }, 'operator');
@@ -1144,7 +1145,7 @@ test('live store: operator items are projector-only; requests; the leader accept
   assert.strictEqual(code({ type: 'operator.addItem', item: { type: 'video', url: 'https://x.ro/a.mp4' } }, 'operator'), 'badItem');
   assert.strictEqual(code({ type: 'operator.addItem', item: { type: 'song', songId: 99 } }, 'operator'), 'badItem');
   assert.strictEqual(code({ type: 'operator.addItem', item: { type: 'verse', reference: 'x' } }, 'member'), 'forbidden');
-  assert.strictEqual(code({ type: 'request.accept', itemId: req.itemId, position: 'end' }, 'operator'), 'forbidden');
+  assert.strictEqual(code({ type: 'request.accept', itemId: req.itemId, position: 'end' }, 'member'), 'forbidden');
   assert.strictEqual(code({ type: 'request.accept', itemId: v1, position: 'end' }, 'leader'), 'requestNotFound');
   assert.strictEqual(code({ type: 'request.accept', itemId: req.itemId, position: 'middle' }, 'leader'), 'badCommand');
   // accept after the current worship item (Ps 1)

@@ -7,7 +7,7 @@
 // beforeunload prompt) and a local draft backup restored on the next visit.
 
 (function () {
-  const { api, el, canEdit, setTitle, formatDate, backLink, keepFrom } = window.PAGE;
+  const { api, el, canEdit: canEditLibrary, canEditEvents: canEdit, EVENT_ROLES, setTitle, formatDate, backLink, keepFrom } = window.PAGE;
   const { t } = window.I18N;
 
   const [, , eventId, editSegment] = window.location.pathname.split('/');
@@ -161,7 +161,7 @@
     $('follow-link').hidden = ev.status !== 'live';
     $('follow-link').href = `/events/${ev.id}/follow`;
     // The operator console for the roles that run the projector, while the event is live.
-    $('operator-link').hidden = ev.status !== 'live' || !['owner', 'leader', 'operator'].includes(state.me && state.me.user.role);
+    $('operator-link').hidden = ev.status !== 'live' || !EVENT_ROLES.includes(state.me && state.me.user.role);
     $('operator-link').href = `/events/${ev.id}/operator`;
     $('details-button').hidden = !state.editing;
     templateButton.hidden = !state.editing;
@@ -616,7 +616,8 @@
     if (!item.mediaId) {
       const message = el('p', { class: 'message', role: 'status' });
       parts.push(field('it-url', t('setlist.urlLabel'), input(item, 'url', 'it-url', { type: 'url', maxlength: '500', inputmode: 'url', autocapitalize: 'off', spellcheck: 'false' }), t('setlist.videoUrlHint')));
-      parts.push(el('div', { class: 'field' },
+      // Saving into the media library: owner and leader (the operator keeps the link).
+      if (canEditLibrary(state.me)) parts.push(el('div', { class: 'field' },
         el('button', {
           type: 'button',
           class: 'secondary',

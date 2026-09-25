@@ -597,7 +597,7 @@
         },
         errors: {
           badCommand: 'Comandă invalidă.',
-          forbidden: 'Doar liderul sau proprietarul poate controla evenimentul live.',
+          forbidden: 'Doar liderul, operatorul sau proprietarul poate controla evenimentul live.',
           notFound: 'Evenimentul nu a fost găsit.',
           notJoined: 'Conexiunea nu este în camera acestui eveniment. Reîncarcă pagina.',
           stale: 'Între timp, poziția s-a schimbat. Am afișat starea actuală; nimic nu a fost aplicat.',
@@ -1506,7 +1506,7 @@
         },
         errors: {
           badCommand: 'Invalid command.',
-          forbidden: 'Only the leader or the owner can control the live event.',
+          forbidden: 'Only the leader, the operator or the owner can control the live event.',
           notFound: 'Event not found.',
           notJoined: 'This connection is not in the event room. Reload the page.',
           stale: 'The position changed in the meantime. The current state is shown; nothing was applied.',

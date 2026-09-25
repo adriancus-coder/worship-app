@@ -1,7 +1,7 @@
 'use strict';
 
 (function () {
-  const { api, el, canEdit, formatDate, dateBlock, setupTabs } = window.PAGE;
+  const { api, el, canEditEvents: canEdit, formatDate, dateBlock, setupTabs } = window.PAGE;
   const { t } = window.I18N;
   const WHEN = ['upcoming', 'past', 'templates'];
   const tabButtons = WHEN.map((w) => document.getElementById(`tab-${w}`));

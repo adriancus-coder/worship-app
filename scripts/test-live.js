@@ -168,6 +168,53 @@ async function main() {
     assert.strictEqual(state.version, 0);
   });
 
+  await step('operator: full event rights (create, edit, publish, templates, delete); member none', async () => {
+    const created = await api('POST', '/api/events', operator, { name: 'Repetiție', eventDate: '2026-10-06' });
+    assert.strictEqual(created.status, 201, JSON.stringify(created.body));
+    const id = created.body.event.id;
+    assert.strictEqual((await api('GET', `/api/events/${id}`, operator)).status, 200, 'sees its draft');
+    assert.strictEqual((await api('PUT', `/api/events/${id}`, operator, { name: 'Repetiție mare', eventDate: '2026-10-06' })).status, 200);
+    assert.strictEqual((await api('PUT', `/api/events/${id}/items`, operator, { items: [{ type: 'verse', reference: 'Ps 1' }] })).status, 200);
+    assert.strictEqual((await api('POST', `/api/events/${id}/publish`, operator)).status, 200);
+    assert.strictEqual((await api('POST', `/api/events/${id}/unpublish`, operator)).status, 200);
+    const tpl = await api('POST', `/api/events/${id}/save-as-template`, operator, { name: 'Șablon op' });
+    assert.strictEqual(tpl.status, 201);
+    const templates = await api('GET', '/api/events?when=templates', operator);
+    assert.ok(templates.body.events.some((e) => e.id === tpl.body.event.id), 'sees templates');
+    assert.ok((await api('GET', '/api/events?when=upcoming', operator)).body.events.some((e) => e.id === ev.id), 'sees drafts');
+    for (const [method, url, body] of [
+      ['POST', '/api/events', { name: 'X', eventDate: '2026-10-06' }],
+      ['PUT', `/api/events/${id}`, { name: 'X', eventDate: '2026-10-06' }],
+      ['PUT', `/api/events/${id}/items`, { items: [] }],
+      ['POST', `/api/events/${id}/publish`],
+      ['POST', `/api/events/${id}/save-as-template`, { name: 'Y' }],
+      ['DELETE', `/api/events/${id}`],
+    ]) {
+      assert.strictEqual((await api(method, url, member, body)).status, 403, `member ${method} ${url}`);
+    }
+    assert.strictEqual((await api('GET', '/api/events?when=templates', member)).status, 403);
+    assert.strictEqual((await api('GET', `/api/events/${ev.id}`, member)).status, 404, 'member: no drafts');
+    // the library, media, screens, team and settings keep their rules
+    assert.strictEqual((await api('POST', '/api/songs', operator, { title: 'X', sections: [{ type: 'verse', content: 'x' }] })).status, 403);
+    assert.strictEqual((await api('POST', '/api/media/url', operator, { title: 'X', url: 'https://youtu.be/dQw4w9WgXcQ' })).status, 403);
+    assert.strictEqual((await api('GET', '/api/team', operator)).status, 403);
+    assert.strictEqual((await api('GET', '/api/settings', operator)).status, 403);
+    assert.strictEqual((await api('DELETE', `/api/events/${id}`, operator)).status, 200);
+    assert.strictEqual((await api('DELETE', `/api/events/${tpl.body.event.id}`, operator)).status, 200);
+    // pages: the operator opens the editor and the live page
+    for (const page of [`/events/${ev.id}/edit`, `/events/${ev.id}/live`, `/events/${ev.id}/operator`]) {
+      const res = await fetch(base() + page, { headers: { Cookie: operator }, redirect: 'manual' });
+      assert.strictEqual(res.status, 200, page);
+      const m = await fetch(base() + page, { headers: { Cookie: member }, redirect: 'manual' });
+      assert.strictEqual(m.status, 302, `member ${page}`);
+    }
+    // live: the operator joins the draft (event roles see drafts)
+    const o = connect(operator);
+    await next(o, 'connect');
+    assert.strictEqual((await emit(o, 'live:join', { eventId: ev.id })).ok, true);
+    o.close();
+  });
+
   await step('a draft cannot start', async () => {
     const { socket } = await joined(leader, ev.id);
     assert.strictEqual((await emit(socket, 'live:command', { type: 'event.start', eventId: ev.id })).code, 'notPublished');
@@ -383,11 +430,7 @@ async function main() {
     await frameWhere(screen, (f) => f.version === version || (f.kind === 'lyrics' && f.lines[0] === 'verse'));
     // worship mode: the projector belongs to worship
     assert.strictEqual(await opCode({ type: 'projector.next' }), 'notOperatorMode');
-    assert.strictEqual(await opCode({ type: 'projector.source', source: 'black' }), 'notOperatorMode');
-    assert.strictEqual(await opCode({ type: 'video.volume', volume: 0.3 }), 'notOperatorMode');
     assert.strictEqual((await send(lead.socket, { type: 'projector.next' })).code, 'notOperatorMode');
-    assert.strictEqual(await opCode({ type: 'projector.follow', mode: 'operator' }), 'forbidden');
-    assert.strictEqual(await opCode({ type: 'worship.next' }), 'forbidden');
     assert.strictEqual((await emit(mem.socket, 'live:command', { eventId: ev.id, type: 'projector.follow', mode: 'operator' })).code, 'forbidden');
     // the leader hands the projector over
     await send(lead.socket, { type: 'projector.follow', mode: 'operator' });
@@ -462,7 +505,6 @@ async function main() {
     assert.deepStrictEqual([proposal.title, proposal.requestedBy], ['Ioan 3:16', 'Operator']);
     assert.strictEqual((await add(mem.socket, { type: 'verse', reference: 'x' }, true)).code, 'forbidden');
     assert.strictEqual((await emit(mem.socket, 'live:command', { eventId: ev.id, type: 'request.accept', itemId: proposal.itemId, position: 'end' })).code, 'forbidden');
-    assert.strictEqual((await emit(op.socket, 'live:command', { eventId: ev.id, type: 'request.accept', itemId: proposal.itemId, position: 'end' })).code, 'forbidden');
     reply = await send(lead.socket, { type: 'request.accept', itemId: proposal.itemId, position: 'afterCurrent' });
     assert.strictEqual(reply.ok, true);
     snap = await memberAt(version);

@@ -4,21 +4,20 @@ const express = require('express');
 const { requireRole } = require('../lib/auth');
 const { todayIn } = require('../lib/dates');
 const { createAdminSettings } = require('../lib/admin-settings');
-const { validateEventMeta, validateItems, createEventStore } = require('../lib/events');
+const { EVENT_ROLES, validateEventMeta, validateItems, createEventStore } = require('../lib/events');
 
-const EDITOR_ROLES = ['owner', 'leader'];
 const WHEN = ['upcoming', 'past', 'templates'];
 
-// Events and setlists, scoped to req.adminId. Writes: owner and leader. The team
-// (operator, member) only sees published, live and finished events, never templates.
+// Events and setlists, scoped to req.adminId. Writes: the event roles (owner, leader,
+// operator). Members only see published, live and finished events, never templates.
 // Another admin's event does not exist here: 404.
 function createEventsRouter({ db, auth, logger, live }) {
   const router = express.Router();
   const events = createEventStore(db);
   const settings = createAdminSettings(db);
-  const canEdit = requireRole(...EDITOR_ROLES);
+  const canEdit = requireRole(...EVENT_ROLES);
 
-  const isEditor = (req) => EDITOR_ROLES.includes(req.user.role);
+  const isEditor = (req) => EVENT_ROLES.includes(req.user.role);
   const today = (req) => todayIn(settings.timezone(req.adminId));
 
   function eventId(req) {
@@ -66,7 +65,7 @@ function createEventsRouter({ db, auth, logger, live }) {
     const itemId = /^\d{1,15}$/.test(req.params.itemId) ? Number(req.params.itemId) : null;
     // The operator's projector-only items (and the requests the leader previews) too, for
     // the roles that see them in live mode; team phones see the shared setlist only.
-    const scope = ['owner', 'leader', 'operator'].includes(req.user.role) ? 'all' : 'shared';
+    const scope = isEditor(req) ? 'all' : 'shared';
     const result = itemId && events.itemSong(req.adminId, found.event.id, itemId, req.t, { scope });
     if (!result) return res.status(404).json({ error: req.t('errors.songNotFound') });
     res.json(result);
