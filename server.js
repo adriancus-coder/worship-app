@@ -93,8 +93,8 @@ app.use(createEventsRouter({ db, auth, logger, live }));
 app.use(createHomeRouter({ db, auth }));
 app.use(createTeamRouter({ db, auth, config, logger, live }));
 app.use(createScreensRouter({ db, auth, logger, screensHub }));
-app.use(createSettingsRouter({ db, auth, config, logger, screensHub }));
-app.use(createMediaRouter({ db, auth, config, logger }));
+app.use(createSettingsRouter({ db, auth, config, logger, screensHub, live }));
+app.use(createMediaRouter({ db, auth, config, logger, live }));
 app.use(createPagesRouter({ db, auth, sendPage }));
 
 app.use('/api', (req, res) => {

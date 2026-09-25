@@ -609,6 +609,16 @@ async function main() {
     // a background is not a video: video.prepare refuses it
     const op = await joined(owner, ev.id);
     assert.strictEqual((await emit(op.socket, 'live:command', { eventId: ev.id, type: 'video.prepare', mediaId: loop.body.media.id })).code, 'videoNotFound');
+    // ... but it can be the live background override (event roles; members never)
+    const bgSet = async (socket, background) => (await emit(socket, 'live:command', { eventId: ev.id, type: 'background.set', background })).code || 'ok';
+    assert.strictEqual(await bgSet(op.socket, loop.body.media.id), 'ok');
+    assert.strictEqual(await bgSet(op.socket, 'none'), 'ok');
+    assert.strictEqual(await bgSet(op.socket, 999999), 'backgroundNotFound');
+    assert.strictEqual(await bgSet(op.socket, 'x'), 'backgroundNotFound');
+    const bgMember = await joined(member, ev.id);
+    assert.strictEqual(await bgSet(bgMember.socket, null), 'forbidden');
+    bgMember.socket.close();
+    assert.strictEqual(await bgSet(op.socket, null), 'ok');
     op.socket.close();
     // access: another admin 404, no session 404, a member of the admin may load it, a signed URL
     assert.strictEqual((await file(other, '?v=display')).status, 404);

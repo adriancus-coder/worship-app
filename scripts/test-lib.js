@@ -574,7 +574,7 @@ test('validateItems: song options (transpose, arrangement, team note, reference 
   const ok = evs.validateItems([{ type: 'song', songId: 5, transpose: -3, arrangement: 'v1, c c1 B', teamNote: ' încet ', referenceUrl: 'https://youtu.be/x' }], tro, findSong);
   assert.deepStrictEqual(ok.value[0], {
     id: null, type: 'song', songId: 5, mediaId: null, title: 'Sfânt', body: null, reference: null, url: null, durationMin: null,
-    transpose: -3, arrangement: 'V1 C C B', teamNote: 'încet', referenceUrl: 'https://youtu.be/x',
+    transpose: -3, arrangement: 'V1 C C B', teamNote: 'încet', referenceUrl: 'https://youtu.be/x', backgroundMediaId: null, backgroundNone: 0,
   });
   assert.deepStrictEqual(evs.validateItems([{ type: 'song', songId: 5 }], tro, findSong).value[0].transpose, 0);
   const err = (item, tf = tro) => evs.validateItems([item], tf, findSong).error;
@@ -802,20 +802,20 @@ test('projector frames: sources, items, no chords, idle', () => {
   const state = (itemId, step, source = 'content') => ({ version: 7, eventId: 3, status: 'live',
     worship: { itemId, step }, projector: { follows: 'worship', itemId: null, step: 0, source } });
   const frame = (itemId, step, source, logoUrl) => projectorFrame(state(itemId, step, source), { items }, new Map([[1, song]]), { logoUrl });
-  assert.deepStrictEqual(frame(1, 0), { kind: 'lyrics', lines: ['Ne ridici din noaptea grea', 'Tu ești lumina mea'], version: 7, eventId: 3 });
+  assert.deepStrictEqual(frame(1, 0), { kind: 'lyrics', lines: ['Ne ridici din noaptea grea', 'Tu ești lumina mea'], version: 7, eventId: 3, background: null });
   assert.deepStrictEqual(frame(1, 1).lines, ['Sfânt, sfânt']);
   assert.ok(!/\[[A-G]/.test(frame(1, 2).lines.join('\n')), 'no chords reach the projector');
-  assert.deepStrictEqual(frame(2, 0), { kind: 'verse', reference: 'Psalmul 23:1', text: 'Domnul este Păstorul meu.', version: 7, eventId: 3 });
-  assert.deepStrictEqual(frame(3, 0), { kind: 'announcement', title: 'Agapă', body: 'După serviciu', version: 7, eventId: 3 });
+  assert.deepStrictEqual(frame(2, 0), { kind: 'verse', reference: 'Psalmul 23:1', text: 'Domnul este Păstorul meu.', version: 7, eventId: 3, background: null });
+  assert.deepStrictEqual(frame(3, 0), { kind: 'announcement', title: 'Agapă', body: 'După serviciu', version: 7, eventId: 3, background: null });
   assert.strictEqual(frame(4, 0).title, 'Predica');
   assert.deepStrictEqual([frame(5, 0).kind, frame(5, 0).title], ['title', 'Rugăciune']);
   assert.strictEqual(frame(6, 0).kind, 'black', 'video: black until stage 5b');
   assert.deepStrictEqual([frame(7, 0).kind, frame(7, 0).title], ['title', 'Cântare ștearsă']);
-  assert.deepStrictEqual(frame(1, 0, 'black'), { kind: 'black', version: 7, eventId: 3 });
-  assert.deepStrictEqual(frame(1, 0, 'logo', '/api/logo/x.png'), { kind: 'logo', logoUrl: '/api/logo/x.png', version: 7, eventId: 3 });
+  assert.deepStrictEqual(frame(1, 0, 'black'), { kind: 'black', version: 7, eventId: 3, background: null });
+  assert.deepStrictEqual(frame(1, 0, 'logo', '/api/logo/x.png'), { kind: 'logo', logoUrl: '/api/logo/x.png', version: 7, eventId: 3, background: null });
   assert.strictEqual(frame(1, 0, 'logo').logoUrl, null);
   assert.strictEqual(frame(99, 0).kind, 'black', 'no item at the position');
-  assert.deepStrictEqual(projectorFrame(null, null, null, { logoUrl: '/api/logo/x.png' }), { kind: 'idle', logoUrl: '/api/logo/x.png', version: 0, eventId: null });
+  assert.deepStrictEqual(projectorFrame(null, null, null, { logoUrl: '/api/logo/x.png' }), { kind: 'idle', logoUrl: '/api/logo/x.png', version: 0, eventId: null, background: null });
   assert.strictEqual(projectorFrame({ ...state(1, 0), status: 'finished' }, { items }, new Map()).kind, 'idle');
 });
 
@@ -944,7 +944,7 @@ test('projector frames: a prepared video rides along, plays only on the video so
     projector: { follows: 'worship', itemId: null, step: 0, source },
     video: { state: videoState, seq: 5, volume: 0.8, position: 0 } });
   const f = (source, videoState, m = media) => projectorFrame(st(source, videoState), { items }, new Map(), { videoMedia: m });
-  assert.deepStrictEqual(f('content', 'prepared'), { kind: 'verse', reference: 'Ps 1', text: 'Ferice', version: 3, eventId: 2,
+  assert.deepStrictEqual(f('content', 'prepared'), { kind: 'verse', reference: 'Ps 1', text: 'Ferice', version: 3, eventId: 2, background: null,
     video: { state: 'prepared', seq: 5, volume: 0.8, position: 0, media } });
   assert.strictEqual(f('video', 'playing').kind, 'video');
   assert.strictEqual(f('video', 'paused').kind, 'video');
@@ -1194,6 +1194,104 @@ test('migration 016: media rebuilt with image / loop kinds; references and data 
   mem.prepare('DELETE FROM media WHERE id = 7').run();
   assert.strictEqual(mem.prepare('SELECT media_id FROM setlist_items').pluck().get(), null);
   fs.rmSync(before, { recursive: true, force: true });
+  mem.close();
+});
+
+test('backgrounds: resolution order, "none" stops lower levels, deleted media falls back', () => {
+  const Database = require('better-sqlite3');
+  const { runMigrations } = require('../lib/db');
+  const B = require('../lib/backgrounds');
+  const { projectorFrame } = require('../lib/projector');
+  const mem = new Database(':memory:');
+  mem.pragma('foreign_keys = ON');
+  runMigrations(mem);
+  mem.prepare("INSERT INTO admins (id, name, created_at) VALUES (1, 'A', 0), (2, 'B', 0)").run();
+  const media = mem.prepare("INSERT INTO media (id, admin_id, kind, title, file, created_at) VALUES (?, ?, ?, ?, 'f', 0)");
+  media.run(10, 1, 'image', 'Biserica');
+  media.run(11, 1, 'image', 'Cântare');
+  media.run(12, 1, 'loop', 'Item');
+  media.run(13, 1, 'image', 'Live');
+  media.run(14, 1, 'image', 'Verset');
+  media.run(15, 1, 'upload', 'Clip video');
+  media.run(20, 2, 'image', 'Alt admin');
+  mem.prepare("INSERT INTO songs (id, admin_id, title, title_norm, created_at, updated_at) VALUES (1, 1, 'S', 's', 0, 0)").run();
+  mem.prepare("INSERT INTO events (id, admin_id, name, event_date, created_at, updated_at) VALUES (1, 1, 'E', '2026-10-04', 0, 0)").run();
+  const item = mem.prepare('INSERT INTO setlist_items (id, event_id, admin_id, position, type, song_id, reference, title) VALUES (?, 1, 1, ?, ?, ?, ?, ?)');
+  item.run(1, 0, 'song', 1, null, null);
+  item.run(2, 1, 'verse', null, 'Ps 1', null);
+  item.run(3, 2, 'announcement', null, null, 'Agapă');
+  item.run(4, 3, 'sermon', null, null, 'Predica');
+  const signer = { url: (a, id, now, v) => `/m/${id}/${v}` };
+  const store = B.createBackgroundStore(mem, signer);
+  const at = () => store.forEvent(1, 1).items;
+
+  // 5) nothing set: none
+  assert.deepStrictEqual(at(), { 1: null, 2: null, 3: null, 4: null });
+  // 4) church defaults per item type (a sermon title uses the announcements' default)
+  store.setDefaults(1, { song: 10, verse: 14, announcement: 11 });
+  assert.deepStrictEqual(store.defaults(1), { song: 10, verse: 14, announcement: 11 });
+  assert.deepStrictEqual(at(), { 1: 10, 2: 14, 3: 11, 4: 11 });
+  // 3) the song's default beats the church's
+  store.setSongBackground(1, 1, 11);
+  assert.strictEqual(store.songBackground(1, 1), 11);
+  assert.strictEqual(at()[1], 11);
+  // 2) the item beats the song
+  mem.prepare('UPDATE setlist_items SET background_media_id = 12 WHERE id = 1').run();
+  const ev = store.forEvent(1, 1);
+  assert.strictEqual(ev.items[1], 12);
+  assert.deepStrictEqual(ev.inherited[1], { id: 11, level: 'song' }, 'what "Implicit" would be');
+  assert.deepStrictEqual(ev.media[12], { id: 12, kind: 'loop', url: '/m/12/original', dim: 45, blur: 0, shadow: true });
+  assert.strictEqual(ev.media[10].url, '/m/10/display', 'images use the display variant');
+  // "none" on the item stops the lookup (no song / church fallback) ...
+  mem.prepare('UPDATE setlist_items SET background_none = 1 WHERE id = 1').run();
+  assert.strictEqual(at()[1], null);
+  mem.prepare('UPDATE setlist_items SET background_none = 0, background_media_id = NULL WHERE id = 1').run();
+  // ... and so does "none" on the song
+  store.setSongBackground(1, 1, 'none');
+  assert.strictEqual(store.songBackground(1, 1), 'none');
+  assert.strictEqual(at()[1], null);
+  store.setSongBackground(1, 1, null);
+  assert.strictEqual(at()[1], 10, 'back to the church default');
+
+  // deleted media falls through to the next level without an error
+  store.setSongBackground(1, 1, 11);
+  mem.prepare('UPDATE setlist_items SET background_media_id = 12 WHERE id = 1').run();
+  mem.prepare('DELETE FROM media WHERE id = 12').run();
+  assert.strictEqual(at()[1], 11, 'item media deleted -> song');
+  mem.prepare('DELETE FROM media WHERE id = 11').run();
+  assert.deepStrictEqual(at(), { 1: 10, 2: 14, 3: null, 4: null }, 'song media and a church default deleted -> church / none');
+  // another admin's media or a video is never a background
+  mem.prepare('UPDATE setlist_items SET background_media_id = 20 WHERE id = 2').run();
+  assert.strictEqual(at()[2], 14);
+  mem.prepare('UPDATE setlist_items SET background_media_id = 15 WHERE id = 2').run();
+  assert.strictEqual(at()[2], 14);
+  assert.strictEqual(store.find(1, 20), null);
+
+  // 1) the live override beats everything, 'none' shows black; readability rides along
+  store.setReadability(1, 13, { dim: 70, blur: 8, shadow: false });
+  const items = [{ id: 1, type: 'song', songId: 1 }, { id: 2, type: 'verse', reference: 'Ps 1', body: 'Ferice' }];
+  const song = { sections: [{ id: 5, type: 'verse', content: 'Sfânt' }], arrangement: [{ sectionId: 5 }] };
+  const frame = (override, source = 'content', itemId = 1) => projectorFrame({ version: 1, eventId: 1, status: 'live', backgroundOverride: override,
+    worship: { itemId, step: 0 }, projector: { follows: 'worship', itemId: null, step: 0, source }, video: { state: 'none' } },
+  { items }, new Map([[1, song]]), { backgrounds: store.forEvent(1, 1, override) });
+  assert.strictEqual(frame(null).background.url, '/m/10/display');
+  assert.deepStrictEqual(frame(13).background, { kind: 'image', url: '/m/13/display', dim: 70, blur: 8, shadow: false });
+  assert.strictEqual(frame(13, 'content', 2).background.url, '/m/13/display', 'the override applies to every item');
+  assert.strictEqual(frame('none').background, null);
+  assert.strictEqual(frame(99).background.url, '/m/10/display', 'a deleted override falls back');
+  // black and logo never show a background; the video source replaces it
+  assert.strictEqual(frame(13, 'black').background, null);
+  assert.strictEqual(frame(13, 'logo').background, null);
+  assert.strictEqual(frame(13, 'video').background, null);
+
+  // request parsing
+  assert.deepStrictEqual([B.parseChoice(undefined), B.parseChoice(null), B.parseChoice('none'), B.parseChoice(12), B.parseChoice('x')],
+    [{ value: undefined }, { value: null }, { value: 'none' }, { value: 12 }, { error: true }]);
+  assert.deepStrictEqual(B.parseReadability({ dim: 80, blur: 0, shadow: true }), { value: { dim: 80, blur: 0, shadow: true } });
+  assert.deepStrictEqual(B.parseReadability({ dim: 81 }), { error: 'dim' });
+  assert.deepStrictEqual(B.parseReadability({ blur: -1 }), { error: 'blur' });
+  assert.deepStrictEqual(B.parseReadability({ shadow: 'da' }), { error: 'shadow' });
+  assert.throws(() => mem.prepare('UPDATE media SET bg_dim = 90 WHERE id = 10').run(), /CHECK/);
   mem.close();
 });
 

@@ -5,15 +5,18 @@ const { requireRole } = require('../lib/auth');
 const { MAX_BYTES, sniff, createLogoStore } = require('../lib/logo');
 const { createScreenStore } = require('../lib/screens');
 const { NOTATIONS, THEME_DEFAULTS, createAdminSettings } = require('../lib/admin-settings');
+const { parseChoice, createBackgroundStore } = require('../lib/backgrounds');
+const { createMediaSigner } = require('../lib/media');
 
 // Admin settings (owner only): the church logo shown by the projector and the default
 // chord notation.
 // GET /api/logo/:file serves it to the users of that admin and to its paired screens.
-function createSettingsRouter({ db, auth, config, logger, screensHub }) {
+function createSettingsRouter({ db, auth, config, logger, screensHub, live }) {
   const router = express.Router();
   const logos = createLogoStore(db, config.DATA_DIR);
   const screens = createScreenStore(db);
   const settings = createAdminSettings(db);
+  const backgrounds = createBackgroundStore(db, createMediaSigner(config.DATA_DIR));
   const ownerOnly = requireRole('owner');
   const rawBody = express.raw({ type: () => true, limit: MAX_BYTES });
 
@@ -32,7 +35,26 @@ function createSettingsRouter({ db, auth, config, logger, screensHub }) {
       logo: logoInfo(req.adminId),
       chordNotationDefault: settings.chordNotationDefault(req.adminId),
       themeDefault: settings.themeDefault(req.adminId),
+      backgroundDefaults: backgrounds.defaults(req.adminId),
     });
+  });
+
+  // The church default backgrounds per item type: { song?, verse?, announcement? }, each a
+  // background from the media library or null (none).
+  router.put('/api/settings/backgrounds', (req, res) => {
+    const body = req.body || {};
+    const values = {};
+    for (const type of ['song', 'verse', 'announcement']) {
+      const choice = parseChoice(body[type]);
+      if (choice.value === undefined && !choice.error) continue;
+      if (choice.error || choice.value === 'none' || (choice.value !== null && !backgrounds.find(req.adminId, choice.value))) {
+        return res.status(400).json({ error: req.t('errors.backgroundChoiceInvalid') });
+      }
+      values[type] = choice.value;
+    }
+    backgrounds.setDefaults(req.adminId, values);
+    live.backgroundsChanged(req.adminId);
+    res.json({ backgroundDefaults: backgrounds.defaults(req.adminId) });
   });
 
   // The church default colour theme, for users without their own choice.

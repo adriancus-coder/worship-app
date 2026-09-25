@@ -3,6 +3,8 @@
 const express = require('express');
 const { requireRole } = require('../lib/auth');
 const { LIMITS, SORT_MODES, DuplicateTitleError, validateSong, createSongStore } = require('../lib/songs');
+const { parseChoice, createBackgroundStore } = require('../lib/backgrounds');
+const { createMediaSigner } = require('../lib/media');
 const { MAX_SONGS, LibraryFileError, parseLibraryFile, planImport } = require('../lib/library-import');
 const { createEventStore } = require('../lib/events');
 const { createAdminSettings } = require('../lib/admin-settings');
@@ -14,6 +16,7 @@ const IMPORT_BODY_LIMIT = '10mb';
 // All routes are scoped to req.adminId from the session. A song of another admin
 // simply does not exist here: 404, never 403.
 function createSongsRouter({ db, auth, config, logger, live }) {
+  const backgrounds = createBackgroundStore(db, createMediaSigner(config.DATA_DIR));
   const router = express.Router();
   const songs = createSongStore(db);
   const events = createEventStore(db);
@@ -158,6 +161,21 @@ function createSongsRouter({ db, auth, config, logger, live }) {
       if (err instanceof DuplicateTitleError) return duplicate(req, res, err);
       throw err;
     }
+  });
+
+  // The song's default background (lib/backgrounds.js): null (the church default), 'none'
+  // or a background from the media library.
+  router.put('/api/songs/:id/background', canEdit, (req, res) => {
+    const id = songId(req);
+    if (!id || !songs.get(req.adminId, id)) return notFound(req, res);
+    const choice = parseChoice((req.body || {}).background);
+    if (choice.error || choice.value === undefined
+      || (typeof choice.value === 'number' && !backgrounds.find(req.adminId, choice.value))) {
+      return res.status(400).json({ error: req.t('errors.backgroundChoiceInvalid') });
+    }
+    backgrounds.setSongBackground(req.adminId, id, choice.value);
+    live.backgroundsChanged(req.adminId);
+    res.json({ song: songs.get(req.adminId, id) });
   });
 
   router.delete('/api/songs/:id', canEdit, (req, res) => {

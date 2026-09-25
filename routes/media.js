@@ -5,6 +5,7 @@ const express = require('express');
 const { requireRole } = require('../lib/auth');
 const { VARIANTS, sniffVideo, sniffImage, parseVideoUrl, validateTitle, createMediaStore, createMediaSigner } = require('../lib/media');
 const { createScreenStore } = require('../lib/screens');
+const { parseReadability, createBackgroundStore } = require('../lib/backgrounds');
 
 const EDITOR_ROLES = ['owner', 'leader'];
 
@@ -15,17 +16,20 @@ const EDITOR_ROLES = ['owner', 'leader'];
 //                                      background: an image (JPEG / PNG / WebP, max 8 MB) or a
 //                                      silent loop (MP4 / WebM, max 50 MB)
 //   POST   /api/media/url {title,url}  https .mp4/.webm, YouTube or Vimeo
-//   PUT    /api/media/:id {title}      rename
+//   PUT    /api/media/:id {title?, dim?, blur?, shadow?}
+//                                      rename; a background's readability (dim 0-80 %, blur
+//                                      0-20 px, text shadow on / off)
 //   DELETE /api/media/:id              delete (and its file)
 //   GET    /api/media/:id/file[?v=display|thumb]
 //                                      the uploaded file with Range support (images: the
 //          projector version or the thumbnail), for that admin's users (session), its
 //          screens (X-Screen-Token) or a signed URL (screens).
-function createMediaRouter({ db, auth, config, logger }) {
+function createMediaRouter({ db, auth, config, logger, live }) {
   const router = express.Router();
   const media = createMediaStore(db, config.DATA_DIR);
   const signer = createMediaSigner(config.DATA_DIR);
   const screens = createScreenStore(db);
+  const backgrounds = createBackgroundStore(db, signer);
   const canEdit = requireRole(...EDITOR_ROLES);
   const adminOf = db.prepare('SELECT admin_id FROM media WHERE id = ?').pluck();
 
@@ -165,16 +169,27 @@ function createMediaRouter({ db, auth, config, logger }) {
 
   router.put('/api/media/:id', canEdit, (req, res) => {
     const id = mediaId(req);
-    if (!id || !media.get(req.adminId, id)) return notFound(req, res);
-    const title = validateTitle((req.body || {}).title, req.t);
-    if (title.error) return res.status(400).json({ error: title.error });
-    media.rename(req.adminId, id, title.value);
+    const item = id && media.get(req.adminId, id);
+    if (!item) return notFound(req, res);
+    const body = req.body || {};
+    const title = body.title === undefined ? null : validateTitle(body.title, req.t);
+    if (title && title.error) return res.status(400).json({ error: title.error });
+    const look = parseReadability(body);
+    if (look.error) return res.status(400).json({ error: req.t('errors.backgroundReadabilityInvalid') });
+    const changesLook = Object.keys(look.value).length > 0;
+    if (changesLook && item.category !== 'background') return res.status(400).json({ error: req.t('errors.backgroundReadabilityInvalid') });
+    if (title) media.rename(req.adminId, id, title.value);
+    if (changesLook) {
+      backgrounds.setReadability(req.adminId, id, look.value);
+      live.backgroundsChanged(req.adminId);
+    }
     res.json({ media: media.get(req.adminId, id) });
   });
 
   router.delete('/api/media/:id', canEdit, (req, res) => {
     const id = mediaId(req);
     if (!id || !media.remove(req.adminId, id)) return notFound(req, res);
+    live.backgroundsChanged(req.adminId); // a background in use falls back to the next level
     logger.info(`Media #${id} deleted by user #${req.user.id} (admin #${req.adminId})`);
     res.json({ ok: true });
   });

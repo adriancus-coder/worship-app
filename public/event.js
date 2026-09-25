@@ -65,6 +65,8 @@
         url: url || '',
         durationMin: durationMin === '' || durationMin === null || durationMin === undefined ? null : Number(durationMin),
       };
+      // The item's own background (null = inherit, 'none', a media id); videos have none.
+      if (type !== 'video') out.background = item.background || null;
       // Per-event song options (only song items may carry them).
       if (type === 'song') {
         Object.assign(out, {

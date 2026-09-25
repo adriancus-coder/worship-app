@@ -13,7 +13,7 @@ const PRESENCE_DEBOUNCE_MS = 1000;
 const SESSION_SWEEP_MS = 30 * 1000;
 
 const COMMANDS = ['event.start', 'event.end', 'worship.next', 'worship.prev', 'worship.goto',
-  'live.mode', 'team.mode',
+  'live.mode', 'team.mode', 'background.set',
   'projector.next', 'projector.prev', 'projector.goto', 'projector.syncToWorship', 'projector.source',
   'video.prepare', 'video.play', 'video.pause', 'video.restart', 'video.stop', 'video.volume',
   'operator.addItem'];
@@ -54,7 +54,10 @@ function createLiveHub({ db, auth, logger, screensHub }) {
     const state = store.snapshot(adminId, eventId);
     if (!state) return null;
     const extra = COMMAND_ROLES.includes(role)
-      ? { items: store.items(adminId, eventId, 'all', (key, vars) => translate(key, vars, lang)) }
+      ? {
+        items: store.items(adminId, eventId, 'all', (key, vars) => translate(key, vars, lang)),
+        backgrounds: screensHub.backgroundsFor(adminId, eventId, state.backgroundOverride),
+      }
       : {};
     return { ...state, ...extra, presence: presence(roomName(adminId, eventId)), serverTime: Date.now() };
   }
@@ -324,7 +327,16 @@ function createLiveHub({ db, auth, logger, screensHub }) {
     notifyHome(adminId, eventId);
   }
 
-  return { attach, closeSession, closeUser, roomName, setlistBefore, setlistChanged, songBefore, songChanged, eventChanged };
+  // A background choice or setting changed (song, church default, readability, a media item
+  // deleted): the live event's room and screens get the new frames.
+  function backgroundsChanged(adminId) {
+    if (!io) return;
+    const eventId = store.liveEventId(adminId);
+    if (eventId) broadcast(adminId, eventId);
+    else screensHub.update(adminId);
+  }
+
+  return { attach, closeSession, closeUser, roomName, setlistBefore, setlistChanged, songBefore, songChanged, eventChanged, backgroundsChanged };
 }
 
 module.exports = { createLiveHub, roomName };

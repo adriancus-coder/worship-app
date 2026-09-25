@@ -11,6 +11,7 @@ const { createEventStore } = require('../lib/events');
 const { createAdminSettings } = require('../lib/admin-settings');
 const { projectorFrame } = require('../lib/projector');
 const { parseVideoUrl, playable, createMediaSigner } = require('../lib/media');
+const { createBackgroundStore } = require('../lib/backgrounds');
 
 const NAMESPACE = '/screens';
 const SEEN_EVERY_MS = 60 * 1000;
@@ -28,6 +29,7 @@ function createScreensHub({ db, logger, config }) {
   const settings = createAdminSettings(db);
   const lastSent = new Map(); // adminId -> JSON of the last frame (without its version)
   const signer = createMediaSigner(config.DATA_DIR);
+  const backgrounds = createBackgroundStore(db, signer);
   const selectMedia = db.prepare('SELECT * FROM media WHERE id = ? AND admin_id = ?');
   const videoStatus = new Map(); // adminId -> Map(screenId -> last playback status of that screen)
   let onVideoEvent = () => {};
@@ -71,6 +73,7 @@ function createScreensHub({ db, logger, config }) {
     return projectorFrame(state, found, songs, {
       logoUrl: logoUrl(adminId),
       videoMedia: videoMedia(adminId, state.video, found ? found.items : []),
+      backgrounds: backgrounds.forEvent(adminId, eventId, state.backgroundOverride),
     });
   }
 
@@ -202,7 +205,11 @@ function createScreensHub({ db, logger, config }) {
     }, SEEN_EVERY_MS).unref();
   }
 
-  return { attach, update, frameFor, onlineIds, revoked, watch, setVideoHandler, lastVideoPosition };
+  // The resolved backgrounds of an event, for the live snapshots of the event roles (their
+  // pages compute the same frames offline) and the editor's "Implicit (…)".
+  const backgroundsFor = (adminId, eventId, override) => backgrounds.forEvent(adminId, eventId, override);
+
+  return { attach, update, frameFor, onlineIds, revoked, watch, setVideoHandler, lastVideoPosition, backgroundsFor };
 }
 
 module.exports = { NAMESPACE, screensRoom, createScreensHub };

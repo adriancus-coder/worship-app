@@ -17,7 +17,12 @@
 // While a video is prepared (any source), frames also carry
 //   video: { state, seq, volume, position, media: { type: 'upload'|'file'|'youtube'|'vimeo'|'local', ... } }
 // so screens can preload it without changing what they show.
-// Every frame also carries `version` (of the live state) and `eventId` (null when idle).
+// Every frame also carries `version` (of the live state), `eventId` (null when idle) and
+//   background: { kind: 'image' | 'loop', url, dim, blur, shadow } | null
+// what shows behind the text (lyrics, verse, announcement, title). Black, logo, video and
+// idle frames never have one. Resolution: the live override (state.backgroundOverride: a
+// media id, 'none' or null), else the item's background resolved by the server over the
+// item, the song and the church default (backgrounds.items), else none (lib/backgrounds.js).
 
 (function (root) {
   const { stripChords } = typeof module === 'object' && module.exports ? require('./chords.js') : root.CHORDS;
@@ -58,18 +63,37 @@
     }
   }
 
+  // The background of the item on the projector (see above). backgrounds: { items: { itemId:
+  // mediaId | null }, media: { id: { kind, url, dim, blur, shadow } } } or null.
+  function backgroundFor(state, item, backgrounds) {
+    if (!backgrounds) return null;
+    const media = backgrounds.media || {};
+    const pick = (id) => {
+      const m = id === null || id === undefined ? null : media[id];
+      return m ? { kind: m.kind, url: m.url, dim: m.dim, blur: m.blur, shadow: m.shadow } : null;
+    };
+    const override = state.backgroundOverride;
+    if (override === 'none') return null;
+    if (override !== null && override !== undefined) {
+      const chosen = pick(override);
+      if (chosen) return chosen; // a deleted override falls back to the item's own
+    }
+    return item ? pick((backgrounds.items || {})[item.id]) : null;
+  }
+
   // state: live snapshot of the admin's live event, or null when none is live.
   // event: { items } of that event. songs: Map itemId -> song ready to render
   // ({ sections (transposed), arrangement: [{ sectionId }] }), at least for the current item.
   // videoMedia: how the prepared video is played ({ type, src | id, name, title }), resolved by
   // the caller (it needs the media library); null when nothing is prepared.
-  function projectorFrame(state, event, songs, { logoUrl = null, videoMedia = null } = {}) {
-    if (!state || state.status !== 'live') return { kind: 'idle', logoUrl, version: state ? state.version : 0, eventId: null };
+  // backgrounds: the event's resolved backgrounds (lib/backgrounds.js forEvent), or null.
+  function projectorFrame(state, event, songs, { logoUrl = null, videoMedia = null, backgrounds = null } = {}) {
+    if (!state || state.status !== 'live') return { kind: 'idle', logoUrl, version: state ? state.version : 0, eventId: null, background: null };
     const v = state.video;
     const video = v && v.state !== 'none' && videoMedia
       ? { state: v.state, seq: v.seq, volume: v.volume, position: v.position, media: videoMedia }
       : null;
-    const base = { version: state.version, eventId: state.eventId, ...(video ? { video } : {}) };
+    const base = { version: state.version, eventId: state.eventId, ...(video ? { video } : {}), background: null };
     const source = state.projector.source;
     if (source === 'black') return { kind: 'black', ...base };
     if (source === 'logo') return { kind: 'logo', logoUrl, ...base };
@@ -80,10 +104,12 @@
       ? { itemId: state.projector.itemId, step: state.projector.step }
       : state.worship;
     const item = (event && event.items || []).find((it) => it.id === pos.itemId);
-    return { ...contentFrame(item, pos.step, item && songs ? songs.get(item.id) : null), ...base };
+    const content = contentFrame(item, pos.step, item && songs ? songs.get(item.id) : null);
+    const background = content.kind === 'black' ? null : backgroundFor(state, item, backgrounds);
+    return { ...content, ...base, background };
   }
 
-  const FRAMES = { SOURCES, LEADER_SOURCES, projectorFrame, lyricLines };
+  const FRAMES = { SOURCES, LEADER_SOURCES, projectorFrame, backgroundFor, lyricLines };
 
   if (typeof module === 'object' && module.exports) module.exports = FRAMES;
   else root.FRAMES = FRAMES;
