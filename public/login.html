@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ro">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#141318">
+  <title>Autentificare</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <main>
+    <h1>Autentificare</h1>
+    <p class="muted">Intră în contul tău.</p>
+
+    <form id="login-form" novalidate>
+      <label>
+        Email
+        <input type="email" name="email" autocomplete="username" inputmode="email" required autofocus>
+      </label>
+      <label>
+        Parolă
+        <input type="password" name="password" autocomplete="current-password" required>
+      </label>
+      <label class="checkbox">
+        <input type="checkbox" name="remember">
+        Ține-mă minte
+      </label>
+
+      <p class="message" id="message" role="alert" aria-live="polite"></p>
+      <button type="submit">Intră</button>
+    </form>
+  </main>
+  <script src="/login.js"></script>
+</body>
+</html>

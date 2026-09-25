@@ -10,8 +10,11 @@ const { Server: SocketServer } = require('socket.io');
 const config = require('./lib/config');
 const logger = require('./lib/logger');
 const { openDb, runMigrations } = require('./lib/db');
+const { createAuth } = require('./lib/auth');
 const createHealthRouter = require('./routes/health');
 const createSetupRouter = require('./routes/setup');
+const createAuthRouter = require('./routes/auth');
+const createPagesRouter = require('./routes/pages');
 
 const db = openDb(config.DATA_DIR);
 const applied = runMigrations(db);
@@ -21,6 +24,15 @@ if (applied.length > 0) {
   logger.info('Database schema up to date');
 }
 logger.info(`Database: ${config.DATA_DIR}/worship.db`);
+
+const auth = createAuth({ db, config });
+const SESSION_CLEANUP_MS = 60 * 60 * 1000;
+function cleanupSessions() {
+  const removed = auth.deleteExpiredSessions();
+  if (removed > 0) logger.info(`Deleted ${removed} expired session(s)`);
+}
+cleanupSessions();
+setInterval(cleanupSessions, SESSION_CLEANUP_MS).unref();
 
 const app = express();
 app.disable('x-powered-by');
@@ -41,6 +53,8 @@ app.use(express.static(path.join(__dirname, 'public'), { index: false }));
 
 app.use(createHealthRouter({ config }));
 app.use(createSetupRouter({ db, config, logger }));
+app.use(createAuthRouter({ db, auth, logger }));
+app.use(createPagesRouter({ db, auth }));
 
 app.use('/api', (req, res) => {
   res.status(404).json({ error: 'Not found' });
