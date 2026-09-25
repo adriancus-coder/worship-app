@@ -66,6 +66,19 @@
         tooManyAttempts: 'Prea multe încercări eșuate. Încearcă din nou mai târziu.',
         localeInvalid: 'Limbă necunoscută.',
       },
+      songs: {
+        sectionNumbered: '{type} {n}',
+        sectionTypes: {
+          verse: 'Strofa',
+          chorus: 'Refren',
+          pre_chorus: 'Pre-refren',
+          bridge: 'Punte',
+          intro: 'Intro',
+          outro: 'Final',
+          tag: 'Tag',
+          other: 'Secțiune',
+        },
+      },
       roles: {
         owner: 'proprietar',
         leader: 'lider worship',
@@ -131,6 +144,19 @@
         invalidLogin: 'Incorrect email or password.',
         tooManyAttempts: 'Too many failed attempts. Please try again later.',
         localeInvalid: 'Unknown language.',
+      },
+      songs: {
+        sectionNumbered: '{type} {n}',
+        sectionTypes: {
+          verse: 'Verse',
+          chorus: 'Chorus',
+          pre_chorus: 'Pre-chorus',
+          bridge: 'Bridge',
+          intro: 'Intro',
+          outro: 'Outro',
+          tag: 'Tag',
+          other: 'Section',
+        },
       },
       roles: {
         owner: 'owner',
