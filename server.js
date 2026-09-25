@@ -8,7 +8,17 @@ const { Server: SocketServer } = require('socket.io');
 
 const config = require('./lib/config');
 const logger = require('./lib/logger');
+const { openDb, runMigrations } = require('./lib/db');
 const createHealthRouter = require('./routes/health');
+
+const db = openDb(config.DATA_DIR);
+const applied = runMigrations(db);
+if (applied.length > 0) {
+  logger.info(`Applied migrations: ${applied.join(', ')}`);
+} else {
+  logger.info('Database schema up to date');
+}
+logger.info(`Database: ${config.DATA_DIR}/worship.db`);
 
 const app = express();
 app.disable('x-powered-by');
