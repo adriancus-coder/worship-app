@@ -3,19 +3,24 @@
 const fs = require('fs');
 const express = require('express');
 const { requireRole } = require('../lib/auth');
-const { sniffVideo, parseVideoUrl, validateTitle, createMediaStore, createMediaSigner } = require('../lib/media');
+const { VARIANTS, sniffVideo, sniffImage, parseVideoUrl, validateTitle, createMediaStore, createMediaSigner } = require('../lib/media');
 const { createScreenStore } = require('../lib/screens');
 
 const EDITOR_ROLES = ['owner', 'leader'];
 
-// Media library (videos for the projector), scoped to req.adminId.
-//   GET    /api/media                  list (owner, leader)
-//   POST   /api/media/upload?title=…   raw MP4 / WebM body, streamed to disk
+// Media library (videos and backgrounds for the projector), scoped to req.adminId.
+//   GET    /api/media                  list (owner, leader, operator)
+//   POST   /api/media/upload?title=…&as=video|background
+//                                      raw body, streamed to disk: a video (MP4 / WebM), or a
+//                                      background: an image (JPEG / PNG / WebP, max 8 MB) or a
+//                                      silent loop (MP4 / WebM, max 50 MB)
 //   POST   /api/media/url {title,url}  https .mp4/.webm, YouTube or Vimeo
 //   PUT    /api/media/:id {title}      rename
 //   DELETE /api/media/:id              delete (and its file)
-//   GET    /api/media/:id/file         the uploaded file with Range support, for that
-//          admin's users (session), its screens (X-Screen-Token) or a signed URL (screens).
+//   GET    /api/media/:id/file[?v=display|thumb]
+//                                      the uploaded file with Range support (images: the
+//          projector version or the thumbnail), for that admin's users (session), its
+//          screens (X-Screen-Token) or a signed URL (screens).
 function createMediaRouter({ db, auth, config, logger }) {
   const router = express.Router();
   const media = createMediaStore(db, config.DATA_DIR);
@@ -41,7 +46,8 @@ function createMediaRouter({ db, auth, config, logger }) {
     const allowed = (session && session.admin.id === owner)
       || (screen && screen.adminId === owner)
       || signer.verify(owner, id, req.query.exp, req.query.sig);
-    const file = allowed && media.filePath(owner, id);
+    const variant = VARIANTS.includes(req.query.v) ? req.query.v : 'original';
+    const file = allowed && media.filePath(owner, id, variant);
     if (!file) return notFound(req, res);
     res.set('Cache-Control', 'private, max-age=3600');
     // Range requests (seeking, 206) are handled by sendFile.
@@ -59,7 +65,14 @@ function createMediaRouter({ db, auth, config, logger }) {
   // owner and leader only.
   router.get('/api/media', requireRole(...EDITOR_ROLES, 'operator'), (req, res) => {
     const used = media.usedBytes(req.adminId);
-    res.json({ media: media.list(req.adminId), usedBytes: used, maxFileBytes: config.MEDIA_MAX_FILE_BYTES, maxAdminBytes: config.MEDIA_MAX_ADMIN_BYTES });
+    res.json({
+      media: media.list(req.adminId),
+      usedBytes: used,
+      maxFileBytes: config.MEDIA_MAX_FILE_BYTES,
+      maxImageBytes: config.MEDIA_MAX_IMAGE_BYTES,
+      maxLoopBytes: config.MEDIA_MAX_LOOP_BYTES,
+      maxAdminBytes: config.MEDIA_MAX_ADMIN_BYTES,
+    });
   });
 
   // The body is the video itself. It is written to a temp file as it arrives (never held
@@ -67,7 +80,10 @@ function createMediaRouter({ db, auth, config, logger }) {
   router.post('/api/media/upload', canEdit, (req, res) => {
     const title = validateTitle(req.query.title, req.t);
     if (title.error) return res.status(400).json({ error: title.error });
-    const maxFile = config.MEDIA_MAX_FILE_BYTES;
+    // A background: an image or a loop; the stream is capped at the loop limit, an image's
+    // own limit is checked once its type is known.
+    const background = req.query.as === 'background';
+    const maxFile = background ? Math.max(config.MEDIA_MAX_LOOP_BYTES, config.MEDIA_MAX_IMAGE_BYTES) : config.MEDIA_MAX_FILE_BYTES;
     const room = config.MEDIA_MAX_ADMIN_BYTES - media.usedBytes(req.adminId);
     const limit = Math.min(maxFile, room);
     // The file limit wins the message when the file alone is too big; else the church is full.
@@ -117,11 +133,23 @@ function createMediaRouter({ db, auth, config, logger }) {
       } catch (err) {
         return fail(500, req.t('errors.internal'));
       }
-      const mime = sniffVideo(head.subarray(0, read));
-      if (!mime) return fail(400, req.t('errors.mediaInvalid'));
-      const item = media.addUpload(req.adminId, req.user.id, { title: title.value, temp, mime, size });
-      logger.info(`Media #${item.id} uploaded by user #${req.user.id} (admin #${req.adminId}, ${mime}, ${size} bytes)`);
-      res.status(201).json({ media: item });
+      const video = sniffVideo(head.subarray(0, read));
+      const image = background ? sniffImage(head.subarray(0, read)) : null;
+      if (!video && !image) return fail(400, req.t(background ? 'errors.backgroundInvalid' : 'errors.mediaInvalid'));
+      const logged = (item, mime) => {
+        logger.info(`Media #${item.id} (${item.kind}) uploaded by user #${req.user.id} (admin #${req.adminId}, ${mime}, ${size} bytes)`);
+        res.status(201).json({ media: item });
+      };
+      if (video) {
+        if (background && size > config.MEDIA_MAX_LOOP_BYTES) return fail(413, req.t('errors.mediaTooLarge', { max: mb(config.MEDIA_MAX_LOOP_BYTES) }));
+        return logged(media.addUpload(req.adminId, req.user.id, { title: title.value, temp, mime: video, size, kind: background ? 'loop' : 'upload' }), video);
+      }
+      if (size > config.MEDIA_MAX_IMAGE_BYTES) return fail(413, req.t('errors.mediaTooLarge', { max: mb(config.MEDIA_MAX_IMAGE_BYTES) }));
+      media.addImage(req.adminId, req.user.id, { title: title.value, temp, mime: image }).then((item) => logged(item, image), (err) => {
+        logger.info(`Image upload refused (admin #${req.adminId}): ${err.message}`);
+        failed = true;
+        if (!res.headersSent) res.status(400).json({ error: req.t('errors.backgroundInvalid') });
+      });
     });
     req.pipe(out);
   });

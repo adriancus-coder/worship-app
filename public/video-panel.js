@@ -38,7 +38,7 @@
 
     async function loadMedia() {
       const res = await api('/api/media');
-      state.media = res.ok ? res.body.media : [];
+      state.media = res.ok ? res.body.media.filter((m) => m.category === 'video') : []; // backgrounds are not played as videos
       render();
     }
 

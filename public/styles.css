@@ -1651,3 +1651,12 @@ label.button.file-button { flex-direction: row; }
 .stage-hint button { min-height: var(--touch); }
 /* Light theme: muted text inside a (black) projector preview uses the projector hint colour. */
 :root[data-theme="light"] .projector .muted { color: var(--projector-hint); }
+
+/* --- Media library: filters and thumbnails -------------------------------------------- */
+.media-filters { margin: 0 0 12px; }
+.media-row { align-items: center; }
+.media-thumb { flex: none; width: 96px; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 6px; background: var(--projector-bg); border: 1px solid var(--border); }
+.media-thumb-link { display: block; }
+@media (max-width: 420px) {
+  .media-thumb { width: 72px; }
+}

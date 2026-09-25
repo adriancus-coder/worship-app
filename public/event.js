@@ -1102,7 +1102,7 @@
     applyEvent(eventRes.body, false);
     if (state.editing) {
       const mediaRes = await api('/api/media');
-      state.media = mediaRes.ok ? mediaRes.body.media : [];
+      state.media = mediaRes.ok ? mediaRes.body.media.filter((m) => m.category === 'video') : []; // backgrounds are not played as videos
     }
     status.hidden = true;
     $('event').hidden = false;

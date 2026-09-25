@@ -1167,6 +1167,46 @@ test('live store: additions go where the sender chooses, no approval; a notice f
   mem.close();
 });
 
+test('migration 016: media rebuilt with image / loop kinds; references and data kept', () => {
+  const Database = require('better-sqlite3');
+  const fs = require('fs');
+  const path = require('path');
+  const { runMigrations } = require('../lib/db');
+  const dir = path.join(__dirname, '..', 'lib', 'migrations');
+  const before = fs.mkdtempSync(path.join(require('os').tmpdir(), 'wa-mig-'));
+  for (const f of fs.readdirSync(dir).filter((x) => x.endsWith('.sql') && x < '016')) fs.copyFileSync(path.join(dir, f), path.join(before, f));
+  const mem = new Database(':memory:');
+  mem.pragma('foreign_keys = ON');
+  runMigrations(mem, before);
+  mem.prepare("INSERT INTO admins (id, name, created_at) VALUES (1, 'A', 0)").run();
+  mem.prepare("INSERT INTO media (id, admin_id, kind, title, url, created_at) VALUES (7, 1, 'url', 'Clip', 'youtube:abcdefghijk', 0)").run();
+  mem.prepare("INSERT INTO events (id, admin_id, name, event_date, created_at, updated_at) VALUES (1, 1, 'E', '2026-10-04', 0, 0)").run();
+  mem.prepare("INSERT INTO setlist_items (event_id, admin_id, position, type, media_id) VALUES (1, 1, 0, 'video', 7)").run();
+  mem.prepare("INSERT INTO live_state (event_id, admin_id, version, video_media_id, updated_at) VALUES (1, 1, 1, 7, 0)").run();
+  assert.deepStrictEqual(runMigrations(mem, dir).filter((n) => n.startsWith('016')), ['016_media_backgrounds.sql']);
+  assert.strictEqual(mem.pragma('foreign_keys', { simple: true }), 1, 'foreign keys back on');
+  assert.strictEqual(mem.prepare('SELECT media_id FROM setlist_items').pluck().get(), 7, 'the setlist item keeps its video');
+  assert.strictEqual(mem.prepare('SELECT video_media_id FROM live_state').pluck().get(), 7);
+  assert.strictEqual(mem.prepare('SELECT title FROM media WHERE id = 7').pluck().get(), 'Clip');
+  mem.prepare("INSERT INTO media (admin_id, kind, title, file, created_at) VALUES (1, 'image', 'Fundal', 'x.jpg', 0)").run();
+  assert.throws(() => mem.prepare("INSERT INTO media (admin_id, kind, title, created_at) VALUES (1, 'gif', 'x', 0)").run(), /CHECK/);
+  // the reference still cascades like before (ON DELETE SET NULL)
+  mem.prepare('DELETE FROM media WHERE id = 7').run();
+  assert.strictEqual(mem.prepare('SELECT media_id FROM setlist_items').pluck().get(), null);
+  fs.rmSync(before, { recursive: true, force: true });
+  mem.close();
+});
+
+test('media: image magic bytes; file names and kinds', () => {
+  const M = require('../lib/media');
+  assert.strictEqual(M.sniffImage(Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 0, 0, 0, 0, 0, 0, 0])), 'image/jpeg');
+  assert.strictEqual(M.sniffImage(Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(8)])), 'image/png');
+  assert.strictEqual(M.sniffImage(Buffer.concat([Buffer.from('RIFF'), Buffer.alloc(4), Buffer.from('WEBPVP8 ')])), 'image/webp');
+  assert.strictEqual(M.sniffImage(Buffer.from('<svg xmlns="http://www.w3.org/2000/svg">')), null, 'never SVG');
+  assert.strictEqual(M.sniffImage(Buffer.from('GIF89a......')), null);
+  assert.deepStrictEqual([M.VIDEO_KINDS, M.BACKGROUND_KINDS], [['upload', 'url'], ['image', 'loop']]);
+});
+
 test('migration 014: projector_follows -> together / split; pending requests -> projector-only items', () => {
   const Database = require('better-sqlite3');
   const fs = require('fs');

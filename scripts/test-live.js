@@ -557,6 +557,73 @@ async function main() {
     op.socket.close();
   });
 
+  await step('backgrounds in the media library: images (resized, thumbnails) and loops; limits; access', async () => {
+    const sharp = require('sharp');
+    const upload = async (cookie, as, body, type, title = 'Fundal') => {
+      const res = await fetch(`${base()}/api/media/upload?as=${as}&title=${encodeURIComponent(title)}`, {
+        method: 'POST', headers: { Cookie: cookie, 'Content-Type': type }, body,
+      });
+      return { status: res.status, body: await res.json().catch(() => null) };
+    };
+    const jpeg = await sharp({ create: { width: 2400, height: 1600, channels: 3, background: '#ffd27a' } }).jpeg({ quality: 90 }).toBuffer();
+    const img = await upload(owner, 'background', jpeg, 'image/jpeg', 'Răsărit');
+    assert.strictEqual(img.status, 201, JSON.stringify(img.body));
+    assert.deepStrictEqual([img.body.media.kind, img.body.media.category, img.body.media.width, img.body.media.height, img.body.media.thumb],
+      ['image', 'background', 2400, 1600, true]);
+    const id = img.body.media.id;
+    const file = async (cookie, query = '') => fetch(`${base()}/api/media/${id}/file${query}`, { headers: cookie ? { Cookie: cookie } : {} });
+    const size = async (res) => sharp(Buffer.from(await res.arrayBuffer())).metadata();
+    let meta = await size(await file(owner, '?v=display'));
+    assert.deepStrictEqual([meta.format, meta.width, meta.height], ['webp', 1620, 1080], 'projector version fits 1920x1080');
+    meta = await size(await file(owner, '?v=thumb'));
+    assert.deepStrictEqual([meta.format, meta.width, meta.height], ['webp', 320, 180]);
+    meta = await size(await file(owner));
+    assert.deepStrictEqual([meta.format, meta.width], ['jpeg', 2400], 'the original is kept');
+    // PNG and WebP too; a small image is never enlarged
+    const png = await sharp({ create: { width: 800, height: 600, channels: 4, background: '#224466ff' } }).png().toBuffer();
+    const p = await upload(owner, 'background', png, 'image/png');
+    assert.strictEqual(p.status, 201);
+    meta = await size(await fetch(`${base()}/api/media/${p.body.media.id}/file?v=display`, { headers: { Cookie: owner } }));
+    assert.deepStrictEqual([meta.width, meta.height], [800, 600]);
+    const webp = await sharp({ create: { width: 64, height: 64, channels: 3, background: '#000' } }).webp().toBuffer();
+    assert.strictEqual((await upload(owner, 'background', webp, 'image/webp')).status, 201);
+    // a fake image (JPEG magic, not an image) -> 400; too big -> 413; an image as a video -> 400
+    const fake = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(2000, 7)]);
+    const bad = await upload(owner, 'background', fake, 'image/jpeg');
+    assert.deepStrictEqual([bad.status, typeof bad.body.error], [400, 'string']);
+    const huge = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(9 * 1024 * 1024)]);
+    assert.strictEqual((await upload(owner, 'background', huge, 'image/jpeg')).status, 413, 'images max 8 MB');
+    assert.strictEqual((await upload(owner, 'video', jpeg, 'image/jpeg')).status, 400, 'a video upload stays video only');
+    // a loop: an MP4 as a background; over 50 MB -> 413 (declared size)
+    const mp4 = Buffer.concat([Buffer.from([0, 0, 0, 0x20]), Buffer.from('ftypisom'), Buffer.alloc(4000)]);
+    const loop = await upload(owner, 'background', mp4, 'video/mp4', 'Nori');
+    assert.deepStrictEqual([loop.status, loop.body.media.kind, loop.body.media.category], [201, 'loop', 'background']);
+    const big = await fetch(`${base()}/api/media/upload?as=background&title=x`, {
+      method: 'POST', headers: { Cookie: owner, 'Content-Type': 'video/mp4', 'Content-Length': String(51 * 1024 * 1024) }, body: mp4,
+    }).catch(() => ({ status: 413 }));
+    assert.strictEqual(big.status, 413);
+    // the quota counts images with their versions
+    const list = (await api('GET', '/api/media', owner)).body;
+    assert.ok(list.usedBytes >= jpeg.length + 4000, 'usage includes backgrounds');
+    assert.deepStrictEqual([list.maxImageBytes, list.maxLoopBytes], [8 * 1024 * 1024, 50 * 1024 * 1024]);
+    // a background is not a video: video.prepare refuses it
+    const op = await joined(owner, ev.id);
+    assert.strictEqual((await emit(op.socket, 'live:command', { eventId: ev.id, type: 'video.prepare', mediaId: loop.body.media.id })).code, 'videoNotFound');
+    op.socket.close();
+    // access: another admin 404, no session 404, a member of the admin may load it, a signed URL
+    assert.strictEqual((await file(other, '?v=display')).status, 404);
+    assert.strictEqual((await file(null, '?v=display')).status, 404);
+    assert.strictEqual((await file(member, '?v=display')).status, 200);
+    assert.strictEqual((await api('GET', '/api/media', member)).status, 403);
+    const { createMediaSigner } = require('../lib/media');
+    const signed = createMediaSigner(dataDir).url(1, id, Date.now(), 'display');
+    const viaSig = await fetch(base() + signed);
+    assert.deepStrictEqual([viaSig.status, viaSig.headers.get('content-type')], [200, 'image/webp']);
+    // delete removes every file of the image
+    assert.strictEqual((await api('DELETE', `/api/media/${p.body.media.id}`, owner)).status, 200);
+    assert.strictEqual((await fetch(`${base()}/api/media/${p.body.media.id}/file?v=thumb`, { headers: { Cookie: owner } })).status, 404);
+  });
+
   await step('shared frames: a page holding the event data computes the same frame as the server', async () => {
     // The browser build of public/frames.js (no require), as the live page loads it.
     const sandbox = { window: {} };
