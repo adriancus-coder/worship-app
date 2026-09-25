@@ -550,7 +550,7 @@ main.wide.event-page { max-width: 1200px; }
 
 .save-bar {
   position: sticky;
-  bottom: 0;
+  bottom: var(--shell-bottom, 0px);
   z-index: 5;
   display: flex;
   align-items: center;
@@ -703,7 +703,7 @@ main.rehearse-page { flex: 1 0 auto; display: flex; flex-direction: column; padd
 
 .rehearse-nav {
   position: sticky;
-  bottom: 0;
+  bottom: var(--shell-bottom, 0px);
   z-index: 5;
   display: flex;
   gap: 12px;
@@ -819,7 +819,7 @@ button.live-item:disabled { opacity: 1; cursor: default; }
 
 .live-nav {
   position: sticky;
-  bottom: 0;
+  bottom: var(--shell-bottom, 0px);
   z-index: 5;
   display: flex;
   gap: 12px;
@@ -1004,3 +1004,89 @@ body.screen-body.cursor-hidden, body.screen-body.cursor-hidden * { cursor: none;
 .video-tools > button { flex: 1 1 auto; }
 .video-volume { flex-direction: row; align-items: center; gap: 8px; flex: 1 1 100%; min-height: 44px; font-weight: 500; }
 .video-volume input { flex: 1; accent-color: var(--accent); min-height: 44px; }
+
+/* --- App shell (public/shell.js): bottom tab bar on phones, left rail from 900px --------- */
+body.has-shell { --shell-bottom: calc(64px + env(safe-area-inset-bottom)); padding-bottom: var(--shell-bottom); }
+.app-shell {
+  position: fixed;
+  z-index: 50;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--surface);
+  box-shadow: 0 -1px 0 var(--border); /* a line that adds no height: the bar is exactly 64px */
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.shell-list { list-style: none; margin: 0; padding: 0; display: flex; }
+.shell-list li { flex: 1 1 0; min-width: 0; }
+.shell-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 100%;
+  min-height: 64px;
+  padding: 6px 4px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+.shell-item:hover { color: var(--text); }
+.shell-item[aria-current="page"], .shell-item.current { color: var(--accent); }
+.shell-item:focus-visible { outline: 3px solid var(--accent); outline-offset: -3px; }
+.shell-label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.shell-icon { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.shell-icon-more { stroke-width: 3.5; }
+
+.shell-panel {
+  position: absolute;
+  right: 8px;
+  bottom: calc(100% + 8px);
+  width: min(340px, calc(100vw - 16px));
+  max-height: calc(100dvh - 96px);
+  overflow-y: auto;
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+}
+.shell-panel-title { margin: 0 0 4px; font-size: 1.125rem; }
+.shell-who { margin: 0 0 12px; color: var(--muted); font-size: 0.875rem; overflow-wrap: anywhere; }
+.shell-pages { list-style: none; margin: 0 0 12px; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.shell-page { display: flex; align-items: center; min-height: var(--touch); padding: 0 12px; border-radius: var(--radius); color: var(--text); text-decoration: none; font-weight: 600; background: var(--bg); }
+.shell-page[aria-current="page"] { color: var(--accent); }
+.shell-page:hover { background: var(--border); }
+.shell-setting { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 12px; }
+.shell-setting-label { font-weight: 600; }
+.shell-logout { width: 100%; }
+
+@media (min-width: 900px) {
+  body.has-shell { --shell-bottom: 0px; padding-bottom: 0; padding-left: 96px; }
+  .app-shell { top: 0; right: auto; width: 96px; box-shadow: 1px 0 0 var(--border); padding: 8px 0; }
+  .shell-list { flex-direction: column; gap: 4px; }
+  .shell-item { min-height: 72px; font-size: 0.8125rem; }
+  .shell-panel { left: calc(100% + 8px); right: auto; bottom: 8px; top: auto; }
+}
+
+/* Full-screen work pages (live, follow): only a small "← Ieși". */
+.shell-exit {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--touch);
+  margin: 4px 0 0 12px;
+  padding: 0 10px;
+  color: var(--muted);
+  font-weight: 600;
+  text-decoration: none;
+  border-radius: var(--radius);
+}
+.shell-exit:hover { color: var(--text); background: var(--surface); }
+.shell-exit:focus-visible { outline: 3px solid var(--accent); outline-offset: 0; }

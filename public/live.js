@@ -119,8 +119,6 @@
     const snap = state.snap;
     setTitle('live.pageTitle', { name: ev.name });
     $('event-name').textContent = ev.name;
-    $('back-link').textContent = t('rehearse.back', { name: ev.name });
-    $('back-link').href = `/events/${ev.id}`;
     const status = snap.status;
     $('event-status').className = `pill pill-${status}`;
     $('event-status').textContent = t(`events.status.${status}`);

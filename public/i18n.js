@@ -133,6 +133,15 @@
         library: 'Bibliotecă',
         events: 'Evenimente',
       },
+      shell: {
+        more: 'Mai mult',
+        media: 'Media',
+        screens: 'Ecrane',
+        settings: 'Setări',
+        language: 'Limbă',
+        who: '{name} · {role} · {adminName}',
+        exit: '← Ieși',
+      },
       rehearse: {
         pageTitle: 'Repetiție: {name} — {appName}',
         link: 'Repetiție',
@@ -828,6 +837,15 @@
         home: 'Home',
         library: 'Library',
         events: 'Events',
+      },
+      shell: {
+        more: 'More',
+        media: 'Media',
+        screens: 'Screens',
+        settings: 'Settings',
+        language: 'Language',
+        who: '{name} · {role} · {adminName}',
+        exit: '← Exit',
       },
       rehearse: {
         pageTitle: 'Rehearsal: {name} — {appName}',

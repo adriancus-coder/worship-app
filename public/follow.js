@@ -104,8 +104,6 @@
     $('event-name').textContent = ev.name;
     $('event-status').className = `pill pill-${status}`;
     $('event-status').textContent = t(`events.status.${status}`);
-    $('back-link').textContent = t('rehearse.back', { name: ev.name });
-    $('back-link').href = `/events/${ev.id}`;
     slide.style.fontSize = `${state.scale}rem`;
     $('text-smaller').disabled = state.scale <= SCALE.min + 1e-9;
     $('text-larger').disabled = state.scale >= SCALE.max - 1e-9;

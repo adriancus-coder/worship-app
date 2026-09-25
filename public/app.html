@@ -7,18 +7,7 @@
   <title data-i18n="app.pageTitle">{{APP_NAME}}</title>
   <link rel="stylesheet" href="/styles.css">
 </head>
-<body>
-  <header class="topbar">
-    <nav class="topnav" data-i18n-aria-label="nav.label">
-      <a href="/app" aria-current="page" data-i18n="nav.home"></a>
-      <a href="/library" data-i18n="nav.library"></a>
-      <a href="/events" data-i18n="nav.events"></a>
-    </nav>
-    <div class="lang-switch" role="group" aria-label="Limbă / Language">
-      <button type="button" data-lang="ro" lang="ro" aria-pressed="false">RO</button>
-      <button type="button" data-lang="en" lang="en" aria-pressed="false">EN</button>
-    </div>
-  </header>
+<body data-shell="home">
   <main>
     <h1 data-i18n="app.heading"></h1>
     <p id="whoami" class="muted" data-i18n="app.loading"></p>
@@ -30,6 +19,7 @@
     <button type="button" id="logout" class="secondary" data-i18n="app.logout"></button>
   </main>
   <script src="/i18n.js"></script>
+  <script src="/shell.js"></script>
   <script src="/app.js"></script>
 </body>
 </html>
