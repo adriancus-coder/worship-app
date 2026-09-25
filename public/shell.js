@@ -27,6 +27,7 @@
     password: 'M6 11h12a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1zM8 11V7a4 4 0 0 1 8 0v4M12 15v2',
     logout: 'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9',
     chevron: 'M9 6l6 6-6 6',
+    install: 'M12 3v12M7 10l5 5 5-5M5 21h14',
   };
 
   function icon(name) {
@@ -178,6 +179,20 @@
     },
   }, icon('logout'), logoutLabel);
 
+  // "Instalează aplicația": not in the installed app itself (public/pwa.js does the rest).
+  const standalone = () => Boolean((window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
+    || window.navigator.standalone);
+  const installLabel = el('span', { class: 'shell-row-label' });
+  const installRow = el('button', {
+    type: 'button',
+    class: 'shell-row shell-install',
+    hidden: standalone(),
+    onclick: () => {
+      open(false);
+      if (window.PWA) window.PWA.install.open();
+    },
+  }, icon('install'), installLabel, icon('chevron'));
+
   const navSection = section('shell.sections.navigation', el('ul', { class: 'shell-rows' }, ...navLinks.map((p) => p.item)));
   panel.append(
     handle,
@@ -188,6 +203,7 @@
         el('div', { class: 'shell-setting' }, langLabel, langSwitch),
         el('div', { class: 'shell-setting' }, notationLabel, notationSlot)),
       section('shell.sections.account',
+        installRow,
         el('ul', { class: 'shell-rows' }, ...accountLinks.map((p) => p.item)),
         logout)));
 
@@ -252,6 +268,7 @@
     langLabel.textContent = t('shell.language');
     notationLabel.textContent = t('notation.label');
     logoutLabel.textContent = t('app.logout');
+    installLabel.textContent = t('pwa.install');
     for (const p of pageLinks) p.label.textContent = t(p.key);
     if (notationGroup.renderSwitch) notationGroup.renderSwitch();
     if (me) {

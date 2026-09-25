@@ -15,6 +15,12 @@
 // Nothing reloads by itself. A page with an event live marks <html data-pwa-hold> (live,
 // follow, operator, /screen): no toast there, and no worker switch, while it is set. The
 // projector screen never shows the toast; with no event live it reloads silently after 60 s.
+//
+// Installing: PWA.install.open() (from "Mai mult → Instalează aplicația" and the home card)
+// uses Chrome / Edge's own install prompt when the browser offered one; on iPhone / iPad
+// (every browser there is Safari underneath) it shows a sheet with the three "Add to Home
+// Screen" steps; elsewhere a short note. The home page (/app) shows, at most once a week
+// and only in the browser (not in the installed app), a small dismissible card.
 
 (function () {
   const PAGES_CACHE = 'wa-pages';
@@ -183,11 +189,155 @@
     ready.then(watchUpdates);
   }
 
+  // --- installing -------------------------------------------------------------------
+
+  const CARD_KEY = 'wa_install_card_at';
+  const CARD_EVERY_MS = 7 * 24 * 60 * 60 * 1000;
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+  const install = { prompt: null, installed: false, sheet: null };
+
+  const standalone = () => Boolean((window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
+    || window.navigator.standalone);
+  const isIos = () => /iPad|iPhone|iPod/.test(navigator.userAgent)
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); // iPadOS asks for the desktop site
+
+  function node(tag, props = {}, ...children) {
+    const n = document.createElement(tag);
+    for (const [key, value] of Object.entries(props || {})) {
+      if (key === 'text') n.textContent = value;
+      else if (key === 'class') n.className = value;
+      else if (key.startsWith('on')) n.addEventListener(key.slice(2), value);
+      else n.setAttribute(key, value);
+    }
+    for (const child of children) if (child) n.append(child);
+    return n;
+  }
+
+  function svgIcon(d, cls) {
+    const svg = document.createElementNS(SVG_NS, 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('aria-hidden', 'true');
+    svg.setAttribute('class', cls);
+    const path = document.createElementNS(SVG_NS, 'path');
+    path.setAttribute('d', d);
+    svg.append(path);
+    return svg;
+  }
+  const SHARE_ICON = 'M8 9H6.5A1.5 1.5 0 0 0 5 10.5v9A1.5 1.5 0 0 0 6.5 21h11a1.5 1.5 0 0 0 1.5-1.5v-9A1.5 1.5 0 0 0 17.5 9H16M12 3v11M8.5 6.5 12 3l3.5 3.5';
+  const ADD_ICON = 'M6 4h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zM12 8v8M8 12h8';
+
+  // The three iPhone / iPad steps, each with a small drawing of what to tap.
+  function iosSteps() {
+    return node('ol', { class: 'install-steps' },
+      node('li', null,
+        node('span', { class: 'install-art' }, svgIcon(SHARE_ICON, 'install-art-icon')),
+        node('p', { text: t('pwa.iosStep1', 'Apasă butonul Partajează.') })),
+      node('li', null,
+        node('span', { class: 'install-art install-art-row' },
+          node('span', { class: 'install-art-label', text: t('pwa.iosAddLabel', 'Adaugă pe ecranul principal') }),
+          svgIcon(ADD_ICON, 'install-art-icon')),
+        node('p', { text: t('pwa.iosStep2', 'Alege „Adaugă pe ecranul principal”.') })),
+      node('li', null,
+        node('span', { class: 'install-art install-art-bar' },
+          node('span', { class: 'install-art-add', text: t('pwa.iosAddButton', 'Adaugă') })),
+        node('p', { text: t('pwa.iosStep3', 'Apasă „Adaugă”.') })));
+  }
+
+  function openSheet(kind) {
+    if (!install.sheet) {
+      install.sheet = node('dialog', { class: 'install-sheet', 'aria-labelledby': 'install-sheet-title' });
+      install.sheet.addEventListener('click', (event) => {
+        if (event.target === install.sheet) install.sheet.close(); // a tap on the dimmed area
+      });
+      document.body.append(install.sheet);
+    }
+    const sheet = install.sheet;
+    sheet.dataset.kind = kind;
+    let body;
+    if (kind === 'ios') {
+      body = [node('p', { class: 'muted', text: t('pwa.iosIntro', 'Pe iPhone și iPad, aplicația se adaugă din Safari (sau Edge), în trei pași:') }), iosSteps(),
+        node('p', { class: 'hint', text: t('pwa.iosAfter', 'Aplicația apare apoi pe ecranul principal.') })];
+    } else if (kind === 'installed') {
+      body = [node('p', { text: t('pwa.installedText', 'Aplicația e instalată pe acest dispozitiv.') })];
+    } else {
+      body = [node('p', { text: t('pwa.otherText', 'Deschide meniul browserului și alege „Instalează aplicația” sau „Adaugă pe ecranul principal”.') })];
+    }
+    const title = node('h2', { id: 'install-sheet-title', tabindex: '-1', text: t(kind === 'ios' ? 'pwa.iosTitle' : 'pwa.install', 'Instalează aplicația') });
+    sheet.replaceChildren(
+      node('div', { class: 'install-sheet-body' }, title, ...body),
+      node('div', { class: 'install-sheet-foot' },
+        node('button', { type: 'button', text: t('pwa.gotIt', 'Am înțeles'), onclick: () => sheet.close() })));
+    if (!sheet.open) sheet.showModal();
+    title.focus({ preventScroll: true });
+  }
+
+  async function openInstall() {
+    if (install.prompt) {
+      const prompt = install.prompt;
+      install.prompt = null; // a saved prompt works once
+      prompt.prompt();
+      const choice = await prompt.userChoice.catch(() => null);
+      if (choice && choice.outcome === 'accepted') install.installed = true;
+      return;
+    }
+    if (install.installed) openSheet('installed');
+    else openSheet(isIos() ? 'ios' : 'other');
+  }
+
+  window.addEventListener('beforeinstallprompt', (event) => {
+    event.preventDefault(); // offered from "Mai mult" / the home card instead
+    install.prompt = event;
+  });
+  window.addEventListener('appinstalled', () => {
+    install.prompt = null;
+    install.installed = true;
+    const card = document.getElementById('install-card');
+    if (card) card.replaceChildren();
+  });
+
+  // Home (/app): "Instalează aplicația pentru acces rapid", at most once a week.
+  function installCard() {
+    const slot = document.getElementById('install-card');
+    if (!slot || standalone() || held()) return;
+    let last = 0;
+    try {
+      last = Number(window.localStorage.getItem(CARD_KEY)) || 0;
+      if (Date.now() - last < CARD_EVERY_MS) return;
+      window.localStorage.setItem(CARD_KEY, String(Date.now()));
+    } catch (err) {
+      return; // no storage: no way to keep it to once a week
+    }
+    const text = node('p', { class: 'install-card-text' });
+    const button = node('button', { type: 'button', class: 'secondary', onclick: openInstall });
+    const close = node('button', { type: 'button', class: 'install-card-close', text: '✕', onclick: () => slot.replaceChildren() });
+    const render = () => {
+      text.textContent = t('pwa.cardText', 'Instalează aplicația pentru acces rapid');
+      button.textContent = t('pwa.cardButton', 'Instalează');
+      close.setAttribute('aria-label', t('pwa.cardClose', 'Nu acum'));
+      close.title = t('pwa.cardClose', 'Nu acum');
+    };
+    render();
+    document.addEventListener('i18n:change', render);
+    slot.replaceChildren(node('div', { class: 'install-card' },
+      node('img', { class: 'install-card-icon', src: '/icons/icon-192.png', alt: '', width: '40', height: '40' }),
+      text, button, close));
+  }
+  installCard();
+
+  document.addEventListener('i18n:change', () => {
+    if (install.sheet && install.sheet.open) openSheet(install.sheet.dataset.kind);
+  });
+
   window.PWA = {
     ready,
     clearPrivate,
     get registration() { return registration; },
     get updateWaiting() { return Boolean(update.waiting); },
     get build() { return build; },
+    install: {
+      open: openInstall,
+      get standalone() { return standalone(); },
+      get canPrompt() { return Boolean(install.prompt); },
+    },
   };
 })();

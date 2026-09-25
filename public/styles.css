@@ -1431,3 +1431,38 @@ button.op-step:disabled { opacity: 1; cursor: default; }
 .update-toast-reload { flex: 1 1 auto; min-width: 0; padding: 8px 8px 8px 18px; text-align: left; overflow-wrap: anywhere; font-weight: 400; }
 .update-toast-reload strong { color: var(--accent); }
 .update-toast-close { flex: 0 0 var(--touch); min-width: var(--touch); padding: 0; color: var(--muted); }
+
+/* --- Installed app: install help ------------------------------------------------------ */
+.shell-install[hidden] { display: none; }
+dialog.install-sheet { width: min(460px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); padding: 0; overflow: hidden; }
+dialog.install-sheet[open] { display: flex; flex-direction: column; }
+.install-sheet-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 20px 20px 8px; }
+.install-sheet-body h2 { margin: 0 0 8px; overflow-wrap: anywhere; }
+.install-sheet-body h2:focus { outline: none; }
+.install-sheet-body > p + p, .install-sheet-body .hint { margin-top: 10px; }
+.install-sheet-foot { padding: 10px 20px calc(14px + env(safe-area-inset-bottom, 0px)); }
+.install-sheet-foot button { width: 100%; min-height: var(--touch); }
+.install-steps { list-style: none; counter-reset: install; margin: 14px 0 0; padding: 0; display: grid; gap: 12px; }
+.install-steps li { counter-increment: install; display: grid; grid-template-columns: 28px minmax(0, 1fr); grid-template-areas: "n art" "n text"; gap: 6px 10px; align-items: start; }
+.install-steps li::before { content: counter(install); grid-area: n; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; font-weight: 800; color: var(--accent-text); background: var(--accent); }
+.install-steps p { grid-area: text; overflow-wrap: anywhere; }
+.install-art { grid-area: art; display: inline-flex; align-items: center; justify-content: center; gap: 10px; justify-self: start; min-height: 44px; padding: 6px 14px; color: #0a84ff; background: #f2f2f7; border-radius: 12px; max-width: 100%; }
+.install-art-icon { width: 26px; height: 26px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.install-art-row { justify-content: space-between; min-width: min(260px, 100%); color: #1c1c1e; }
+.install-art-row .install-art-icon { color: #1c1c1e; }
+.install-art-label { min-width: 0; overflow-wrap: anywhere; font-size: 0.95rem; }
+.install-art-bar { min-width: min(200px, 100%); justify-content: flex-end; }
+.install-art-add { font-weight: 700; color: #0a84ff; }
+@media (max-width: 599px) {
+  dialog.install-sheet { width: 100%; max-width: 100%; margin: auto 0 0; border-radius: 18px 18px 0 0; border-bottom: 0; }
+}
+.install-card { display: flex; align-items: center; gap: 12px; margin-top: 16px; padding: 10px 6px 10px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; }
+.install-card-icon { flex: none; width: 40px; height: 40px; border-radius: 10px; }
+.install-card-text { flex: 1 1 auto; min-width: 0; margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+.install-card button { flex: none; min-height: var(--touch); }
+.install-card-close { width: var(--touch); padding: 0; color: var(--muted); background: transparent; border: 0; }
+@media (max-width: 420px) {
+  .install-card { display: grid; grid-template-columns: 40px minmax(0, 1fr) var(--touch); gap: 8px 12px; padding: 10px 6px 12px 12px; }
+  .install-card-close { grid-column: 3; grid-row: 1; }
+  .install-card > button.secondary { grid-column: 1 / -1; grid-row: 2; margin-right: 6px; }
+}
