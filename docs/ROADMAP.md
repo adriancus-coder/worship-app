@@ -14,6 +14,8 @@ never implement a later stage early. Mockups: claude.ai design canvas
 - **Accounts:** personal logins (email + password) per user, roles owner / leader /
   operator / member. Owner invites users. "Remember me" for church PCs.
 - **UI:** new design, dark stage theme, phone- and tablet-first; Romanian UI by default.
+- **Chord notation:** letters (C D E) or Romanian solfège (Do Re Mi), chosen per user with a
+  church default; songs are always stored with letters (display only).
 
 ## Live model (core rules)
 

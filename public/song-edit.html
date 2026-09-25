@@ -40,6 +40,14 @@
       <div id="sections-editor"></div>
       <button type="button" id="add-section" class="secondary" data-i18n="editor.addSection"></button>
 
+      <section class="editor-preview" aria-labelledby="preview-heading">
+        <div class="editor-preview-head">
+          <h2 id="preview-heading" data-i18n="editor.previewHeading"></h2>
+          <span data-notation-switch></span>
+        </div>
+        <div id="editor-preview"></div>
+      </section>
+
       <div class="message error" id="message" role="alert" aria-live="assertive"></div>
       <div class="form-actions">
         <button type="submit" id="save" data-i18n="editor.save"></button>
@@ -68,6 +76,8 @@
   <script src="/chords.js"></script>
   <script src="/sections.js"></script>
   <script src="/page.js"></script>
+  <script src="/notation.js"></script>
+  <script src="/song-render.js"></script>
   <script src="/song-edit.js"></script>
 </body>
 </html>

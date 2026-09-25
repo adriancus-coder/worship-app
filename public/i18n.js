@@ -144,6 +144,11 @@
         openVideo: 'Deschide videoclipul',
         empty: 'Programul acestui eveniment e gol.',
       },
+      notation: {
+        label: 'Notație acorduri',
+        letters: 'Acorduri cu litere (C D E)',
+        solfege: 'Acorduri în solfegiu (Do Re Mi)',
+      },
       settings: {
         pageTitle: 'Setări — {appName}',
         link: 'Setări',
@@ -541,6 +546,8 @@
         moveDown: 'Mută „{label}” mai jos',
         removeSection: 'Șterge „{label}”',
         addSection: '+ Secțiune',
+        previewHeading: 'Previzualizare',
+        previewEmpty: 'Scrie o secțiune ca să vezi cum va arăta.',
         save: 'Salvează',
         saving: 'Se salvează…',
         cancel: 'Renunță',
@@ -710,6 +717,11 @@
         teamNote: 'Note for the team',
         openVideo: 'Open the video',
         empty: 'This event has no items yet.',
+      },
+      notation: {
+        label: 'Chord notation',
+        letters: 'Chords as letters (C D E)',
+        solfege: 'Chords in solfège (Do Re Mi)',
       },
       settings: {
         pageTitle: 'Settings — {appName}',
@@ -1108,6 +1120,8 @@
         moveDown: 'Move “{label}” down',
         removeSection: 'Delete “{label}”',
         addSection: '+ Section',
+        previewHeading: 'Preview',
+        previewEmpty: 'Write a section to see how it will look.',
         save: 'Save',
         saving: 'Saving…',
         cancel: 'Cancel',

@@ -934,3 +934,16 @@ body.screen-body.cursor-hidden, body.screen-body.cursor-hidden * { cursor: none;
 .source-buttons button:disabled { opacity: 0.45; cursor: not-allowed; }
 .notation-choice { display: flex; flex-wrap: wrap; gap: 8px; }
 .notation-choice button { min-width: 120px; }
+
+/* --- chord notation switch ("C · Do") ------------------------------------------------------ */
+
+.notation-switch { display: inline-flex; flex: none; border: 1px solid var(--border); border-radius: var(--radius); }
+.notation-switch button { min-width: var(--touch); min-height: var(--touch); padding: 0 10px; border: 0; border-radius: 0; font-weight: 700; }
+.notation-switch button:first-child { border-radius: calc(var(--radius) - 1px) 0 0 calc(var(--radius) - 1px); }
+.notation-switch button:last-child { border-radius: 0 calc(var(--radius) - 1px) calc(var(--radius) - 1px) 0; border-left: 1px solid var(--border); }
+.notation-switch button[aria-pressed="true"] { color: var(--accent-text); background: var(--accent); }
+.preview-head, .editor-preview-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.editor-preview { margin: 16px 0; padding: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+.editor-preview h2 { margin: 0; }
+.editor-preview #editor-preview { margin-top: 12px; }
+.current-tools, .preview-tools { display: flex; justify-content: flex-end; margin-bottom: 8px; }

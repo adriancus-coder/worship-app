@@ -112,7 +112,7 @@
     return el('ol', { class: 'follow-setlist' }, state.items.map((item) => el('li', null,
       el('span', { class: `type-badge type-${item.type}`, text: t(`setlist.types.${item.type}`) }),
       el('span', { class: 'follow-setlist-title', text: itemTitle(item) }),
-      item.type === 'song' && item.displayKey ? el('span', { class: 'muted', text: ` · ${t('options.songKeyShort', { key: item.displayKey })}` }) : null)));
+      item.type === 'song' && item.displayKey ? el('span', { class: 'muted', text: ` · ${t('options.songKeyShort', { key: window.NOTATION.chord(item.displayKey) })}` }) : null)));
   }
 
   function upNext(pos) {
@@ -150,7 +150,7 @@
     const head = el('header', { class: 'slide-head' },
       el('span', { class: `type-badge type-${item.type}`, text: t(`setlist.types.${item.type}`) }),
       el('h1', { text: itemTitle(item) }),
-      item.type === 'song' && item.displayKey ? el('p', { class: 'slide-key' }, el('span', { class: 'key-badge', text: t('rehearse.key', { key: item.displayKey }) })) : null);
+      item.type === 'song' && item.displayKey ? el('p', { class: 'slide-key' }, el('span', { class: 'key-badge', text: t('rehearse.key', { key: window.NOTATION.chord(item.displayKey) }) })) : null);
 
     if (item.type !== 'song' || !item.songId) {
       const body = [];
@@ -228,6 +228,8 @@
   }
   $('text-smaller').addEventListener('click', () => setScale(-SCALE.step));
   $('text-larger').addEventListener('click', () => setScale(SCALE.step));
+
+  document.addEventListener('notation:change', () => render());
 
   document.addEventListener('i18n:change', () => {
     if (!state.snap) return;

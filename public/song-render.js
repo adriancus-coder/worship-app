@@ -12,9 +12,11 @@
     const { inlineLinePairs, stripChords } = window.CHORDS;
     const labels = givenLabels || window.SECTIONS.sectionLabels(sections, t);
 
+    // Chords in the reader's notation (letters or solfège); storage stays letters.
     function chordSheet(content) {
       const lines = [];
-      for (const { chords, lyrics } of inlineLinePairs(content)) {
+      const shown = window.NOTATION ? window.NOTATION.content(content) : content;
+      for (const { chords, lyrics } of inlineLinePairs(shown)) {
         if (chords !== null) lines.push(el('span', { class: 'chord-line', text: chords }));
         if (lyrics !== null) lines.push(el('span', { class: 'lyric-line', text: lyrics || ' ' }));
       }

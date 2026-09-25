@@ -89,7 +89,7 @@
     const song = p.song;
     previewTitle.textContent = song.title;
     previewMeta.textContent = [
-      song.key ? t('song.key', { key: song.key }) : null,
+      song.key ? t('song.key', { key: window.NOTATION.chord(song.key) }) : null,
       song.author ? t('song.author', { author: song.author }) : null,
       song.presentation ? t('online.presentation', { order: song.presentation }) : null,
     ].filter(Boolean).join(' · ');
@@ -232,6 +232,8 @@
     render();
     (resultsList.querySelector('button') || searchInput).focus();
   });
+
+  document.addEventListener('notation:change', () => render());
 
   document.addEventListener('i18n:change', () => {
     // Server messages are in the previous language; drop them rather than mix languages.

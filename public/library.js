@@ -29,7 +29,7 @@
   function render() {
     if (!songs) return;
     list.replaceChildren(...songs.map((song) => {
-      const meta = [song.song_key ? t('library.key', { key: song.song_key }) : null, song.author].filter(Boolean).join(' · ');
+      const meta = [song.song_key ? t('library.key', { key: window.NOTATION.chord(song.song_key) }) : null, song.author].filter(Boolean).join(' · ');
       return el('li', null,
         el('a', { class: 'song-link', href: `/songs/${song.id}` },
           el('span', { class: 'song-title', text: song.title }),
@@ -78,6 +78,7 @@
   sort.addEventListener('change', load);
   document.addEventListener('library:changed', load);
   document.addEventListener('i18n:change', render);
+  document.addEventListener('notation:change', render);
 
   (async () => {
     const res = await api('/api/auth/me');

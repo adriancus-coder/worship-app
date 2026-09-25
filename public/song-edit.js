@@ -49,7 +49,8 @@
     const value = keySelect.value;
     keySelect.replaceChildren(
       el('option', { value: '', text: t('editor.keyNone') }),
-      ...SONG_KEYS.map((key) => el('option', { value: key, text: key })),
+      // Shown in the reader's notation (Sol, Lam); the value stays the letter key.
+      ...SONG_KEYS.map((key) => el('option', { value: key, text: window.NOTATION.chord(key) })),
     );
     keySelect.value = value;
   }
@@ -88,6 +89,7 @@
   }
 
   function renderSections() {
+    schedulePreview(); // sections added, removed or moved
     const count = state.sections.length;
     container.replaceChildren(...state.sections.map((section, i) => {
       const id = `section-${i}`;
@@ -166,9 +168,34 @@
     }
   }
 
+  // Live preview of the sections as they will be shown (chords in the reader's notation).
+  // A pasted chord-over-lyrics block, even in solfège, is shown as it will be stored.
+  const preview = document.getElementById('editor-preview');
+  let previewTimer = null;
+  function renderPreview() {
+    clearTimeout(previewTimer);
+    const sections = state.sections
+      .filter((s) => s.content && s.content.trim())
+      .map((s) => ({ type: s.type, label: s.label, note: s.note, content: chordsOverLyricsToInline(s.content) }));
+    preview.replaceChildren(...(sections.length
+      ? window.SONG_RENDER.sectionsView(sections, { headingLevel: 3 })
+      : [el('p', { class: 'muted', text: t('editor.previewEmpty') })]));
+  }
+  function schedulePreview() {
+    clearTimeout(previewTimer);
+    previewTimer = setTimeout(renderPreview, 200);
+  }
+  form.addEventListener('input', schedulePreview);
+  form.addEventListener('change', schedulePreview);
+  document.addEventListener('notation:change', () => {
+    renderKeys();
+    renderPreview();
+  });
+
   function renderPage() {
     renderKeys();
     renderSections();
+    renderPreview();
     if (songId) {
       heading.dataset.i18n = 'editor.headingEdit';
       heading.textContent = t('editor.headingEdit');

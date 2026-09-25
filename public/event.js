@@ -369,7 +369,8 @@
     const transpose = Number(item.transpose) || 0;
     if (!item.song.key) return transpose ? semitoneText(transpose) : null;
     const key = keyAfter(item.song.key, transpose);
-    return transpose ? t('options.songKeyShifted', { key, offset: offsetText(transpose) }) : t('options.songKeyShort', { key });
+    const shown = window.NOTATION.chord(key);
+    return transpose ? t('options.songKeyShifted', { key: shown, offset: offsetText(transpose) }) : t('options.songKeyShort', { key: shown });
   }
 
   function arrangementCodes(item, song) {
@@ -392,8 +393,8 @@
     const transpose = Number(item.transpose) || 0;
     const display = song.song_key
       ? (transpose
-        ? t('options.keyDisplay', { key: keyAfter(song.song_key, transpose), original: song.song_key, offset: offsetText(transpose) })
-        : t('options.keyOriginalOnly', { key: song.song_key }))
+        ? t('options.keyDisplay', { key: window.NOTATION.chord(keyAfter(song.song_key, transpose)), original: window.NOTATION.chord(song.song_key), offset: offsetText(transpose) })
+        : t('options.keyOriginalOnly', { key: window.NOTATION.chord(song.song_key) }))
       : (transpose ? semitoneText(transpose) : t('options.keyNoKeyNone'));
     const setTranspose = (value) => {
       item.transpose = value;
@@ -509,7 +510,7 @@
     const key = keyAfter(song.song_key, item.transpose);
     const sections = indexes.map((i) => ({ ...song.sections[i], content: transposeContent(song.sections[i].content, item.transpose, key) }));
     return el('div', { class: 'detail-sections' },
-      el('span', { class: 'ro-label', text: t('options.previewHeading') }),
+      el('div', { class: 'preview-head' }, el('span', { class: 'ro-label', text: t('options.previewHeading') }), window.NOTATION.createSwitch()),
       window.SONG_RENDER.sectionsView(sections, { headingLevel: 4, labels: indexes.map((i) => labels[i]) }));
   }
 
@@ -925,7 +926,7 @@
         },
       },
       el('span', { class: 'song-title', text: song.title }),
-      el('span', { class: 'song-meta', text: [song.song_key ? t('library.key', { key: song.song_key }) : null, song.author].filter(Boolean).join(' · ') }),
+      el('span', { class: 'song-meta', text: [song.song_key ? t('library.key', { key: window.NOTATION.chord(song.song_key) }) : null, song.author].filter(Boolean).join(' · ') }),
       el('span', { class: 'song-hint', text: lastSungText(song.lastSung) })))));
     songStatus.textContent = pickData.songs.length ? '' : t('setlist.pickNoResults');
   }
@@ -972,6 +973,16 @@
   // --- start ------------------------------------------------------------------------
 
   wide.addEventListener('change', placeDetail);
+
+  // Chord notation switched (here or on another switch): re-render in place.
+  document.addEventListener('notation:change', () => {
+    if (!state.event) return;
+    // The switch in the preview is re-created: keep the keyboard focus on it.
+    const focused = document.activeElement && document.activeElement.closest('.notation-switch') ? document.activeElement.dataset.value : null;
+    renderAll();
+    const again = focused && document.querySelector(`#detail .notation-switch [data-value="${focused}"]`);
+    if (again) again.focus();
+  });
 
   document.addEventListener('i18n:change', () => {
     if (!state.event) return;

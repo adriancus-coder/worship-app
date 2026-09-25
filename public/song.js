@@ -29,7 +29,7 @@
     setTitle('song.pageTitle', { title: song.title });
     document.getElementById('song-title').textContent = song.title;
     const meta = [
-      song.song_key ? t('song.key', { key: song.song_key }) : null,
+      song.song_key ? t('song.key', { key: window.NOTATION.chord(song.song_key) }) : null,
       song.author ? t('song.author', { author: song.author }) : null,
     ].filter(Boolean).join(' · ');
     const metaEl = document.getElementById('song-meta');
@@ -49,6 +49,10 @@
     }
     render();
   });
+  document.addEventListener('notation:change', () => {
+    if (song) render();
+  });
+
   document.addEventListener('i18n:change', () => {
     if (song) render();
     else if (!status.hasAttribute('data-i18n') && article.hidden && status.dataset.state === 'missing') setStatus(t('song.notFound'));

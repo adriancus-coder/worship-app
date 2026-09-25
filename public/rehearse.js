@@ -83,8 +83,8 @@
     let keyBadge = null;
     if (song.key) {
       keyBadge = el('p', { class: 'slide-key' },
-        el('span', { class: 'key-badge', text: t('rehearse.key', { key: song.key }) }),
-        song.transpose ? el('span', { class: 'muted', text: ` ${t('rehearse.keyOriginal', { key: song.originalKey })}` }) : null);
+        el('span', { class: 'key-badge', text: t('rehearse.key', { key: window.NOTATION.chord(song.key) }) }),
+        song.transpose ? el('span', { class: 'muted', text: ` ${t('rehearse.keyOriginal', { key: window.NOTATION.chord(song.originalKey) })}` }) : null);
     } else if (song.transpose) {
       keyBadge = el('p', { class: 'slide-key muted', text: t(Math.abs(song.transpose) === 1 ? 'options.keyNoKeyOne' : 'options.keyNoKey', { offset }) });
     }
@@ -197,6 +197,10 @@
     $('back-link').textContent = t('rehearse.back', { name: ev.name });
     $('back-link').href = `/events/${ev.id}`;
   }
+
+  document.addEventListener('notation:change', () => {
+    if (state.event) render(false);
+  });
 
   document.addEventListener('i18n:change', () => {
     if (!state.event) return;

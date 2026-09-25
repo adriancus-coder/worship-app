@@ -138,7 +138,7 @@
       el('span', { class: 'item-text' },
         el('span', { class: `type-badge type-${item.type}`, text: t(`setlist.types.${item.type}`) }),
         el('span', { class: 'item-title', text: itemTitle(item) }),
-        item.type === 'song' && item.displayKey ? el('span', { class: 'item-sub', text: t('options.songKeyShort', { key: item.displayKey }) }) : null),
+        item.type === 'song' && item.displayKey ? el('span', { class: 'item-sub', text: t('options.songKeyShort', { key: window.NOTATION.chord(item.displayKey) }) }) : null),
       isCurrent ? el('span', { class: 'live-badge', text: t('live.liveBadge') }) : null));
     }));
     if (!state.items.length) $('setlist').replaceChildren(el('li', { class: 'muted', text: t('setlist.empty') }));
@@ -187,7 +187,7 @@
     const head = el('header', { class: 'current-head' },
       el('span', { class: `type-badge type-${item.type}`, text: t(`setlist.types.${item.type}`) }),
       el('h3', { class: 'current-title', text: itemTitle(item) }),
-      item.type === 'song' && item.displayKey ? el('span', { class: 'key-badge', text: t('rehearse.key', { key: item.displayKey }) }) : null);
+      item.type === 'song' && item.displayKey ? el('span', { class: 'key-badge', text: t('rehearse.key', { key: window.NOTATION.chord(item.displayKey) }) }) : null);
 
     if (item.type !== 'song' || !item.songId) {
       box.replaceChildren(head, ...(item.type === 'song' ? [el('p', { class: 'muted', text: t('setlist.songDeletedHint') })] : textOf(item)));
@@ -229,7 +229,7 @@
       const i = state.items.indexOf(item);
       const upcoming = state.items[i + 1];
       if (item.type === 'song' && item.song) {
-        if (item.transpose) parts.push(el('p', { class: 'muted', text: t('rehearse.keyOriginal', { key: item.song.key || '—' }) }));
+        if (item.transpose) parts.push(el('p', { class: 'muted', text: t('rehearse.keyOriginal', { key: window.NOTATION.chord(item.song.key) || '—' }) }));
         if (item.arrangementResolved && item.arrangementResolved.length > 1) {
           parts.push(el('ol', { class: 'arr-strip', 'aria-label': t('rehearse.arrangement') },
             item.arrangementResolved.map((a, step) => el('li', { class: step === pos.step ? 'current' : null, title: a.label, text: a.code }))));
@@ -388,6 +388,10 @@
     } else if (event.key === 'l' || event.key === 'L') {
       toggleSource('logo'); // logo <-> content
     }
+  });
+
+  document.addEventListener('notation:change', () => {
+    if (state.snap && state.event) render();
   });
 
   document.addEventListener('i18n:change', () => {
