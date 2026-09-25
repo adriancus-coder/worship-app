@@ -15,6 +15,8 @@ const COMMANDS = ['event.start', 'event.end', 'worship.next', 'worship.prev', 'w
   'video.prepare', 'video.play', 'video.pause', 'video.restart', 'video.stop', 'video.volume'];
 
 const roomName = (adminId, eventId) => `admin:${adminId}:event:${eventId}`;
+// Home pages ("Acum") of an admin: told when an event starts, ends or changes status.
+const homeRoom = (adminId) => `admin:${adminId}:home`;
 const isId = (value) => Number.isInteger(value) && value > 0;
 
 // Created before the HTTP routes (they notify it), attached to socket.io once it exists.
@@ -106,6 +108,10 @@ function createLiveHub({ db, auth, logger, screensHub }) {
     screensHub.update(adminId);
   }
 
+  function notifyHome(adminId, eventId) {
+    io.to(homeRoom(adminId)).emit('home:changed', { eventId });
+  }
+
   function fail(socket, ack, code, extra) {
     reply(ack, { ok: false, code, error: tr(socket, `live.errors.${code}`), ...extra });
   }
@@ -137,6 +143,7 @@ function createLiveHub({ db, auth, logger, screensHub }) {
       logger.info(`Event #${cmd.eventId} ${cmd.type === 'event.start' ? 'started' : 'ended'} by user #${userId} (admin #${adminId})`);
     }
     if (result.changed) broadcast(adminId, cmd.eventId);
+    if (result.changed && (cmd.type === 'event.start' || cmd.type === 'event.end')) notifyHome(adminId, cmd.eventId);
     reply(ack, { ok: true, version: result.version });
   }
 
@@ -167,6 +174,12 @@ function createLiveHub({ db, auth, logger, screensHub }) {
       if (!refresh(socket)) return;
       if (!EDITOR_ROLES.includes(socket.data.role)) return fail(socket, ack, 'forbidden');
       reply(ack, { ok: true, ...screensHub.watch(socket) });
+    });
+    // The home page: an admin-level room, no event room needed.
+    socket.on('home:watch', (payload, ack) => {
+      if (!refresh(socket)) return;
+      socket.join(homeRoom(socket.data.adminId));
+      reply(ack, { ok: true });
     });
     socket.on('live:leave', (payload, ack) => {
       if (!refresh(socket)) return;
@@ -258,6 +271,7 @@ function createLiveHub({ db, auth, logger, screensHub }) {
     }
     broadcast(adminId, eventId);
     schedulePresence(adminId, eventId);
+    notifyHome(adminId, eventId);
   }
 
   return { attach, closeSession, closeUser, roomName, setlistBefore, setlistChanged, songBefore, songChanged, eventChanged };

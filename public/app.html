@@ -4,21 +4,29 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#141318">
-  <title data-i18n="app.pageTitle">{{APP_NAME}}</title>
+  <title data-i18n="home.pageTitle">{{APP_NAME}}</title>
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body data-shell="home">
-  <main>
-    <h1 data-i18n="app.heading"></h1>
-    <p id="whoami" class="muted" data-i18n="app.loading"></p>
-    <ul class="app-links" id="app-links" hidden>
-      <li><a class="button secondary" href="/screens" id="screens-link" hidden data-i18n="screens.link"></a></li>
-      <li><a class="button secondary" href="/media" id="media-link" hidden data-i18n="media.link"></a></li>
-      <li><a class="button secondary" href="/settings" id="settings-link" hidden data-i18n="settings.link"></a></li>
-    </ul>
-    <button type="button" id="logout" class="secondary" data-i18n="app.logout"></button>
+  <main class="wide home-page">
+    <h1 data-i18n="home.heading"></h1>
+    <p id="status" class="muted" role="status" aria-live="polite" data-i18n="app.loading"></p>
+    <div id="now" aria-live="polite"></div>
+    <section id="upcoming-section" class="home-section" aria-labelledby="upcoming-heading" hidden>
+      <h2 id="upcoming-heading" data-i18n="home.upcomingHeading"></h2>
+      <ul id="upcoming" class="home-upcoming"></ul>
+    </section>
+    <section id="quick-section" class="home-section" aria-labelledby="quick-heading" hidden>
+      <h2 id="quick-heading" data-i18n="home.quickHeading"></h2>
+      <div class="home-quick">
+        <a class="button secondary" href="/events?new=1" data-i18n="events.newEvent"></a>
+        <a class="button secondary" href="/songs/new" data-i18n="home.newSong"></a>
+      </div>
+    </section>
   </main>
+  <script src="/socket.io/socket.io.js"></script>
   <script src="/i18n.js"></script>
+  <script src="/page.js"></script>
   <script src="/shell.js"></script>
   <script src="/app.js"></script>
 </body>

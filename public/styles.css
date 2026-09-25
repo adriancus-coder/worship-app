@@ -1090,3 +1090,32 @@ body.has-shell { --shell-bottom: calc(64px + env(safe-area-inset-bottom)); paddi
 }
 .shell-exit:hover { color: var(--text); background: var(--surface); }
 .shell-exit:focus-visible { outline: 3px solid var(--accent); outline-offset: 0; }
+
+/* --- Home "Acum" ------------------------------------------------------------------------ */
+.home-page h1 { margin-bottom: 12px; }
+.now-card { padding: 20px; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; }
+.now-card.live { border: 2px solid var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--surface)); }
+.now-kicker { display: flex; align-items: center; gap: 8px; margin: 0 0 4px; font-size: 0.8125rem; font-weight: 800; letter-spacing: 0.06em; color: var(--muted); text-transform: uppercase; }
+.now-card.live .now-kicker { color: var(--accent); }
+.live-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); animation: live-pulse 1.4s ease-in-out infinite; }
+@keyframes live-pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.35; transform: scale(0.75); } }
+@media (prefers-reduced-motion: reduce) { .live-dot { animation: none; } }
+.now-title { margin: 0 0 6px; font-size: 1.5rem; line-height: 1.25; overflow-wrap: anywhere; }
+.now-title a { display: inline-flex; align-items: center; min-height: var(--touch); color: inherit; text-decoration: none; }
+.now-title a:hover { text-decoration: underline; }
+.now-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin: 0 0 12px; color: var(--muted); }
+.now-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+.now-actions .button { min-height: 52px; display: inline-flex; align-items: center; justify-content: center; }
+.now-primary { flex: 1 1 220px; font-size: 1.125rem; }
+.now-card.empty .now-title { font-size: 1.25rem; }
+.home-section { margin-top: 28px; }
+.home-section h2 { font-size: 1.125rem; margin: 0 0 10px; }
+.home-upcoming { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.home-row { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 8px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); text-decoration: none; }
+.home-row:hover { border-color: var(--muted); }
+.home-row:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.home-row-text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.home-row-name { font-weight: 700; overflow-wrap: anywhere; }
+.home-row-when { color: var(--muted); font-size: 0.875rem; }
+.home-quick { display: flex; flex-wrap: wrap; gap: 10px; }
+.home-quick .button { flex: 1 1 180px; min-height: var(--touch); display: inline-flex; align-items: center; justify-content: center; }

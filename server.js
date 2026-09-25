@@ -24,6 +24,7 @@ const createPagesRouter = require('./routes/pages');
 const { createScreensRouter } = require('./routes/screens');
 const createSettingsRouter = require('./routes/settings');
 const createMediaRouter = require('./routes/media');
+const { createHomeRouter } = require('./routes/home');
 const { createLiveHub } = require('./socket/live');
 const { createScreensHub } = require('./socket/screens');
 
@@ -84,6 +85,7 @@ app.use(createMeRouter({ db, auth, config }));
 app.use(createSongsRouter({ db, auth, config, logger, live }));
 app.use(createResurseRouter({ db, auth, logger }));
 app.use(createEventsRouter({ db, auth, logger, live }));
+app.use(createHomeRouter({ db, auth }));
 app.use(createScreensRouter({ db, auth, logger, screensHub }));
 app.use(createSettingsRouter({ db, auth, config, logger, screensHub }));
 app.use(createMediaRouter({ db, auth, config, logger }));

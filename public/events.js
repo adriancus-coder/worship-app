@@ -192,5 +192,12 @@
     const asked = new URLSearchParams(window.location.search).get('when');
     const start = WHEN.indexOf(asked) >= 0 && (asked !== 'templates' || editor) ? WHEN.indexOf(asked) : 0;
     tabs.select(start, false);
+    // "+ Eveniment nou" from the home page opens the dialog at once.
+    const url = new URL(window.location.href);
+    if (url.searchParams.has('new')) {
+      url.searchParams.delete('new');
+      window.history.replaceState(null, '', url);
+      if (editor) newButton.click();
+    }
   })().catch(() => setStatus(t('common.networkError')));
 })();
