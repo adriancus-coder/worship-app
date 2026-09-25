@@ -10,8 +10,6 @@
   const { t } = window.I18N;
   const $ = (id) => document.getElementById(id);
   const EDITOR_ROLES = ['owner', 'leader'];
-  // The operator console arrives in stage 6; until then operators follow the event.
-  const OPERATOR_CONSOLE = false;
 
   const state = { me: null, home: null, failed: false };
 
@@ -35,7 +33,7 @@
     const role = state.me.user.role;
     if (live) {
       if (EDITOR_ROLES.includes(role)) return [{ text: t('home.enterLive'), href: `/events/${event.id}/live` }];
-      if (role === 'operator' && OPERATOR_CONSOLE) return [{ text: t('home.operatorConsole'), href: `/events/${event.id}/operator` }];
+      if (role === 'operator') return [{ text: t('home.operatorConsole'), href: `/events/${event.id}/operator` }];
       return [{ text: t('home.follow'), href: `/events/${event.id}/follow` }];
     }
     if (EDITOR_ROLES.includes(role)) {

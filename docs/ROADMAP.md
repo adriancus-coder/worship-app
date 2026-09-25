@@ -29,26 +29,41 @@ never implement a later stage early. Mockups: claude.ai design canvas
     Unticking returns the projector to the worship position.
 - The operator always sees where worship is ("Worship e la: …") and has
   "Sari la worship" (key W) to jump the projector there.
+- **Who may do what** (checked by the server against the stored mode, in the same
+  transaction as the command):
+  - worship position, start/end, "Proiectorul controlat de operator": owner, leader;
+  - projector position (next / prev / goto / sari la worship): only in operator mode,
+    for operator, owner and leader;
+  - projector source and video: owner and leader always, the operator only in operator mode;
+  - operator additions: operator, owner, leader; answering them: owner, leader;
+  - members: nothing (they follow).
+  While the projector follows worship the operator console is a read-only mirror.
 - **The projector never changes on its own.** Every source change is an explicit action.
   Projector sources: song, verse, video, logo, translation (bridge), black screen.
-- **Operator additions:** a song the operator adds goes to the projector only. If
-  "Propune și în setlist-ul worship" is ticked, a request goes to the leader.
-  The leader gets a small non-blocking notification; "Vezi" opens a preview
-  (key, sections, lyrics+chords) with position choice (after current / at end)
-  and Accept / Refuse. Accepted → shared setlist → team phones.
+- **Operator additions:** a song the operator adds goes to the projector only, right after
+  what the projector shows. Worship navigation, team phones, rehearsal, item counts and
+  history never see projector-only items; the editor's save leaves them in place. If
+  "Propune și în setlist-ul worship" is ticked, a request goes to the leader (at most 10
+  waiting per event). The leader gets a small non-blocking toast ("Mai târziu" keeps a
+  badge with the count); "Vezi" opens a preview (key, sections, lyrics+chords in the
+  leader's notation) with position choice (after the current worship item / at the end of
+  the shared setlist) and Accept / Refuse. Accepted → shared setlist → team phones;
+  refused → stays projector-only. Only operator, owner and leader receive the full item
+  list and the requests in their live snapshots.
 - **Video:** from the app library (uploaded, size-limited), URL (direct mp4 preferred;
   YouTube/Vimeo allowed), or a file picked once on the projector PC (e.g. USB stick).
   Selecting only *prepares* it; it plays only on "Pornește pe proiector".
 
 ## Projector screen
 
-- Separate page with no controls. Opened from the operator console with
-  "Deschide ecranul proiectorului": new window, moved fullscreen to the second display
-  via the Window Management API (Chrome/Edge, one-time permission); fallback = drag + F11.
-  Opened from a logged-in console it pairs automatically.
+- Separate page with no controls. Opened from the operator console or the leader's live
+  page with "Deschide ecranul proiectorului": new window, moved fullscreen to the second
+  display via the Window Management API (Chrome/Edge, one-time permission); fallback =
+  drag + F11. Opened from a logged-in page it pairs automatically.
 - A PC with no operator pairs with a 6-digit code entered in the admin.
-- **Emergency mode:** the operator console and projector window on the same PC keep
-  working without internet (BroadcastChannel + locally cached event and songs).
+- **Emergency mode:** the leader's live page and the projector window on the same PC keep
+  working without internet (BroadcastChannel + locally cached event and songs). The
+  operator console does not run it yet.
   Team phones keep cached songs and navigate manually. Resync when back online.
   (A phone hotspot is the recommended backup internet.)
 - A full local-server mode is NOT planned now; keep the live path free of external
