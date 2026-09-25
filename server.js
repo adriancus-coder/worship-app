@@ -16,6 +16,7 @@ const { t, createI18nMiddleware } = require('./lib/i18n');
 const createHealthRouter = require('./routes/health');
 const createSetupRouter = require('./routes/setup');
 const createAuthRouter = require('./routes/auth');
+const createMeRouter = require('./routes/me');
 const createPagesRouter = require('./routes/pages');
 
 const db = openDb(config.DATA_DIR);
@@ -58,7 +59,8 @@ app.use(createHealthRouter({ config }));
 const sendPage = createPageRenderer({ config });
 
 app.use(createSetupRouter({ db, config, logger, sendPage }));
-app.use(createAuthRouter({ db, auth, logger }));
+app.use(createAuthRouter({ db, auth, config, logger }));
+app.use(createMeRouter({ db, auth, config }));
 app.use(createPagesRouter({ db, auth, sendPage }));
 
 app.use('/api', (req, res) => {

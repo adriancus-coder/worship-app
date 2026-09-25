@@ -32,7 +32,24 @@
     render();
   }
 
-  document.addEventListener('i18n:change', render);
+  // Remember the choice for this user (server also refreshes the wa_lang cookie).
+  async function saveLocale(locale) {
+    try {
+      await fetch('/api/me/locale', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ locale }),
+      });
+      if (me) me.user.locale = locale;
+    } catch (err) {
+      // The cookie already holds the choice; the next switch or login retries.
+    }
+  }
+
+  document.addEventListener('i18n:change', (event) => {
+    render();
+    if (me) saveLocale(event.detail.lang);
+  });
 
   logout.addEventListener('click', async () => {
     logout.disabled = true;

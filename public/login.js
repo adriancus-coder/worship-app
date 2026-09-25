@@ -53,11 +53,14 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
+      const body = await res.json().catch(() => ({}));
       if (res.ok) {
+        // Switch to the user's saved language before leaving the page.
+        const locale = body.user && body.user.locale;
+        if (locale) window.I18N.setLang(locale);
         window.location.replace('/app');
         return;
       }
-      const body = await res.json().catch(() => ({}));
       if (body.error) showErrorText(body.error);
       else showErrorKey('login.failed');
     } catch (err) {

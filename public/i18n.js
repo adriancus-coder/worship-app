@@ -63,6 +63,7 @@
         passwordTooShort: 'Parola trebuie să aibă cel puțin {min} caractere.',
         invalidLogin: 'Email sau parolă incorecte.',
         tooManyAttempts: 'Prea multe încercări eșuate. Încearcă din nou mai târziu.',
+        localeInvalid: 'Limbă necunoscută.',
       },
       roles: {
         owner: 'proprietar',
@@ -127,6 +128,7 @@
         passwordTooShort: 'The password must be at least {min} characters.',
         invalidLogin: 'Incorrect email or password.',
         tooManyAttempts: 'Too many failed attempts. Please try again later.',
+        localeInvalid: 'Unknown language.',
       },
       roles: {
         owner: 'owner',
