@@ -20,8 +20,24 @@ never implement a later stage early. Mockups: claude.ai design canvas
   removes every row of the church in one transaction and its upload folder. The platform's
   own church can never be deactivated or deleted. Every step is logged.
 - **PWA first.** App Store / Google Play later, possibly via Capacitor; not planned yet.
-- **Accounts:** personal logins (email + password) per user, roles owner / leader /
-  operator / member. Owner invites users. "Remember me" for church PCs.
+- **Accounts:** personal logins (email + password) per user. Owner invites users (by
+  email link or a temporary password). "Remember me" for church PCs.
+- **Roles** (rights → where an event opens for them):
+  - *owner* — everything → the home card as always (live page).
+  - *presenter* (Prezentator) — event + editor rights (EVENT_ROLES) → the live page.
+    Prepares the events and runs the songs for the team.
+  - *leader* (Lider) — the SAME rights as the presenter → straight into the big lyrics
+    (`/events/:id/live?view=lyrics`: the live page with "⤢ Versuri mari" open; ✕ shows the
+    page underneath). Leads the music from the stage; rehearsal at hand.
+  - *operator* — event + editor rights + the projector screens (SCREEN_ROLES), no
+    rehearsal → the operator console (only owner and operator open the console).
+  - *member* — follow + rehearsal → "Repetiție" before, "Urmărește live" during.
+  Home card and event page, by role and state (planned / live): owner "Pornește live" /
+  "Intră live"; presenter "Pregătește" (+ "Pornește live") / "Intră live"; leader "Repetiție"
+  (+ "Pornește live") / "Versuri mari"; operator "Pregătește" (+ "Pornește live") / "Consolă
+  operator"; member "Repetiție" / "Urmărește live". "Pornește live" starts the event and
+  opens that role's own page. Never show the internal role word in the UI (labels through
+  `team.roles.*`). The owner can look at the app as any other role ("Vezi aplicația ca").
 - **UI:** new design, dark stage theme, phone- and tablet-first; Romanian UI by default.
 - **Chord notation:** letters (C D E) or Romanian solfège (Do Re Mi), chosen per user with a
   church default; songs are always stored with letters (display only).
@@ -33,17 +49,18 @@ never implement a later stage early. Mockups: claude.ai design canvas
   On reconnect a client receives the full state snapshot. Commands carry the version they
   were made against; one made against an older version is refused ("stale") and the page
   gets the current state, so two people moving at once never skip a section.
-- **Event rights.** Owner, leader and operator (EVENT_ROLES, defined once in
+- **Event rights.** Owner, presenter, leader and operator (EVENT_ROLES, defined once in
   `lib/events.js`) have the same rights over events, always: create, edit, templates,
   delete, start, end, move the live position, projector, sources, video, live mode and
   team mode. They see templates. Members see every event as soon as it exists (never
-  templates) and send no commands. The same three roles (EDITOR_ROLES = EVENT_ROLES) edit
+  templates) and send no commands. The same roles (EDITOR_ROLES = EVENT_ROLES) edit
   the library (create, edit, delete, file import / export, the key, backgrounds) and
-  media; leader and operator differ by the page an event opens on (live page / console;
-  both can open either) and by the projector screens (SCREEN_ROLES = owner, operator):
-  pairing with a code, renaming, revoking and "Deschide ecranul proiectorului" are the
-  operator's; the leader keeps the projector preview and the source buttons. Owner-only
-  stays owner-only: settings, team, logo, backup, platform.
+  media; presenter, leader and operator differ by the page an event opens on (live page /
+  big lyrics / console; the console itself is the owner's and the operator's) and by the
+  projector screens (SCREEN_ROLES = owner, operator): pairing with a code, renaming,
+  revoking and "Deschide ecranul proiectorului" are the operator's; the presenter and the
+  leader keep the projector preview and the source buttons. Owner-only stays owner-only:
+  settings, team, logo, backup, platform.
 - **Two live modes** (`live.mode`, any event role; a new start is *together*):
   - *Împreună* (together, default) — ONE main position. The leader page and the operator
     console both move it; the projector and the team phones follow it. Projector-position

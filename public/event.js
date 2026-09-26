@@ -194,12 +194,22 @@
   //                otherwise "Editează" (Live, if it can start, is then secondary).
   //                "Repetiție" is always secondary. The operator's live page is the console.
   //   members      live -> "Urmărește live", else "Repetiție": the only action.
+  // The live page of each event role (the same mapping as the home card, public/app.js):
+  // live page (owner, presenter), big lyrics (leader), console (operator).
+  const LIVE_ENTRY = {
+    owner: { path: '/live', key: 'home.enterLive' },
+    presenter: { path: '/live', key: 'home.enterLive' },
+    leader: { path: '/live?view=lyrics', key: 'home.bigLyrics' },
+    operator: { path: '/operator', key: 'home.console' },
+  };
+
   function renderActions() {
     const ev = state.event;
     const editor = canEdit(state.me);
     const role = state.me && state.me.user.role;
-    const livePage = keepFrom(`/events/${ev.id}/${role === 'operator' ? 'operator' : 'live'}`);
-    // Rehearsal is the musical team's (owner, leader, member): the operator never gets it.
+    const entry = LIVE_ENTRY[role] || LIVE_ENTRY.presenter;
+    const livePage = keepFrom(`/events/${ev.id}${entry.path}`);
+    // Rehearsal is the musical team's (owner, presenter, leader, member): the operator never gets it.
     const rehearse = role === 'operator' ? null : { key: 'rehearse.link', icon: 'rehearse', href: keepFrom(`/events/${ev.id}/rehearse`) };
     const actions = [];
     if (!editor) {
@@ -210,12 +220,14 @@
       const edit = state.editing ? null : { key: 'setlist.edit', icon: 'edit', href: keepFrom(`/events/${ev.id}/edit`) };
       const soon = state.today && [state.today, dayAfter(state.today)].includes(ev.eventDate);
       if (!ev.isTemplate && ev.status === 'live') {
-        actions.push({ key: 'home.enterLive', icon: 'play', href: livePage }, rehearse, edit);
-      } else if (!ev.isTemplate && ev.status === 'planned' && soon) {
-        actions.push({ key: 'home.startLive', icon: 'play', href: livePage }, rehearse, edit);
+        actions.push({ key: entry.key, icon: 'play', href: livePage }, rehearse, edit);
       } else {
-        const live = !ev.isTemplate && ev.status === 'planned' ? { key: 'live.link', icon: 'play', href: livePage } : null;
-        actions.push(edit, live, rehearse);
+        // Before the start, by role (the same order as the home card): the owner starts first
+        // (today / tomorrow), the leader rehearses first, presenter and operator prepare first.
+        const live = ev.isTemplate ? null : { key: soon ? 'home.startLive' : 'live.link', icon: 'play', href: livePage };
+        if (role === 'leader') actions.push(rehearse, live, edit);
+        else if (role === 'owner') actions.push(...(soon ? [live, rehearse, edit] : [edit, live, rehearse]));
+        else actions.push(edit, live, rehearse);
       }
     }
     const list = actions.filter(Boolean);

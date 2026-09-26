@@ -14,7 +14,7 @@ module.exports = {
     let E = app.seed.eventId;
     const cardAction = (p) => p.evaluate(() => { const b = document.querySelector('#now .now-primary'); return b ? b.textContent : null; });
 
-    for (const [lang, width, role, page] of [['ro', 375, 'leader', 'live'], ['en', 1024, 'operator', 'operator']]) {
+    for (const [lang, width, role, page] of [['ro', 375, 'presenter', 'live'], ['en', 1024, 'operator', 'operator']]) {
       const tag = `[${lang} ${width} ${role}]`;
       const m = await signIn('member', { width: 375, lang });
       await m.reload(); // in the language just saved
@@ -25,9 +25,9 @@ module.exports = {
       const p = await signIn(role, { width, lang });
       await p.reload();
       await p.waitForSelector('#now .now-card');
-      // the leader starts first; the operator prepares first and starts second (secondary)
-      const expected = role === 'operator' ? (lang === 'ro' ? 'Pregătește' : 'Prepare') : (lang === 'ro' ? 'Pornește live' : 'Start live');
-      check(await cardAction(p) === expected && await p.locator('#start-live').count() === 1, `${tag} Acasă on the event day: primary "${expected}", "Pornește live" ${role === 'operator' ? 'as the secondary button' : 'primary'}`, await cardAction(p));
+      // the presenter and the operator prepare first and start second (secondary)
+      const expected = lang === 'ro' ? 'Pregătește' : 'Prepare';
+      check(await cardAction(p) === expected && await p.locator('#start-live.secondary').count() === 1, `${tag} Acasă on the event day: primary "${expected}", "Pornește live" as the secondary button`, await cardAction(p));
       const a = await layoutAudit(p, 'main');
       check(!a.overflow && !a.small.length, `${tag} Acasă: no overflow, targets >= 44 px`, a);
       const t0 = Date.now();
@@ -42,7 +42,8 @@ module.exports = {
       check(await cardAction(m) === (lang === 'ro' ? 'Urmărește live' : 'Follow live'), `${tag} member Acasă: "Urmărește live"`);
       await p.goto(`${app.url}/app`);
       await p.waitForSelector('#now .now-card.live');
-      check(await cardAction(p) === (lang === 'ro' ? 'Intră live' : 'Go live'), `${tag} already live: "Intră live"`, await cardAction(p));
+      const liveLabel = role === 'operator' ? (lang === 'ro' ? 'Consolă operator' : 'Operator console') : (lang === 'ro' ? 'Intră live' : 'Go live');
+      check(await cardAction(p) === liveLabel, `${tag} already live: "${liveLabel}"`, await cardAction(p));
       await app.command({ type: 'event.end', eventId: E });
       // the next round starts from a fresh planned event today (a copy of this one)
       E = (await app.api(app.cookies.owner, 'POST', '/api/events', { name: 'Serviciu duminică', eventDate: app.seed.today, startTime: '10:00', fromEventId: E })).body.event.id;

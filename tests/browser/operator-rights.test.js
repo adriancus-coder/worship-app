@@ -73,14 +73,15 @@ module.exports = {
     check(await p.waitForSelector('#live:not([hidden])', { timeout: 5000 }).then(() => true, () => false), 'the operator can open the live page');
     const l = await signIn('leader', { width: 1024 });
     await l.goto(`${app.url}/events/${E}/operator`);
-    check(await l.waitForSelector('#console:not([hidden])', { timeout: 5000 }).then(() => true, () => false), 'the leader can open the console');
+    await l.waitForSelector('#live:not([hidden])', { timeout: 5000 }).catch(() => {});
+    check(/\/live$/.test(new URL(l.url()).pathname), 'the leader is sent from the console to the live page', l.url());
     await l.goto(`${app.url}/events/${E}`);
     await l.waitForSelector('#event-actions a');
     const leaderPrimary = await l.getAttribute('#event-actions a:first-child', 'href');
     await p.goto(`${app.url}/events/${E}`);
     await p.waitForSelector('#event-actions a');
     const operatorPrimary = await p.getAttribute('#event-actions a:first-child', 'href');
-    check(/\/live/.test(leaderPrimary) && /\/operator/.test(operatorPrimary), 'default entry points: leader -> live page, operator -> console', { leaderPrimary, operatorPrimary });
+    check(/\/live\?view=lyrics/.test(leaderPrimary) && /\/operator/.test(operatorPrimary), 'default entry points: leader -> big lyrics, operator -> console', { leaderPrimary, operatorPrimary });
     // Rehearsal is the musical team's: the operator has no link anywhere and the URL sends them back.
     check(await p.locator('#event-actions a[href*="/rehearse"]').count() === 0 && await l.locator('#event-actions a[href*="/rehearse"]').count() === 1, 'operator: no "Repetiție" on the event page (the leader keeps it)');
     await p.goto(`${app.url}/events/${E}/rehearse`);

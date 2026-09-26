@@ -16,7 +16,8 @@
   const $ = (id) => document.getElementById(id);
   const eventId = Number(window.location.pathname.split('/')[2]);
 
-  const state = { event: null, items: [], loadedKey: null, loading: null, songs: new Map(), snap: null, seq: 0, client: null, queue: Promise.resolve(), cached: null };
+  const state = { event: null, items: [], loadedKey: null, loading: null, songs: new Map(), snap: null, seq: 0, client: null, queue: Promise.resolve(), cached: null,
+    openLyrics: new URLSearchParams(window.location.search).get('view') === 'lyrics' };
 
   // --- data -------------------------------------------------------------------------
 
@@ -686,6 +687,11 @@
           renderProjector();
           videoPanel.setSetlist(state.items);
           videoPanel.update(state.snap); // with the presence that may have arrived meanwhile
+          // ?view=lyrics (the leader's entry point): the big lyrics open over the page at once.
+          if (state.openLyrics) {
+            state.openLyrics = false;
+            big.open();
+          }
         }).catch(() => {}); // server unreachable meanwhile: the next snapshot tries again
       },
       onPresence: (presence) => {

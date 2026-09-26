@@ -281,7 +281,7 @@ async function main() {
       assert.strictEqual((await api(method, url, presenter, body)).status, 403, `presenter ${url}`);
     }
     assert.strictEqual((await fetch(`${base()}/screens`, { headers: { Cookie: presenter }, redirect: 'manual' })).status, 302, 'presenter: /screens redirects');
-    for (const [url, status] of [['/rehearse', 200], ['/live', 200], ['/operator', 200], ['/edit', 200]]) {
+    for (const [url, status] of [['/rehearse', 200], ['/live', 200], ['/operator', 302], ['/edit', 200]]) { // the console is the operator's
       assert.strictEqual((await fetch(`${base()}/events/${ev.id}${url}`, { headers: { Cookie: presenter }, redirect: 'manual' })).status, status, `presenter ${url}`);
     }
     // the team: a presenter can be created and given the role; the label never leaks the internal word

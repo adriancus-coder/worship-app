@@ -94,9 +94,11 @@ function createPagesRouter({ db, auth, sendPage }) {
     sendPage(req, res, 'live');
   });
 
-  // Operator console: the event roles; the team follows the event instead.
+  // Operator console: the owner and the operator (SCREEN_ROLES). The presenter and the leader
+  // are sent to their live page; the team follows the event instead.
   router.get('/events/:id(\\d+)/operator', noStore, signedIn, (req, res) => {
     if (!eventRights(req)) return res.redirect(`/events/${req.params.id}`);
+    if (!SCREEN_ROLES.includes(req.session.user.role)) return res.redirect(`/events/${req.params.id}/live`);
     sendPage(req, res, 'operator');
   });
 

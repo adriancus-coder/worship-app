@@ -3,7 +3,8 @@
 // "Acum" (/app): the live event, else the next one, with ONE big button for what this
 // role does with it ("▶ Pornește live" starts it in one tap for the event roles); then the
 // next few events and, for the event roles, quick actions.
-// The operator gets the leader's buttons, with the console as its live page.
+// Each event role gets its own live page: live page (owner, presenter), big lyrics (leader),
+// console (operator).
 // The page watches its admin's home room: an event starting or ending swaps the card
 // without a reload.
 
@@ -28,24 +29,36 @@
     return n === 1 ? t('events.itemCountOne') : t('events.itemCount', { n });
   }
 
-  const eventUrl = (event, suffix = '') => `/events/${event.id}${suffix}?from=home`;
+  const eventUrl = (event, suffix = '') => `/events/${event.id}${suffix}${suffix.includes('?') ? '&' : '?'}from=home`;
+
+  // Where each event role lands on a live event (docs/ROADMAP.md "Roles"): the presenter and
+  // the owner on the live page, the leader straight in the big lyrics, the operator in the
+  // console. Members follow.
+  const LIVE_ENTRY = {
+    owner: { path: '/live', key: 'home.enterLive' },
+    presenter: { path: '/live', key: 'home.enterLive' },
+    leader: { path: '/live?view=lyrics', key: 'home.bigLyrics' },
+    operator: { path: '/operator', key: 'home.console' },
+  };
 
   // [primary, secondary?] actions for the card, by role and state.
   function actions(event, live) {
     const role = state.me.user.role;
-    // The live page of this role: the console for the operator.
-    const livePage = `/events/${event.id}/${role === 'operator' ? 'operator' : 'live'}?from=home`;
+    const entry = LIVE_ENTRY[role];
     if (live) {
-      if (EDITOR_ROLES.includes(role)) return [{ text: t('home.enterLive'), href: livePage, icon: 'play' }];
-      return [{ text: t('home.follow'), href: `/events/${event.id}/follow?from=home`, icon: 'follow' }];
+      if (entry) return [{ text: t(entry.key), href: eventUrl(event, entry.path), icon: 'play' }];
+      return [{ text: t('home.follow'), href: eventUrl(event, '/follow'), icon: 'follow' }];
     }
-    // Event roles: "▶ Pornește live" starts it and opens the live page (the console for the
-    // operator) in one tap; "Pregătește" stays next to it. The operator prepares first
-    // (primary) and starts second; rehearsal is never theirs.
-    if (EDITOR_ROLES.includes(role)) {
-      const start = { text: t('home.startLive'), icon: 'play', run: () => startLive(event, livePage) };
+    // Event roles: "▶ Pornește live" starts it and opens that role's page in one tap. The
+    // owner starts first; the presenter and the operator prepare first (primary) and start
+    // second; the leader rehearses first. Rehearsal is never the operator's.
+    if (entry) {
+      const start = { text: t('home.startLive'), icon: 'play', run: () => startLive(event, eventUrl(event, entry.path)) };
       const prepare = { text: t('home.prepare'), href: eventUrl(event, '/edit'), icon: 'edit' };
-      return role === 'operator' ? [prepare, start] : [start, prepare];
+      const rehearse = { text: t('home.rehearse'), href: eventUrl(event, '/rehearse'), icon: 'rehearse' };
+      if (role === 'owner') return [start, prepare];
+      if (role === 'leader') return [rehearse, start];
+      return [prepare, start];
     }
     return [{ text: t('home.rehearse'), href: eventUrl(event, '/rehearse'), icon: 'rehearse' }];
   }
