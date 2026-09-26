@@ -81,5 +81,26 @@ module.exports = {
     await p.waitForSelector('#event-actions a');
     const operatorPrimary = await p.getAttribute('#event-actions a:first-child', 'href');
     check(/\/live/.test(leaderPrimary) && /\/operator/.test(operatorPrimary), 'default entry points: leader -> live page, operator -> console', { leaderPrimary, operatorPrimary });
+    // The projector window and the Ecrane page are the operator's: the leader keeps the preview
+    await l.goto(`${app.url}/events/${E}/live`);
+    await l.waitForSelector('#live:not([hidden])');
+    await l.waitForTimeout(500);
+    check(await l.isHidden('#open-projector') && await l.isHidden('#projector-permission'), 'leader: no "Deschide ecranul proiectorului"');
+    check(await l.evaluate(() => Boolean(document.querySelector('#projector-preview')) && document.querySelectorAll('[data-source]').length >= 3), 'leader: the preview and the source buttons stay');
+    const mirrored = await l.waitForFunction(() => /Ne ridici|Sfânt/.test(document.getElementById('projector-preview').innerText), null, { timeout: 4000 }).then(() => true, () => false);
+    check(mirrored, 'leader: the preview mirrors the screen');
+    await l.goto(`${app.url}/screens`);
+    check(new URL(l.url()).pathname === '/app', 'leader: /screens redirects to Acasă');
+    check((await app.api(app.cookies.leader, 'POST', '/api/screens/auto-claim', { name: 'X' })).status === 403, 'leader: auto-claim 403');
+    await l.goto(`${app.url}/app`);
+    await l.waitForSelector('#now .now-card');
+    const homePrimary = await l.evaluate(() => { const b = document.querySelector('#now .now-primary'); return b.getAttribute('href') || b.textContent; });
+    check(!/operator|screens/.test(homePrimary), 'leader home card: the primary never points to the console / projector setup', homePrimary);
+    await p.goto(`${app.url}/events/${E}/operator`);
+    await p.waitForSelector('#console:not([hidden])');
+    const [popup] = await Promise.all([p.waitForEvent('popup'), p.click('#open-projector')]);
+    await popup.waitForURL('**/screen', { timeout: 5000 });
+    check(await popup.waitForSelector('#output:not([hidden])', { timeout: 6000 }).then(() => true, () => false), 'operator: "Deschide ecranul proiectorului" opens a paired window as before');
+    await popup.close();
   },
 };

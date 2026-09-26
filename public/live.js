@@ -439,6 +439,14 @@
   window.PROJECTOR_WINDOW.setup({
     button: $('open-projector'), hint: $('projector-permission'), message: $('projector-message'), api, t,
   });
+  // Opening the projector window (a paired screen) is the operator's and the owner's; the
+  // leader keeps the preview and the sources (lib/events.js SCREEN_ROLES).
+  window.SHELL.me.then((me) => {
+    if (me && !['owner', 'operator'].includes(me.user.role)) {
+      $('open-projector').hidden = true;
+      $('projector-permission').hidden = true;
+    }
+  });
 
   // Together / separate and the team mode; the info toast for additions from the console.
   const modes = window.LIVE_MODES.controls($('mode-controls'), { send, t, el });

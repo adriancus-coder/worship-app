@@ -151,7 +151,7 @@
 
   const navLinks = [
     { id: 'media', href: '/media', key: 'shell.media', icon: 'media', roles: EDITOR_ROLES },
-    { id: 'screens', href: '/screens', key: 'shell.screens', icon: 'screens', roles: EDITOR_ROLES },
+    { id: 'screens', href: '/screens', key: 'shell.screens', icon: 'screens', roles: ['owner', 'operator'] }, // lib/events.js SCREEN_ROLES
     { id: 'team', href: '/team', key: 'shell.team', icon: 'team', roles: ['owner'] },
     { id: 'settings', href: '/settings', key: 'shell.settings', icon: 'settings', roles: ['owner'] },
     // The platform owner only (the churches on this server).

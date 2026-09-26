@@ -76,7 +76,7 @@ module.exports = {
     const revoked = await sp.waitForFunction(() => /\d{3} \d{3}/.test(document.getElementById('pairing-code').textContent), null, { timeout: 8000 }).then(() => true, () => false);
     check(revoked && await sp.evaluate(() => localStorage.getItem('wa_screen_token') === null), 'revoked: the screen shows a new pairing code, its token is gone');
 
-    const link = (await app.api(app.cookies.leader, 'POST', '/api/screens/auto-claim', { name: 'Fereastra liderului' })).body;
+    const link = (await app.api(app.cookies.operator, 'POST', '/api/screens/auto-claim', { name: 'Fereastra operatorului' })).body;
     const win = await (await browser.newContext({ viewport: { width: 1280, height: 720 } })).newPage();
     await win.goto(app.url + link.claimUrl);
     check(await win.waitForSelector('#output:not([hidden])', { timeout: 6000 }).then(() => true, () => false), 'the claim link pairs a new window at once');

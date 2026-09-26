@@ -1,7 +1,7 @@
 'use strict';
 
 const express = require('express');
-const { EVENT_ROLES, EDITOR_ROLES } = require('../lib/events');
+const { EVENT_ROLES, EDITOR_ROLES, SCREEN_ROLES } = require('../lib/events');
 
 // Library, media and screens pages: owner and leader.
 
@@ -98,9 +98,9 @@ function createPagesRouter({ db, auth, sendPage }) {
     sendPage(req, res, 'event');
   });
 
-  // Projector screens: pairing and management (owner / leader).
+  // Projector screens: pairing and management (owner / operator).
   router.get('/screens', noStore, signedIn, (req, res) => {
-    if (!canEdit(req)) return res.redirect('/app');
+    if (!SCREEN_ROLES.includes(req.session.user.role)) return res.redirect('/app');
     sendPage(req, res, 'screens');
   });
 

@@ -48,11 +48,18 @@ module.exports = {
       await lp.waitForTimeout(300);
       check(await pressed() === source, `key ${key.toUpperCase()} -> ${source}`);
     }
-    const [popup] = await Promise.all([lp.waitForEvent('popup'), lp.click('#open-projector')]);
+    // "Deschide proiectorul" is the operator's (and the owner's): hidden for the leader,
+    // who still sees the count of screens the operator opens.
+    check(await lp.isHidden('#open-projector'), 'leader: no "Deschide proiectorul" button');
+    const op = await signIn('owner', { width: 1280 });
+    await op.goto(`${app.url}/events/${E}/live`);
+    await op.waitForSelector('#open-projector:not([hidden])');
+    const [popup] = await Promise.all([op.waitForEvent('popup'), op.click('#open-projector')]);
     await popup.waitForURL('**/screen', { timeout: 5000 });
-    check(await popup.waitForSelector('#output:not([hidden])', { timeout: 6000 }).then(() => true, () => false), '"Deschide proiectorul" opens a paired /screen window');
-    check(await lp.waitForFunction(() => /2/.test(document.getElementById('projector-screens').textContent), null, { timeout: 5000 }).then(() => true, () => false), 'the panel counts 2 screens');
+    check(await popup.waitForSelector('#output:not([hidden])', { timeout: 6000 }).then(() => true, () => false), 'owner: "Deschide proiectorul" opens a paired /screen window');
+    check(await lp.waitForFunction(() => /2/.test(document.getElementById('projector-screens').textContent), null, { timeout: 5000 }).then(() => true, () => false), 'the leader\'s panel counts 2 screens');
     await popup.close();
+    await op.context().close();
     check(await lp.waitForFunction(() => /Un ecran/.test(document.getElementById('projector-screens').textContent), null, { timeout: 5000 }).then(() => true, () => false), 'popup closed: back to one screen');
     const a = await layoutAudit(lp, '.projector-panel');
     check(!a.overflow && !a.small.length, 'panel: no overflow, targets >= 44 px', a);

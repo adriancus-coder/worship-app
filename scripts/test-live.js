@@ -259,6 +259,13 @@ async function main() {
     assert.strictEqual((await api('PUT', `/api/screens/${opScreen.id}`, operator, { name: 'Redenumit' })).status, 200);
     assert.strictEqual((await api('DELETE', `/api/screens/${opScreen.id}`, operator)).status, 200);
     assert.strictEqual((await api('GET', '/api/screens', member)).status, 403);
+    // the projector screens are the owner's and the operator's: the leader keeps the preview
+    // and the sources, not pairing, renaming, revoking or "Deschide ecranul proiectorului"
+    for (const [method, url, body] of [['GET', '/api/screens'], ['POST', '/api/screens/auto-claim', { name: 'X' }], ['POST', '/api/screens/claim', { code: '000000', name: 'X' }]]) {
+      assert.strictEqual((await api(method, url, leader, body)).status, 403, `leader ${url}`);
+    }
+    assert.strictEqual((await fetch(`${base()}/screens`, { headers: { Cookie: leader }, redirect: 'manual' })).status, 302, 'leader: /screens redirects');
+    assert.strictEqual((await api('POST', '/api/screens/auto-claim', operator, { name: 'Fereastra operatorului' })).status, 201);
     assert.strictEqual((await api('GET', '/api/team', operator)).status, 403);
     assert.strictEqual((await api('GET', '/api/settings', operator)).status, 403);
     assert.strictEqual((await api('DELETE', `/api/events/${id}`, operator)).status, 200);
@@ -940,7 +947,7 @@ async function main() {
     const online = (await api('GET', '/api/screens', owner)).body.screens.find((x) => x.name === 'Proiector 2');
     assert.strictEqual(online.online, true);
     const closed = next(again, 'disconnect');
-    assert.strictEqual((await api('DELETE', `/api/screens/${online.id}`, leader)).status, 200);
+    assert.strictEqual((await api('DELETE', `/api/screens/${online.id}`, operator)).status, 200);
     assert.strictEqual(await closed, 'io server disconnect');
     screen = connectScreen((await pairScreen(owner, 'Proiector 3')).token);
     await frameWhere(screen, () => true);

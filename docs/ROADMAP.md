@@ -29,10 +29,12 @@ never implement a later stage early. Mockups: claude.ai design canvas
   delete, start, end, move the live position, projector, sources, video, live mode and
   team mode. They see templates. Members see every event as soon as it exists (never
   templates) and send no commands. The same three roles (EDITOR_ROLES = EVENT_ROLES) edit
-  the library (create, edit, delete, file import / export, the key, backgrounds), media
-  and screens; leader and operator differ only by the page an event opens on (live page /
-  console) - both can open either. Owner-only stays owner-only: settings, team, logo,
-  backup, platform.
+  the library (create, edit, delete, file import / export, the key, backgrounds) and
+  media; leader and operator differ by the page an event opens on (live page / console;
+  both can open either) and by the projector screens (SCREEN_ROLES = owner, operator):
+  pairing with a code, renaming, revoking and "Deschide ecranul proiectorului" are the
+  operator's; the leader keeps the projector preview and the source buttons. Owner-only
+  stays owner-only: settings, team, logo, backup, platform.
 - **Two live modes** (`live.mode`, any event role; a new start is *together*):
   - *Împreună* (together, default) — ONE main position. The leader page and the operator
     console both move it; the projector and the team phones follow it. Projector-position
