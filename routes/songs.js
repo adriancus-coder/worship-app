@@ -2,7 +2,7 @@
 
 const express = require('express');
 const { requireRole } = require('../lib/auth');
-const { LIMITS, SORT_MODES, DuplicateTitleError, validateSong, createSongStore } = require('../lib/songs');
+const { LIMITS, KEYS, SORT_MODES, DuplicateTitleError, validateSong, createSongStore } = require('../lib/songs');
 const { parseChoice, createBackgroundStore } = require('../lib/backgrounds');
 const { createMediaSigner } = require('../lib/media');
 const { MAX_SONGS, LibraryFileError, parseLibraryFile, planImport } = require('../lib/library-import');
@@ -150,6 +150,16 @@ function createSongsRouter({ db, auth, config, logger, live }) {
   router.put('/api/songs/:id', canEdit, (req, res) => {
     const id = songId(req);
     if (!id) return notFound(req, res);
+    // A body with only song_key sets the original key and nothing else (the arrange sheet).
+    const body = req.body || {};
+    if (Object.keys(body).length === 1 && 'song_key' in body) {
+      const key = typeof body.song_key === 'string' ? body.song_key.trim() : null;
+      if (key === null || (key && !KEYS.includes(key))) return res.status(400).json({ error: req.t('errors.songKeyInvalid') });
+      const before = live.songBefore(req.adminId, id);
+      if (!songs.setKey(req.adminId, id, key)) return notFound(req, res);
+      live.songChanged(req.adminId, before);
+      return res.json({ song: songs.get(req.adminId, id) });
+    }
     const { error, value } = validateSong(req.body, req.t);
     if (error) return res.status(400).json({ error });
     try {

@@ -143,12 +143,13 @@
     $('op-list').replaceChildren(...list.map((item, i) => {
       const tag = tagOf(item);
       const onProjector = item.id === pos.itemId;
-      return el('li', { class: 'op-list-row' }, el('button', {
+      return el('li', null, el('button', {
         type: 'button',
         class: `op-item${onProjector ? ' on-projector' : ''}${item.id === worship.itemId ? ' at-worship' : ''}${item.scope === 'projector' ? ' projector-only' : ''}`,
         'aria-current': onProjector ? 'step' : null,
         disabled: !enabled,
-        onclick: () => goto(item, 0),
+        // A song opens the arrange sheet ("Mergi la cântare" moves there); the rest move.
+        onclick: () => (arrangeable(item) ? arrange(item, () => goto(item, 0)) : goto(item, 0)),
       },
       el('span', { class: 'item-number', text: String(i + 1) }),
       // Top row: the type, and the status badges at the top right (they wrap, never clip);
@@ -160,12 +161,7 @@
             onProjector ? el('span', { class: 'marker projector', text: t('operator.onProjector') }) : null,
             item.id === worship.itemId ? el('span', { class: 'marker worship', text: t('operator.worship') }) : null)),
         el('span', { class: 'item-title', text: itemTitle(item) }),
-        tag ? el('span', { class: `op-tag tag-${tag}`, text: t(`operator.tags.${tag}`) }) : null)),
-      // Arranging stays a separate button: tapping the card moves the live position.
-      arrangeable(item) ? el('button', {
-        type: 'button', class: 'secondary icon-button op-arrange', 'data-icon': 'edit', disabled: !enabled,
-        'aria-label': t('arrange.buttonLabel', { title: itemTitle(item) }), title: t('arrange.button'), onclick: () => arrange(item),
-      }) : null);
+        tag ? el('span', { class: `op-tag tag-${tag}`, text: t(`operator.tags.${tag}`) }) : null)));
     }));
     if (!list.length) $('op-list').replaceChildren(el('li', { class: 'muted', text: t('setlist.empty') }));
   }
@@ -175,8 +171,9 @@
   // Shared song items (a projector-only addition is not part of the saved setlist).
   const arrangeable = (item) => item && item.type === 'song' && item.songId && item.scope !== 'projector';
 
-  function arrange(item) {
+  function arrange(item, goTo = null) {
     window.ARRANGE_SHEET.openForItem(item, {
+      goTo,
       onApply: async (result) => {
         const out = await window.ARRANGE_SHEET.saveToEvent(state.event.id, item.id, result);
         if (out.error) return message('op-message', out.error, 'error');

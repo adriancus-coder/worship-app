@@ -150,12 +150,15 @@
     const live = state.snap.status === 'live';
     $('setlist').replaceChildren(...state.items.map((item, i) => {
       const isCurrent = live && pos.itemId === item.id;
-      return el('li', { class: 'op-list-row' }, el('button', {
+      return el('li', null, el('button', {
         type: 'button',
         class: `live-item${isCurrent ? ' current' : ''}`,
         'aria-current': isCurrent ? 'step' : null,
         disabled: !live,
-        onclick: () => send('worship.goto', { itemId: item.id, step: 0 }),
+        // A song opens the arrange sheet ("Mergi la cântare" moves there); the rest move.
+        onclick: () => (arrangeable(item)
+          ? arrange(item, () => send('worship.goto', { itemId: item.id, step: 0 }))
+          : send('worship.goto', { itemId: item.id, step: 0 })),
       },
       el('span', { class: 'item-number', text: String(i + 1) }),
       // Top row: the type and, at the top right, the status badge; the title below.
@@ -164,12 +167,7 @@
           el('span', { class: `type-badge type-${item.type}`, text: t(`setlist.types.${item.type}`) }),
           isCurrent ? el('span', { class: 'op-markers' }, el('span', { class: 'live-badge', text: t('live.liveBadge') })) : null),
         el('span', { class: 'item-title', text: itemTitle(item) }),
-        item.type === 'song' && item.displayKey ? el('span', { class: 'item-sub', text: t('options.songKeyShort', { key: window.NOTATION.chord(item.displayKey) }) }) : null)),
-      // Arranging stays a separate button: tapping the card moves the team.
-      arrangeable(item) ? el('button', {
-        type: 'button', class: 'secondary icon-button op-arrange', 'data-icon': 'edit', disabled: !live,
-        'aria-label': t('arrange.buttonLabel', { title: itemTitle(item) }), title: t('arrange.button'), onclick: () => arrange(item),
-      }) : null);
+        item.type === 'song' && item.displayKey ? el('span', { class: 'item-sub', text: t('options.songKeyShort', { key: window.NOTATION.chord(item.displayKey) }) }) : null)));
     }));
     if (!state.items.length) $('setlist').replaceChildren(el('li', { class: 'muted', text: t('setlist.empty') }));
   }
@@ -301,8 +299,9 @@
 
   const arrangeable = (item) => item && item.type === 'song' && item.songId && item.scope !== 'projector';
 
-  function arrange(item) {
+  function arrange(item, goTo = null) {
     window.ARRANGE_SHEET.openForItem(item, {
+      goTo,
       onApply: async (result) => {
         const out = await window.ARRANGE_SHEET.saveToEvent(state.event.id, item.id, result);
         if (out.error) return showMessage(out.error, true);

@@ -99,7 +99,9 @@
     }
   }
 
-  function open({ title, song, codes, defaultCodes, transpose = 0, readOnly = false, onApply }) {
+  // canSetKey: a song without a key offers a key picker, saved to the library song.
+  // goTo: the live pages' "Mergi la cântare" (tapping a song there opens this sheet).
+  function open({ title, song, codes, defaultCodes, transpose = 0, readOnly = false, canSetKey = false, goTo = null, onApply }) {
     const { el } = window.PAGE;
     const { t } = window.I18N;
     const labels = SECTIONS.sectionLabels(song.sections, t);
@@ -145,7 +147,9 @@
       el('div', { class: 'preview-dialog-foot' },
         el('div', { class: 'form-actions' }, readOnly
           ? el('button', { type: 'button', class: 'secondary', id: 'arrange-cancel', onclick: close }, t('arrange.close'))
-          : [el('button', { type: 'button', class: 'secondary', id: 'arrange-cancel', onclick: close }, t('arrange.cancel')), apply])));
+          : [
+            goTo ? el('button', { type: 'button', class: 'secondary', id: 'arrange-goto', 'data-icon': 'jump', onclick: () => { close(); goTo(); } }, t('arrange.goTo')) : null,
+            el('button', { type: 'button', class: 'secondary', id: 'arrange-cancel', onclick: close }, t('arrange.cancel')), apply])));
 
     // A tap on the dimmed area closes it (like "Mai mult"): the same as Anulează.
     dialog.addEventListener('click', (event) => {
@@ -219,6 +223,7 @@
       keyOut.textContent = keyText();
       panels.order.replaceChildren(
         el('div', { class: 'arrange-panel-head' }, el('h3', { id: 'arrange-order-h', text: t('arrange.order') })),
+        song.song_key ? null : keyMissing(),
         el('div', { class: 'key-row arrange-key-row', role: 'group', 'aria-label': t('options.keyLabel') },
           el('button', { type: 'button', class: 'secondary icon-button', id: 'arrange-key-down', 'aria-label': t('options.keyDown'), disabled: state.transpose <= -TRANSPOSE_MAX, onclick: () => setTranspose(state.transpose - 1) }, el('span', { 'aria-hidden': 'true', text: '−' })),
           keyOut,
@@ -231,6 +236,33 @@
           type: 'button', class: 'secondary', id: 'arrange-reset', disabled: sameCodes(state.codes, defaultCodes),
           onclick: () => { state.codes = defaultCodes.slice(); render(); },
         }, t('options.resetArrangement')));
+    }
+
+    // "Tonul original nu e setat" (common for imports): owner / leader pick it here; it is
+    // saved on the library song (PUT /api/songs/:id with the key only).
+    function keyMissing() {
+      const box = el('div', { class: 'arrange-key-missing', role: 'note' }, el('p', { class: 'arrange-key-missing-text', text: t('arrange.keyMissing') }));
+      if (!canSetKey) return box;
+      const message = el('p', { class: 'message', role: 'status' });
+      const select = el('select', {
+        id: 'arrange-key-pick', 'aria-label': t('arrange.keyPick'),
+        onchange: async () => {
+          if (!select.value) return;
+          select.disabled = true;
+          const res = await window.PAGE.api(`/api/songs/${song.id}`, { method: 'PUT', body: { song_key: select.value } }).catch(() => null);
+          if (res && res.ok) {
+            song.song_key = res.body.song.song_key;
+            render();
+            return;
+          }
+          select.disabled = false;
+          message.className = 'message error';
+          message.textContent = (res && res.body && res.body.error) || t('common.networkError');
+        },
+      }, el('option', { value: '', text: t('arrange.keyPick') }),
+      SECTIONS.SONG_KEYS.map((key) => el('option', { value: key, text: window.NOTATION.chord(key) })));
+      box.append(select, message);
+      return box;
     }
 
     function renderFlow(sections) {
@@ -286,16 +318,19 @@
 
   // Opens the sheet for a song item of an event (its song from the library; codes and key
   // from the item). readOnly: the team's view. Resolves false when the song cannot load.
-  async function openForItem(item, { readOnly = false, onApply } = {}) {
-    const { api } = window.PAGE;
+  async function openForItem(item, { readOnly = false, goTo = null, onApply } = {}) {
+    const { api, canEdit } = window.PAGE;
     if (!item || item.type !== 'song' || !item.songId) return false;
-    const res = await api(`/api/songs/${item.songId}`).catch(() => null);
+    const [res, me] = await Promise.all([api(`/api/songs/${item.songId}`).catch(() => null), readOnly ? null : api('/api/auth/me').catch(() => null)]);
     if (!res || !res.ok) return false;
     const song = res.body.song;
     const defaults = SECTIONS.defaultArrangement(song);
     const codes = Array.isArray(item.arrangementCodes) ? item.arrangementCodes
       : (item.arrangementResolved || []).map((r) => r.code);
-    open({ title: item.title || song.title, song, codes: codes.length ? codes : defaults, defaultCodes: defaults, transpose: item.transpose || 0, readOnly, onApply });
+    open({
+      title: item.title || song.title, song, codes: codes.length ? codes : defaults, defaultCodes: defaults, transpose: item.transpose || 0,
+      readOnly, goTo, onApply, canSetKey: Boolean(me && me.ok && canEdit(me.body)),
+    });
     return true;
   }
 

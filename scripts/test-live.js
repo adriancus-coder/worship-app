@@ -197,6 +197,13 @@ async function main() {
     // the library, media, screens, team and settings keep their rules
     assert.strictEqual((await api('POST', '/api/songs', operator, { title: 'X', sections: [{ type: 'verse', content: 'x' }] })).status, 403);
     for (const method of ['PUT', 'DELETE']) assert.strictEqual((await api(method, '/api/songs/1', operator, { title: 'X' })).status, 403);
+    // the original key alone (the arrange sheet): owner / leader only, a known key or ''
+    assert.strictEqual((await api('PUT', '/api/songs/1', operator, { song_key: 'A' })).status, 403);
+    const keyed = await api('PUT', '/api/songs/1', leader, { song_key: 'A' });
+    assert.deepStrictEqual([keyed.status, keyed.body.song.song_key, keyed.body.song.sections.length > 0], [200, 'A', true]);
+    assert.strictEqual((await api('PUT', '/api/songs/1', leader, { song_key: 'H' })).status, 400);
+    const back = await api('PUT', '/api/songs/1', owner, { song_key: '' });
+    assert.deepStrictEqual([back.status, back.body.song.song_key], [200, null]);
     assert.strictEqual((await api('POST', '/api/songs/import', operator, { songs: [] })).status, 403);
     assert.strictEqual((await api('GET', '/api/songs/export', operator)).status, 403);
     // ... but resursecrestine.ro is open to the event roles (a too-short query stops before

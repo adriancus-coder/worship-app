@@ -294,7 +294,6 @@
   }
 
   function select(index, focusDetail) {
-    if (index !== state.selected) selectedChip = -1;
     const opening = index >= 0 && index !== state.selected;
     state.selected = index;
     renderItems();
@@ -405,7 +404,6 @@
 
   const { keyAfter, transposeContent } = window.CHORDS;
   const { sectionCodes, sectionLabels, codeIndex, defaultArrangement } = window.SECTIONS;
-  let selectedChip = -1;
 
   function offsetText(n) {
     return n > 0 ? `+${n}` : String(n);
@@ -475,89 +473,36 @@
         item.arrangementCodes = codes;
         item.arrangementIsDefault = isDefault;
         item.arrangementWarnings = [];
+        state.songCache.delete(item.songId); // the sheet may have set the song's original key
         optionChanged(item);
       },
     });
   }
 
+  // The order as a compact read-only summary (code + label + first lyric line); editing it
+  // happens in the arrange sheet ("Aranjează cântarea").
   function arrangementBlock(item, song) {
     const codes = arrangementCodes(item, song);
     const canonical = sectionCodes(song.sections);
     const labels = sectionLabels(song.sections, t);
-    const labelOf = (code) => labels[canonical.indexOf(code)] || code;
     const isDefault = item.arrangementIsDefault !== false;
-    if (selectedChip >= codes.length) selectedChip = -1;
-
-    const setCodes = (next, chip) => {
-      item.arrangementCodes = next;
-      item.arrangementIsDefault = false;
-      item.arrangementWarnings = [];
-      selectedChip = chip;
-      optionChanged(item);
-    };
-    const moveChip = (delta) => {
-      const next = codes.slice();
-      const to = selectedChip + delta;
-      [next[selectedChip], next[to]] = [next[to], next[selectedChip]];
-      setCodes(next, to);
-    };
-
-    const chips = el('ol', { class: 'chip-strip', 'aria-label': t('options.arrangementLabel') },
-      codes.map((code, i) => el('li', null, state.editing
-        ? el('button', {
-          type: 'button',
-          class: 'chip',
-          id: `opt-chip-${i}`,
-          'aria-pressed': String(i === selectedChip),
-          onclick: () => {
-            selectedChip = i === selectedChip ? -1 : i;
-            optionChanged(item);
-          },
-        }, el('span', { class: 'chip-code', text: code }), el('span', { text: labelOf(code) }))
-        : el('span', { class: 'chip' }, el('span', { class: 'chip-code', text: code }), el('span', { text: labelOf(code) })))));
-
-    const parts = [
+    const rows = codes.map((code) => {
+      const index = canonical.indexOf(code);
+      const line = index >= 0 ? window.ARRANGE_SHEET.firstLine(song.sections[index].content) : '';
+      return el('li', { class: 'order-summary-row', title: line || null },
+        el('span', { class: 'step-head' }, el('span', { class: 'step-code', text: code }), el('span', { class: 'step-label', text: labels[index] || code })),
+        line ? el('span', { class: 'step-line', text: line }) : null);
+    });
+    return el('div', { class: 'option-block' },
       el('span', { class: 'ro-label', text: `${t('options.arrangementLabel')} · ${t(isDefault ? 'options.arrangementIsDefault' : 'options.arrangementIsCustom')}` }),
       (item.arrangementWarnings || []).length
         ? el('p', { class: 'message error', text: t('options.arrangementWarning', { codes: item.arrangementWarnings.join(', ') }) })
         : null,
-      codes.length ? chips : el('p', { class: 'muted', text: t('options.arrangementEmpty') }),
-    ];
-    if (state.editing) {
-      const chipLabel = selectedChip >= 0 ? labelOf(codes[selectedChip]) : '';
-      const add = el('select', {
-        id: 'opt-add-section',
-        'aria-label': t('options.addSectionLabel'),
-        onchange: (event) => {
-          if (!event.target.value) return;
-          setCodes([...codes, event.target.value], codes.length);
-        },
-      }, el('option', { value: '', text: t('options.addSection') }),
-      canonical.map((code, i) => el('option', { value: code, text: `${labels[i]} (${code})` })));
-      parts.push(
-        codes.length ? el('p', { class: 'hint', text: t('options.chipHint') }) : null,
-        el('div', { class: 'chip-tools' },
-          el('button', { type: 'button', class: 'secondary', id: 'opt-chip-left', disabled: selectedChip <= 0, 'aria-label': chipLabel ? t('options.moveLeftLabel', { label: chipLabel }) : null, onclick: () => moveChip(-1) }, '← ', t('options.moveLeft')),
-          el('button', { type: 'button', class: 'secondary', id: 'opt-chip-right', disabled: selectedChip < 0 || selectedChip >= codes.length - 1, 'aria-label': chipLabel ? t('options.moveRightLabel', { label: chipLabel }) : null, onclick: () => moveChip(1) }, t('options.moveRight'), ' →'),
-          el('button', { type: 'button', class: 'secondary', id: 'opt-chip-remove', disabled: selectedChip < 0, 'aria-label': chipLabel ? t('options.removeChipLabel', { label: chipLabel }) : null, onclick: () => setCodes(codes.filter((c, i) => i !== selectedChip), Math.min(selectedChip, codes.length - 2)) }, '✕ ', t('options.removeChip'))),
-        el('div', { class: 'chip-tools' },
-          add,
-          el('button', {
-            type: 'button',
-            class: 'secondary',
-            id: 'opt-arrangement-reset',
-            disabled: isDefault,
-            onclick: () => {
-              item.arrangementIsDefault = true;
-              item.arrangementCodes = defaultArrangement(song);
-              item.arrangementWarnings = [];
-              selectedChip = -1;
-              optionChanged(item);
-            },
-            text: t('options.resetArrangement'),
-          })));
-    }
-    return el('div', { class: 'option-block' }, parts);
+      codes.length ? el('ol', { class: 'order-summary', 'aria-label': t('options.arrangementLabel') }, rows) : el('p', { class: 'muted', text: t('options.arrangementEmpty') }),
+      state.editing ? el('button', {
+        type: 'button', class: 'secondary arrange-big', id: 'opt-arrange', 'data-icon': 'edit',
+        'aria-label': t('arrange.buttonLabel', { title: itemTitle(item) }), onclick: () => openArrange(item),
+      }, t('arrange.editorButton')) : null);
   }
 
   // Sections in arrangement order (first appearance), chords transposed, labels from the whole song.
@@ -599,12 +544,6 @@
     if (cached === 'error') return [el('p', { class: 'message error', text: t('common.networkError') })];
 
     const song = cached;
-    if (state.editing) {
-      parts.push(el('p', null, el('button', {
-        type: 'button', class: 'secondary', id: 'opt-arrange', 'data-icon': 'edit',
-        'aria-label': t('arrange.buttonLabel', { title: itemTitle(item) }), onclick: () => openArrange(item),
-      }, t('arrange.button'))));
-    }
     parts.push(keyBlock(item, song), arrangementBlock(item, song));
     if (state.editing) {
       parts.push(
