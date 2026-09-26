@@ -81,6 +81,18 @@
         !secondary ? null : secondary.run
           ? el('button', { type: 'button', class: 'secondary', id: 'start-live', 'data-icon': secondary.icon, text: secondary.text, onclick: secondary.run })
           : el('a', { class: 'button secondary', href: secondary.href, 'data-icon': secondary.icon, text: secondary.text })),
+      // Stage 7: this person's assignments on the event ("Ești programat: Chitară", Vin / Nu pot
+      // while pending) and, for the event roles, the team summary.
+      ...(state.home.assignments || []).map((a) => el('div', { class: `now-assignment now-assignment-${a.status}` },
+        el('span', { class: 'now-assignment-text', text: t('assign.youAre', { position: a.positionName }) }),
+        a.status === 'pending'
+          ? el('span', { class: 'assign-answer-buttons' },
+            el('button', { type: 'button', 'data-icon': 'check', 'data-answer': 'accepted', text: t('assign.yes'), onclick: () => answer(event, a, 'accepted') }),
+            el('button', { type: 'button', class: 'secondary', 'data-icon': 'close', 'data-answer': 'declined', text: t('assign.no'), onclick: () => answer(event, a, 'declined') }))
+          : el('span', { class: `pill assign-pill assign-${a.status}`, text: t(`assign.status.${a.status}`) }))),
+      state.home.teamSummary && state.home.teamSummary.total
+        ? el('a', { class: `now-team-summary${state.home.teamSummary.declined ? ' has-declined' : ''}`, href: eventUrl(event), text: window.TEAM_CARD.summaryText(state.home.teamSummary) })
+        : null,
       // Live for more than a day (someone forgot to end it): a small hint with "Încheie".
       live && staleLive(event) ? el('p', { class: 'now-stale', id: 'stale-live' },
         el('span', { text: t('home.staleLive') }),
@@ -88,6 +100,13 @@
           ? el('button', { type: 'button', class: 'secondary danger-text', id: 'end-stale', 'data-icon': 'stop', text: t('home.staleEnd'), onclick: () => endStale(event) })
           : null) : null,
       el('p', { class: 'message error', id: 'start-message', role: 'alert' }));
+  }
+
+  // Vin / Nu pot from the home card (the note is for the event page).
+  async function answer(event, a, status) {
+    const res = await api(`/api/events/${event.id}/assignments/${a.id}/respond`, { method: 'POST', body: { status } }).catch(() => ({ ok: false, body: {} }));
+    if (!res.ok) { $('start-message').textContent = res.body.error || t('common.networkError'); return; }
+    await load().catch(() => {});
   }
 
   const STALE_LIVE_MS = 24 * 60 * 60 * 1000;

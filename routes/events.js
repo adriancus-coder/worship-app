@@ -5,6 +5,7 @@ const { requireRole } = require('../lib/auth');
 const { todayIn, nowTimeIn, nextServiceDate } = require('../lib/dates');
 const { createAdminSettings } = require('../lib/admin-settings');
 const { EVENT_ROLES, validateEventMeta, validateItems, createEventStore } = require('../lib/events');
+const { createAssignmentStore } = require('../lib/assignments');
 
 const WHEN = ['upcoming', 'past', 'templates'];
 
@@ -14,6 +15,7 @@ const WHEN = ['upcoming', 'past', 'templates'];
 function createEventsRouter({ db, auth, logger, live }) {
   const router = express.Router();
   const events = createEventStore(db);
+  const assignments = createAssignmentStore(db); // a copy of an event / template copies its team (pending)
   const settings = createAdminSettings(db);
   const canEdit = requireRole(...EVENT_ROLES);
 
@@ -91,6 +93,7 @@ function createEventsRouter({ db, auth, logger, live }) {
     }
 
     const id = events.create(req.adminId, req.user.id, value, { sourceId });
+    if (sourceId !== null) assignments.copyFrom(req.adminId, sourceId, id, req.user.id);
     if (fromTemplate !== null) rememberTemplate(req.adminId, sourceId);
     logger.info(`Event #${id} created by user #${req.user.id} (admin #${req.adminId})${sourceId ? ` from #${sourceId}` : ''}`);
     live.eventChanged(req.adminId, id); // open home pages show it at once
@@ -129,6 +132,7 @@ function createEventsRouter({ db, auth, logger, live }) {
     const { error, value } = validateEventMeta(meta, req.t);
     if (error) return res.status(400).json({ error });
     const id = events.create(req.adminId, req.user.id, value, { sourceId: template ? template.id : null });
+    if (template) assignments.copyFrom(req.adminId, template.id, id, req.user.id);
     if (template) rememberTemplate(req.adminId, template.id);
     logger.info(`Event #${id} quick-created by user #${req.user.id} (admin #${req.adminId})${template ? ` from template #${template.id}` : ''}`);
     live.eventChanged(req.adminId, id);
@@ -248,6 +252,7 @@ function createEventsRouter({ db, auth, logger, live }) {
     }, req.t);
     if (error) return res.status(400).json({ error });
     const id = events.create(req.adminId, req.user.id, value, { isTemplate: true, sourceId: event.id });
+    assignments.copyFrom(req.adminId, event.id, id, req.user.id); // the "usual team" of the template
     logger.info(`Template #${id} saved from event #${event.id} by user #${req.user.id} (admin #${req.adminId})`);
     respond(req, res, id, 201);
   });

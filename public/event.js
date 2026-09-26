@@ -340,7 +340,61 @@
     renderItems();
     renderDetail();
     renderSaveBar();
+    renderTeam();
   }
+
+  // --- the team (public/team-card.js): the editor's Echipa tab (owner, leader) or the card ----
+  const team = { card: null, mode: null, summary: null };
+  const ASSIGN_ROLES = ['owner', 'leader']; // lib/assignments.js
+  function renderTeam() {
+    const ev = state.event;
+    const role = state.me && state.me.user.role;
+    const wanted = ev.isTemplate && !state.editing ? null : (state.editing && ASSIGN_ROLES.includes(role) ? 'edit' : 'view');
+    $('editor-tabs').hidden = wanted !== 'edit';
+    if (wanted !== 'edit') showEditorTab('program');
+    if (!wanted) {
+      $('team-card').replaceChildren();
+      return;
+    }
+    if (team.card && team.mode === wanted) return;
+    team.mode = wanted;
+    const container = wanted === 'edit' ? $('team-panel') : $('team-card');
+    (wanted === 'edit' ? $('team-card') : $('team-panel')).replaceChildren();
+    team.card = window.TEAM_CARD.create(container, {
+      eventId: ev.id, mode: wanted,
+      onSummary: (summary) => {
+        team.summary = summary;
+        $('tab-team-count').textContent = summary.total ? String(summary.total) : '';
+        renderTeamSummary();
+      },
+    });
+    team.card.load().catch(() => {});
+  }
+
+  // "5 confirmați · 1 așteaptă · 1 nu poate" in the header (event roles): tap -> the list.
+  function renderTeamSummary() {
+    const box = $('team-summary');
+    const editor = canEdit(state.me);
+    if (!editor || !team.summary || !team.summary.total || state.event.isTemplate) { box.hidden = true; return; }
+    box.hidden = false;
+    box.textContent = window.TEAM_CARD.summaryText(team.summary);
+    box.className = `team-summary${team.summary.declined ? ' has-declined' : ''}`;
+  }
+  $('team-summary').addEventListener('click', () => {
+    if (!$('editor-tabs').hidden) showEditorTab('team');
+    else $('team-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+
+  const editorTabs = window.PAGE.setupTabs([$('tab-program'), $('tab-team')], (index) => showEditorTab(index === 1 ? 'team' : 'program', true));
+  function showEditorTab(name, fromTabs) {
+    $('editor-program').hidden = name === 'team';
+    $('team-panel').hidden = name !== 'team';
+    if (!fromTabs) {
+      $('tab-program').setAttribute('aria-selected', String(name !== 'team'));
+      $('tab-team').setAttribute('aria-selected', String(name === 'team'));
+    }
+  }
+  void editorTabs;
 
   function changed() {
     state.justSaved = false;

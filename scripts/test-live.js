@@ -1472,6 +1472,59 @@ async function main() {
     await api('PUT', '/api/me/profile', member, { name: 'Membru', phone: '', positionIds: [voce] });
   });
 
+  await step('assignments: owner / leader assign, others read, the assigned person answers; a copy carries the team; templates keep the "usual team"', async () => {
+    const posList = (await api('GET', '/api/positions', owner)).body.positions;
+    const voce = posList.find((p) => p.name === 'Voce').id;
+    const chitara = posList.find((p) => p.name === 'Chitară').id;
+    const me = (email) => (async () => (await api('GET', '/api/auth/me', await login(email))).body.user.id);
+    const memberId = (await api('GET', '/api/team', owner)).body.users.find((u) => u.email === 'membru@x.ro').id;
+    const operatorId = (await api('GET', '/api/team', owner)).body.users.find((u) => u.email === 'operator@x.ro').id;
+    void me;
+    const ev2 = (await api('POST', '/api/events', owner, { name: 'Programare', eventDate: '2026-11-01' })).body.event;
+    for (const cookie of [operator, presenter, member]) {
+      assert.strictEqual((await api('PUT', `/api/events/${ev2.id}/assignments`, cookie, { assignments: [] })).status, 403, 'assign: owner and leader only');
+    }
+    const put = await api('PUT', `/api/events/${ev2.id}/assignments`, leader, { assignments: [{ userId: memberId, positionId: voce }, { userId: operatorId, positionId: chitara }] });
+    assert.deepStrictEqual([put.status, put.body.assignments.length, put.body.summary, put.body.canAssign, Array.isArray(put.body.people)], [200, 2, { accepted: 0, pending: 2, declined: 0, total: 2 }, true, true]);
+    assert.strictEqual((await api('PUT', `/api/events/${ev2.id}/assignments`, leader, { assignments: [{ userId: 999, positionId: voce }] })).status, 400);
+    // reading: everyone of the admin; a member sees no notes of others and no picker
+    const asOp = await api('GET', `/api/events/${ev2.id}/assignments`, operator);
+    assert.deepStrictEqual([asOp.status, asOp.body.canAssign, asOp.body.people], [200, false, undefined], 'the operator views only');
+    const asMember = await api('GET', `/api/events/${ev2.id}/assignments`, member);
+    assert.deepStrictEqual([asMember.body.me.length, asMember.body.me[0].positionName, asMember.body.me[0].status], [1, 'Voce', 'pending']);
+    assert.strictEqual((await api('GET', `/api/events/${ev2.id}/assignments`, other)).status, 404, 'another admin');
+    // answers: the assigned person only
+    const mine = asMember.body.me[0];
+    const theirs = asOp.body.me[0];
+    assert.strictEqual((await api('POST', `/api/events/${ev2.id}/assignments/${theirs.id}/respond`, member, { status: 'accepted' })).status, 404, 'not my row');
+    assert.strictEqual((await api('POST', `/api/events/${ev2.id}/assignments/${mine.id}/respond`, member, { status: 'maybe' })).status, 400);
+    const declined = await api('POST', `/api/events/${ev2.id}/assignments/${mine.id}/respond`, member, { status: 'declined', note: 'Sunt plecat din oraș' });
+    assert.deepStrictEqual([declined.status, declined.body.me[0].status, declined.body.me[0].note, declined.body.summary.declined], [200, 'declined', 'Sunt plecat din oraș', 1]);
+    assert.strictEqual((await api('GET', `/api/events/${ev2.id}/assignments`, leader)).body.assignments.find((r) => r.id === mine.id).note, 'Sunt plecat din oraș', 'the leader reads the note');
+    assert.strictEqual((await api('GET', `/api/events/${ev2.id}/assignments`, operator)).body.assignments.find((r) => r.id === mine.id).note, 'Sunt plecat din oraș', 'every event role reads the notes');
+    const accepted = await api('POST', `/api/events/${ev2.id}/assignments/${theirs.id}/respond`, operator, { status: 'accepted', note: 'Vin mai târziu' });
+    assert.strictEqual(accepted.body.summary.accepted, 1);
+    assert.strictEqual((await api('GET', `/api/events/${ev2.id}/assignments`, member)).body.assignments.find((r) => r.id === theirs.id).note, null, 'a member sees no note of others');
+    // the home card: my assignment on the next event
+    const homeM = (await api('GET', '/api/home', member)).body;
+    assert.ok(homeM.assignments.length === 0 || homeM.assignments[0].positionName, 'assignments are for the top event only');
+    // "Trimite programarea": marks the pending, unsent rows (the notifications come with the notifications module)
+    await api('PUT', `/api/events/${ev2.id}/assignments`, leader, { assignments: [{ userId: memberId, positionId: voce }, { userId: operatorId, positionId: chitara }, { userId: memberId, positionId: chitara }] });
+    const sent = await api('POST', `/api/events/${ev2.id}/assignments/send`, leader);
+    assert.deepStrictEqual([sent.status, sent.body.sent.sent, sent.body.assignments.filter((r) => r.notifiedAt).length], [200, 1, 1], 'only the new pending row counts as sent');
+    assert.strictEqual((await api('POST', `/api/events/${ev2.id}/assignments/send`, operator)).status, 403);
+    // a copy of the event carries the team as pending; a template keeps the usual team
+    const copy = (await api('POST', '/api/events', owner, { name: 'Copie', eventDate: '2026-11-08', fromEventId: ev2.id })).body.event;
+    const copied = (await api('GET', `/api/events/${copy.id}/assignments`, owner)).body.assignments;
+    assert.deepStrictEqual([copied.length, copied.every((r) => r.status === 'pending' && !r.notifiedAt && !r.note)], [3, true]);
+    const tpl = (await api('POST', `/api/events/${ev2.id}/save-as-template`, owner, { name: 'Șablon echipă' })).body.event;
+    assert.strictEqual((await api('GET', `/api/events/${tpl.id}/assignments`, owner)).body.assignments.length, 3, 'the template keeps the usual team');
+    assert.strictEqual((await api('GET', `/api/events/${tpl.id}/assignments`, member)).status, 404, 'members never see templates');
+    const fromTpl = (await api('POST', '/api/events', owner, { name: 'Din șablon', eventDate: '2026-11-15', fromTemplateId: tpl.id })).body.event;
+    assert.strictEqual((await api('GET', `/api/events/${fromTpl.id}/assignments`, owner)).body.assignments.length, 3, 'an event from the template starts with its team');
+    for (const id of [copy.id, tpl.id, fromTpl.id]) await api('DELETE', `/api/events/${id}`, owner);
+  });
+
   await step('view as: an owner sees the app as member / operator / leader (every guard follows), back restores all; a leader cannot', async () => {
     const viewAs = (cookie, role) => api('PUT', '/api/me/view-as', cookie, { role });
     const page = (url, cookie) => fetch(base() + url, { headers: { Cookie: cookie }, redirect: 'manual' }).then((r) => r.status);

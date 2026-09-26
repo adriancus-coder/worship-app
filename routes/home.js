@@ -16,7 +16,7 @@ function createHomeRouter({ db, auth }) {
 
   router.get('/api/home', auth.requireUser, (req, res) => {
     res.set('Cache-Control', 'no-store');
-    const body = home(req.adminId, req.user.role, todayIn(settings.timezone(req.adminId)));
+    const body = home(req.adminId, req.user.role, todayIn(settings.timezone(req.adminId)), req.user.id);
     if (req.user.role === 'owner') body.backupReminder = backups.reminder(req.adminId);
     res.json(body);
   });

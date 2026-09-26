@@ -1895,6 +1895,7 @@ testAsync('platform deletion: refused while active, the exact name, pending -> c
     db.prepare("INSERT INTO user_tokens (user_id, admin_id, kind, token_hash, created_at, expires_at) VALUES (?, ?, 'invite', ?, 0, 9999999999999)").run(userId, a, `h${a}`);
     const posId = Number(db.prepare("INSERT INTO positions (admin_id, name, sort) VALUES (?, 'Voce', 0)").run(a).lastInsertRowid);
     db.prepare('INSERT INTO users_positions (user_id, position_id, admin_id) VALUES (?, ?, ?)').run(userId, posId, a);
+    db.prepare("INSERT INTO event_assignments (event_id, admin_id, user_id, position_id, created_at) VALUES (?, ?, ?, ?, 0)").run(eventId, a, userId, posId);
     fs.mkdirSync(path.join(dataDir, 'uploads', `admin-${a}`, 'media'), { recursive: true });
     fs.writeFileSync(path.join(dataDir, 'uploads', `admin-${a}`, 'media', 'f.bin'), Buffer.alloc(64, 1));
   };
@@ -2165,5 +2166,47 @@ test('positions (migration 029): seeded once per admin, add / rename / reorder /
   assert.strictEqual(P.setForUser(1, 2, [ids[0]]), false, 'a user of another admin');
   assert.ok(validatePositionName('   ', (k) => k).error && validatePositionName('x'.repeat(41), (k) => k).error);
   assert.deepStrictEqual(validatePositionName('  Vioară   solo ', (k) => k), { value: 'Vioară solo' });
+  mem.close();
+});
+
+test('assignments (migration 030): replace keeps answers, answers are the person\'s own, a copy resets to pending, summary', () => {
+  const Database = require('better-sqlite3');
+  const { runMigrations } = require('../lib/db');
+  const { createAssignmentStore, ASSIGN_ROLES } = require('../lib/assignments');
+  const { createPositionStore } = require('../lib/positions');
+  const mem = new Database(':memory:');
+  mem.pragma('foreign_keys = ON');
+  runMigrations(mem);
+  mem.prepare("INSERT INTO admins (id, name, created_at) VALUES (1, 'A', 0), (2, 'B', 0)").run();
+  mem.prepare("INSERT INTO users (id, admin_id, email, name, password_hash, role, created_at, active) VALUES (1, 1, 'a@x.ro', 'Ana', 'x', 'owner', 0, 1), (2, 1, 'b@x.ro', 'Bob', 'x', 'member', 0, 1), (3, 1, 'c@x.ro', 'Cezar', 'x', 'member', 0, 0), (4, 2, 'd@x.ro', 'Dan', 'x', 'member', 0, 1)").run();
+  mem.prepare("INSERT INTO events (id, admin_id, name, event_date, status, created_at, updated_at) VALUES (1, 1, 'E', '2026-10-04', 'planned', 0, 0), (2, 1, 'T', '2026-10-04', 'planned', 0, 0)").run();
+  const positions = createPositionStore(mem).list(1);
+  const [voce, chitara] = positions.map((p) => p.id);
+  const other = createPositionStore(mem).list(2)[0].id;
+  const A = createAssignmentStore(mem);
+  assert.deepStrictEqual(ASSIGN_ROLES, ['owner', 'leader']);
+  assert.deepStrictEqual(A.replace(1, 1, [{ userId: 2, positionId: voce }, { userId: 1, positionId: chitara }], 1), { ok: true, added: 2, removed: 0 });
+  assert.deepStrictEqual(A.replace(1, 1, [{ userId: 3, positionId: voce }], 1), { error: 'userInvalid' }, 'a deactivated person');
+  assert.deepStrictEqual(A.replace(1, 1, [{ userId: 4, positionId: voce }], 1), { error: 'userInvalid' }, 'another admin\'s person');
+  assert.deepStrictEqual(A.replace(1, 1, [{ userId: 2, positionId: other }], 1), { error: 'positionInvalid' });
+  let rows = A.list(1, 1);
+  assert.deepStrictEqual(rows.map((r) => [r.userName, r.positionName, r.status]), [['Bob', 'Voce', 'pending'], ['Ana', 'Chitară', 'pending']], 'in the positions\' order');
+  // the answer: only the person's own row
+  const bob = rows.find((r) => r.userId === 2);
+  assert.strictEqual(A.answer(1, 1, bob.id, 1, 'declined', 'x'), null, 'not Ana\'s row');
+  assert.strictEqual(A.answer(1, 1, bob.id, 2, 'pending', ''), null);
+  assert.deepStrictEqual([A.answer(1, 1, bob.id, 2, 'declined', 'Sunt plecat').status, A.get(1, 1, bob.id).note], ['declined', 'Sunt plecat']);
+  // replacing the list keeps Bob's row (and answer), drops Ana's, adds Bob on guitar
+  assert.deepStrictEqual(A.replace(1, 1, [{ userId: 2, positionId: voce }, { userId: 2, positionId: chitara }], 1), { ok: true, added: 1, removed: 1 });
+  rows = A.list(1, 1);
+  assert.deepStrictEqual(rows.map((r) => [r.userName, r.positionName, r.status]), [['Bob', 'Voce', 'declined'], ['Bob', 'Chitară', 'pending']]);
+  assert.deepStrictEqual(A.summary(rows), { accepted: 0, pending: 1, declined: 1, total: 2 });
+  assert.deepStrictEqual(A.forUser(1, 2, 1).map((r) => [r.positionName, r.status]), [['Voce', 'declined'], ['Chitară', 'pending']]);
+  assert.deepStrictEqual(A.assignedUserIds(1, 1), [2]);
+  A.markSent(1, rows.map((r) => r.id), 5);
+  assert.ok(A.list(1, 1).every((r) => r.notifiedAt === 5));
+  // a copy: pending, not sent
+  assert.strictEqual(A.copyFrom(1, 1, 2, 1), 2);
+  assert.deepStrictEqual(A.list(1, 2).map((r) => [r.status, r.notifiedAt, r.note]), [['pending', null, null], ['pending', null, null]]);
   mem.close();
 });
