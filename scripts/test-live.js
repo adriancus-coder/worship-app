@@ -1247,6 +1247,82 @@ async function main() {
     list = (await api('GET', '/api/platform/admins', owner)).body.admins;
     assert.strictEqual(list.length, 12);
   });
+
+  await step('platform: one church - detail (counts, never content), its team, its screens; others 403', async () => {
+    const other2 = await login('alt@x.ro'); // church 2's owner
+    const B = 2;
+    // detail: counts and settings; no song / event / media names anywhere in the body
+    const d = await api('GET', `/api/platform/admins/${B}`, owner);
+    assert.strictEqual(d.status, 200, JSON.stringify(d.body));
+    const a = d.body.admin;
+    assert.deepStrictEqual([a.id, a.name, a.active, a.platform, a.usage.usersByRole.owner], [B, 'Alta', true, false, 1]);
+    const evTotal = a.usage.eventsByStatus.finished + a.usage.eventsByStatus.live + a.usage.eventsByStatus.planned;
+    assert.strictEqual(evTotal, a.events, 'events by status add up');
+    assert.ok(a.usage.songs >= 1 && a.usage.screens >= 1 && a.usage.mediaFiles >= 0 && Number.isInteger(a.usage.screensOnline) && a.usage.screensOnline <= a.usage.screens, JSON.stringify(a.usage));
+    assert.deepStrictEqual([a.settings.timezone, a.settings.themeDefault, a.settings.chordNotationDefault, a.settings.service.time], ['Europe/Oslo', 'dark', 'letters', '18:30']);
+    assert.deepStrictEqual(Object.keys(a.backup).sort(), ['lastAt', 'lastBytes']);
+    const text = JSON.stringify(d.body);
+    for (const secret of ['Cânt', 'Șters', 'Seară de rugăciune', 'Ps 91', 'password_hash']) assert.ok(!text.includes(secret), `no content: ${secret}`);
+    assert.strictEqual((await api('GET', '/api/platform/admins/999', owner)).status, 404);
+    // its team: create (temp password once), rename / role, deactivate / reactivate, reset
+    let users = (await api('GET', `/api/platform/admins/${B}/users`, owner)).body.users;
+    assert.deepStrictEqual(users.map((u) => u.role), ['owner']);
+    assert.ok(users.every((u) => u.password_hash === undefined && u.passwordHash === undefined));
+    const created = await api('POST', `/api/platform/admins/${B}/users`, owner, { name: 'Vasile', email: 'Vasile@B.ro', role: 'leader' });
+    assert.strictEqual(created.status, 201, JSON.stringify(created.body));
+    const vasile = created.body.user;
+    assert.deepStrictEqual([vasile.email, vasile.role, vasile.mustChangePassword], ['vasile@b.ro', 'leader', true]);
+    assert.strictEqual((await api('POST', `/api/platform/admins/${B}/users`, owner, { name: 'Dublu', email: 'vasile@b.ro', role: 'member' })).status, 409);
+    assert.strictEqual((await api('POST', `/api/platform/admins/${B}/users`, owner, { name: 'X', email: 'x@b.ro', role: 'owner' })).status, 400, 'never a second owner');
+    assert.ok((await api('GET', '/api/team', other2)).body.users.some((u) => u.email === 'vasile@b.ro'), "B's owner sees the new user in /team");
+    let vs = await login('vasile@b.ro', created.body.temporaryPassword);
+    assert.strictEqual((await api('GET', '/api/songs', vs)).body.code, 'mustChangePassword');
+    await api('POST', '/api/me/password', vs, { current: created.body.temporaryPassword, password: 'parola-vasile-1' });
+    vs = await login('vasile@b.ro', 'parola-vasile-1');
+    assert.strictEqual((await api('GET', '/api/auth/me', vs)).status, 200);
+    let r = await api('PATCH', `/api/platform/admins/${B}/users/${vasile.id}`, owner, { name: 'Vasile P.', role: 'operator' });
+    assert.deepStrictEqual([r.status, r.body.user.name, r.body.user.role], [200, 'Vasile P.', 'operator']);
+    r = await api('POST', `/api/platform/admins/${B}/users/${vasile.id}/reset-password`, owner);
+    assert.strictEqual(r.status, 200);
+    assert.strictEqual((await api('GET', '/api/auth/me', vs)).status, 401, 'old sessions gone');
+    assert.strictEqual((await api('POST', '/api/auth/login', null, { email: 'vasile@b.ro', password: 'parola-vasile-1' })).status, 401);
+    assert.strictEqual((await api('GET', '/api/songs', await login('vasile@b.ro', r.body.temporaryPassword))).body.code, 'mustChangePassword');
+    r = await api('POST', `/api/platform/admins/${B}/users/${vasile.id}/deactivate`, owner);
+    assert.deepStrictEqual([r.status, r.body.user.active], [200, false]);
+    assert.strictEqual((await api('POST', '/api/auth/login', null, { email: 'vasile@b.ro', password: r.body.temporaryPassword || 'x' })).status, 401);
+    r = await api('POST', `/api/platform/admins/${B}/users/${vasile.id}/reactivate`, owner);
+    assert.deepStrictEqual([r.status, r.body.user.active], [200, true]);
+    const ownerB = users[0];
+    for (const action of ['deactivate', 'reactivate', 'reset-password']) assert.strictEqual((await api('POST', `/api/platform/admins/${B}/users/${ownerB.id}/${action}`, owner)).status, 403, `the church's owner: ${action} only through the church`);
+    assert.strictEqual((await api('PATCH', `/api/platform/admins/${B}/users/${ownerB.id}`, owner, { role: 'member' })).status, 403);
+    assert.strictEqual((await api('GET', `/api/platform/admins/1/users/`, owner)).status, 200);
+    assert.strictEqual((await api('POST', `/api/platform/admins/1/users/${vasile.id}/deactivate`, owner)).status, 404, 'a user of another church does not exist here');
+    // its screens: list with online, revoke -> the screen is dropped
+    const paired = await pairScreen(other2, 'Ecran B');
+    const bScreen = connectScreen(paired.token);
+    await frameWhere(bScreen, () => true);
+    let sc = (await api('GET', `/api/platform/admins/${B}/screens`, owner)).body.screens;
+    const mine = sc.find((x) => x.name === 'Ecran B');
+    assert.ok(mine && mine.online === true && mine.lastSeenAt, JSON.stringify(sc));
+    const dropped = next(bScreen, 'screen:revoked');
+    assert.strictEqual((await api('POST', `/api/platform/admins/${B}/screens/${mine.id}/revoke`, owner)).status, 200);
+    await dropped;
+    assert.strictEqual((await api('GET', '/api/screen/me', null, undefined, { 'X-Screen-Token': paired.token })).status, 401, 'the token is dead');
+    assert.strictEqual((await api('POST', `/api/platform/admins/${B}/screens/${mine.id}/revoke`, owner)).status, 404, 'already revoked');
+    // everyone else: 403 on every route (B's own owner, a leader of the platform church, a member)
+    for (const cookie of [other2, leader, member]) {
+      for (const [method, url, body] of [
+        ['GET', `/api/platform/admins/${B}`], ['GET', `/api/platform/admins/${B}/users`],
+        ['POST', `/api/platform/admins/${B}/users`, { name: 'X', email: 'x2@b.ro', role: 'member' }],
+        ['PATCH', `/api/platform/admins/${B}/users/${vasile.id}`, { name: 'X' }],
+        ['POST', `/api/platform/admins/${B}/users/${vasile.id}/deactivate`], ['POST', `/api/platform/admins/${B}/users/${vasile.id}/reactivate`],
+        ['POST', `/api/platform/admins/${B}/users/${vasile.id}/reset-password`],
+        ['GET', `/api/platform/admins/${B}/screens`], ['POST', `/api/platform/admins/${B}/screens/1/revoke`],
+      ]) {
+        assert.strictEqual((await api(method, url, cookie, body)).status, 403, `${method} ${url}`);
+      }
+    }
+  });
 }
 
 main()
