@@ -53,6 +53,13 @@
     ].filter(Boolean).join(' · ');
     $('act-deactivate').hidden = a.platform || !a.active;
     $('act-reactivate').hidden = a.platform || a.active;
+    // Permanent deletion: only a deactivated church; pending -> the pill and "Anulează".
+    const pending = Boolean(a.deleteAt);
+    $('church-delete').hidden = !pending;
+    $('church-delete').textContent = pending ? t('platform.deletePending', { date: dateText(a.deleteAt) }) : '';
+    $('act-cancel-delete').hidden = !pending;
+    $('delete-area').hidden = a.platform || a.active || pending;
+    $('delete-hint').hidden = a.platform || !a.active;
   }
 
   // --- Prezentare -----------------------------------------------------------------------
@@ -203,6 +210,37 @@
 
   $('act-deactivate').addEventListener('click', () => openConfirm('deactivate', state.admin));
   $('act-reactivate').addEventListener('click', () => openConfirm('reactivate', state.admin));
+  $('act-cancel-delete').addEventListener('click', () => openConfirm('cancelDelete', state.admin));
+
+  // "Șterge biserica": the 7-day delay and the final backup explained; the name typed exactly.
+  $('act-delete').addEventListener('click', () => {
+    const a = state.admin;
+    $('delete-heading').textContent = t('platform.confirm.deleteHeading', { name: a.name });
+    $('delete-text').textContent = t('platform.confirm.deleteText', { name: a.name });
+    $('delete-name').value = '';
+    $('delete-submit').disabled = true;
+    say('delete-message', '', 'error');
+    $('delete-dialog').showModal();
+    $('delete-name').focus();
+  });
+  $('delete-name').addEventListener('input', () => {
+    $('delete-submit').disabled = $('delete-name').value !== state.admin.name;
+  });
+  $('delete-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    $('delete-submit').disabled = true;
+    try {
+      const res = await api(path('/delete'), { method: 'POST', body: { confirmName: $('delete-name').value } });
+      if (!res.ok) return say('delete-message', res.body.error || t('common.networkError'), 'error');
+      $('delete-dialog').close();
+      await load();
+      say('page-message', t('platform.deleteScheduled', { name: state.admin.name, date: dateText(state.admin.deleteAt) }), 'success');
+    } catch (err) {
+      say('delete-message', t('common.networkError'), 'error');
+    } finally {
+      $('delete-submit').disabled = $('delete-name').value !== state.admin.name;
+    }
+  });
   $('act-reset').addEventListener('click', () => openConfirm('reset', state.admin));
   $('act-quota').addEventListener('click', () => {
     const a = state.admin;
@@ -230,6 +268,7 @@
   const CONFIRM = {
     deactivate: { key: 'platform.confirm.deactivate', danger: true },
     reactivate: { key: 'platform.confirm.reactivate' },
+    cancelDelete: { key: 'platform.confirm.cancelDelete' },
     reset: { key: 'platform.confirm.reset' },
     userReset: { key: 'team.confirm.reset' },
     userDeactivate: { key: 'team.confirm.deactivate', danger: true },
@@ -255,6 +294,7 @@
     try {
       let res;
       if (action === 'deactivate' || action === 'reactivate') res = await api(path(`/${action}`), { method: 'POST' });
+      else if (action === 'cancelDelete') res = await api(path('/cancel-delete'), { method: 'POST' });
       else if (action === 'reset') res = await api(path('/reset-owner-password'), { method: 'POST' });
       else if (action === 'screenRevoke') res = await api(path(`/screens/${target.id}/revoke`), { method: 'POST' });
       else res = await api(path(`/users/${target.id}/${{ userReset: 'reset-password', userDeactivate: 'deactivate', userReactivate: 'reactivate' }[action]}`), { method: 'POST' });
@@ -263,9 +303,9 @@
       if (action === 'reset') {
         await load();
         showResult('platform.resetHeading', { name: state.admin.name, owner: res.body.owner.name }, res.body.owner.email, res.body.temporaryPassword);
-      } else if (action === 'deactivate' || action === 'reactivate') {
+      } else if (action === 'deactivate' || action === 'reactivate' || action === 'cancelDelete') {
         await load();
-        say('page-message', t(`platform.${action}d`, { name: state.admin.name }), 'success');
+        say('page-message', t(action === 'cancelDelete' ? 'platform.deleteCancelled' : `platform.${action}d`, { name: state.admin.name }), 'success');
       } else if (action === 'screenRevoke') {
         await loadScreens();
         say('page-message', t('platformChurch.revoked', { name: target.name }), 'success');

@@ -27,11 +27,15 @@
     $(id).textContent = text || '';
   }
 
-  function lastActivity(ms) {
-    if (!ms) return t('platform.noActivity');
+  function dayText(ms) {
     const d = new Date(ms);
     const day = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    return t('platform.lastActivity', { when: formatDate(day, String(new Date().getFullYear())) });
+    return formatDate(day, String(new Date().getFullYear()));
+  }
+
+  function lastActivity(ms) {
+    if (!ms) return t('platform.noActivity');
+    return t('platform.lastActivity', { when: dayText(ms) });
   }
 
   function bar(used, total, label) {
@@ -66,6 +70,7 @@
           el('p', { class: 'team-email', text: admin.ownerEmail || '—' }),
           el('p', { class: 'team-meta' },
             el('span', { class: `pill status-pill status-${admin.active ? 'active' : 'inactive'}`, text: t(admin.active ? 'platform.active' : 'platform.inactive') }),
+            admin.deleteAt ? el('span', { class: 'pill delete-pill', text: t('platform.deletePending', { date: dayText(admin.deleteAt) }) }) : null,
             el('span', { class: 'muted', text: t('platform.counts', { users: admin.users, songs: admin.songs, events: admin.events }) }),
             el('span', { class: 'muted', text: lastActivity(admin.lastActivityAt) })),
           el('div', { class: 'church-storage' },
@@ -76,7 +81,9 @@
           el('button', { type: 'button', class: 'secondary', 'data-icon': 'upload', text: t('platform.quota'), 'aria-label': t('platform.quotaFor', { name: admin.name }), onclick: () => openQuota(admin) }),
           admin.platform ? null : (admin.active
             ? el('button', { type: 'button', class: 'secondary danger-text', 'data-icon': 'close', text: t('platform.deactivate'), 'aria-label': t('platform.deactivateFor', { name: admin.name }), onclick: () => openConfirm('deactivate', admin) })
-            : el('button', { type: 'button', class: 'secondary', 'data-icon': 'restart', text: t('platform.reactivate'), 'aria-label': t('platform.reactivateFor', { name: admin.name }), onclick: () => openConfirm('reactivate', admin) }))));
+            : el('button', { type: 'button', class: 'secondary', 'data-icon': 'restart', text: t('platform.reactivate'), 'aria-label': t('platform.reactivateFor', { name: admin.name }), onclick: () => openConfirm('reactivate', admin) })),
+          // A scheduled deletion can be cancelled from the row too (scheduling: the church page).
+          admin.deleteAt ? el('button', { type: 'button', class: 'secondary', 'data-icon': 'undo', text: t('platform.cancelDelete'), 'aria-label': t('platform.cancelDeleteFor', { name: admin.name }), onclick: () => openConfirm('cancelDelete', admin) }) : null));
     }));
   }
 
@@ -138,7 +145,7 @@
 
   $('confirm-yes').addEventListener('click', async () => {
     const { action, admin } = state.confirm;
-    const path = action === 'reset' ? 'reset-owner-password' : action;
+    const path = { reset: 'reset-owner-password', cancelDelete: 'cancel-delete' }[action] || action;
     $('confirm-yes').disabled = true;
     try {
       const res = await api(`/api/platform/admins/${admin.id}/${path}`, { method: 'POST' });
@@ -146,7 +153,7 @@
       replaceAdmin(res.body.admin);
       $('confirm-dialog').close();
       if (action === 'reset') showResult('reset', res.body.admin, res.body.owner, res.body.temporaryPassword);
-      else say('page-message', t(`platform.${action}d`, { name: admin.name }), 'success');
+      else say('page-message', t(action === 'cancelDelete' ? 'platform.deleteCancelled' : `platform.${action}d`, { name: admin.name }), 'success');
     } finally {
       $('confirm-yes').disabled = false;
     }
