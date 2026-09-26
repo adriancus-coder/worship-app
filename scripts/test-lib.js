@@ -1529,6 +1529,42 @@ test('team: temporary passwords, validation', () => {
   assert.ok(T.validateRole('admin', tro).error);
 });
 
+test('platform owner: the first admin (migration 018), its owner only, PLATFORM_ADMIN_ID wins', () => {
+  const fs = require('fs');
+  const os = require('os');
+  const path = require('path');
+  const Database = require('better-sqlite3');
+  const { runMigrations } = require('../lib/db');
+  const { createAuth } = require('../lib/auth');
+  const all = path.join(__dirname, '..', 'lib', 'migrations');
+  const before = fs.mkdtempSync(path.join(os.tmpdir(), 'wa-mig-'));
+  for (const f of fs.readdirSync(all).filter((f) => f < '018')) fs.copyFileSync(path.join(all, f), path.join(before, f));
+  const db = new Database(':memory:');
+  runMigrations(db, before);
+  // An existing server: two churches before the migration.
+  db.prepare("INSERT INTO admins (id, name, created_at) VALUES (1, 'Prima', 0), (2, 'A doua', 0)").run();
+  runMigrations(db, all);
+  assert.deepStrictEqual(db.prepare('SELECT id, platform_owner FROM admins ORDER BY id').raw().all(), [[1, 1], [2, 0]]);
+  const owner = { role: 'owner' };
+  const leader = { role: 'leader' };
+  const auth = createAuth({ db, config: { PLATFORM_ADMIN_ID: null } });
+  assert.strictEqual(auth.platformAdminId(), 1);
+  assert.strictEqual(auth.isPlatformOwner(owner, { id: 1 }), true);
+  assert.strictEqual(auth.isPlatformOwner(leader, { id: 1 }), false, 'a leader of the platform admin is not the platform owner');
+  assert.strictEqual(auth.isPlatformOwner(owner, { id: 2 }), false, 'another church\'s owner is not');
+  const pinned = createAuth({ db, config: { PLATFORM_ADMIN_ID: 2 } });
+  assert.strictEqual(pinned.isPlatformOwner(owner, { id: 2 }), true);
+  assert.strictEqual(pinned.isPlatformOwner(owner, { id: 1 }), false, 'the override replaces the database flag');
+  const res = { code: 0, status(c) { this.code = c; return this; }, json() { return this; } };
+  let passedOn = false;
+  auth.requirePlatformOwner({ user: owner, admin: { id: 2 }, t: (k) => k }, res, () => { passedOn = true; });
+  assert.deepStrictEqual([res.code, passedOn], [403, false]);
+  auth.requirePlatformOwner({ user: owner, admin: { id: 1 }, t: (k) => k }, res, () => { passedOn = true; });
+  assert.strictEqual(passedOn, true);
+  db.close();
+  fs.rmSync(before, { recursive: true, force: true });
+});
+
 (async () => {
   for (const [name, fn] of asyncTests) {
     try {

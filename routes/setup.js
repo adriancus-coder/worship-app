@@ -40,7 +40,8 @@ function createSetupRouter({ db, config, logger, sendPage }) {
   const router = express.Router();
 
   const countAdmins = db.prepare('SELECT COUNT(*) FROM admins').pluck();
-  const insertAdmin = db.prepare('INSERT INTO admins (name, created_at) VALUES (?, ?)');
+  // The first admin runs the platform (lib/auth.js isPlatformOwner).
+  const insertAdmin = db.prepare('INSERT INTO admins (name, created_at, platform_owner) VALUES (?, ?, 1)');
   const insertSetting = db.prepare('INSERT INTO admin_settings (admin_id, key, value) VALUES (?, ?, ?)');
   const insertUser = db.prepare(`INSERT INTO users
     (admin_id, email, name, password_hash, role, active, created_at)
