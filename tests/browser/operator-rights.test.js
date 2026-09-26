@@ -57,6 +57,8 @@ module.exports = {
     await sp.waitForFunction(() => /\d{3} \d{3}/.test(document.getElementById('pairing-code').textContent));
     const code = (await sp.textContent('#pairing-code')).replace(' ', '');
     await p.goto(`${app.url}/screens`);
+    await p.waitForSelector('#pair-open');
+    await p.click('#pair-open'); // "Împerechează cu cod": the code form is collapsed
     await p.waitForSelector('#pair-code');
     await p.fill('#pair-code', code);
     await p.fill('#pair-name', 'Al operatorului');

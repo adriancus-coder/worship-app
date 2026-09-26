@@ -12,26 +12,52 @@
     <h1 data-i18n="screens.heading"></h1>
     <p class="muted" data-i18n="screens.intro"></p>
 
-    <!-- The pair form and the screens scroll here; the title stays. -->
+    <!-- The paired screens first, then the card "Adaugă un ecran"; the title stays. -->
     <div class="screens-pane" data-list-pane="screens.heading">
-      <form id="pair-form" class="pair-form" novalidate>
-        <h2 data-i18n="screens.pairHeading"></h2>
-        <p class="hint" data-i18n="screens.pairHint"></p>
-        <div class="pair-fields">
-          <label><span data-i18n="screens.codeLabel"></span>
-            <input type="text" id="pair-code" inputmode="numeric" autocomplete="off" maxlength="7" pattern="\d{3} ?\d{3}" required class="mono code-input">
-          </label>
-          <label><span data-i18n="screens.nameLabel"></span>
-            <input type="text" id="pair-name" maxlength="60" required>
-          </label>
-        </div>
-        <button type="submit" id="pair-submit" data-icon="projector" data-i18n="screens.pairSubmit"></button>
-        <p id="pair-message" class="message" role="status" aria-live="polite"></p>
-      </form>
-
       <h2 class="pane-heading list-heading" data-i18n="screens.listHeading"></h2>
       <p id="status" class="muted pane-state" role="status" aria-live="polite" data-i18n="events.loading"></p>
       <ul id="screens" class="screen-list"></ul>
+
+      <section class="add-screen" aria-labelledby="add-heading">
+        <h2 id="add-heading" data-i18n="screens.addHeading"></h2>
+        <!-- a) from the operator console: nothing to fill in -->
+        <div class="add-way">
+          <h3 data-i18n="screens.wayConsoleHeading"></h3>
+          <p data-i18n="screens.wayConsoleText"></p>
+        </div>
+        <!-- b) with a code, on a PC without an operator: collapsed behind a button -->
+        <div class="add-way">
+          <h3 data-i18n="screens.wayCodeHeading"></h3>
+          <p class="hint" data-i18n="screens.wayCodeText"></p>
+          <button type="button" class="secondary" id="pair-open" aria-expanded="false" aria-controls="code-way" data-icon="projector" data-i18n="screens.wayCodeOpen"></button>
+          <div id="code-way" hidden>
+            <p class="add-step"><span class="step-number">1</span><span data-i18n="screens.step1"></span></p>
+            <div class="address-box">
+              <label class="sr-only" for="screen-address" data-i18n="screens.addressLabel"></label>
+              <input type="text" id="screen-address" class="mono" readonly>
+              <button type="button" class="secondary" id="address-copy" data-icon="copy" data-i18n="screens.copy"></button>
+            </div>
+            <div class="form-actions address-actions">
+              <a class="button secondary" id="address-email" href="#" data-icon="mail" data-i18n="screens.email"></a>
+              <button type="button" class="secondary" id="address-share" hidden data-icon="share" data-i18n="screens.share"></button>
+            </div>
+            <p id="address-message" class="message" role="status" aria-live="polite"></p>
+            <p class="add-step"><span class="step-number">2</span><span data-i18n="screens.step2"></span></p>
+            <form id="pair-form" class="pair-form" novalidate>
+              <div class="pair-fields">
+                <label><span data-i18n="screens.codeLabel"></span>
+                  <input type="text" id="pair-code" inputmode="numeric" autocomplete="off" maxlength="7" pattern="\d{3} ?\d{3}" required class="mono code-input">
+                </label>
+                <label><span data-i18n="screens.nameLabel"></span>
+                  <input type="text" id="pair-name" maxlength="60" required>
+                </label>
+              </div>
+              <button type="submit" id="pair-submit" data-icon="check" data-i18n="screens.pairSubmit"></button>
+              <p id="pair-message" class="message" role="status" aria-live="polite"></p>
+            </form>
+          </div>
+        </div>
+      </section>
     </div>
 
     <dialog id="rename-dialog" aria-labelledby="rename-heading">

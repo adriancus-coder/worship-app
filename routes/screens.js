@@ -13,7 +13,7 @@ const SCREEN_TOKEN_HEADER = 'x-screen-token';
 //   /api/screen/...  called by the screen itself (no user session): pairing, claim links
 //                    and "who am I" with its screen token (X-Screen-Token header).
 //   /api/screens/... owner/leader: claim a code, create a claim link, list, rename, revoke.
-function createScreensRouter({ db, auth, logger, screensHub }) {
+function createScreensRouter({ db, auth, config, logger, screensHub }) {
   const router = express.Router();
   const screens = createScreenStore(db);
   const canManage = requireRole(...SCREEN_ROLES);
@@ -105,7 +105,8 @@ function createScreensRouter({ db, auth, logger, screensHub }) {
 
   router.get('/api/screens', (req, res) => {
     const online = screensHub.onlineIds(req.adminId);
-    res.json({ screens: screens.list(req.adminId).map((s) => ({ ...s, online: online.has(s.id) })) });
+    // baseUrl: the address of the projector page ("adresa proiectorului"), null -> the page's origin.
+    res.json({ screens: screens.list(req.adminId).map((s) => ({ ...s, online: online.has(s.id) })), baseUrl: config.PUBLIC_BASE_URL });
   });
 
   router.put('/api/screens/:id', (req, res) => {

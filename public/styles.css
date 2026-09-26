@@ -1019,7 +1019,24 @@ button.live-item:disabled { opacity: 1; cursor: default; }
 .screen-text { display: flex; flex-direction: column; flex: 1 1 180px; min-width: 0; }
 .screen-name { font-weight: 600; overflow-wrap: anywhere; }
 .screen-meta { font-size: 0.875rem; color: var(--text-muted); }
-.screen-tools { display: flex; gap: 8px; }
+.screen-tools { display: flex; flex-wrap: wrap; gap: 8px; }
+/* "Adresa proiectorului" under a screen row */
+.screen-address { flex: 1 1 100%; display: flex; flex-direction: column; gap: 6px; padding-top: 6px; border-top: 1px solid var(--border); }
+.screen-address .hint, .screen-address .message { margin: 0; }
+.address-box { display: flex; flex-wrap: wrap; gap: 8px; }
+.address-box input { flex: 1 1 200px; min-width: 0; min-height: var(--touch); }
+.address-actions { margin: 8px 0 0; }
+/* "Adaugă un ecran": the two ways, one card */
+.add-screen { display: flex; flex-direction: column; gap: 12px; margin-top: 16px; padding: 12px 14px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+.add-screen h2 { margin: 0; }
+.add-way { display: flex; flex-direction: column; gap: 8px; padding-top: 10px; border-top: 1px solid var(--border); }
+.add-way h3 { margin: 0; font-size: 1.05rem; }
+.add-way p { margin: 0; }
+.add-way > button { align-self: flex-start; }
+#code-way { display: flex; flex-direction: column; gap: 8px; }
+#code-way[hidden] { display: none; }
+.add-step { display: flex; align-items: flex-start; gap: 10px; margin: 4px 0 0; font-weight: 600; }
+.step-number { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; color: var(--on-accent); background: var(--accent-fill); font-size: 0.9rem; }
 
 /* --- projector output (the /screen page and the leader's preview) --------------------------- */
 

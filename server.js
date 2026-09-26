@@ -112,7 +112,7 @@ app.use(createHomeRouter({ db, auth }));
 app.use(createTeamRouter({ db, auth, config, logger, live, email, invites }));
 app.use(createPlatformRouter({ db, auth, config, logger, live, screensHub, storage, email, invites }));
 app.use(createInvitesRouter({ db, auth, config, logger, live, email, invites }));
-app.use(createScreensRouter({ db, auth, logger, screensHub }));
+app.use(createScreensRouter({ db, auth, config, logger, screensHub }));
 app.use(createSettingsRouter({ db, auth, config, logger, screensHub, live, storage, email }));
 app.use(createMediaRouter({ db, auth, config, logger, live, storage }));
 app.use(createBackupRouter({ db, auth, config, logger, storage }));

@@ -1,7 +1,9 @@
 'use strict';
 
-// Projector screens (/screens, owner and leader): pair a screen with the code it shows,
-// list the paired screens (online, last seen), rename and revoke them.
+// Projector screens (/screens, owner and operator): the paired screens first (online, last
+// seen, rename, revoke, "Adresa proiectorului"), then "Adaugă un ecran" in two ways: from the
+// operator console (nothing to do here) or with a code on a PC without an operator (the
+// projector address to copy / email / share, then the 6-digit code and a name).
 
 (function () {
   const { api, el, setTitle } = window.PAGE;
@@ -9,7 +11,21 @@
   const $ = (id) => document.getElementById(id);
   const REFRESH_MS = 15000;
 
-  const state = { screens: null, renaming: null, revoking: null };
+  const state = { screens: null, baseUrl: null, renaming: null, revoking: null, addressOpen: new Set() };
+
+  // "Adresa proiectorului": PUBLIC_BASE_URL when set, else this page's origin.
+  const screenAddress = () => `${state.baseUrl || window.location.origin}/screen`;
+
+  async function copyText(text, input) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch (err) {
+      if (!input) return false;
+      input.select();
+      return Boolean(document.execCommand && document.execCommand('copy'));
+    }
+  }
 
   function setStatus(text) {
     $('status').removeAttribute('data-i18n');
@@ -35,7 +51,27 @@
         el('span', { class: 'screen-meta', text: `${screen.online ? t('screens.online') : t('screens.offline')} · ${lastSeen(screen)}` })),
       el('span', { class: 'screen-tools' },
         el('button', { type: 'button', class: 'secondary', 'data-icon': 'edit', text: t('screens.rename'), 'aria-label': t('screens.renameLabel', { name: screen.name }), onclick: () => openRename(screen) }),
-        el('button', { type: 'button', class: 'secondary', 'data-icon': 'close', text: t('screens.revoke'), 'aria-label': t('screens.revokeLabel', { name: screen.name }), onclick: () => openRevoke(screen) })))));
+        el('button', { type: 'button', class: 'secondary', 'data-icon': 'link', text: t('screens.rowAddress'), 'aria-expanded': String(state.addressOpen.has(screen.id)), 'aria-label': t('screens.rowAddressLabel', { name: screen.name }), onclick: () => toggleAddress(screen) }),
+        el('button', { type: 'button', class: 'secondary', 'data-icon': 'close', text: t('screens.revoke'), 'aria-label': t('screens.revokeLabel', { name: screen.name }), onclick: () => openRevoke(screen) })),
+      // "Adresa proiectorului" for this screen: to reopen a PC that lost its window.
+      state.addressOpen.has(screen.id) ? addressBox(screen) : null)));
+  }
+
+  function addressBox(screen) {
+    const input = el('input', { type: 'text', class: 'mono', readonly: 'readonly', value: screenAddress(), 'aria-label': t('screens.addressLabel') });
+    const message = el('span', { class: 'message', role: 'status' });
+    return el('div', { class: 'screen-address' },
+      el('span', { class: 'hint', text: t('screens.rowAddressHint') }),
+      el('div', { class: 'address-box' }, input,
+        el('button', { type: 'button', class: 'secondary', 'data-icon': 'copy', text: t('screens.copy'), 'aria-label': t('screens.copyLabel', { name: screen.name }),
+          onclick: async () => { message.textContent = (await copyText(screenAddress(), input)) ? t('screens.copied') : t('screens.copyFailed'); } })),
+      message);
+  }
+
+  function toggleAddress(screen) {
+    if (state.addressOpen.has(screen.id)) state.addressOpen.delete(screen.id);
+    else state.addressOpen.add(screen.id);
+    render();
   }
 
   async function load() {
@@ -45,8 +81,37 @@
       return;
     }
     state.screens = res.body.screens;
+    state.baseUrl = res.body.baseUrl || null;
     render();
+    renderAddress();
   }
+
+  // --- "Adaugă un ecran" with a code: the address to hand over, then the code ---------------
+
+  function renderAddress() {
+    const url = screenAddress();
+    $('screen-address').value = url;
+    const appName = document.documentElement.dataset.appName || '';
+    const subject = t('screens.emailSubject', { appName });
+    const body = t('screens.emailBody', { url });
+    $('address-email').href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    $('address-share').hidden = typeof navigator.share !== 'function';
+  }
+
+  $('pair-open').addEventListener('click', () => {
+    const open = $('code-way').hidden;
+    $('code-way').hidden = !open;
+    $('pair-open').setAttribute('aria-expanded', String(open));
+    if (open) $('screen-address').focus();
+  });
+  $('address-copy').addEventListener('click', async () => {
+    const ok = await copyText(screenAddress(), $('screen-address'));
+    $('address-message').className = `message ${ok ? 'success' : 'error'}`;
+    $('address-message').textContent = ok ? t('screens.copied') : t('screens.copyFailed');
+  });
+  $('address-share').addEventListener('click', () => {
+    navigator.share({ title: t('screens.addressLabel'), text: t('screens.emailBody', { url: screenAddress() }) }).catch(() => {});
+  });
 
   // --- pairing -----------------------------------------------------------------------
 
@@ -116,6 +181,7 @@
   document.addEventListener('i18n:change', () => {
     setTitle('screens.pageTitle');
     render();
+    renderAddress();
   });
 
   setTitle('screens.pageTitle');
