@@ -29,7 +29,7 @@
   function projectorPos() {
     const snap = state.snap;
     return snap.mode === 'split'
-      ? { itemId: snap.projector.itemId, step: snap.projector.step }
+      ? { itemId: snap.projector.itemId, step: snap.projector.step, ended: snap.projector.ended }
       : snap.worship;
   }
 
@@ -77,6 +77,7 @@
     const list = items();
     const i = list.findIndex((it) => it.id === pos.itemId);
     if (i < 0) return null;
+    if (pos.ended) return i + 1 < list.length ? { itemId: list[i + 1].id, step: 0 } : null; // after "Sfârșit"
     const steps = stepsOf(list[i]);
     if (steps && pos.step + 1 < steps.length) return { itemId: pos.itemId, step: pos.step + 1 };
     return i + 1 < list.length ? { itemId: list[i + 1].id, step: 0 } : null;
@@ -251,16 +252,12 @@
     const list = items();
     const index = list.findIndex((it) => it.id === pos.itemId);
     const after = item ? nextPos(pos) : null;
-    $('op-prev').disabled = !enabled || !item || (index === 0 && pos.step === 0);
+    $('op-prev').disabled = !enabled || !item || (index === 0 && pos.step === 0 && !pos.ended);
     $('op-next').disabled = !enabled || !after;
     $('op-next').textContent = after ? t('live.next', { label: after.itemId === pos.itemId ? stepsOf(item)[after.step].label : itemTitle(list.find((it) => it.id === after.itemId)) }) : t('live.nextEnd');
-    // "Următoarea cântare →" / "Sfârșit": the next item of the list this console drives (all
-    // items when separate, the shared ones together); after the last: logo, else black.
-    const driven = split() ? list : list.filter((it) => it.scope !== 'projector');
-    const nextItem = item ? driven[driven.findIndex((it) => it.id === item.id) + 1] || null : null;
-    const clear = state.logoUrl ? 'logo' : 'black';
-    window.LIVE.renderEndButton($('op-end-item'), { next: nextItem, title: itemTitle, clear, teamOnly: false });
-    $('op-end-item').disabled = !enabled || !item || (!nextItem && state.snap.projector.source === clear);
+    // "■ Sfârșit": ends the item on the projector (the one position together); "✓ Terminat"
+    // until the next move.
+    window.LIVE.renderEndButton($('op-end-item'), { ended: Boolean(pos.ended), hasItem: enabled && Boolean(item), clear: state.logoUrl ? 'logo' : 'black' });
     const synced = live() && pos.itemId === worship.itemId && pos.step === worship.step;
     $('op-sync').hidden = !split();
     $('op-sync').disabled = !split() || synced;

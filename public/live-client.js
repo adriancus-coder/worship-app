@@ -208,23 +208,17 @@
     return i + 1 < items.length ? { itemId: items[i + 1].id, step: 0 } : null;
   }
 
-  // The "end of this item" button (worship.endItem), the same on the leader page and the
-  // console: "Următoarea cântare →" / "Următorul element →" with the next title under it,
-  // or "Sfârșit" (stop) after the last item. next: the next item in the list the page drives
-  // (null at the end); title(item): its display title; clear: 'logo' | 'black' (what the
-  // end shows); teamOnly: the end changes nothing (split mode, the team's list).
-  function renderEndButton(button, { next, title, clear, teamOnly }) {
+  // The permanent "■ Sfârșit" button (worship.endItem, key E), the same on the leader page and
+  // the console: it ends the item on screen in place (the projector shows the logo, or black);
+  // after it, "✓ Terminat" (disabled) until the next move. ended: the position this page
+  // drives is ended; hasItem: an item is on screen; clear: 'logo' | 'black' (what it shows).
+  function renderEndButton(button, { ended, hasItem, clear }) {
     const { el } = window.PAGE;
     const { t } = window.I18N;
-    if (next) {
-      const kind = t(next.type === 'song' ? 'live.endItem.nextSong' : 'live.endItem.nextItem');
-      button.replaceChildren(el('span', { class: 'end-item-label', text: kind }), el('span', { class: 'end-item-sub', text: title(next) }));
-      button.setAttribute('aria-label', t('live.endItem.nextLabel', { kind: kind.replace(/\s*→$/, ''), title: title(next) }));
-    } else {
-      button.replaceChildren(el('span', { class: 'end-item-label', 'data-icon': 'stop', text: t('live.endItem.end') }));
-      button.setAttribute('aria-label', t(teamOnly ? 'live.endItem.endSplit' : (clear === 'logo' ? 'live.endItem.endLogo' : 'live.endItem.endBlack')));
-    }
+    button.replaceChildren(el('span', { class: 'end-item-label', 'data-icon': ended ? 'check' : 'stop', text: t(ended ? 'live.endItem.done' : 'live.endItem.end') }));
+    button.setAttribute('aria-label', t(ended ? 'live.endItem.doneLabel' : (clear === 'logo' ? 'live.endItem.endLogo' : 'live.endItem.endBlack')));
     button.title = button.getAttribute('aria-label');
+    button.disabled = !hasItem || ended;
   }
 
   window.LIVE = { connect, stepsOf, nextPosition, renderEndButton };

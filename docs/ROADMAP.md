@@ -59,15 +59,18 @@ never implement a later stage early. Mockups: claude.ai design canvas
   does nothing. The long press is only a shortcut: every song card keeps a visible
   "Aranjează" (the editor its "Aranjează cântarea"). A dismissible hint explains it once
   per device.
-- **End of the item** (`worship.endItem`, event roles, key E): the third button of the
-  Înapoi / Următoarea row ("Următoarea cântare →" / "Următorul element →" with the next
-  title). It moves to the first step of the next item in the list the sender drives — the
-  main position, or with `target: 'projector'` (split mode, the console) the projector's.
-  After the last item it reads "Sfârșit": the position stays (the team still sees where the
-  service is) and the projector goes to the logo, or black without one — an explicit
-  action, like every source change. In split mode the leader's button ends only the team's
-  item and never touches the projector. Versioned and broadcast like every command; phones
-  put Înapoi and the end button on one line with Următoarea (the primary) under them.
+- **"■ Sfârșit"** (`worship.endItem`, event roles, key E): the permanent third button of the
+  Înapoi / Următoarea row, enabled whenever an item is on screen. It ends the current item
+  in place: the position stays (the team still sees where the service is), an `ended` flag
+  is set on it and, while set, the projector shows the logo, or black without one, whatever
+  the source; it never moves by itself and the last item is no special case. The button
+  then reads "✓ Terminat" (disabled) and "Următoarea" reads "Următoarea: <next item> →".
+  After it, next goes to the next item's first step and prev back to the ended item's last
+  step, both putting the content back; goto anywhere clears the flag. One flag per
+  position: the leader ends the team's item, the console in split mode the projector's
+  (`target: 'projector'`); a team move in split mode leaves the projector alone. Team phones
+  show "Sfârșitul cântării · Urmează: …" (free mode and rehearsal unaffected). Versioned,
+  broadcast and persisted like every command (migration 021).
 - **Additions during live** (operator console; any event role): the sender chooses where
   the item goes, no approval:
   - "Doar pe proiector" — a projector-only item right after what the projector shows.

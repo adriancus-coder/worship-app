@@ -223,8 +223,10 @@
 
     const index = state.items.indexOf(item);
     renderEndItem(item);
-    $('prev-button').disabled = index === 0 && pos.step === 0;
-    const after = nextPosition(state.items, pos);
+    $('prev-button').disabled = index === 0 && pos.step === 0 && !pos.ended;
+    // After "Sfârșit" the next move is the next item's first step.
+    const following = state.items[index + 1];
+    const after = pos.ended ? (following ? { itemId: following.id, step: 0 } : null) : nextPosition(state.items, pos);
     $('next-button').disabled = !after;
     $('next-button').textContent = after ? t('live.next', { label: positionLabel(after) }) : t('live.nextEnd');
 
@@ -273,16 +275,11 @@
       window.SONG_RENDER.sectionsView([song.sections[sectionIndex]], { headingLevel: 4, labels: [labels[sectionIndex]] })));
   }
 
-  // "Următoarea cântare →" / "Sfârșit" (worship.endItem, key E): the next item of the team's
-  // list; after the last one the screen goes to the logo (black without one), except in
-  // split mode, where this page does not drive the projector.
+  // "■ Sfârșit" (worship.endItem, key E): ends the item on screen in place; "✓ Terminat" until
+  // the next move. The team's position (in split mode the projector is not this page's).
   const clearSource = () => (projector.logoUrl ? 'logo' : 'black');
   function renderEndItem(item) {
-    const button = $('end-item-button');
-    const next = item ? state.items[state.items.indexOf(item) + 1] || null : null;
-    const teamOnly = state.snap.mode === 'split';
-    window.LIVE.renderEndButton(button, { next, title: itemTitle, clear: clearSource(), teamOnly });
-    button.disabled = !item || (!next && (teamOnly || state.snap.projector.source === clearSource()));
+    window.LIVE.renderEndButton($('end-item-button'), { ended: Boolean(state.snap.worship.ended), hasItem: Boolean(item), clear: clearSource() });
   }
 
   function renderInfo() {

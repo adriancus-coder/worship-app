@@ -70,7 +70,10 @@ module.exports = {
     check(await scr() === 'LOGO', 'offline: L -> the cached logo');
     await lp.click('[data-source=content]');
     await lp.click('#end-item-button');
-    check(await until('Primul'), 'offline: "Următoarea cântare" -> the next song');
+    await lp.waitForTimeout(300);
+    check(await scr() === 'LOGO', 'offline: "■ Sfârșit" -> the cached logo, the position stays');
+    await lp.click('#next-button');
+    check(await until('Primul'), 'offline: next after it -> the next song, content back');
     await lp.click('#setlist > li:nth-child(4) > .live-item');
     check(await until('Agapă|serviciu'), 'offline: a Program tap moves the projector');
 
