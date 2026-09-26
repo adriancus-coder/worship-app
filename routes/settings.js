@@ -1,6 +1,7 @@
 'use strict';
 
 const express = require('express');
+const { isValidTime } = require('../lib/dates');
 const { requireRole } = require('../lib/auth');
 const { MAX_BYTES, sniff, createLogoStore } = require('../lib/logo');
 const { createScreenStore } = require('../lib/screens');
@@ -37,6 +38,7 @@ function createSettingsRouter({ db, auth, config, logger, screensHub, live, stor
       logo: logoInfo(req.adminId),
       chordNotationDefault: settings.chordNotationDefault(req.adminId),
       themeDefault: settings.themeDefault(req.adminId),
+      service: settings.service(req.adminId),
       backgroundDefaults: backgrounds.defaults(req.adminId),
       backup: backups.lastBackup(req.adminId),
       storage: storage.usage(),
@@ -67,6 +69,17 @@ function createSettingsRouter({ db, auth, config, logger, screensHub, live, stor
     if (!THEME_DEFAULTS.includes(theme)) return res.status(400).json({ error: req.t('errors.themeInvalid') });
     settings.set(req.adminId, 'theme_default', theme);
     res.json({ themeDefault: theme });
+  });
+
+  // "Ziua și ora obișnuită a slujbei": the defaults of "+ Eveniment nou".
+  router.put('/api/settings/service', (req, res) => {
+    const { weekday, time } = req.body || {};
+    if (!Number.isInteger(weekday) || weekday < 0 || weekday > 6 || !isValidTime(time)) {
+      return res.status(400).json({ error: req.t('errors.serviceInvalid') });
+    }
+    settings.set(req.adminId, 'service_weekday', String(weekday));
+    settings.set(req.adminId, 'service_time', time);
+    res.json({ service: settings.service(req.adminId) });
   });
 
   // The church default chord notation, for users without their own preference.

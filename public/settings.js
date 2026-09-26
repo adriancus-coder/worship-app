@@ -36,6 +36,7 @@
     renderLogo(res.body.logo);
     renderNotation(res.body.chordNotationDefault);
     renderThemeDefault(res.body.themeDefault);
+    renderService(res.body.service);
     renderBackup(res.body.backup);
     renderStorage(res.body.storage);
     await renderBackgrounds(res.body.backgroundDefaults || {});
@@ -165,6 +166,30 @@
   $('bg-dim').addEventListener('input', () => changeReadability({ dim: Number($('bg-dim').value) }));
   $('bg-blur').addEventListener('input', () => changeReadability({ blur: Number($('bg-blur').value) }));
   $('bg-shadow').addEventListener('click', () => changeReadability({ shadow: !selectedItem().shadow }));
+
+  // "Ziua și ora obișnuită a slujbei" (the defaults of "+ Eveniment nou"), saved on change.
+  let service = null;
+  function renderService(value) {
+    if (value) service = value;
+    if (!service) return;
+    const names = new Intl.DateTimeFormat(window.I18N.lang, { weekday: 'long', timeZone: 'UTC' });
+    const order = [1, 2, 3, 4, 5, 6, 0]; // Monday first
+    $('service-day').replaceChildren(...order.map((day) => el('option', { value: String(day), text: names.format(new Date(Date.UTC(2023, 0, 1 + day))) })));
+    $('service-day').value = String(service.weekday);
+    if (document.activeElement !== $('service-time')) $('service-time').value = service.time;
+  }
+
+  async function saveService() {
+    const out = $('service-message');
+    const body = { weekday: Number($('service-day').value), time: $('service-time').value };
+    const res = await api('/api/settings/service', { method: 'PUT', body });
+    out.className = `message ${res.ok ? 'success' : 'error'}`;
+    out.textContent = res.ok ? t('settings.serviceSaved') : res.body.error || t('common.networkError');
+    if (res.ok) renderService(res.body.service);
+  }
+  $('service-day').addEventListener('change', saveService);
+  $('service-time').addEventListener('change', saveService);
+  document.addEventListener('i18n:change', () => renderService());
 
   function renderThemeDefault(theme) {
     for (const button of document.querySelectorAll('[data-theme-default]')) {

@@ -45,6 +45,29 @@
           <p id="reorder-hint" class="hint" hidden data-i18n="setlist.reorderHint"></p>
           <!-- The Program scrolls here (with the add bar under it); the event header stays. -->
           <div class="setlist-scroll" data-list-pane="setlist.heading">
+          <!-- "Detalii": name, date, time and template inline (open right after "+ Eveniment nou"). -->
+          <details class="quick-details" id="quick-details" hidden>
+            <summary id="quick-summary"></summary>
+            <div class="quick-fields">
+              <div class="field quick-name">
+                <label for="q-name" data-i18n="events.nameLabel"></label>
+                <input type="text" id="q-name" maxlength="120" required>
+              </div>
+              <div class="field">
+                <label for="q-date" data-i18n="events.dateLabel"></label>
+                <input type="date" id="q-date" required>
+              </div>
+              <div class="field">
+                <label for="q-time" data-i18n="events.timeLabel"></label>
+                <input type="time" id="q-time">
+              </div>
+              <div class="field quick-template">
+                <label for="q-template" data-i18n="setlist.templateLabel"></label>
+                <select id="q-template"></select>
+              </div>
+            </div>
+            <p class="message" id="quick-message" role="status" aria-live="polite"></p>
+          </details>
           <p id="setlist-empty" class="muted pane-state" hidden data-i18n="setlist.empty"></p>
           <ol id="items" class="setlist"></ol>
           <div class="add-bar" id="add-bar" role="group" data-i18n-aria-label="setlist.addLabel" hidden>

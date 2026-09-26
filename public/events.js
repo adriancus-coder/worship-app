@@ -8,6 +8,7 @@
   const list = document.getElementById('events');
   const status = document.getElementById('status');
   const newButton = document.getElementById('new-event');
+  const optionsButton = document.getElementById('new-event-options');
   const dialog = document.getElementById('create-dialog');
   const form = document.getElementById('create-form');
   const nameInput = document.getElementById('new-name');
@@ -135,7 +136,28 @@
     renderSources();
   }
 
-  newButton.addEventListener('click', () => {
+  // "+ Eveniment nou": one tap. The server picks the defaults (the last template, the next
+  // usual service day and time) and the editor opens with its "Detalii" row.
+  async function quickCreate() {
+    newButton.disabled = true;
+    try {
+      const res = await api('/api/events/quick', { method: 'POST' });
+      if (res.status === 201) {
+        const template = res.body.templateId ? `&template=${res.body.templateId}` : '';
+        window.location.assign(`/events/${res.body.event.id}/edit?new=1${template}`);
+        return;
+      }
+      setStatus(res.body.error || t('common.networkError'));
+    } catch (err) {
+      setStatus(t('common.networkError'));
+    } finally {
+      newButton.disabled = false;
+    }
+  }
+  newButton.addEventListener('click', quickCreate);
+
+  // "Cu opțiuni": the full dialog (blank, from a template, or a copy of another event).
+  optionsButton.addEventListener('click', () => {
     form.reset();
     message.textContent = '';
     const today = (state.data && state.data.today) || new Date().toISOString().slice(0, 10);
@@ -188,6 +210,7 @@
     state.me = (await api('/api/auth/me')).body;
     const editor = canEdit(state.me);
     newButton.hidden = !editor;
+    optionsButton.hidden = !editor;
     tabButtons[2].hidden = !editor;
     const asked = new URLSearchParams(window.location.search).get('when');
     const start = WHEN.indexOf(asked) >= 0 && (asked !== 'templates' || editor) ? WHEN.indexOf(asked) : 0;

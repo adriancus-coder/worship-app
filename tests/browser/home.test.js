@@ -47,8 +47,8 @@ module.exports = {
     await pages.owner.goto(`${app.url}/app`);
     await pages.owner.waitForSelector('#now .now-card');
     await pages.owner.click('#quick-section a[href="/events?new=1"]');
-    const dialog = await pages.owner.waitForSelector('#create-dialog[open]', { timeout: 4000 }).then(() => true, () => false);
-    check(dialog, '"+ Eveniment nou" opens the create dialog');
+    const opened = await pages.owner.waitForURL(/\/events\/\d+\/edit/, { timeout: 5000 }).then(() => true, () => false);
+    check(opened, '"+ Eveniment nou" creates the event at once and opens the editor');
     await pages.member.request.put(`${app.url}/api/me/locale`, { data: { locale: 'en' } });
     await pages.member.reload();
     await pages.member.waitForSelector('#now .now-card');

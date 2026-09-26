@@ -1600,6 +1600,21 @@ test('events: draft and published migrate to planned (020); "Cântată ultima da
   fs.rmSync(before, { recursive: true, force: true });
 });
 
+test('nextServiceDate: the next usual service day; today only until 2 h after it starts', () => {
+  const { nextServiceDate, nowTimeIn } = require('../lib/dates');
+  // 2026-09-27 is a Sunday
+  assert.strictEqual(nextServiceDate('2026-09-27', '09:00', 0, '10:00'), '2026-09-27');
+  assert.strictEqual(nextServiceDate('2026-09-27', '11:59', 0, '10:00'), '2026-09-27');
+  assert.strictEqual(nextServiceDate('2026-09-27', '12:00', 0, '10:00'), '2026-10-04');
+  assert.strictEqual(nextServiceDate('2026-09-28', '08:00', 0, '10:00'), '2026-10-04', 'Monday -> next Sunday');
+  assert.strictEqual(nextServiceDate('2026-09-26', '23:59', 0, '10:00'), '2026-09-27');
+  assert.strictEqual(nextServiceDate('2026-09-27', '09:00', 3, '18:30'), '2026-09-30', 'a Wednesday service');
+  assert.strictEqual(nextServiceDate('2026-12-31', '10:00', 0, '10:00'), '2027-01-03', 'across the year');
+  // timezone-aware "now": the same instant is a different local time
+  const instant = new Date('2026-09-27T10:30:00Z');
+  assert.deepStrictEqual([nowTimeIn('UTC', instant), nowTimeIn('Europe/Oslo', instant), nowTimeIn('America/New_York', instant)], ['10:30', '12:30', '06:30']);
+});
+
 (async () => {
   for (const [name, fn] of asyncTests) {
     try {

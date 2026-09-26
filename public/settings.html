@@ -32,6 +32,22 @@
       <p id="theme-message" class="message" role="status" aria-live="polite"></p>
     </section>
 
+    <section class="settings-section" aria-labelledby="service-heading">
+      <h2 id="service-heading" data-i18n="settings.serviceHeading"></h2>
+      <p class="hint" data-i18n="settings.serviceHint"></p>
+      <div class="field-row service-row">
+        <div class="field">
+          <label for="service-day" data-i18n="settings.serviceDay"></label>
+          <select id="service-day"></select>
+        </div>
+        <div class="field">
+          <label for="service-time" data-i18n="settings.serviceTime"></label>
+          <input type="time" id="service-time" required>
+        </div>
+      </div>
+      <p id="service-message" class="message" role="status" aria-live="polite"></p>
+    </section>
+
     <section class="settings-section" aria-labelledby="bg-heading">
       <h2 id="bg-heading" data-i18n="background.settingsHeading"></h2>
       <p class="hint" data-i18n="background.settingsHint"></p>

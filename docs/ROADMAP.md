@@ -125,6 +125,11 @@ never implement a later stage early. Mockups: claude.ai design canvas
 ## Event preparation
 
 - Events: name, date, time; create from a template or copy a previous event.
+- "+ Eveniment nou" is one tap (`POST /api/events/quick`): name, time and items from the
+  template used last (else the most recent one; else "Serviciu de duminică"), the date of
+  the next usual service (church setting "Ziua și ora obișnuită a slujbei", default Sunday
+  10:00, timezone-aware; the day itself until 2 h after the start). The editor opens with
+  an inline "Detalii" row (name, date, time, template); "Cu opțiuni" keeps the full dialog.
 - Status: planned → live → finished (history). No publishing step: the team sees an
   event as soon as it exists (templates stay hidden). "Pornește" works on any planned
   event (one live event per church). Migration 020 turned draft and published into planned.

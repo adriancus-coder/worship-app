@@ -1085,6 +1085,35 @@ async function main() {
     assert.strictEqual((await emit(l.socket, 'live:command', { type: 'event.start', eventId: ev.id })).code, 'finished');
   });
 
+  await step('quick create: one tap with the template, the usual service day and time', async () => {
+    const other2 = await login('alt@x.ro'); // admin 2: no templates yet
+    assert.strictEqual((await api('PUT', '/api/settings/service', other2, { weekday: 7, time: '10:00' })).status, 400);
+    assert.strictEqual((await api('PUT', '/api/settings/service', other2, { weekday: 3, time: '25:00' })).status, 400);
+    assert.deepStrictEqual((await api('PUT', '/api/settings/service', other2, { weekday: 3, time: '18:30' })).body.service, { weekday: 3, time: '18:30' });
+    assert.deepStrictEqual((await api('GET', '/api/settings', other2)).body.service, { weekday: 3, time: '18:30' });
+    const q = await api('POST', '/api/events/quick', other2);
+    assert.strictEqual(q.status, 201, JSON.stringify(q.body));
+    assert.deepStrictEqual([q.body.event.name, q.body.event.startTime, q.body.event.status, q.body.items.length, q.body.templateId], ['Serviciu de miercuri', '18:30', 'planned', 0, null]);
+    assert.strictEqual(new Date(`${q.body.event.eventDate}T12:00:00Z`).getUTCDay(), 3, 'on the usual day');
+    assert.ok(q.body.event.eventDate >= q.body.today);
+    const en = await api('POST', '/api/events/quick', other2, undefined, { 'Accept-Language': 'en' });
+    assert.strictEqual(en.body.event.name, 'Wednesday service');
+    // with a template: its name, time and items; remembered for the next one
+    const tpl = (await api('POST', `/api/events/${q.body.event.id}/save-as-template`, other2, { name: 'Seară de rugăciune' })).body.event;
+    await api('PUT', `/api/events/${tpl.id}`, other2, { name: 'Seară de rugăciune', eventDate: tpl.eventDate, startTime: '19:00' });
+    await api('PUT', `/api/events/${tpl.id}/items`, other2, { items: [{ type: 'verse', reference: 'Ps 91' }] });
+    const q2 = (await api('POST', '/api/events/quick', other2)).body;
+    assert.deepStrictEqual([q2.event.name, q2.event.startTime, q2.items.map((i) => i.reference), q2.templateId], ['Seară de rugăciune', '19:00', ['Ps 91'], tpl.id]);
+    // the editor's template switch: the Program becomes the template's
+    const plain = (await api('POST', '/api/events', other2, { name: 'Gol', eventDate: q2.event.eventDate })).body.event;
+    const applied = await api('POST', `/api/events/${plain.id}/apply-template`, other2, { templateId: tpl.id });
+    assert.deepStrictEqual([applied.status, applied.body.items.map((i) => i.reference)], [200, ['Ps 91']]);
+    assert.strictEqual((await api('POST', `/api/events/${plain.id}/apply-template`, other2, { templateId: plain.id })).status, 400, 'only a template');
+    assert.strictEqual((await api('POST', `/api/events/${plain.id}/apply-template`, other2, { templateId: tpl.id + 1000 })).status, 400);
+    assert.strictEqual((await api('POST', '/api/events/quick', member)).status, 403);
+    assert.strictEqual((await api('PUT', '/api/settings/service', leader, { weekday: 0, time: '10:00' })).status, 403);
+  });
+
   await step('platform: its owner creates and manages churches; everyone else 403', async () => {
     const other2 = await login('alt@x.ro'); // admin 2's owner: an ordinary church
     for (const cookie of [other2, leader, member]) assert.strictEqual((await api('GET', '/api/platform/admins', cookie)).status, 403);

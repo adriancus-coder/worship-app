@@ -323,6 +323,7 @@
 
   function renderAll() {
     renderHeader();
+    renderQuickDetails();
     renderItems();
     renderDetail();
     renderSaveBar();
@@ -757,6 +758,77 @@
     }
   }
 
+  // --- "Detalii": name, date, time and template inline (editor, not for templates) -------
+  // Name / date / time save on change; choosing a template replaces the Program with its
+  // items (only with nothing unsaved) and is remembered for the next "+ Eveniment nou".
+
+  const quick = { templates: null, templateId: null };
+
+  function quickSay(text, kind) {
+    $('quick-message').className = `message${kind ? ` ${kind}` : ''}`;
+    $('quick-message').textContent = text || '';
+  }
+
+  function renderQuickDetails() {
+    const ev = state.event;
+    const shown = state.editing && !ev.isTemplate;
+    $('quick-details').hidden = !shown;
+    if (!shown) return;
+    const year = state.today ? state.today.slice(0, 4) : '';
+    $('quick-summary').textContent = [t('setlist.quickDetails'), ev.name, formatDate(ev.eventDate, year), ev.startTime].filter(Boolean).join(' · ');
+    for (const [id, value] of [['q-name', ev.name], ['q-date', ev.eventDate], ['q-time', ev.startTime || '']]) {
+      if (document.activeElement !== $(id)) $(id).value = value;
+    }
+    const list = quick.templates || [];
+    $('q-template').replaceChildren(el('option', { value: '', text: t('setlist.noTemplate') }),
+      ...list.map((tpl) => el('option', { value: String(tpl.id), text: tpl.name })));
+    $('q-template').value = quick.templateId && list.some((tpl) => tpl.id === quick.templateId) ? String(quick.templateId) : '';
+  }
+
+  async function saveQuickMeta() {
+    const ev = state.event;
+    const body = { name: $('q-name').value, eventDate: $('q-date').value, startTime: $('q-time').value, notes: ev.notes || '' };
+    if (body.name === ev.name && body.eventDate === ev.eventDate && body.startTime === (ev.startTime || '')) return;
+    try {
+      const res = await api(`/api/events/${ev.id}`, { method: 'PUT', body });
+      if (!res.ok) return quickSay(res.body.error || t('common.networkError'), 'error');
+      state.event = res.body.event;
+      quickSay(t('setlist.quickSaved'), 'success');
+      renderHeader();
+      renderQuickDetails();
+    } catch (err) {
+      quickSay(t('common.networkError'), 'error');
+    }
+  }
+  for (const id of ['q-name', 'q-date', 'q-time']) $(id).addEventListener('change', saveQuickMeta);
+
+  $('q-template').addEventListener('change', async () => {
+    const templateId = Number($('q-template').value);
+    if (!templateId) return renderQuickDetails(); // "Fără șablon" keeps the Program as it is
+    if (isDirty()) {
+      quickSay(t('setlist.quickSaveFirst'), 'error');
+      return renderQuickDetails();
+    }
+    try {
+      const res = await api(`/api/events/${state.event.id}/apply-template`, { method: 'POST', body: { templateId } });
+      if (!res.ok) {
+        quickSay(res.body.error || t('common.networkError'), 'error');
+        return renderQuickDetails();
+      }
+      quick.templateId = templateId;
+      applyEvent(res.body, false);
+      quickSay(t('setlist.templateApplied'), 'success');
+    } catch (err) {
+      quickSay(t('common.networkError'), 'error');
+    }
+  });
+
+  async function loadQuickTemplates() {
+    const res = await api('/api/events?when=templates');
+    quick.templates = res.ok ? res.body.events : [];
+    renderQuickDetails();
+  }
+
   // Server data -> state (keeps the selection by position after a save).
   function applyEvent(body, keepSelection) {
     state.event = body.event;
@@ -1090,6 +1162,17 @@
     $('delete-area').hidden = !state.editing;
     applyEvent(eventRes.body, false);
     if (state.editing) {
+      // Just created with "+ Eveniment nou": the "Detalii" row is open, its template shown.
+      const params = new URLSearchParams(window.location.search);
+      if (params.has('new')) {
+        quick.templateId = Number(params.get('template')) || null;
+        $('quick-details').open = true;
+        params.delete('new');
+        params.delete('template');
+        const query = params.toString();
+        window.history.replaceState(null, '', `${window.location.pathname}${query ? `?${query}` : ''}`);
+      }
+      loadQuickTemplates().catch(() => {});
       const mediaRes = await api('/api/media');
       state.media = mediaRes.ok ? mediaRes.body.media.filter((m) => m.category === 'video') : []; // backgrounds are not played as videos
     }

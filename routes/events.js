@@ -2,7 +2,7 @@
 
 const express = require('express');
 const { requireRole } = require('../lib/auth');
-const { todayIn } = require('../lib/dates');
+const { todayIn, nowTimeIn, nextServiceDate } = require('../lib/dates');
 const { createAdminSettings } = require('../lib/admin-settings');
 const { EVENT_ROLES, validateEventMeta, validateItems, createEventStore } = require('../lib/events');
 
@@ -91,9 +91,63 @@ function createEventsRouter({ db, auth, logger, live }) {
     }
 
     const id = events.create(req.adminId, req.user.id, value, { sourceId });
+    if (fromTemplate !== null) rememberTemplate(req.adminId, sourceId);
     logger.info(`Event #${id} created by user #${req.user.id} (admin #${req.adminId})${sourceId ? ` from #${sourceId}` : ''}`);
     live.eventChanged(req.adminId, id); // open home pages show it at once
     respond(req, res, id, 201);
+  });
+
+  // The template "+ Eveniment nou" starts from: the one used last (remembered per church),
+  // else the most recently changed one, else none.
+  function quickTemplate(adminId) {
+    const last = Number(settings.get(adminId, 'last_template_id'));
+    const used = Number.isInteger(last) && last > 0 ? events.get(adminId, last) : null;
+    if (used && used.event.isTemplate) return used.event;
+    const latest = events.latestTemplateId(adminId);
+    return latest === null ? null : events.get(adminId, latest).event;
+  }
+
+  const rememberTemplate = (adminId, id) => settings.set(adminId, 'last_template_id', String(id));
+
+  // One tap: an event with smart defaults, opened in the editor right away. The template's
+  // name, time and items, else "Serviciu de duminică" at the church's usual time; the date
+  // is the next usual service day (timezone-aware; today until 2 h after the service time).
+  router.post('/api/events/quick', canEdit, (req, res) => {
+    const tz = settings.timezone(req.adminId);
+    const service = settings.service(req.adminId);
+    const template = quickTemplate(req.adminId);
+    // "Serviciu de duminică" / "Sunday service" (2023-01-01 was a Sunday).
+    const weekday = new Intl.DateTimeFormat(req.lang === 'en' ? 'en' : 'ro', { weekday: 'long', timeZone: 'UTC' })
+      .format(new Date(Date.UTC(2023, 0, 1 + service.weekday)));
+    const day = req.lang === 'en' ? weekday : weekday.toLowerCase();
+    const meta = {
+      name: template ? template.name : req.t('events.quickName', { day }),
+      eventDate: nextServiceDate(todayIn(tz), nowTimeIn(tz), service.weekday, service.time),
+      startTime: (template && template.startTime) || service.time,
+      notes: '',
+    };
+    const { error, value } = validateEventMeta(meta, req.t);
+    if (error) return res.status(400).json({ error });
+    const id = events.create(req.adminId, req.user.id, value, { sourceId: template ? template.id : null });
+    if (template) rememberTemplate(req.adminId, template.id);
+    logger.info(`Event #${id} quick-created by user #${req.user.id} (admin #${req.adminId})${template ? ` from template #${template.id}` : ''}`);
+    live.eventChanged(req.adminId, id);
+    res.status(201).json({ ...events.get(req.adminId, id, { t: req.t }), today: today(req), templateId: template ? template.id : null });
+  });
+
+  // The editor's "Detalii · Șablon": the setlist becomes the template's (it is remembered
+  // for the next "+ Eveniment nou").
+  router.post('/api/events/:id/apply-template', canEdit, (req, res) => {
+    const found = load(req, res);
+    if (!found) return;
+    const raw = String((req.body || {}).templateId ?? '');
+    const template = /^\d{1,15}$/.test(raw) ? events.get(req.adminId, Number(raw)) : null;
+    if (!template || !template.event.isTemplate || found.event.isTemplate) return res.status(400).json({ error: req.t('errors.eventSourceInvalid') });
+    const before = live.setlistBefore(req.adminId, found.event.id);
+    events.applyTemplate(req.adminId, found.event.id, template.event.id);
+    live.setlistChanged(req.adminId, found.event.id, before);
+    rememberTemplate(req.adminId, template.event.id);
+    respond(req, res, found.event.id);
   });
 
   router.put('/api/events/:id', canEdit, (req, res) => {
