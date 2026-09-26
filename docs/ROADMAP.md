@@ -229,7 +229,31 @@ never implement a later stage early. Mockups: claude.ai design canvas
 - Per song, per event: key (with automatic chord transposition), section order
   (arrangement — drives "Next" in live mode), note for the team, optional reference link.
 - History: "last sung N weeks ago".
-- Team (stage 7): assign people + roles, notification, confirm/decline.
+- **Team on each event (stage 7, done).** Scheduling is the LEADER's job (leader and owner
+  assign; presenter and operator view):
+  - *Positions* (`positions`, migration 029): what a church uses — seeded Voce, Chitară,
+    Pian/Clape, Bas, Tobe, Operator, Prezentator; owner / leader add, rename, reorder,
+    deactivate (Setări → "Poziții în echipă", /positions). Each person's usual positions
+    (`users_positions`) come from Echipa (owner) or "Mai mult → Profilul meu" (name, phone
+    optional, positions); they are the picker's first suggestions.
+  - *Assignments* (`event_assignments`, migration 030): one row per event, person and
+    position, status pending / accepted / declined with a note and `notified_at`. The
+    editor's "Echipa" tab (owner, leader) picks people per position; everyone sees the
+    "Echipa" card on the event page and "Ești programat: …" with Vin / Nu pot on the home
+    card. Summary "5 confirmați · 1 așteaptă · 1 nu poate"; declined rows highlighted. A copy
+    of an event or template copies the team as pending; templates keep the "usual team".
+  - *Unavailability* (`unavailability`, migration 031): own date ranges ("Profilul meu →
+    Indisponibil"); the picker greys the person out on the event date with the reason; the
+    owner and the leader see everyone's, other members nothing.
+  - *Push* (`push_subscriptions`, migration 032, `lib/push.js`): web push with VAPID and
+    aes128gcm in `node:crypto` (no extra package); keys from `npm run vapid` (docs/PUSH.md);
+    "Mai mult → Notificări" switches it per device; 404 / 410 endpoints are deleted.
+  - *Notifications* (`notifications`, `notification_prefs`, migration 033): kinds assigned,
+    reminder (day before at 18:00 church time; a minute tick idempotent per event and person),
+    setlist_changed (max one per 10 minutes), declined (owner + leaders), live_started. In-app
+    list with an unread badge on "Mai mult", per-kind switches, plus a push when subscribed.
+  - *"Trimite programarea"*: notifies every pending person not yet told; re-sending reaches
+    only new rows; with email enabled, people without push get an email with the same text.
 - Rehearsal view on phones: event key, arrangement, leader note, lyrics+chords, reference.
 
 ## Stages
@@ -242,7 +266,8 @@ never implement a later stage early. Mockups: claude.ai design canvas
 5. Projector screen: pairing, open-on-second-display, sources, video, emergency mode.
 6. Operator console: full event rights for the operator, live modes together / split,
    direct additions (projector only / setlist), team follow mode.
-7. Team: user invites, roles, assignments, confirmations, rehearsal view, push.
+7. Team (done): user invites, roles, positions, assignments, confirmations, unavailability,
+   notifications + push, rehearsal view.
 8. Bridge to Sanctuary Voice via event code:
    8a. SV → worship: live translated text as a projector source.
    8b. worship → SV: current song/section + setlist pre-translation for SV participants.
