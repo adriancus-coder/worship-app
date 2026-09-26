@@ -332,6 +332,7 @@
     position: () => (state.snap && state.snap.status === 'live' ? state.snap.worship : null),
     commands: { prev: () => send('worship.prev'), next: () => send('worship.next'), end: () => send('worship.endItem'), toggleBlack: () => toggleSource('black') },
     connection: () => (state.client ? state.client.connection : 'connecting'),
+    extraStatus: () => modes.statusText(), // the handover request / answer
   });
 
   // --- arranging a song during live (public/arrange-sheet.js): saved at once ------------
@@ -453,6 +454,7 @@
       $('open-projector').hidden = true;
       $('projector-permission').hidden = true;
     }
+    if (me) modes.setMe(me.user); // the handover flow depends on who this page is
   });
 
   // Together / separate and the team mode; the info toast for additions from the console.
@@ -703,6 +705,7 @@
     });
     state.client.socket.on('projector:video-status', (status) => videoPanel.status(status));
     state.client.socket.on('live:notice', toast.show);
+    state.client.socket.on('live:handover', (ev) => { modes.handover(ev); big.update(state.snap, state.items); });
     renderConnection('connecting');
   }
 

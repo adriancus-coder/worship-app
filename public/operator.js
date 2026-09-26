@@ -306,6 +306,7 @@
     commands: { prev: () => move('prev'), next: () => move('next'), end: endItem, toggleBlack: () => toggleSource('black') },
     connection: () => (state.client ? state.client.connection : 'connecting'),
     drivesProjector: split,
+    extraStatus: () => modes.statusText(), // the leader's handover request
   });
   $('op-big-open').addEventListener('click', () => big.open());
 
@@ -325,6 +326,7 @@
   });
   window.PROJECTOR_WINDOW.setup({ button: $('open-projector'), hint: $('projector-permission'), message: $('projector-message'), api, t });
   const modes = window.LIVE_MODES.controls($('mode-controls'), { send, t, el });
+  window.SHELL.me.then((me) => { if (me) modes.setMe(me.user); }); // the handover flow depends on who this page is
   const backgroundButton = window.BG_PICKER.liveButton($('bg-live'), { send });
   // The corner clock (clock.set: show / corner / size; key K toggles it).
   const clockPanel = window.CLOCK_PANEL.create($('clock-panel'), { t, el, onChange: (patch) => send('clock.set', patch) });
@@ -485,6 +487,7 @@
     });
     state.client.socket.on('projector:video-status', (status) => videoPanel.status(status));
     state.client.socket.on('live:notice', toast.show);
+    state.client.socket.on('live:handover', (ev) => { modes.handover(ev); big.update(state.snap, items()); });
     renderConnection('connecting');
   })().catch(() => {
     $('status').textContent = t('common.networkError');

@@ -42,7 +42,9 @@
     }
   }
 
-  function create({ api, eventId, position, commands, connection, drivesProjector = () => false }) {
+  // extraStatus() -> text added to the status line (the handover request / answer), refreshed
+  // every second while the view is open.
+  function create({ api, eventId, position, commands, connection, drivesProjector = () => false, extraStatus = () => '' }) {
     const { el } = window.PAGE;
     const { t } = window.I18N;
     const state = { snap: null, items: [], scale: Number(stored(SCALE_KEY, '1')) || 1, textOnly: stored(TEXT_ONLY_KEY, '0') === '1', songs: new Map(), setlistKey: null, renderId: 0 };
@@ -73,8 +75,9 @@
       parts.next = el('p', { class: 'big-next' });
       parts.body = el('div', { class: 'big-body' }, parts.text);
       parts.statusText = el('span', { class: 'big-status-text', role: 'status', 'aria-live': 'polite' });
+      parts.extra = el('span', { class: 'big-status-extra', role: 'status', 'aria-live': 'polite' });
       parts.clock = el('span');
-      parts.status = el('div', { class: 'big-status' }, parts.statusText, parts.clock);
+      parts.status = el('div', { class: 'big-status' }, parts.statusText, parts.extra, parts.clock);
       // The time and the elapsed time (public/live-clock.js), for the position this view drives.
       parts.liveClock = window.LIVE_CLOCK.create(parts.clock, { t });
       parts.textOnly = el('button', { type: 'button', class: 'secondary big-tool', 'aria-pressed': 'false', onclick: () => setTextOnly(!state.textOnly) });
@@ -90,7 +93,7 @@
         parts.next,
         parts.status,
         el('div', { class: 'big-nav', role: 'group', 'aria-label': t('live.navLabel') }, parts.prev, parts.end, parts.nextButton));
-      dialog.addEventListener('close', () => { releaseWake(); });
+      dialog.addEventListener('close', () => { releaseWake(); clearInterval(extraTimer); extraTimer = null; });
       dialog.addEventListener('cancel', (event) => { event.preventDefault(); close(); }); // Escape
       dialog.addEventListener('keydown', onKey);
       // A horizontal swipe on the text: next / prev.
@@ -131,6 +134,13 @@
       return Boolean(dialog && dialog.open);
     }
 
+    let extraTimer = null;
+    function renderExtra() {
+      const text = extraStatus() || '';
+      if (parts.extra.textContent !== text) parts.extra.textContent = text;
+      parts.extra.hidden = !text;
+    }
+
     function open() {
       if (!dialog) build();
       if (dialog.open) return;
@@ -138,6 +148,8 @@
       render();
       keepScreenOn();
       parts.nextButton.focus();
+      clearInterval(extraTimer);
+      extraTimer = setInterval(renderExtra, 1000);
     }
 
     function close() {
@@ -247,6 +259,7 @@
       parts.prev.textContent = t('live.prev');
       const { value, conn, text } = statusLine();
       parts.statusText.replaceChildren(el('span', { class: 'big-dot', 'data-state': value, 'aria-hidden': 'true' }), `${conn} · ${text}`);
+      renderExtra();
       parts.liveClock.update(snap, pos);
       if (!item || snap.status !== 'live') {
         parts.label.textContent = '';

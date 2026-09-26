@@ -1490,6 +1490,37 @@ button.op-step:disabled { opacity: 1; cursor: default; }
   pointer-events: none;
 }
 .info-toast[hidden] { display: none; }
+/* The handover: the leader's request line under the switch; the approver's toast (top right,
+   over nothing important, it takes clicks) and the badge next to the mode switch. */
+.handover-line { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; flex: 1 0 100%; margin: 0; padding: 6px 6px 6px 12px; border: 2px dashed var(--accent-fill); border-radius: var(--radius); }
+.handover-line[hidden] { display: none; }
+.handover-line p { flex: 1 1 10rem; min-width: 0; margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+.handover-line.refused { border-color: var(--error); }
+.handover-line.refused p { color: var(--error); }
+.handover-line button { min-height: var(--touch); }
+.handover-line button[hidden] { display: none; }
+.handover-badge { padding: 2px 8px; font-size: 0.6875rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--on-accent); background: var(--accent-fill); border-radius: 999px; }
+.handover-badge[hidden] { display: none; }
+.mode-switch.pending { border-color: var(--accent-fill); }
+.handover-toast {
+  position: fixed;
+  z-index: 61;
+  top: calc(12px + env(safe-area-inset-top, 0px));
+  right: calc(12px + env(safe-area-inset-right, 0px));
+  width: max-content;
+  max-width: min(380px, calc(100vw - 24px));
+  padding: 12px 14px;
+  background: var(--surface);
+  border: 2px solid var(--accent-fill);
+  border-radius: 12px;
+  box-shadow: 0 12px 32px var(--shadow);
+}
+.handover-toast[hidden] { display: none; }
+.handover-toast p { margin: 0 0 10px; font-weight: 700; overflow-wrap: anywhere; }
+.handover-toast-actions { display: flex; gap: 8px; }
+.handover-toast-actions button { flex: 1 1 auto; min-height: var(--touch); }
+.big-status-extra { font-weight: 700; color: var(--accent-text); }
+.big-status-extra[hidden] { display: none; }
 .op-add-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .op-add-actions button { flex: 1 1 10rem; min-height: var(--touch); }
 
