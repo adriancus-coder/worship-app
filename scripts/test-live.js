@@ -179,44 +179,45 @@ async function main() {
     assert.strictEqual((await next(anon, 'connect_error')).message, 'unauthenticated');
   });
 
-  await step('join visibility: member 404 on a draft, other admin 404, owner sees the draft', async () => {
+  await step('join visibility: a new event is visible to the member at once, other admin 404', async () => {
     const m = connect(member);
     await next(m, 'connect');
-    assert.strictEqual((await emit(m, 'live:join', { eventId: ev.id })).code, 'notFound');
+    const seenByMember = await emit(m, 'live:join', { eventId: ev.id });
+    assert.strictEqual(seenByMember.ok, true, 'no publishing: the team sees it as soon as it exists');
     const o2 = connect(other);
     await next(o2, 'connect');
     assert.strictEqual((await emit(o2, 'live:join', { eventId: ev.id })).code, 'notFound');
     const { state } = await joined(owner, ev.id);
-    assert.strictEqual(state.status, 'draft');
+    assert.strictEqual(state.status, 'planned');
     assert.strictEqual(state.version, 0);
   });
 
-  await step('operator: full event rights (create, edit, publish, templates, delete); member none', async () => {
+  await step('operator: full event rights (create, edit, templates, delete); member none', async () => {
     const created = await api('POST', '/api/events', operator, { name: 'Repetiție', eventDate: '2026-10-06' });
     assert.strictEqual(created.status, 201, JSON.stringify(created.body));
     const id = created.body.event.id;
-    assert.strictEqual((await api('GET', `/api/events/${id}`, operator)).status, 200, 'sees its draft');
+    assert.strictEqual((await api('GET', `/api/events/${id}`, operator)).status, 200);
+    assert.strictEqual((await api('GET', `/api/events/${id}`, member)).status, 200, 'the member sees it at once');
     assert.strictEqual((await api('PUT', `/api/events/${id}`, operator, { name: 'Repetiție mare', eventDate: '2026-10-06' })).status, 200);
     assert.strictEqual((await api('PUT', `/api/events/${id}/items`, operator, { items: [{ type: 'verse', reference: 'Ps 1' }] })).status, 200);
-    assert.strictEqual((await api('POST', `/api/events/${id}/publish`, operator)).status, 200);
-    assert.strictEqual((await api('POST', `/api/events/${id}/unpublish`, operator)).status, 200);
+    for (const action of ['publish', 'unpublish']) assert.strictEqual((await api('POST', `/api/events/${id}/${action}`, operator)).status, 404, `no ${action}`);
     const tpl = await api('POST', `/api/events/${id}/save-as-template`, operator, { name: 'Șablon op' });
     assert.strictEqual(tpl.status, 201);
     const templates = await api('GET', '/api/events?when=templates', operator);
     assert.ok(templates.body.events.some((e) => e.id === tpl.body.event.id), 'sees templates');
-    assert.ok((await api('GET', '/api/events?when=upcoming', operator)).body.events.some((e) => e.id === ev.id), 'sees drafts');
+    assert.ok((await api('GET', '/api/events?when=upcoming', member)).body.events.some((e) => e.id === id), 'the member lists it');
+    assert.strictEqual((await api('GET', `/api/events/${tpl.body.event.id}`, member)).status, 404, 'templates stay hidden from the team');
     for (const [method, url, body] of [
       ['POST', '/api/events', { name: 'X', eventDate: '2026-10-06' }],
       ['PUT', `/api/events/${id}`, { name: 'X', eventDate: '2026-10-06' }],
       ['PUT', `/api/events/${id}/items`, { items: [] }],
-      ['POST', `/api/events/${id}/publish`],
       ['POST', `/api/events/${id}/save-as-template`, { name: 'Y' }],
       ['DELETE', `/api/events/${id}`],
     ]) {
       assert.strictEqual((await api(method, url, member, body)).status, 403, `member ${method} ${url}`);
     }
     assert.strictEqual((await api('GET', '/api/events?when=templates', member)).status, 403);
-    assert.strictEqual((await api('GET', `/api/events/${ev.id}`, member)).status, 404, 'member: no drafts');
+    assert.strictEqual((await api('GET', `/api/events/${ev.id}`, member)).status, 200, 'member: every event');
     // the library, media, screens, team and settings keep their rules
     assert.strictEqual((await api('POST', '/api/songs', operator, { title: 'X', sections: [{ type: 'verse', content: 'x' }] })).status, 403);
     for (const method of ['PUT', 'DELETE']) assert.strictEqual((await api(method, '/api/songs/1', operator, { title: 'X' })).status, 403);
@@ -250,19 +251,13 @@ async function main() {
       const m = await fetch(base() + page, { headers: { Cookie: member }, redirect: 'manual' });
       assert.strictEqual(m.status, 302, `member ${page}`);
     }
-    // live: the operator joins the draft (event roles see drafts)
+    // live: the operator joins the planned event
     const o = connect(operator);
     await next(o, 'connect');
     assert.strictEqual((await emit(o, 'live:join', { eventId: ev.id })).ok, true);
     o.close();
   });
 
-  await step('a draft cannot start', async () => {
-    const { socket } = await joined(leader, ev.id);
-    assert.strictEqual((await emit(socket, 'live:command', { type: 'event.start', eventId: ev.id })).code, 'notPublished');
-  });
-
-  assert.strictEqual((await api('POST', `/api/events/${ev.id}/publish`, owner)).status, 200);
   const lead = await joined(leader, ev.id);
   const mem = await joined(member, ev.id);
   const ownerSocket = (await joined(owner, ev.id)).socket;
@@ -754,7 +749,6 @@ async function main() {
     ] });
     assert.strictEqual(put.status, 200, JSON.stringify(put.body));
     assert.strictEqual((await api('DELETE', `/api/songs/${gone.id}`, other)).status, 200);
-    assert.strictEqual((await api('POST', `/api/events/${e2.id}/publish`, other)).status, 200);
     const o = await joined(other, e2.id);
     const states = [];
     o.socket.on('live:state', (st) => states.push(st));
@@ -803,7 +797,6 @@ async function main() {
 
   await step('a second event cannot start while one is live', async () => {
     const ev2 = (await api('POST', '/api/events', owner, { name: 'Seara', eventDate: '2026-10-04' })).body.event;
-    await api('POST', `/api/events/${ev2.id}/publish`, owner);
     const { socket } = await joined(leader, ev2.id);
     assert.strictEqual((await emit(socket, 'live:command', { type: 'event.start', eventId: ev2.id })).code, 'anotherLive');
     socket.emit('live:leave', {});

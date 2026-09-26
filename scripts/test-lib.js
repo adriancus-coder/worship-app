@@ -1016,7 +1016,6 @@ function liveFixture() {
     return evs.get(1, eventId).items;
   };
   const items = save([{ type: 'song', songId: 1, arrangement: 'V1 C V1' }, { type: 'verse', reference: 'Ps 1' }, { type: 'verse', reference: 'Ps 2' }]);
-  evs.setStatus(1, eventId, 'published');
   const live = createLiveStore(mem);
   return { mem, evs, live, eventId, items, save };
 }
@@ -1561,6 +1560,42 @@ test('platform owner: the first admin (migration 018), its owner only, PLATFORM_
   assert.deepStrictEqual([res.code, passedOn], [403, false]);
   auth.requirePlatformOwner({ user: owner, admin: { id: 1 }, t: (k) => k }, res, () => { passedOn = true; });
   assert.strictEqual(passedOn, true);
+  db.close();
+  fs.rmSync(before, { recursive: true, force: true });
+});
+
+test('events: draft and published migrate to planned (020); "Cântată ultima dată" rule', () => {
+  const fs = require('fs');
+  const os = require('os');
+  const path = require('path');
+  const Database = require('better-sqlite3');
+  const { runMigrations } = require('../lib/db');
+  const { createEventStore } = require('../lib/events');
+  const all = path.join(__dirname, '..', 'lib', 'migrations');
+  const before = fs.mkdtempSync(path.join(os.tmpdir(), 'wa-mig-'));
+  for (const f of fs.readdirSync(all).filter((f) => f < '020')) fs.copyFileSync(path.join(all, f), path.join(before, f));
+  const db = new Database(':memory:');
+  db.pragma('foreign_keys = ON');
+  runMigrations(db, before);
+  db.prepare("INSERT INTO admins (id, name, created_at) VALUES (1, 'A', 0)").run();
+  const add = db.prepare('INSERT INTO events (id, admin_id, name, event_date, status, is_template, created_at, updated_at) VALUES (?, 1, ?, ?, ?, ?, 0, 0)');
+  add.run(1, 'ciornă', '2026-01-04', 'draft', 0);
+  add.run(2, 'publicat', '2026-01-11', 'published', 0);
+  add.run(3, 'încheiat', '2026-01-18', 'finished', 0);
+  add.run(4, 'șablon', '2026-01-04', 'draft', 1);
+  db.prepare("INSERT INTO songs (id, admin_id, title, title_norm, created_at, updated_at) VALUES (1, 1, 'S', 's', 0, 0), (2, 1, 'T', 't', 0, 0)").run();
+  db.prepare("INSERT INTO setlist_items (event_id, admin_id, position, type, song_id) VALUES (1, 1, 0, 'song', 1), (4, 1, 0, 'song', 2)").run();
+  runMigrations(db, all);
+  assert.deepStrictEqual(db.prepare('SELECT id, status, is_template FROM events ORDER BY id').raw().all(),
+    [[1, 'planned', 0], [2, 'planned', 0], [3, 'finished', 0], [4, 'planned', 1]]);
+  assert.strictEqual(db.prepare('SELECT COUNT(*) FROM setlist_items').pluck().get(), 2, 'items kept');
+  assert.deepStrictEqual(db.pragma('foreign_key_check'), []);
+  const evs = createEventStore(db);
+  // planned with its date passed counts; a template never; a future planned one does not
+  assert.deepStrictEqual([...evs.lastSungMap(1, '2026-02-01').entries()], [[1, '2026-01-04']]);
+  assert.deepStrictEqual([...evs.lastSungMap(1, '2026-01-04').entries()], [], 'not on the day itself until it goes live');
+  assert.strictEqual(evs.get(1, 1, { teamOnly: true }).event.status, 'planned', 'the team sees it');
+  assert.strictEqual(evs.get(1, 4, { teamOnly: true }), null, 'never a template');
   db.close();
   fs.rmSync(before, { recursive: true, force: true });
 });

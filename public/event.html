@@ -27,14 +27,13 @@
         <p class="event-summary"><span id="event-status" class="pill"></span> <span id="event-counts"></span></p>
         <p id="event-notes" class="event-notes" hidden></p>
         <!-- The actions stay in view (the page is a list page); on phones the secondary tools
-             (Detalii, Publică, Salvează ca șablon) sit in the "⋯" menu. -->
+             (Detalii, Salvează ca șablon) sit in the "⋯" menu. -->
         <div class="event-actions-row">
           <nav class="event-actions" id="event-actions" data-i18n-aria-label="setlist.actionsLabel"></nav>
           <button type="button" class="secondary menu-button event-more" id="event-more" hidden aria-haspopup="true" aria-expanded="false" aria-controls="event-tools" data-i18n-aria-label="setlist.moreActions"><span aria-hidden="true">⋯</span></button>
         </div>
         <div class="event-tools" id="event-tools">
           <button type="button" class="secondary" id="details-button" hidden data-icon="details" data-i18n="setlist.details"></button>
-          <button type="button" class="secondary" id="publish-button" hidden></button>
           <button type="button" class="secondary" id="template-button" hidden data-icon="template" data-i18n="setlist.saveTemplate"></button>
         </div>
         <p id="action-message" class="message" role="status" aria-live="polite"></p>

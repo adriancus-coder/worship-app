@@ -124,7 +124,7 @@
     setTitle('operator.pageTitle', { name: state.event.name });
     $('event-name').textContent = state.event.name;
     const status = state.snap.status;
-    $('start-button').hidden = status !== 'published';
+    $('start-button').hidden = status !== 'planned';
     $('end-button').hidden = status !== 'live';
     modes.update(state.snap);
     // Separate: where the team is, and "Sari acolo" (the projector goes there, W).

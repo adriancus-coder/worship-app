@@ -47,7 +47,7 @@
     return Boolean(me && ['owner', 'leader'].includes(me.user.role));
   }
 
-  // Full rights over events (create, edit, publish, templates, live): mirrors EVENT_ROLES in
+  // Full rights over events (create, edit, templates, live): mirrors EVENT_ROLES in
   // lib/events.js.
   const EVENT_ROLES = ['owner', 'leader', 'operator'];
   function canEditEvents(me) {

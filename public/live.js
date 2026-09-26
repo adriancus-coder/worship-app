@@ -127,7 +127,7 @@
     const status = snap.status;
     $('event-status').className = `pill pill-${status}`;
     $('event-status').textContent = t(`events.status.${status}`);
-    $('start-button').hidden = status !== 'published';
+    $('start-button').hidden = status !== 'planned';
     $('end-button').hidden = status !== 'live';
     renderPresence();
   }
@@ -204,11 +204,7 @@
     $('prev-button').hidden = status !== 'live';
     $('next-button').hidden = status !== 'live';
     $('end-item-button').hidden = status !== 'live';
-    if (status === 'draft') {
-      box.replaceChildren(el('p', { class: 'live-note' }, t('live.draftHint'), ' ', el('a', { href: `/events/${eventId}/edit`, text: t('setlist.edit') })));
-      return;
-    }
-    if (status === 'published') {
+    if (status === 'planned') {
       box.replaceChildren(el('p', { class: 'live-note', text: t('live.notStartedLeader') }));
       return;
     }

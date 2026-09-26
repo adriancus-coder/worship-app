@@ -45,7 +45,7 @@ function createSongsRouter({ db, auth, config, logger, live }) {
     const q = typeof req.query.q === 'string' ? req.query.q.slice(0, LIMITS.queryMax) : '';
     const sort = SORT_MODES.includes(req.query.sort) ? req.query.sort : 'az';
     const list = songs.list(req.adminId, { q, sort });
-    // ?withHistory=1 adds lastSung (last date in a published event, up to today).
+    // ?withHistory=1 adds lastSung (the last date it was sung: lib/events.js lastSungMap).
     if (req.query.withHistory === '1') {
       const day = today(req);
       const last = events.lastSungMap(req.adminId, day);
@@ -117,7 +117,7 @@ function createSongsRouter({ db, auth, config, logger, live }) {
     res.send(JSON.stringify(payload, null, 2));
   });
 
-  // Dates this song appeared in published, live or finished events (newest first).
+  // The events this song is in (not templates), newest first.
   router.get('/api/songs/:id/history', (req, res) => {
     const id = songId(req);
     if (!id || !songs.findTitle(req.adminId, id)) return notFound(req, res);

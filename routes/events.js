@@ -9,7 +9,7 @@ const { EVENT_ROLES, validateEventMeta, validateItems, createEventStore } = requ
 const WHEN = ['upcoming', 'past', 'templates'];
 
 // Events and setlists, scoped to req.adminId. Writes: the event roles (owner, leader,
-// operator). Members only see published, live and finished events, never templates.
+// operator). Members see every event as soon as it exists, never templates.
 // Another admin's event does not exist here: 404.
 function createEventsRouter({ db, auth, logger, live }) {
   const router = express.Router();
@@ -28,7 +28,7 @@ function createEventsRouter({ db, auth, logger, live }) {
     res.status(404).json({ error: req.t('errors.eventNotFound') });
   }
 
-  // Loads the event for this request (team roles only see published events) or sends 404.
+  // Loads the event for this request (the team never sees templates) or sends 404.
   function load(req, res) {
     const id = eventId(req);
     const found = id && events.get(req.adminId, id, { teamOnly: !isEditor(req), t: req.t });
@@ -92,6 +92,7 @@ function createEventsRouter({ db, auth, logger, live }) {
 
     const id = events.create(req.adminId, req.user.id, value, { sourceId });
     logger.info(`Event #${id} created by user #${req.user.id} (admin #${req.adminId})${sourceId ? ` from #${sourceId}` : ''}`);
+    live.eventChanged(req.adminId, id); // open home pages show it at once
     respond(req, res, id, 201);
   });
 
@@ -126,25 +127,6 @@ function createEventsRouter({ db, auth, logger, live }) {
     live.setlistChanged(req.adminId, found.event.id, before);
     respond(req, res, found.event.id);
   });
-
-  // published <-> draft only; live and finished are set by live mode (socket/live.js).
-  function changeStatus(from, to) {
-    return (req, res) => {
-      const found = load(req, res);
-      if (!found) return;
-      const { event } = found;
-      if (event.isTemplate) return res.status(409).json({ error: req.t('errors.eventTemplateStatus') });
-      if (event.status !== from && event.status !== to) return res.status(409).json({ error: req.t('errors.eventStatusLocked') });
-      if (event.status === from) {
-        events.setStatus(req.adminId, event.id, to);
-        live.eventChanged(req.adminId, event.id);
-      }
-      respond(req, res, event.id);
-    };
-  }
-
-  router.post('/api/events/:id/publish', canEdit, changeStatus('draft', 'published'));
-  router.post('/api/events/:id/unpublish', canEdit, changeStatus('published', 'draft'));
 
   router.post('/api/events/:id/save-as-template', canEdit, (req, res) => {
     const found = load(req, res);

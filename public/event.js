@@ -19,7 +19,6 @@
   const saveButton = $('save-button');
   const saveState = $('save-state');
   const actionMessage = $('action-message');
-  const publishButton = $('publish-button');
   const templateButton = $('template-button');
   const wide = window.matchMedia('(min-width: 900px)');
 
@@ -157,13 +156,7 @@
     renderActions();
     $('details-button').hidden = !state.editing;
     templateButton.hidden = !state.editing;
-    publishButton.hidden = !state.editing || ev.isTemplate || !['draft', 'published'].includes(ev.status);
-    publishButton.className = 'secondary'; // the save bar holds the editor's primary action
-    publishButton.dataset.icon = ev.status === 'published' ? 'unpublish' : 'publish';
-    publishButton.textContent = ev.status === 'published' ? t('setlist.unpublish') : t('setlist.publish');
-    const dirty = isDirty();
-    publishButton.disabled = dirty;
-    templateButton.disabled = dirty;
+    templateButton.disabled = isDirty();
     renderToolsMenu();
   }
 
@@ -197,7 +190,7 @@
   narrow.addEventListener('change', () => { if (state.event) renderToolsMenu(); });
 
   // The event's actions: one row, exactly one primary, chosen by the moment.
-  //   event roles  live -> "Intră live"; published today / tomorrow -> "Pornește live";
+  //   event roles  live -> "Intră live"; planned today / tomorrow -> "Pornește live";
   //                otherwise "Editează" (Live, if it can start, is then secondary).
   //                "Repetiție" is always secondary. The operator's live page is the console.
   //   members      live -> "Urmărește live", else "Repetiție": the only action.
@@ -217,10 +210,10 @@
       const soon = state.today && [state.today, dayAfter(state.today)].includes(ev.eventDate);
       if (!ev.isTemplate && ev.status === 'live') {
         actions.push({ key: 'home.enterLive', icon: 'play', href: livePage }, rehearse, edit);
-      } else if (!ev.isTemplate && ev.status === 'published' && soon) {
+      } else if (!ev.isTemplate && ev.status === 'planned' && soon) {
         actions.push({ key: 'home.startLive', icon: 'play', href: livePage }, rehearse, edit);
       } else {
-        const live = !ev.isTemplate && ev.status === 'published' ? { key: 'live.link', icon: 'play', href: livePage } : null;
+        const live = !ev.isTemplate && ev.status === 'planned' ? { key: 'live.link', icon: 'play', href: livePage } : null;
         actions.push(edit, live, rehearse);
       }
     }
@@ -740,7 +733,7 @@
     return picker.node;
   }
 
-  // --- saving, publishing, templates, delete --------------------------------------
+  // --- saving, templates, delete --------------------------------------
 
   async function save() {
     state.saving = true;
@@ -777,23 +770,6 @@
   function showAction(text, link) {
     actionMessage.replaceChildren(text, link ? ' ' : '', link || '');
   }
-
-  publishButton.addEventListener('click', async () => {
-    const action = state.event.status === 'published' ? 'unpublish' : 'publish';
-    publishButton.disabled = true;
-    try {
-      const res = await api(`/api/events/${state.event.id}/${action}`, { method: 'POST' });
-      if (res.ok) {
-        state.event = res.body.event;
-        showAction('');
-      } else {
-        showAction(res.body.error || t('common.networkError'));
-      }
-    } catch (err) {
-      showAction(t('common.networkError'));
-    }
-    renderHeader();
-  });
 
   function wireDialog(dialog) {
     dialog.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', () => dialog.close()));

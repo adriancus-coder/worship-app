@@ -40,7 +40,7 @@
     }
     if (EDITOR_ROLES.includes(role)) {
       const list = [{ text: t('home.prepare'), href: eventUrl(event, '/edit'), icon: 'edit' }];
-      if (event.status === 'published') list.push({ text: t('home.startLive'), href: livePage, icon: 'play' });
+      if (event.status === 'planned') list.push({ text: t('home.startLive'), href: livePage, icon: 'play' });
       return list;
     }
     return [{ text: t('home.rehearse'), href: eventUrl(event, '/rehearse'), icon: 'rehearse' }];
@@ -57,7 +57,6 @@
         el('span', { text: when(event) }),
         el('span', { text: itemCount(event.itemCount) }),
         el('span', { class: `pill pill-${event.status}`, text: t(`events.status.${event.status}`) })),
-      event.status === 'draft' ? el('p', { class: 'hint', text: t('home.draftNote') }) : null,
       el('div', { class: 'now-actions' },
         el('a', { class: 'button now-primary', href: primary.href, 'data-icon': primary.icon, text: primary.text }),
         secondary ? el('a', { class: 'button secondary', href: secondary.href, 'data-icon': secondary.icon, text: secondary.text }) : null));

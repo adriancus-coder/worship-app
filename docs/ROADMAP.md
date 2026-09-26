@@ -25,10 +25,10 @@ never implement a later stage early. Mockups: claude.ai design canvas
   were made against; one made against an older version is refused ("stale") and the page
   gets the current state, so two people moving at once never skip a section.
 - **Event rights.** Owner, leader and operator (EVENT_ROLES, defined once in
-  `lib/events.js`) have the same rights over events, always: create, edit, publish,
-  unpublish, templates, delete, start, end, move the live position, projector, sources,
-  video, live mode and team mode. They see drafts and templates. Members only see
-  published / live / finished events and send no commands. The library (writing), media,
+  `lib/events.js`) have the same rights over events, always: create, edit, templates,
+  delete, start, end, move the live position, projector, sources, video, live mode and
+  team mode. They see templates. Members see every event as soon as it exists (never
+  templates) and send no commands. The library (writing), media,
   screens, team and settings keep their own rules (owner / leader, or owner).
 - **Two live modes** (`live.mode`, any event role; a new start is *together*):
   - *Împreună* (together, default) — ONE main position. The leader page and the operator
@@ -125,8 +125,10 @@ never implement a later stage early. Mockups: claude.ai design canvas
 ## Event preparation
 
 - Events: name, date, time; create from a template or copy a previous event.
-- Status: draft (owner / leader / operator only) → published (team sees it) → live →
-  finished (history).
+- Status: planned → live → finished (history). No publishing step: the team sees an
+  event as soon as it exists (templates stay hidden). "Pornește" works on any planned
+  event (one live event per church). Migration 020 turned draft and published into planned.
+- "Cântată ultima dată": live or finished events, and planned ones whose date has passed.
 - Setlist items of several types: song, verse, video, announcement, sermon/other.
 - Per song, per event: key (with automatic chord transposition), section order
   (arrangement — drives "Next" in live mode), note for the team, optional reference link.

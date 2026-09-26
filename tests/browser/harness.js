@@ -111,8 +111,8 @@ async function startApp(options = {}) {
 }
 
 // One admin ("Biserica Harul"), owner / leader / operator / member, three songs and the
-// event "Serviciu duminică" today: song, verse, song, announcement, song (published);
-// "Seara" (published, a week later).
+// event "Serviciu duminică" today: song, verse, song, announcement, song; "Seara" a week
+// later (events are visible to the team as soon as they exist).
 async function seed(app) {
   const setup = await app.api(null, 'POST', '/api/setup', {
     setupToken: 'browser-test', adminName: 'Biserica Harul', ownerName: 'Ana', ownerEmail: USERS.owner, ownerPassword: PASSWORD,
@@ -145,7 +145,6 @@ async function seed(app) {
   const event = async (name, eventDate, items) => {
     const id = (await app.api(owner, 'POST', '/api/events', { name, eventDate, startTime: '10:00' })).body.event.id;
     if (items) await app.api(owner, 'PUT', `/api/events/${id}/items`, { items });
-    await app.api(owner, 'POST', `/api/events/${id}/publish`);
     return id;
   };
   const eventId = await event('Serviciu duminică', today, [
