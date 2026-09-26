@@ -12,31 +12,8 @@
     <h1 id="editor-heading" data-i18n="editor.headingNew"></h1>
     <p id="status" class="muted" role="status" aria-live="polite"></p>
     <form id="song-form" novalidate hidden>
-      <div class="field">
-        <label for="song-title" data-i18n="editor.titleLabel"></label>
-        <input type="text" id="song-title" maxlength="200" required>
-      </div>
-      <div class="field">
-        <label for="song-author" data-i18n="editor.authorLabel"></label>
-        <input type="text" id="song-author" maxlength="200">
-      </div>
-      <div class="field">
-        <label for="song-key" data-i18n="editor.keyLabel"></label>
-        <select id="song-key"></select>
-      </div>
-      <div id="song-background"></div>
-
-      <h2 data-i18n="editor.sectionsHeading"></h2>
-      <div id="sections-editor"></div>
-      <button type="button" id="add-section" class="secondary" data-icon="plus" data-i18n="editor.addSection"></button>
-
-      <section class="editor-preview" aria-labelledby="preview-heading">
-        <div class="editor-preview-head">
-          <h2 id="preview-heading" data-i18n="editor.previewHeading"></h2>
-          <span data-notation-switch></span>
-        </div>
-        <div id="editor-preview"></div>
-      </section>
+      <!-- The editor component (public/song-editor.js): title, author, key, sections, preview. -->
+      <div id="song-editor"></div>
 
       <div class="message error" id="message" role="alert" aria-live="assertive"></div>
       <div class="form-actions">
@@ -69,6 +46,7 @@
   <script src="/shell.js"></script>
   <script src="/song-render.js"></script>
   <script src="/background-picker.js"></script>
+  <script src="/song-editor.js"></script>
   <script src="/song-edit.js"></script>
 </body>
 </html>

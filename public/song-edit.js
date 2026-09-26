@@ -1,20 +1,18 @@
 'use strict';
 
+// /songs/new and /songs/:id/edit: the song editor component (public/song-editor.js) with
+// the song's default background, save (POST / PUT /api/songs, a duplicate title links to
+// the existing song) and, on the edit page, delete.
+
 (function () {
   const { api, el, setTitle } = window.PAGE;
   const { t } = window.I18N;
-  const { chordsOverLyricsToInline } = window.CHORDS;
-  const { SECTION_TYPES, SONG_KEYS, sectionLabels } = window.SECTIONS;
 
   const match = window.location.pathname.match(/^\/songs\/(\d+)\/edit$/);
   const songId = match ? match[1] : null;
   const form = document.getElementById('song-form');
   const status = document.getElementById('status');
   const heading = document.getElementById('editor-heading');
-  const titleInput = document.getElementById('song-title');
-  const authorInput = document.getElementById('song-author');
-  const keySelect = document.getElementById('song-key');
-  const container = document.getElementById('sections-editor');
   const message = document.getElementById('message');
   const saveButton = document.getElementById('save');
   const cancelLink = document.getElementById('cancel');
@@ -24,17 +22,26 @@
   const deleteMessage = document.getElementById('delete-message');
   const confirmDelete = document.getElementById('confirm-delete');
 
-  const state = { title: '', sections: [{ type: 'verse', label: '', content: '', note: '' }] };
+  const state = { title: '' };
   // The song's default background (null: the church default, 'none', a media id); saved
-  // through its own route after the song itself.
+  // through its own route after the song itself. Its field sits inside the editor.
   const background = { saved: null, field: null };
+  const backgroundBox = el('div', { id: 'song-background' });
+
+  // The same ids as before the component (tests and styles know them).
+  const editor = window.SONG_EDITOR.create(document.getElementById('song-editor'), {
+    ids: { title: 'song-title', author: 'song-author', key: 'song-key', sections: 'sections-editor', addSection: 'add-section', preview: 'editor-preview' },
+    sectionPrefix: 'section',
+    headingLevel: 2,
+    extra: backgroundBox,
+  });
 
   function renderBackground() {
     const value = background.field ? background.field.value : background.saved;
     background.field = window.BG_PICKER.field({
       id: 'song-bg', label: t('background.songDefault'), hint: t('background.songDefaultHint'), value, inherit: '…',
     });
-    document.getElementById('song-background').replaceChildren(background.field.node);
+    backgroundBox.replaceChildren(background.field.node);
     window.BG_PICKER.inheritedName('song').then((name) => background.field.setInherit(name));
   }
   let lastMessage = null; // { key, vars } re-translates; { text } is cleared on a language switch
@@ -55,159 +62,7 @@
     message.replaceChildren();
   }
 
-  // --- rendering ------------------------------------------------------------
-
-  function renderKeys() {
-    const value = keySelect.value;
-    keySelect.replaceChildren(
-      el('option', { value: '', text: t('editor.keyNone') }),
-      // Shown in the reader's notation (Sol, Lam); the value stays the letter key.
-      ...SONG_KEYS.map((key) => el('option', { value: key, text: window.NOTATION.chord(key) })),
-    );
-    keySelect.value = value;
-  }
-
-  function field(id, labelText, control, hint) {
-    return el('div', { class: 'field' },
-      el('label', { for: id, text: labelText }),
-      control,
-      hint ? el('span', { class: 'hint', id: `${id}-hint`, text: hint }) : null);
-  }
-
-  function rowsFor(content) {
-    return Math.min(16, Math.max(4, String(content).split('\n').length + 1));
-  }
-
-  // Updates the computed labels without rebuilding the form (keeps focus while typing).
-  function refreshLabels() {
-    const labels = sectionLabels(state.sections, t);
-    container.querySelectorAll('.section-editor').forEach((fieldset, i) => {
-      fieldset.querySelector('legend').textContent = labels[i];
-      fieldset.querySelector('[data-action="up"]').setAttribute('aria-label', t('editor.moveUp', { label: labels[i] }));
-      fieldset.querySelector('[data-action="down"]').setAttribute('aria-label', t('editor.moveDown', { label: labels[i] }));
-      fieldset.querySelector('[data-action="remove"]').setAttribute('aria-label', t('editor.removeSection', { label: labels[i] }));
-    });
-  }
-
-  function toolButton(action, index, symbol, disabled) {
-    return el('button', {
-      type: 'button',
-      class: 'secondary icon-button',
-      'data-action': action,
-      'data-index': index,
-      disabled,
-      onclick: () => onTool(action, index),
-    }, el('span', { 'aria-hidden': 'true', text: symbol }));
-  }
-
-  function renderSections() {
-    schedulePreview(); // sections added, removed or moved
-    const count = state.sections.length;
-    container.replaceChildren(...state.sections.map((section, i) => {
-      const id = `section-${i}`;
-      const typeSelect = el('select', {
-        id: `${id}-type`,
-        onchange: (event) => { section.type = event.target.value; refreshLabels(); },
-      }, SECTION_TYPES.map((type) => el('option', { value: type, text: t(`songs.sectionTypes.${type}`) })));
-      typeSelect.value = section.type;
-
-      const content = el('textarea', {
-        id: `${id}-content`,
-        class: 'mono',
-        rows: rowsFor(section.content),
-        spellcheck: 'false',
-        autocapitalize: 'sentences',
-        'aria-describedby': `${id}-content-hint`,
-        value: section.content,
-        oninput: (event) => { section.content = event.target.value; },
-        // Pasted "chord line above lyric line" text becomes inline ChordPro.
-        onblur: (event) => {
-          const converted = chordsOverLyricsToInline(event.target.value);
-          if (converted !== event.target.value) {
-            event.target.value = converted;
-            section.content = converted;
-          }
-        },
-      });
-
-      return el('fieldset', { class: 'section-editor' },
-        el('legend'),
-        el('div', { class: 'section-fields' },
-          field(`${id}-type`, t('editor.typeLabel'), typeSelect),
-          field(`${id}-label`, t('editor.customLabel'), el('input', {
-            type: 'text',
-            id: `${id}-label`,
-            maxlength: '60',
-            value: section.label || '',
-            oninput: (event) => { section.label = event.target.value; refreshLabels(); },
-          }))),
-        field(`${id}-content`, t('editor.contentLabel'), content, t('editor.contentHint')),
-        field(`${id}-note`, t('editor.noteLabel'), el('input', {
-          type: 'text',
-          id: `${id}-note`,
-          maxlength: '300',
-          value: section.note || '',
-          oninput: (event) => { section.note = event.target.value; },
-        })),
-        el('div', { class: 'section-tools' },
-          toolButton('up', i, '↑', i === 0),
-          toolButton('down', i, '↓', i === count - 1),
-          toolButton('remove', i, '✕', count === 1)));
-    }));
-    refreshLabels();
-  }
-
-  function focusTool(action, index) {
-    const target = container.querySelector(`[data-action="${action}"][data-index="${index}"]`);
-    if (target && !target.disabled) target.focus();
-    else container.querySelector(`#section-${index}-type`)?.focus();
-  }
-
-  function onTool(action, index) {
-    const list = state.sections;
-    if (action === 'up' && index > 0) {
-      [list[index - 1], list[index]] = [list[index], list[index - 1]];
-      renderSections();
-      focusTool('up', index - 1);
-    } else if (action === 'down' && index < list.length - 1) {
-      [list[index + 1], list[index]] = [list[index], list[index + 1]];
-      renderSections();
-      focusTool('down', index + 1);
-    } else if (action === 'remove' && list.length > 1) {
-      list.splice(index, 1);
-      renderSections();
-      focusTool('remove', Math.min(index, list.length - 1));
-    }
-  }
-
-  // Live preview of the sections as they will be shown (chords in the reader's notation).
-  // A pasted chord-over-lyrics block, even in solfège, is shown as it will be stored.
-  const preview = document.getElementById('editor-preview');
-  let previewTimer = null;
-  function renderPreview() {
-    clearTimeout(previewTimer);
-    const sections = state.sections
-      .filter((s) => s.content && s.content.trim())
-      .map((s) => ({ type: s.type, label: s.label, note: s.note, content: chordsOverLyricsToInline(s.content) }));
-    preview.replaceChildren(...(sections.length
-      ? window.SONG_RENDER.sectionsView(sections, { headingLevel: 3 })
-      : [el('p', { class: 'muted', text: t('editor.previewEmpty') })]));
-  }
-  function schedulePreview() {
-    clearTimeout(previewTimer);
-    previewTimer = setTimeout(renderPreview, 200);
-  }
-  form.addEventListener('input', schedulePreview);
-  form.addEventListener('change', schedulePreview);
-  document.addEventListener('notation:change', () => {
-    renderKeys();
-    renderPreview();
-  });
-
   function renderPage() {
-    renderKeys();
-    renderSections();
-    renderPreview();
     if (songId) {
       heading.dataset.i18n = 'editor.headingEdit';
       heading.textContent = t('editor.headingEdit');
@@ -216,40 +71,22 @@
     if (lastMessage && lastMessage.key) showMessage(lastMessage);
   }
 
-  // --- actions --------------------------------------------------------------
-
-  document.getElementById('add-section').addEventListener('click', () => {
-    state.sections.push({ type: 'verse', label: '', content: '', note: '' });
-    renderSections();
-    container.querySelector(`#section-${state.sections.length - 1}-type`).focus();
-  });
+  // --- save -----------------------------------------------------------------
 
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
     clearMessage();
-    if (!titleInput.value.trim()) {
+    if (!editor.fields.title.value.trim()) {
       showMessage({ key: 'editor.titleRequired' });
-      titleInput.focus();
+      editor.focusTitle();
       return;
     }
-    const payload = {
-      title: titleInput.value,
-      author: authorInput.value,
-      song_key: keySelect.value,
-      sections: state.sections.map((s) => ({
-        type: s.type,
-        label: s.label,
-        content: chordsOverLyricsToInline(s.content),
-        note: s.note,
-      })),
-    };
-
     saveButton.disabled = true;
     saveButton.textContent = t('editor.saving');
     try {
       const { ok, status: code, body } = await api(songId ? `/api/songs/${songId}` : '/api/songs', {
         method: songId ? 'PUT' : 'POST',
-        body: payload,
+        body: editor.payload(),
       });
       if (ok) {
         const choice = background.field ? background.field.value : background.saved;
@@ -321,11 +158,7 @@
       }
       const song = body.song;
       state.title = song.title;
-      state.sections = song.sections.map((s) => ({ type: s.type, label: s.label || '', content: s.content, note: s.note || '' }));
-      titleInput.value = song.title;
-      authorInput.value = song.author || '';
-      renderKeys();
-      keySelect.value = song.song_key || '';
+      editor.setSong(song);
       cancelLink.href = `/songs/${song.id}`;
       deleteArea.hidden = false;
       background.saved = song.background === undefined ? null : song.background;

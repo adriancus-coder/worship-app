@@ -19,7 +19,8 @@
 //                      imported first (or, when it is already in the library, the existing
 //                      one is used), then run() gets its id.
 //       emptyQuery: 'all' (list the library) | 'none'; limit: max library results;
-//       withHistory: ask for "last sung"; songHint(song) -> extra text under a result.
+//       withHistory: ask for "last sung"; songHint(song) -> extra text under a result;
+//       createAction(query): with no library result, "Creează „<query>” ca cântare nouă".
 //     search.setOnline(allowed)  // resursecrestine.ro for this user
 //     search.setMe(me)           // library mode: texts for editors vs the team
 //     search.reload(), search.reset(), search.focus(), search.message(text, tone)
@@ -184,6 +185,13 @@
       renderChrome();
       if (!local.songs) return;
       list.replaceChildren(...local.songs.map(localRow));
+      // No result: write it as a new song, the query as its title (the operator console).
+      if (!local.songs.length && local.lastQuery && options.createAction) {
+        list.append(el('li', { class: 'result-create' }, el('button', {
+          type: 'button', class: 'secondary', 'data-icon': 'plus', disabled: options.disabled && options.disabled(),
+          text: t('library.createFromQuery', { q: local.lastQuery }), onclick: () => options.createAction(local.lastQuery),
+        })));
+      }
       $('local-count').textContent = local.songs.length ? `(${local.songs.length})` : '';
       if (local.message) {
         setStatus(local.message.text);

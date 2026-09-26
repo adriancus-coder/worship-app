@@ -291,6 +291,7 @@
     renderSources();
     backgroundButton.update(state.snap);
     clockPanel.update({ clock: state.snap.clock, enabled: live() });
+    $('op-new-song').disabled = !live();
     addSearch.render(); // its actions follow live()
     videoPanel.setSetlist(items());
     videoPanel.update(state.snap);
@@ -399,6 +400,9 @@
     if (!reply || !reply.ok) return { error: errorText(reply) };
     return { done: t(target === 'setlist' ? 'operator.addedSetlist' : 'operator.addedProjector') };
   }
+  // "+ Cântare nouă": the song editor in a sheet; saving adds the song like an import.
+  const newSong = window.LIVE_NEW_SONG.create({ api, t, el, eventId, add: addSong });
+  $('op-new-song').addEventListener('click', () => newSong.open());
   const addSearch = window.SONG_SEARCH.create($('add-search'), {
     mode: 'pick',
     prefix: 'add-',
@@ -406,6 +410,7 @@
     emptyQuery: 'none',
     limit: RESULTS_MAX,
     disabled: () => !live(),
+    createAction: (query) => newSong.open({ title: query }),
     localActions: (song) => [
       { label: t('operator.addProjector'), icon: 'projector', ariaLabel: `${t('operator.addProjector')}: ${song.title}`, run: () => addSong('projector', song.id) },
       { label: t('operator.addSetlist'), icon: 'plus', primary: true, ariaLabel: `${t('operator.addSetlist')}: ${song.title}`, run: () => addSong('setlist', song.id) },

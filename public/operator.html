@@ -47,7 +47,11 @@
           <ol id="op-list" class="op-list" data-list-pane="operator.setlistHeading"></ol>
 
           <section class="op-add" aria-labelledby="op-add-heading">
-            <h3 id="op-add-heading" data-i18n="operator.addHeading"></h3>
+            <div class="op-add-head">
+              <h3 id="op-add-heading" data-i18n="operator.addHeading"></h3>
+              <!-- A new song written now: the same editor as /songs/new, in a sheet (live-new-song.js). -->
+              <button type="button" class="secondary" id="op-new-song" data-icon="plus" data-i18n="operator.newSong"></button>
+            </div>
             <p class="hint" data-i18n="operator.addHint"></p>
             <!-- The shared song search (public/song-search.js): library and resursecrestine.ro. -->
             <div id="add-search" class="song-pick op-search"></div>
@@ -113,6 +117,8 @@
   <script src="/shell.js"></script>
   <script src="/song-render.js"></script>
   <script src="/song-search.js"></script>
+  <script src="/song-editor.js"></script>
+  <script src="/live-new-song.js"></script>
   <script src="/clock.js"></script>
   <script src="/projector-render.js"></script>
   <script src="/clock-panel.js"></script>
