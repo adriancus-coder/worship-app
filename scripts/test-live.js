@@ -1508,10 +1508,16 @@ async function main() {
     // the home card: my assignment on the next event
     const homeM = (await api('GET', '/api/home', member)).body;
     assert.ok(homeM.assignments.length === 0 || homeM.assignments[0].positionName, 'assignments are for the top event only');
-    // "Trimite programarea": marks the pending, unsent rows (the notifications come with the notifications module)
+    // "Trimite programarea": every pending, unsent row -> its person (a notification row; no push
+    // or email on this server), then marked; a second send reaches nobody until a new row
     await api('PUT', `/api/events/${ev2.id}/assignments`, leader, { assignments: [{ userId: memberId, positionId: voce }, { userId: operatorId, positionId: chitara }, { userId: memberId, positionId: chitara }] });
+    const unreadBefore = (await api('GET', '/api/notifications/unread', member)).body.unread;
     const sent = await api('POST', `/api/events/${ev2.id}/assignments/send`, leader);
-    assert.deepStrictEqual([sent.status, sent.body.sent.sent, sent.body.assignments.filter((r) => r.notifiedAt).length], [200, 1, 1], 'only the new pending row counts as sent');
+    assert.deepStrictEqual([sent.status, sent.body.sent, sent.body.assignments.filter((r) => r.notifiedAt).length], [200, { sent: 1, withoutPush: 1, emailed: 0 }, 1], 'only the new pending row counts; no push, no email here');
+    assert.strictEqual((await api('GET', '/api/notifications/unread', member)).body.unread, unreadBefore + 1);
+    const assignedRow = (await api('GET', '/api/notifications', member)).body.notifications.find((n) => n.kind === 'assigned' && n.eventId === ev2.id);
+    assert.ok(assignedRow && /Ești programat: Chitară/.test(assignedRow.title) && /Programare/.test(assignedRow.body) && assignedRow.url === `/events/${ev2.id}`, 'the "assigned" notification names the position and the event');
+    assert.deepStrictEqual((await api('POST', `/api/events/${ev2.id}/assignments/send`, leader)).body.sent, { sent: 0, withoutPush: 0, emailed: 0 }, 're-sending reaches nobody new');
     assert.strictEqual((await api('POST', `/api/events/${ev2.id}/assignments/send`, operator)).status, 403);
     // a copy of the event carries the team as pending; a template keeps the usual team
     const copy = (await api('POST', '/api/events', owner, { name: 'Copie', eventDate: '2026-11-08', fromEventId: ev2.id })).body.event;

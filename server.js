@@ -131,6 +131,30 @@ const notifications = createNotifications({ db, logger, push });
 liveHooks.onLiveStarted = (adminId, eventId) => notifications.onLiveStarted(adminId, eventId);
 liveHooks.onSetlistChanged = (adminId, eventId) => notifications.onSetlistChanged(adminId, eventId);
 assignmentHooks.onDeclined = ({ req, event, row }) => notifications.onDeclined(req.adminId, event, row).catch((err) => logger.error('declined notification failed', err));
+// "Trimite programarea": a notification (+ push) to every pending person not yet told; those
+// without push get an email with the same text and the event link when email is enabled.
+assignmentHooks.onSent = async ({ req, event, rows }) => {
+  const out = await notifications.onAssigned(req.adminId, event, rows, req.user.name);
+  const result = { sent: out.sent, withoutPush: out.withoutPush, emailed: 0 };
+  if (!email.enabled || !out.withoutPush) return result;
+  const baseUrl = config.PUBLIC_BASE_URL || `${req.protocol}://${req.get('host')}`;
+  const selectUser = db.prepare('SELECT id, name, email, locale FROM users WHERE id = ? AND admin_id = ? AND active = 1');
+  for (const userId of out.userIds) {
+    if (push.enabled && push.hasSubscription(req.adminId, userId)) continue;
+    const user = selectUser.get(userId, req.adminId);
+    if (!user) continue;
+    const lang = user.locale === 'en' ? 'en' : 'ro';
+    const positions = rows.filter((r) => r.userId === userId).map((r) => r.positionName).join(', ');
+    const message = email.templates.schedule(lang, { appName: config.APP_NAME, churchName: req.admin.name, url: `${baseUrl}/events/${event.id}`, name: event.name, date: event.eventDate, time: event.startTime || '', positions, by: req.user.name, email: user.email });
+    try {
+      await email.send(req.adminId, { ...message, to: user.email, kind: 'schedule', userId });
+      result.emailed += 1;
+    } catch (err) {
+      logger.warn(`Schedule email to user #${userId} not sent: ${err.code || err.message}`);
+    }
+  }
+  return result;
+};
 app.use(createNotificationsRouter({ auth, config, notifications }));
 setInterval(() => notifications.tick().catch((err) => logger.error('reminder tick failed', err)), 60 * 1000).unref();
 app.use(createPlatformRouter({ db, auth, config, logger, live, screensHub, storage, email, invites }));
