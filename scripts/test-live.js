@@ -800,6 +800,11 @@ async function main() {
     const { socket } = await joined(leader, ev2.id);
     assert.strictEqual((await emit(socket, 'live:command', { type: 'event.start', eventId: ev2.id })).code, 'anotherLive');
     socket.emit('live:leave', {});
+    // "▶ Pornește live" from Acasă: 409 names the live event; the live one itself just enters
+    const refused = await api('POST', `/api/events/${ev2.id}/start`, leader, {});
+    assert.deepStrictEqual([refused.status, refused.body.code, refused.body.live && refused.body.live.id], [409, 'anotherLive', ev.id]);
+    assert.strictEqual((await api('POST', `/api/events/${ev.id}/start`, operator, {})).status, 200, 'already live: enter');
+    assert.strictEqual((await api('POST', `/api/events/${ev2.id}/start`, member, {})).status, 403);
   });
 
   await step('setlist saved without the current song -> position moves to the next item', async () => {
@@ -1110,6 +1115,22 @@ async function main() {
     assert.deepStrictEqual([applied.status, applied.body.items.map((i) => i.reference)], [200, ['Ps 91']]);
     assert.strictEqual((await api('POST', `/api/events/${plain.id}/apply-template`, other2, { templateId: plain.id })).status, 400, 'only a template');
     assert.strictEqual((await api('POST', `/api/events/${plain.id}/apply-template`, other2, { templateId: tpl.id + 1000 })).status, 400);
+    // "▶ Pornește live" from Acasă, in one call; another live event is ended only on request
+    const home = connect(other2);
+    await next(home, 'connect');
+    await emit(home, 'home:watch', {});
+    const changed = next(home, 'home:changed');
+    let started = await api('POST', `/api/events/${q2.event.id}/start`, other2, {});
+    assert.deepStrictEqual([started.status, started.body.event.status], [200, 'live']);
+    await changed;
+    const blocked = await api('POST', `/api/events/${plain.id}/start`, other2, {});
+    assert.deepStrictEqual([blocked.status, blocked.body.code, blocked.body.live.name], [409, 'anotherLive', 'Seară de rugăciune']);
+    started = await api('POST', `/api/events/${plain.id}/start`, other2, { endOther: true });
+    assert.deepStrictEqual([started.status, started.body.event.status], [200, 'live']);
+    assert.strictEqual((await api('GET', `/api/events/${q2.event.id}`, other2)).body.event.status, 'finished', 'the other one was ended');
+    const ended = await api('GET', `/api/events/${plain.id}`, other2);
+    assert.strictEqual(ended.body.event.status, 'live');
+    home.close();
     assert.strictEqual((await api('POST', '/api/events/quick', member)).status, 403);
     assert.strictEqual((await api('PUT', '/api/settings/service', leader, { weekday: 0, time: '10:00' })).status, 403);
   });

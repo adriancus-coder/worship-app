@@ -1,7 +1,8 @@
 'use strict';
 
 // "Acum" (/app): the live event, else the next one, with ONE big button for what this
-// role does with it; then the next few events and, for the event roles, quick actions.
+// role does with it ("▶ Pornește live" starts it in one tap for the event roles); then the
+// next few events and, for the event roles, quick actions.
 // The operator gets the leader's buttons, with the console as its live page.
 // The page watches its admin's home room: an event starting or ending swaps the card
 // without a reload.
@@ -38,10 +39,13 @@
       if (EDITOR_ROLES.includes(role)) return [{ text: t('home.enterLive'), href: livePage, icon: 'play' }];
       return [{ text: t('home.follow'), href: `/events/${event.id}/follow?from=home`, icon: 'follow' }];
     }
+    // Event roles: "▶ Pornește live" starts it and opens the live page (the console for the
+    // operator) in one tap; "Pregătește" stays next to it.
     if (EDITOR_ROLES.includes(role)) {
-      const list = [{ text: t('home.prepare'), href: eventUrl(event, '/edit'), icon: 'edit' }];
-      if (event.status === 'planned') list.push({ text: t('home.startLive'), href: livePage, icon: 'play' });
-      return list;
+      return [
+        { text: t('home.startLive'), icon: 'play', run: () => startLive(event, livePage) },
+        { text: t('home.prepare'), href: eventUrl(event, '/edit'), icon: 'edit' },
+      ];
     }
     return [{ text: t('home.rehearse'), href: eventUrl(event, '/rehearse'), icon: 'rehearse' }];
   }
@@ -58,9 +62,49 @@
         el('span', { text: itemCount(event.itemCount) }),
         el('span', { class: `pill pill-${event.status}`, text: t(`events.status.${event.status}`) })),
       el('div', { class: 'now-actions' },
-        el('a', { class: 'button now-primary', href: primary.href, 'data-icon': primary.icon, text: primary.text }),
-        secondary ? el('a', { class: 'button secondary', href: secondary.href, 'data-icon': secondary.icon, text: secondary.text }) : null));
+        primary.run
+          ? el('button', { type: 'button', class: 'now-primary', id: 'start-live', 'data-icon': primary.icon, text: primary.text, onclick: primary.run })
+          : el('a', { class: 'button now-primary', href: primary.href, 'data-icon': primary.icon, text: primary.text }),
+        secondary ? el('a', { class: 'button secondary', href: secondary.href, 'data-icon': secondary.icon, text: secondary.text }) : null),
+      el('p', { class: 'message error', id: 'start-message', role: 'alert' }));
   }
+
+  // --- "▶ Pornește live" --------------------------------------------------------------
+
+  const pending = { event: null, livePage: null };
+
+  async function startLive(event, livePage, endOther = false) {
+    const button = $('start-live');
+    if (button) button.disabled = true;
+    $('start-message').textContent = '';
+    try {
+      const res = await api(`/api/events/${event.id}/start`, { method: 'POST', body: endOther ? { endOther: true } : {} });
+      if (res.ok) {
+        window.location.assign(livePage);
+        return;
+      }
+      if (res.body.code === 'anotherLive' && !endOther) {
+        // Confirmation only now: another event is live. Offer to end it first.
+        Object.assign(pending, { event, livePage });
+        $('switch-heading').textContent = t('home.switchHeading', { name: (res.body.live && res.body.live.name) || '' });
+        $('switch-text').textContent = t('home.switchText', { name: (res.body.live && res.body.live.name) || '', next: event.name });
+        $('switch-message').textContent = '';
+        $('switch-dialog').showModal();
+        return;
+      }
+      ($('switch-dialog').open ? $('switch-message') : $('start-message')).textContent = res.body.error || t('common.networkError');
+    } catch (err) {
+      $('start-message').textContent = t('common.networkError');
+    } finally {
+      if ($('start-live')) $('start-live').disabled = false;
+    }
+  }
+
+  $('switch-yes').addEventListener('click', () => {
+    $('switch-dialog').close();
+    startLive(pending.event, pending.livePage, true);
+  });
+  $('switch-cancel').addEventListener('click', () => $('switch-dialog').close());
 
   function empty() {
     return el('article', { class: 'now-card empty' },

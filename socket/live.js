@@ -283,6 +283,34 @@ function createLiveHub({ db, auth, logger, screensHub }) {
     }
   }
 
+  // "▶ Pornește live" from Acasă (routes/events.js): starts the event without a live page
+  // open. Another live event: { ok: false, code: 'anotherLive', liveEventId } unless
+  // endOther, which ends that one first. Already live: ok (the page just enters).
+  function startEvent(adminId, eventId, { role, userId, endOther = false }) {
+    const other = store.liveEventId(adminId);
+    if (other !== null && other !== eventId) {
+      if (!endOther) return { ok: false, code: 'anotherLive', liveEventId: other };
+      store.command(adminId, other, { type: 'event.end' }, undefined, role);
+      logger.info(`Event #${other} ended by user #${userId} (admin #${adminId}) to start #${eventId}`);
+      if (io) {
+        broadcast(adminId, other);
+        notifyHome(adminId, other);
+      }
+    }
+    try {
+      const result = store.command(adminId, eventId, { type: 'event.start' }, undefined, role);
+      logger.info(`Event #${eventId} started by user #${userId} (admin #${adminId}) from the home page`);
+      if (io && result.changed) {
+        broadcast(adminId, eventId);
+        notifyHome(adminId, eventId);
+      }
+      return { ok: true };
+    } catch (err) {
+      if (!(err instanceof LiveError)) throw err;
+      return err.code === 'alreadyLive' ? { ok: true } : { ok: false, code: err.code };
+    }
+  }
+
   // A church deactivated from the platform page: every socket of its users closes.
   function closeAdmin(adminId) {
     if (!io) return;
@@ -344,7 +372,7 @@ function createLiveHub({ db, auth, logger, screensHub }) {
     else screensHub.update(adminId);
   }
 
-  return { attach, closeSession, closeUser, closeAdmin, roomName, setlistBefore, setlistChanged, songBefore, songChanged, eventChanged, backgroundsChanged };
+  return { attach, closeSession, closeUser, closeAdmin, startEvent, roomName, setlistBefore, setlistChanged, songBefore, songChanged, eventChanged, backgroundsChanged };
 }
 
 module.exports = { createLiveHub, roomName };

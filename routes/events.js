@@ -135,6 +135,21 @@ function createEventsRouter({ db, auth, logger, live }) {
     res.status(201).json({ ...events.get(req.adminId, id, { t: req.t }), today: today(req), templateId: template ? template.id : null });
   });
 
+  // "▶ Pornește live" from Acasă: starts the event in one tap (the page then opens the live
+  // page or the console). Another event live: 409 with its name, unless { endOther: true }.
+  router.post('/api/events/:id/start', canEdit, (req, res) => {
+    const found = load(req, res);
+    if (!found) return;
+    const out = live.startEvent(req.adminId, found.event.id, { role: req.user.role, userId: req.user.id, endOther: (req.body || {}).endOther === true });
+    if (out.ok) return respond(req, res, found.event.id);
+    if (out.code === 'anotherLive') {
+      const other = events.get(req.adminId, out.liveEventId);
+      return res.status(409).json({ code: 'anotherLive', error: req.t('live.errors.anotherLive'), live: other ? { id: other.event.id, name: other.event.name } : null });
+    }
+    const key = `live.errors.${out.code}`;
+    res.status(409).json({ code: out.code, error: req.t(key) === key ? req.t('errors.internal') : req.t(key) });
+  });
+
   // The editor's "Detalii · Șablon": the setlist becomes the template's (it is remembered
   // for the next "+ Eveniment nou").
   router.post('/api/events/:id/apply-template', canEdit, (req, res) => {

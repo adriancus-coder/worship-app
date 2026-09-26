@@ -130,6 +130,10 @@ never implement a later stage early. Mockups: claude.ai design canvas
   the next usual service (church setting "Ziua și ora obișnuită a slujbei", default Sunday
   10:00, timezone-aware; the day itself until 2 h after the start). The editor opens with
   an inline "Detalii" row (name, date, time, template); "Cu opțiuni" keeps the full dialog.
+- Acasă, event roles: "▶ Pornește live" on the next event starts it and opens the live page
+  (the console for the operator) in one tap (`POST /api/events/:id/start`); live already:
+  "Intră live". Only when another event is live a confirmation offers to end it first.
+  Members keep "Repetiție" / "Urmărește live".
 - Status: planned → live → finished (history). No publishing step: the team sees an
   event as soon as it exists (templates stay hidden). "Pornește" works on any planned
   event (one live event per church). Migration 020 turned draft and published into planned.

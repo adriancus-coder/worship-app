@@ -1305,7 +1305,8 @@ body.has-shell .shell-panel-body { padding-bottom: 12px; } /* the tab bar alread
 .now-title a:hover { text-decoration: underline; }
 .now-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin: 0 0 12px; color: var(--text-muted); }
 .now-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
-.now-actions .button { min-height: 52px; display: inline-flex; align-items: center; justify-content: center; }
+.now-actions .button, .now-actions button { min-height: 52px; display: inline-flex; align-items: center; justify-content: center; }
+.now-card .message:empty { display: none; }
 .now-primary { flex: 1 1 220px; font-size: 1.125rem; }
 .now-card.empty .now-title { font-size: 1.25rem; }
 .home-section { margin-top: 28px; }

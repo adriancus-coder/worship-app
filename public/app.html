@@ -25,6 +25,17 @@
         <a class="button secondary" id="quick-new-song" href="/songs/new" data-icon="plus" data-i18n="home.newSong"></a>
       </div>
     </section>
+
+    <!-- "▶ Pornește live" while another event is live: end that one first? -->
+    <dialog id="switch-dialog" aria-labelledby="switch-heading">
+      <h2 id="switch-heading"></h2>
+      <p id="switch-text"></p>
+      <p id="switch-message" class="message error" role="alert"></p>
+      <div class="form-actions">
+        <button type="button" class="danger" id="switch-yes" data-icon="play" data-i18n="home.switchYes"></button>
+        <button type="button" class="secondary" id="switch-cancel" data-i18n="live.endCancel"></button>
+      </div>
+    </dialog>
   </main>
   <script src="/socket.io/socket.io.js"></script>
   <script src="/i18n.js"></script>
