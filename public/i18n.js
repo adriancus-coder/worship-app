@@ -205,8 +205,8 @@
           member: 'Membru',
         },
         roleHelp: {
-          leader: 'Biblioteca, evenimentele, media și live-ul. La un eveniment ajunge pe pagina Live. Ecranele proiectorului le deschide operatorul.',
-          operator: 'Biblioteca, evenimentele, media și live-ul, plus ecranele proiectorului (împerechere, „Deschide ecranul proiectorului”). La un eveniment ajunge în consola operator.',
+          leader: 'Biblioteca, evenimentele, media și live-ul. La un eveniment ajunge pe pagina Live. Ecranele proiectorului le deschide operatorul; în modul Separat preia proiectorul doar cu acordul lui.',
+          operator: 'Biblioteca, evenimentele, media și live-ul, plus ecranele proiectorului (împerechere, „Deschide ecranul proiectorului”) și cântări noi scrise în timpul slujbei. La un eveniment ajunge în consola operator, unde acceptă sau refuză cererea liderului de a prelua proiectorul.',
           member: 'Vede programul, versurile și acordurile și urmărește live pe telefon.',
         },
         create: 'Creează contul',
@@ -1395,8 +1395,8 @@
           member: 'Member',
         },
         roleHelp: {
-          leader: 'Library, events, media and live. An event opens on the Live page. The projector screens are the operator’s.',
-          operator: 'Library, events, media and live, plus the projector screens (pairing, “Open the projector screen”). An event opens in the operator console.',
+          leader: 'Library, events, media and live. An event opens on the Live page. The projector screens are the operator’s; in Separate mode the leader takes the projector only with their consent.',
+          operator: 'Library, events, media and live, plus the projector screens (pairing, “Open the projector screen”) and new songs written during the service. An event opens in the operator console, where they accept or refuse the leader’s request to take the projector.',
           member: 'Sees the setlist, lyrics and chords and follows live on the phone.',
         },
         create: 'Create account',

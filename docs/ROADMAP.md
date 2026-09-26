@@ -10,6 +10,15 @@ never implement a later stage early. Mockups: claude.ai design canvas
   Translation is an optional two-way bridge to Sanctuary Voice (stage 8, see below).
 - **Customer = "admin"** (one church/group). Subscription per admin, paid outside
   the app (website). The app itself never shows prices, buy buttons or payment links.
+- **Churches on the platform** (`/platform`, the platform owner only): create (owner +
+  temporary password shown once), deactivate / reactivate, a new owner password, the media
+  quota, and **permanent deletion in two steps** (migration 023): only a deactivated church,
+  its exact name typed, "Programează ștergerea" sets `admins.delete_at` 7 days ahead
+  ("Ștergere programată pe <data>", cancellable from the church page or the /platform row;
+  reactivating cancels too). A sweep at startup and every 24 h writes a final backup zip
+  (the owner-backup format) to `DATA_DIR/deleted/<id>-<date>.zip`, kept 30 days, then
+  removes every row of the church in one transaction and its upload folder. The platform's
+  own church can never be deactivated or deleted. Every step is logged.
 - **PWA first.** App Store / Google Play later, possibly via Capacitor; not planned yet.
 - **Accounts:** personal logins (email + password) per user, roles owner / leader /
   operator / member. Owner invites users. "Remember me" for church PCs.
@@ -45,6 +54,15 @@ never implement a later stage early. Mockups: claude.ai design canvas
     ("Proiectorul e la …" / "Echipa e la …") with "Sari acolo" (key W on the console).
     Entering split copies the main position to the projector; back to together the
     projector shows the main position at once.
+  - **Handover consent** (migration 024): in split mode a LEADER's "Împreună" is a request,
+    not a switch. It is kept in the live state (60 s, expiry silent), broadcast as
+    `live:handover`, and shown on the leader page as "Cerere trimisă… N s" with "Anulează";
+    the console (operator, owner) gets a toast "<Lider> cere controlul proiectorului" with
+    Acceptă (Enter) / Refuză and a badge on the switch. Accept → together (the projector
+    shows the main position); refuse → nothing changes ("Operatorul a refuzat" 5 s). With no
+    operator / owner page in the room the switch applies at once; the owner's requests and
+    every operator switch are direct; leader together → split stays direct; a restart clears
+    pending requests. The big lyrics show the state in their status line.
 - **Team mode** (`team.mode`, any event role; a new start is *follow*):
   - *Urmărește live* (follow) — phones follow the main position. Someone who moves away on
     their own phone (swipe, ← / →) keeps their place with a floating "Revino la live";
@@ -97,7 +115,16 @@ never implement a later stage early. Mockups: claude.ai design canvas
     the setlist at once.
   The other event-role pages get a short, non-blocking info toast ("<name> a adăugat
   <title>", hidden after 5 s, never over a control). Only the event roles receive the full
-  item list in their live snapshots. (Before this, operator additions were proposals the
+  item list in their live snapshots.
+  - **"+ Cântare nouă"** (`public/live-new-song.js`): a song written during the service, in
+    the SAME editor component as /songs/new (`public/song-editor.js`: title, key, author,
+    sections with chords-over-lyrics paste, live preview), in a non-modal sheet (bottom on
+    phones, a side panel from 900 px) so next / prev and the keys keep working. "Salvează ·
+    În setlist" (primary) / "Salvează · Doar pe proiector" create the library song
+    (EDITOR_ROLES) and add it in one step like an import; a duplicate title (409) shows the
+    existing song with "Adaugă cântarea existentă"; a library search with no result offers
+    "Creează „<query>” ca cântare nouă". The text is kept on the device while writing
+    (survives a reconnect / reload); closing with text asks first. (Before this, operator additions were proposals the
   leader accepted or refused; migration 014 turned pending ones into projector-only items.)
 - **Video:** from the app library (uploaded, size-limited), URL (direct mp4 preferred;
   YouTube/Vimeo allowed), or a file picked once on the projector PC (e.g. USB stick).
