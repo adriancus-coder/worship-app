@@ -1347,6 +1347,9 @@ body.has-shell .shell-panel-body { padding-bottom: 12px; } /* the tab bar alread
 .now-title a:hover { text-decoration: underline; }
 .now-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin: 0 0 12px; color: var(--text-muted); }
 .now-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+/* A live event forgotten since yesterday: the hint and "Încheie" (never automatic). */
+.now-stale { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin: 12px 0 0; font-size: 0.9rem; color: var(--text-muted); }
+.now-stale button { min-height: var(--touch); }
 .now-actions .button, .now-actions button { min-height: 52px; display: inline-flex; align-items: center; justify-content: center; }
 .now-card .message:empty { display: none; }
 .now-primary { flex: 1 1 220px; font-size: 1.125rem; }

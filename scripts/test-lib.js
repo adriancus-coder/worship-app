@@ -1564,6 +1564,42 @@ test('platform owner: the first admin (migration 018), its owner only, PLATFORM_
   fs.rmSync(before, { recursive: true, force: true });
 });
 
+test('events: upcoming / past split by status and date; the home never picks a finished event', () => {
+  const Database = require('better-sqlite3');
+  const { runMigrations } = require('../lib/db');
+  const { createEventStore } = require('../lib/events');
+  const { createHome } = require('../lib/home');
+  const db = new Database(':memory:');
+  db.pragma('foreign_keys = ON');
+  runMigrations(db);
+  db.prepare("INSERT INTO admins (id, name, created_at) VALUES (1, 'A', 0)").run();
+  const add = db.prepare('INSERT INTO events (id, admin_id, name, event_date, start_time, status, is_template, created_at, updated_at) VALUES (?, 1, ?, ?, ?, ?, ?, 0, 0)');
+  const today = '2026-09-26';
+  add.run(1, 'finished today', today, '16:00', 'finished', 0);
+  add.run(2, 'planned today', today, '18:00', 'planned', 0);
+  add.run(3, 'live yesterday', '2026-09-25', '10:00', 'live', 0);
+  add.run(4, 'planned yesterday', '2026-09-25', '10:00', 'planned', 0);
+  add.run(5, 'planned next week', '2026-10-03', '10:00', 'planned', 0);
+  add.run(6, 'finished last week', '2026-09-19', '10:00', 'finished', 0);
+  add.run(7, 'template', '2026-09-20', null, 'planned', 1);
+  db.prepare('INSERT INTO live_state (event_id, admin_id, version, started_at, updated_at) VALUES (3, 1, 2, ?, 0)').run(Date.UTC(2026, 8, 25, 8, 0));
+  const evs = createEventStore(db);
+  const names = (when) => evs.list(1, { when, today, teamOnly: false }).map((e) => e.name);
+  assert.deepStrictEqual(names('upcoming'), ['live yesterday', 'planned today', 'planned next week'], 'upcoming: live first (forgotten yesterday), then ascending; never finished, never a template');
+  assert.deepStrictEqual(names('past'), ['finished today', 'planned yesterday', 'finished last week'], 'past: finished (even today) and planned with the date passed, descending');
+  assert.deepStrictEqual(names('templates'), ['template'], 'templates untouched');
+  assert.deepStrictEqual(evs.list(1, { when: 'templates', today, teamOnly: true }), [], 'the team never sees templates');
+  // the home: the live one with its start, the next planned one (never a finished one)
+  const h = createHome(db).home(1, 'leader', today);
+  assert.deepStrictEqual([h.live.name, h.live.startedAt, h.next.name, h.upcoming.map((e) => e.name)], ['live yesterday', Date.UTC(2026, 8, 25, 8, 0), 'planned today', ['planned next week']]);
+  db.prepare("UPDATE events SET status = 'finished' WHERE id = 3").run();
+  db.prepare("UPDATE events SET status = 'finished' WHERE id = 2").run();
+  const h2 = createHome(db).home(1, 'member', today);
+  assert.deepStrictEqual([h2.live, h2.next.name], [null, 'planned next week'], 'a finished event today is never "next"');
+  assert.deepStrictEqual(names('past').slice(0, 4), ['planned today', 'finished today', 'planned yesterday', 'live yesterday'], 'descending; same date and time: newest id first');
+  db.close();
+});
+
 test('events: draft and published migrate to planned (020); "Cântată ultima dată" rule', () => {
   const fs = require('fs');
   const os = require('os');

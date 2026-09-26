@@ -70,7 +70,9 @@ module.exports = {
     await op.waitForSelector('.handover-toast:not([hidden])');
     await lp.click('#mode-controls .handover-line button');
     await op.waitForFunction(() => document.querySelector('.handover-toast').hidden, null, { timeout: 3000 });
-    check(await mode() === 'split' && await lp.isHidden('#mode-controls .handover-line') && (await app.state()).handover === null, 'the leader cancels: the toast goes, still split, nothing pending');
+    await lp.waitForFunction(() => document.querySelector('#mode-controls .handover-line').hidden, null, { timeout: 3000 }).catch(() => {});
+    const afterCancel = { mode: await mode(), lineHidden: await lp.isHidden('#mode-controls .handover-line'), handover: (await app.state()).handover, line: await lp.textContent('#mode-controls .handover-line') };
+    check(afterCancel.mode === 'split' && afterCancel.lineHidden && afterCancel.handover === null, 'the leader cancels: the toast goes, still split, nothing pending', afterCancel);
     // the operator switches directly, both ways
     await op.click('#mode-controls [data-value="together"]');
     await op.waitForFunction(() => document.getElementById('mode-banner').dataset.mode === 'together');
@@ -101,7 +103,9 @@ module.exports = {
     await lp.click('#mode-controls [data-value="together"]');
     await op.waitForSelector('.handover-toast:not([hidden])');
     const expired = await lp.waitForFunction(() => document.querySelector('#mode-controls .handover-line').hidden, null, { timeout: 65000 }).then(() => true, () => false);
-    check(expired && await op.isHidden('.handover-toast') && await mode() === 'split' && (await app.state()).handover === null, 'expiry after 60 s: silent, still split');
+    // the console's own tick hides the toast within a second of the leader's line
+    const toastGone = await op.waitForFunction(() => document.querySelector('.handover-toast').hidden, null, { timeout: 3000 }).then(() => true, () => false);
+    check(expired && toastGone && await mode() === 'split' && (await app.state()).handover === null, 'expiry after 60 s: silent, still split', { expired, toastGone });
     // no operator / owner connected: immediate
     await op.context().close();
     await wait(500);

@@ -70,6 +70,8 @@ module.exports = {
     for (const corner of ['top-left', 'top-right', 'bottom-left', 'bottom-right']) {
       await lp.click(`[data-corner="${corner}"]`);
       const moved = await sp.waitForFunction((c) => document.querySelector('#output .display-clock').classList.contains(c), corner, { timeout: 3000 }).then(() => true, () => false);
+      // the panel's selection follows the leader's own snapshot, a moment after the frame
+      await lp.waitForFunction((c) => document.querySelector(`[data-corner="${c}"]`).getAttribute('aria-pressed') === 'true', corner, { timeout: 3000 }).catch(() => {});
       sc = await clockOn(sp, '#output');
       const inCorner = sc && (corner.startsWith('top') ? !sc.bottom : sc.bottom) && (corner.endsWith('left') ? !sc.right : sc.right);
       check(moved && inCorner && await lp.getAttribute(`[data-corner="${corner}"]`, 'aria-pressed') === 'true', `corner ${corner} on the screen, selected in the panel`, sc);

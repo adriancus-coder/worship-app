@@ -82,15 +82,18 @@ module.exports = {
       // Ecrane
       await p.click('#tab-screens');
       await p.waitForSelector('#panel-screens:not([hidden])');
-      await p.waitForFunction(() => document.querySelector('#screens .screen-row') || !document.getElementById('screens-status').hidden);
+      // the list, or the final "no screens" text (not the loading text before the list arrives)
+      await p.waitForFunction(() => document.querySelector('#screens .screen-row') || /No screen|Niciun/.test(document.getElementById('screens-status').textContent));
       if (lang === 'ro') {
-        check(/Ecran B/.test(await p.textContent('#screens')) && await p.locator('#screens .online-dot.on').count() === 1, `${tag} Ecrane: "Ecran B" online`);
+        // the online state comes with the list; the screen's socket may still be reconnecting
+        await p.waitForFunction(() => document.querySelectorAll('#screens .online-dot.on').length === 1, null, { timeout: 4000 }).catch(() => {});
+        check(/Ecran B/.test(await p.textContent('#screens')) && await p.locator('#screens .online-dot.on').count() === 1, `${tag} Ecrane: "Ecran B" online`, await p.evaluate(() => document.getElementById('screens').innerHTML.slice(0, 400)));
         await p.click('#screens .screen-row:has-text("Ecran B") button');
         await p.click('#confirm-yes');
         const code = await sp.waitForFunction(() => /\d{3} \d{3}/.test(document.getElementById('pairing-code').textContent), null, { timeout: 8000 }).then(() => true, () => false);
         check(code, `${tag} revoke: the screen shows a pairing code again`);
       } else {
-        check(await p.locator('#screens .screen-row').count() === 0 && /No screen|Niciun/.test(await p.textContent('#screens-status')), `${tag} Ecrane after the revoke: empty`);
+        check(await p.locator('#screens .screen-row').count() === 0 && /No screen|Niciun/.test(await p.textContent('#screens-status')), `${tag} Ecrane after the revoke: empty`, { rows: await p.evaluate(() => document.getElementById('screens').innerText), status: await p.textContent('#screens-status'), api: (await app.api(app.cookies.owner, 'GET', `/api/platform/admins/${bId}/screens`)).body });
       }
       // the platform's own church: the team tab links to /team
       await p.goto(`${app.url}/platform/1?tab=team`);

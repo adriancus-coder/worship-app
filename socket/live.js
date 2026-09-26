@@ -340,6 +340,22 @@ function createLiveHub({ db, auth, logger, screensHub }) {
     }
   }
 
+  // "Încheie" from Acasă (routes/events.js): ends the live event without a live page open.
+  function endEvent(adminId, eventId, { role, userId }) {
+    try {
+      const result = store.command(adminId, eventId, { type: 'event.end' }, undefined, role);
+      logger.info(`Event #${eventId} ended by user #${userId} (admin #${adminId}) from the home page`);
+      if (io && result.changed) {
+        broadcast(adminId, eventId);
+        notifyHome(adminId, eventId);
+      }
+      return { ok: true };
+    } catch (err) {
+      if (!(err instanceof LiveError)) throw err;
+      return { ok: false, code: err.code };
+    }
+  }
+
   // A church deactivated from the platform page: every socket of its users closes.
   function closeAdmin(adminId) {
     if (!io) return;
@@ -403,7 +419,7 @@ function createLiveHub({ db, auth, logger, screensHub }) {
   }
   const backgroundsChanged = settingsChanged;
 
-  return { attach, closeSession, closeUser, closeAdmin, startEvent, roomName, setlistBefore, setlistChanged, songBefore, songChanged, eventChanged, backgroundsChanged, settingsChanged };
+  return { attach, closeSession, closeUser, closeAdmin, startEvent, endEvent, roomName, setlistBefore, setlistChanged, songBefore, songChanged, eventChanged, backgroundsChanged, settingsChanged };
 }
 
 module.exports = { createLiveHub, roomName };

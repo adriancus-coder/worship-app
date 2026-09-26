@@ -49,6 +49,8 @@ module.exports = {
       // open from the current step
       await p.click(`${stepSel}[aria-current=step]`);
       await p.waitForSelector('dialog.big-lyrics[open]');
+      // the section arrives with the song (one fetch): wait for its text
+      await p.waitForFunction(() => document.querySelector('dialog.big-lyrics .big-text').innerText.trim().length > 0, null, { timeout: 4000 }).catch(() => {});
       let b = await big(p);
       check(b && /Sfânt în G/.test(b.label) && /Ne ridici/.test(b.text) && b.chords > 0 && b.font > 18, `${tag} the current step opens the big lyrics: label "${b.label}", ${Math.round(b.font)} px, chords above`, b);
       check(/Refren|Chorus/.test(b.next) && /Sfânt, sfânt/.test(b.next), `${tag} the next section's first line at the bottom`, b.next);

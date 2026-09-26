@@ -150,6 +150,17 @@ function createEventsRouter({ db, auth, logger, live }) {
     res.status(409).json({ code: out.code, error: req.t(key) === key ? req.t('errors.internal') : req.t(key) });
   });
 
+  // "Încheie" on the home card (a live event forgotten since yesterday): ends it. 409 when
+  // it is not live.
+  router.post('/api/events/:id/end', canEdit, (req, res) => {
+    const found = load(req, res);
+    if (!found) return;
+    const out = live.endEvent(req.adminId, found.event.id, { role: req.user.role, userId: req.user.id });
+    if (out.ok) return respond(req, res, found.event.id);
+    const key = `live.errors.${out.code}`;
+    res.status(409).json({ code: out.code, error: req.t(key) === key ? req.t('errors.internal') : req.t(key) });
+  });
+
   // The editor's "Detalii · Șablon": the setlist becomes the template's (it is remembered
   // for the next "+ Eveniment nou").
   router.post('/api/events/:id/apply-template', canEdit, (req, res) => {

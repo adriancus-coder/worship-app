@@ -66,7 +66,29 @@
           ? el('button', { type: 'button', class: 'now-primary', id: 'start-live', 'data-icon': primary.icon, text: primary.text, onclick: primary.run })
           : el('a', { class: 'button now-primary', href: primary.href, 'data-icon': primary.icon, text: primary.text }),
         secondary ? el('a', { class: 'button secondary', href: secondary.href, 'data-icon': secondary.icon, text: secondary.text }) : null),
+      // Live for more than a day (someone forgot to end it): a small hint with "Încheie".
+      live && staleLive(event) ? el('p', { class: 'now-stale', id: 'stale-live' },
+        el('span', { text: t('home.staleLive') }),
+        EDITOR_ROLES.includes(state.me.user.role)
+          ? el('button', { type: 'button', class: 'secondary danger-text', id: 'end-stale', 'data-icon': 'stop', text: t('home.staleEnd'), onclick: () => endStale(event) })
+          : null) : null,
       el('p', { class: 'message error', id: 'start-message', role: 'alert' }));
+  }
+
+  const STALE_LIVE_MS = 24 * 60 * 60 * 1000;
+  const staleLive = (event) => Boolean(event.startedAt) && Date.now() - event.startedAt >= STALE_LIVE_MS;
+
+  // Never automatic: only this button ends a forgotten live event.
+  async function endStale(event) {
+    const button = $('end-stale');
+    if (button) button.disabled = true;
+    const res = await api(`/api/events/${event.id}/end`, { method: 'POST' }).catch(() => ({ ok: false, body: {} }));
+    if (!res.ok) {
+      $('start-message').textContent = res.body.error || t('common.networkError');
+      if (button) button.disabled = false;
+      return;
+    }
+    await load().catch(() => {});
   }
 
   // --- "▶ Pornește live" --------------------------------------------------------------
