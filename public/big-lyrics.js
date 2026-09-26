@@ -177,9 +177,15 @@
     function setScale(delta) {
       state.scale = Math.min(SCALE.max, Math.max(SCALE.min, Math.round((state.scale + delta) * 10) / 10));
       store(SCALE_KEY, String(state.scale));
+      scaleNext();
       fit();
       parts.smaller.disabled = state.scale <= SCALE.min + 1e-9;
       parts.larger.disabled = state.scale >= SCALE.max - 1e-9;
+    }
+
+    // The next line follows A− / A+ (1.5rem at scale 1).
+    function scaleNext() {
+      parts.next.style.fontSize = `${(1.5 * state.scale).toFixed(3)}rem`;
     }
 
     function setTextOnly(value) {
@@ -279,7 +285,7 @@
       else after = following ? { label: itemTitle(following), item: following } : null;
       parts.prev.disabled = index === 0 && pos.step === 0 && !pos.ended;
       parts.nextButton.disabled = !after;
-      parts.nextButton.textContent = after ? t('live.next', { label: after.label }) : t('live.nextEnd');
+      parts.nextButton.textContent = after ? t('live.next', { label: window.LIVE.nextText(state.items, pos).label }) : t('live.nextEnd');
       window.LIVE.renderEndButton(parts.end, { ended: Boolean(pos.ended), hasItem: true });
       parts.label.textContent = step ? `${itemTitle(item)} · ${step.label}` : itemTitle(item);
 
@@ -302,10 +308,9 @@
           parts.text.replaceChildren(section);
         }
       }
-      // The next section's first line, small.
-      let firstLine = '';
-      if (after && after.item === item && steps && steps[after.step]) firstLine = steps[after.step].firstLine || '';
-      parts.next.textContent = after ? `${t('live.upNext')} ${after.label}${firstLine ? ` — ${firstLine}` : ''}` : t('live.nothingAfter');
+      // The bottom line: what comes next (window.LIVE.nextText), scaled with A− / A+.
+      parts.next.textContent = window.LIVE.nextText(state.items, pos).text;
+      scaleNext();
       fit();
     }
 

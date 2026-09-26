@@ -76,18 +76,6 @@
     return item.title || (item.body ? item.body.split('\n')[0].slice(0, 80) : '') || t(`setlist.types.${item.type}`);
   }
 
-  function stepLabel(item, step) {
-    const entry = item.type === 'song' && item.arrangementResolved ? item.arrangementResolved[step] : null;
-    return entry ? entry.label : itemTitle(item);
-  }
-
-  // "Următoarea: …": the next section of the same song, else the next item's title.
-  function positionLabel(pos) {
-    const item = state.items.find((it) => it.id === pos.itemId);
-    if (!item) return '';
-    return current().item === item ? stepLabel(item, pos.step) : itemTitle(item);
-  }
-
   function current() {
     const snap = state.snap;
     const pos = snap && snap.worship;
@@ -233,7 +221,7 @@
     const following = state.items[index + 1];
     const after = pos.ended ? (following ? { itemId: following.id, step: 0 } : null) : nextPosition(state.items, pos);
     $('next-button').disabled = !after;
-    $('next-button').textContent = after ? t('live.next', { label: positionLabel(after) }) : t('live.nextEnd');
+    $('next-button').textContent = after ? t('live.next', { label: window.LIVE.nextText(state.items, pos).label }) : t('live.nextEnd');
 
     const head = el('header', { class: 'current-head' },
       el('span', { class: `type-badge type-${item.type}`, text: t(`setlist.types.${item.type}`) }),

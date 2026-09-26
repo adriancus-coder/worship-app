@@ -260,7 +260,7 @@
     const after = item ? nextPos(pos) : null;
     $('op-prev').disabled = !enabled || !item || (index === 0 && pos.step === 0 && !pos.ended);
     $('op-next').disabled = !enabled || !after;
-    $('op-next').textContent = after ? t('live.next', { label: after.itemId === pos.itemId ? stepsOf(item)[after.step].label : itemTitle(list.find((it) => it.id === after.itemId)) }) : t('live.nextEnd');
+    $('op-next').textContent = after ? t('live.next', { label: window.LIVE.nextText(list, pos).label }) : t('live.nextEnd');
     // "■ Sfârșit": ends the item on the projector (the one position together); "✓ Terminat"
     // until the next move.
     window.LIVE.renderEndButton($('op-end-item'), { ended: Boolean(pos.ended), hasItem: enabled && Boolean(item) });

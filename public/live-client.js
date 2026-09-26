@@ -221,5 +221,42 @@
     button.disabled = !hasItem || ended;
   }
 
-  window.LIVE = { connect, stepsOf, nextPosition, renderEndButton };
+  // The item's name as the lists show it: title, verse reference, first body line.
+  function itemTitle(item) {
+    const { t } = window.I18N;
+    if (!item) return '';
+    if (item.type === 'song') return item.title || t('setlist.songDeleted');
+    if (item.type === 'verse') return item.reference || t('setlist.types.verse');
+    return item.title || (item.body ? item.body.split('\n')[0].slice(0, 80) : '') || t(`setlist.types.${item.type}`);
+  }
+
+  // What comes after `pos` in `items`, the same words everywhere (the big lyrics' bottom
+  // line, the follow page's "Urmează", the step-row buttons):
+  //   the next step of the same song    "Urmează: Refren. <first lyric line>"
+  //   another song                      "Urmează cântarea: <title> (Ton G)" (the reader's notation)
+  //   a verse / announcement / video    "Urmează: <reference or title>"
+  //   nothing                           "Sfârșitul programului"
+  // -> { after, text, label } where `label` is the short form for "Următoarea: {label} →".
+  function nextText(items, pos) {
+    const { t } = window.I18N;
+    // After "■ Sfârșit" the item is over: what follows is the next item.
+    const index = pos ? items.findIndex((it) => it.id === pos.itemId) : -1;
+    const after = !pos ? null : pos.ended ? (items[index + 1] ? { itemId: items[index + 1].id, step: 0 } : null) : nextPosition(items, pos);
+    if (!after) return { after: null, text: t('live.nextEnd'), label: '' };
+    const item = items.find((it) => it.id === after.itemId);
+    if (after.itemId === pos.itemId) {
+      const step = item && item.type === 'song' && Array.isArray(item.arrangementResolved) ? item.arrangementResolved[after.step] : null;
+      const label = step ? step.label : itemTitle(item);
+      const line = step && step.firstLine ? `. ${step.firstLine}` : '';
+      return { after, text: `${t('live.nextStep', { label })}${line}`, label };
+    }
+    const title = itemTitle(item);
+    if (item && item.type === 'song') {
+      const key = item.displayKey && window.NOTATION ? ` (${t('options.songKeyShort', { key: window.NOTATION.chord(item.displayKey) })})` : '';
+      return { after, text: `${t('live.nextSong', { title })}${key}`, label: t('live.nextSongShort', { title }) };
+    }
+    return { after, text: t('live.nextItem', { title }), label: title };
+  }
+
+  window.LIVE = { connect, stepsOf, nextPosition, renderEndButton, itemTitle, nextText };
 })();

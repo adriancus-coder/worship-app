@@ -103,17 +103,9 @@
     return item.title || (item.body ? item.body.split('\n')[0].slice(0, 80) : '') || t(`setlist.types.${item.type}`);
   }
 
-  function stepLabel(item, step) {
-    const entry = item.type === 'song' && item.arrangementResolved ? item.arrangementResolved[step] : null;
-    return entry ? entry.label : itemTitle(item);
-  }
-
-  // "Urmează: …": the next section of this song, else the next item.
+  // "Urmează: …": the same words as the big lyrics' bottom line (window.LIVE.nextText).
   function nextLabel(pos) {
-    const after = nextPosition(state.items, pos);
-    if (!after) return t('follow.lastItem');
-    const item = state.items.find((it) => it.id === after.itemId);
-    return after.itemId === pos.itemId ? stepLabel(item, after.step) : itemTitle(item);
+    return window.LIVE.nextText(state.items, pos).text;
   }
 
   function renderHead() {
@@ -141,9 +133,7 @@
   }
 
   function upNext(pos) {
-    return el('p', { class: 'up-next' },
-      el('span', { class: 'ro-label', text: t('live.upNext') }),
-      el('strong', { text: nextLabel(pos) }));
+    return el('p', { class: 'up-next' }, el('strong', { text: nextLabel(pos) }));
   }
 
   // "Toată cântarea": the whole song in the event's order, read-only (public/arrange-sheet.js).
@@ -188,12 +178,9 @@
     // "■ Sfârșit" on the live position (followed, not while scrolling on one's own): the item
     // is over; what comes next.
     if (pos === state.snap.worship && pos.ended) {
-      const after = state.items[index + 1];
       slide.replaceChildren(head,
         el('p', { class: 'live-note item-ended', text: t(item.type === 'song' ? 'follow.songEnded' : 'follow.itemEnded') }),
-        el('p', { class: 'up-next' },
-          el('span', { class: 'ro-label', text: t('live.upNext') }),
-          el('strong', { text: after ? itemTitle(after) : t('follow.lastItem') })));
+        upNext(pos));
       return;
     }
 

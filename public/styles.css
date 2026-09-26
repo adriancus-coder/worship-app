@@ -996,7 +996,7 @@ button.live-item:disabled { opacity: 1; cursor: default; }
 .follow-section .song-section { margin-bottom: 12px; }
 .follow-section .section-label { font-size: 1.125em; }
 .up-next { margin: 16px 0 0; padding-top: 12px; border-top: 1px solid var(--border); }
-.up-next strong { display: block; font-size: 1.0625em; }
+.up-next strong { display: block; font-size: 1.0625em; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .follow-setlist-heading { margin-top: 16px; }
 .follow-setlist { margin: 0; padding-left: 1.5em; display: flex; flex-direction: column; gap: 8px; }
 .follow-setlist li { overflow-wrap: anywhere; }
@@ -2196,7 +2196,9 @@ dialog.big-lyrics.scrolls .big-body { align-items: flex-start; overflow-y: auto;
 .big-text .lyrics { margin: 0; white-space: pre-line; }
 .big-lines { margin: 0; }
 .big-ended { color: var(--text-muted); }
-.big-next { margin: 0; padding: 4px 16px; text-align: center; font-size: 0.9375rem; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* The "next" line: ~1.6x the old size (A− / A+ scale it with the lyrics), one line, 44 px tall,
+   clear of the notches. */
+.big-next { box-sizing: border-box; min-height: var(--touch); margin: 0; padding: 8px max(16px, env(safe-area-inset-right, 0px)) 8px max(16px, env(safe-area-inset-left, 0px)); text-align: center; font-size: 1.5rem; line-height: 1.2; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .big-status { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 0 16px; margin: 0; padding: 0 16px; font-size: 0.8125rem; color: var(--text-muted); }
 .big-status-text { display: inline-flex; align-items: center; gap: 8px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .big-status .live-clock { font-size: 0.8125rem; }
