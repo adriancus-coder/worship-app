@@ -1351,6 +1351,28 @@ test('arrange sheet: insert after the chosen row, move, remove, reset, key, flow
   assert.strictEqual(song.sections[0].content.startsWith('[G]'), true, 'the song itself is untouched');
 });
 
+test('backup reminder: never or older than 30 days, hidden for 30 days after "Nu acum"', () => {
+  const Database = require('better-sqlite3');
+  const { runMigrations } = require('../lib/db');
+  const { createBackupLog, REMIND_AFTER_MS } = require('../lib/backup');
+  const mem = new Database(':memory:');
+  runMigrations(mem);
+  mem.prepare("INSERT INTO admins (id, name, created_at) VALUES (1, 'A', 0), (2, 'B', 0)").run();
+  const log = createBackupLog(mem);
+  const day = 24 * 60 * 60 * 1000;
+  const t0 = Date.UTC(2026, 0, 1);
+  assert.deepStrictEqual(log.reminder(1, t0), { lastAt: null }, 'never backed up');
+  log.recordDownload(1, 1234, t0);
+  assert.deepStrictEqual(log.lastBackup(1), { lastAt: t0, lastBytes: 1234 });
+  assert.strictEqual(log.reminder(1, t0 + 29 * day), null);
+  assert.deepStrictEqual(log.reminder(1, t0 + 31 * day), { lastAt: t0 });
+  log.dismissReminder(1, t0 + 31 * day);
+  assert.strictEqual(log.reminder(1, t0 + 40 * day), null, 'dismissed');
+  assert.deepStrictEqual(log.reminder(1, t0 + 31 * day + REMIND_AFTER_MS + 1), { lastAt: t0 }, 'back 30 days later');
+  assert.deepStrictEqual(log.reminder(2, t0), { lastAt: null }, 'per admin');
+  mem.close();
+});
+
 test('media: image magic bytes; file names and kinds', () => {
   const M = require('../lib/media');
   assert.strictEqual(M.sniffImage(Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 0, 0, 0, 0, 0, 0, 0])), 'image/jpeg');

@@ -1811,3 +1811,11 @@ button.title-button:hover .title-button-hint { text-decoration: underline; }
 .order-summary-row { display: flex; flex-direction: column; gap: 1px; min-width: 0; padding: 6px 10px; background: var(--background); border: 1px solid var(--border); border-radius: var(--radius); }
 button.arrange-big { width: 100%; min-height: 52px; margin-top: 10px; font-size: 1.0625rem; }
 .backup-last { margin: 4px 0 8px; font-weight: 600; }
+
+/* Home: the owner's backup reminder. */
+.backup-card { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-top: 16px; padding: 12px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; }
+.backup-card-text { flex: 1 1 16rem; min-width: 0; }
+.backup-card-title { margin: 0 0 2px; font-weight: 700; overflow-wrap: anywhere; }
+.backup-card .hint { margin: 0; }
+.backup-card-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.backup-card-actions > * { flex: 1 1 auto; min-height: var(--touch); }

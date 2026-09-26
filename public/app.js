@@ -91,8 +91,35 @@
           el('span', { class: 'home-row-name', text: event.name }),
           el('span', { class: 'home-row-when', text: when(event) })),
         el('span', { class: `pill pill-${event.status}`, text: t(`events.status.${event.status}`) })))));
+    renderBackupCard();
     $('quick-section').hidden = !editor() || !top;
     $('quick-new-song').hidden = !canEditLibrary(state.me); // the library: owner and leader
+  }
+
+  // The owner's backup reminder (no backup for 30 days, or never): one card, dismissible.
+  function renderBackupCard() {
+    const reminder = state.home.backupReminder;
+    if (!reminder || state.backupDismissed) {
+      $('backup-card').replaceChildren();
+      return;
+    }
+    const date = reminder.lastAt
+      ? new Date(reminder.lastAt).toLocaleDateString(window.I18N.lang === 'ro' ? 'ro-RO' : 'en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+      : t('home.backupNever');
+    $('backup-card').replaceChildren(el('section', { class: 'backup-card', 'aria-labelledby': 'backup-card-title' },
+      el('div', { class: 'backup-card-text' },
+        el('p', { class: 'backup-card-title', id: 'backup-card-title', text: t('home.backupLast', { date }) }),
+        el('p', { class: 'hint', text: t('home.backupHint') })),
+      el('div', { class: 'backup-card-actions' },
+        el('a', { class: 'button secondary', href: '/settings#backup-heading', 'data-icon': 'import', text: t('home.backupGo') }),
+        el('button', {
+          type: 'button', class: 'secondary', 'data-icon': 'close', text: t('home.backupDismiss'),
+          onclick: async () => {
+            state.backupDismissed = true;
+            renderBackupCard();
+            await api('/api/backup/reminder/dismiss', { method: 'POST' }).catch(() => {});
+          },
+        }))));
   }
 
   async function load() {

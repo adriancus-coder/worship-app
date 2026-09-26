@@ -4,16 +4,23 @@ const express = require('express');
 const asyncRoute = require('../lib/async-route');
 const { requireRole } = require('../lib/auth');
 const { createRequestLimiter } = require('../lib/rate-limit');
-const { createBackupService } = require('../lib/backup');
+const { createBackupLog, createBackupService } = require('../lib/backup');
 
 const RATE_LIMIT = { maxRequests: 3, windowMs: 60 * 60 * 1000 };
 
 // GET /api/backup (owner only, 3 per hour per user): the admin's full backup as a .zip
 // streamed to the browser (lib/backup.js). Restore is manual: docs/RESTORE.md.
+// POST /api/backup/reminder/dismiss (owner): hides the home reminder for 30 days.
 function createBackupRouter({ db, auth, config, logger }) {
   const router = express.Router();
   const backups = createBackupService({ db, dataDir: config.DATA_DIR, config });
   const limiter = createRequestLimiter(RATE_LIMIT);
+  const log = createBackupLog(db);
+
+  router.post('/api/backup/reminder/dismiss', auth.requireUser, requireRole('owner'), (req, res) => {
+    log.dismissReminder(req.adminId);
+    res.json({ ok: true });
+  });
 
   router.get('/api/backup', auth.requireUser, requireRole('owner'), asyncRoute(async (req, res) => {
     res.set('Cache-Control', 'no-store');
