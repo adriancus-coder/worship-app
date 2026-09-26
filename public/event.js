@@ -771,11 +771,13 @@
     }
   }
 
-  // --- "Detalii": name, date, time and template inline (editor, not for templates) -------
-  // Name / date / time save on change; choosing a template replaces the Program with its
-  // items (only with nothing unsaved) and is remembered for the next "+ Eveniment nou".
+  // --- "Detalii": name, date, time, notes and "Program de la" on one card (editor, not for
+  // templates). Name / date / time / notes save on change. "Program de la" replaces the
+  // Program: Șablon (the last used one is preselected and remembered for the next
+  // "+ Eveniment nou"), Copie a evenimentului (a past event's items, new ids) or Gol; when the
+  // Program was edited (or would be emptied) a confirmation comes first.
 
-  const quick = { templates: null, templateId: null };
+  const quick = { templates: null, past: null, templateId: null, copyId: null, source: null };
 
   function quickSay(text, kind) {
     $('quick-message').className = `message${kind ? ` ${kind}` : ''}`;
@@ -789,19 +791,35 @@
     if (!shown) return;
     const year = state.today ? state.today.slice(0, 4) : '';
     $('quick-summary').textContent = [t('setlist.quickDetails'), ev.name, formatDate(ev.eventDate, year), ev.startTime].filter(Boolean).join(' · ');
-    for (const [id, value] of [['q-name', ev.name], ['q-date', ev.eventDate], ['q-time', ev.startTime || '']]) {
+    for (const [id, value] of [['q-name', ev.name], ['q-date', ev.eventDate], ['q-time', ev.startTime || ''], ['q-notes', ev.notes || '']]) {
       if (document.activeElement !== $(id)) $(id).value = value;
     }
-    const list = quick.templates || [];
-    $('q-template').replaceChildren(el('option', { value: '', text: t('setlist.noTemplate') }),
-      ...list.map((tpl) => el('option', { value: String(tpl.id), text: tpl.name })));
-    $('q-template').value = quick.templateId && list.some((tpl) => tpl.id === quick.templateId) ? String(quick.templateId) : '';
+    const templates = quick.templates || [];
+    const past = (quick.past || []).filter((e) => e.id !== ev.id);
+    // The starting choice waits for the templates list: Șablon while there is one (the last
+    // used is preselected), else Gol.
+    if (!quick.source && quick.templates !== null) quick.source = quick.templateId || templates.length ? 'template' : 'empty';
+    const source = quick.source || 'template';
+    for (const button of document.querySelectorAll('#quick-details [data-source]')) {
+      button.setAttribute('aria-pressed', String(button.dataset.source === source));
+    }
+    $('q-template-field').hidden = source !== 'template';
+    $('q-copy-field').hidden = source !== 'copy';
+    $('q-template').replaceChildren(el('option', { value: '', text: t(templates.length ? 'setlist.pickTemplate' : 'events.noTemplates') }),
+      ...templates.map((tpl) => el('option', { value: String(tpl.id), text: tpl.name })));
+    $('q-template').value = quick.templateId && templates.some((tpl) => tpl.id === quick.templateId) ? String(quick.templateId) : '';
+    $('q-template').disabled = !templates.length;
+    $('q-copy').replaceChildren(el('option', { value: '', text: t(past.length ? 'setlist.pickEvent' : 'events.noEvents') }),
+      ...past.map((e) => el('option', { value: String(e.id), text: `${formatDate(e.eventDate, year)} — ${e.name}` })));
+    $('q-copy').value = quick.copyId && past.some((e) => e.id === quick.copyId) ? String(quick.copyId) : '';
+    $('q-copy').disabled = !past.length;
+    $('q-source-hint').textContent = t(`setlist.fromHint.${source}`);
   }
 
   async function saveQuickMeta() {
     const ev = state.event;
-    const body = { name: $('q-name').value, eventDate: $('q-date').value, startTime: $('q-time').value, notes: ev.notes || '' };
-    if (body.name === ev.name && body.eventDate === ev.eventDate && body.startTime === (ev.startTime || '')) return;
+    const body = { name: $('q-name').value, eventDate: $('q-date').value, startTime: $('q-time').value, notes: $('q-notes').value };
+    if (body.name === ev.name && body.eventDate === ev.eventDate && body.startTime === (ev.startTime || '') && body.notes === (ev.notes || '')) return;
     try {
       const res = await api(`/api/events/${ev.id}`, { method: 'PUT', body });
       if (!res.ok) return quickSay(res.body.error || t('common.networkError'), 'error');
@@ -813,33 +831,92 @@
       quickSay(t('common.networkError'), 'error');
     }
   }
-  for (const id of ['q-name', 'q-date', 'q-time']) $(id).addEventListener('change', saveQuickMeta);
+  for (const id of ['q-name', 'q-date', 'q-time', 'q-notes']) $(id).addEventListener('change', saveQuickMeta);
 
-  $('q-template').addEventListener('change', async () => {
-    const templateId = Number($('q-template').value);
-    if (!templateId) return renderQuickDetails(); // "Fără șablon" keeps the Program as it is
-    if (isDirty()) {
-      quickSay(t('setlist.quickSaveFirst'), 'error');
-      return renderQuickDetails();
-    }
+  // The Program's new starting point: confirm when something would be lost, then apply.
+  const replace = { run: null };
+  function confirmReplace(kind, run) {
+    replace.run = run;
+    $('replace-heading').textContent = t(`setlist.${kind}Heading`);
+    $('replace-text').textContent = t(`setlist.${kind}Text`);
+    $('replace-yes').textContent = t(`setlist.${kind}Yes`);
+    $('replace-yes').className = kind === 'clear' ? 'danger' : '';
+    $('replace-dialog').showModal();
+  }
+  $('replace-yes').addEventListener('click', () => {
+    $('replace-dialog').close();
+    if (replace.run) replace.run();
+    replace.run = null;
+  });
+
+  async function applySource(url, body, doneText) {
     try {
-      const res = await api(`/api/events/${state.event.id}/apply-template`, { method: 'POST', body: { templateId } });
+      const res = await api(`/api/events/${state.event.id}/${url}`, { method: 'POST', body });
       if (!res.ok) {
         quickSay(res.body.error || t('common.networkError'), 'error');
         return renderQuickDetails();
       }
-      quick.templateId = templateId;
       applyEvent(res.body, false);
-      quickSay(t('setlist.templateApplied'), 'success');
+      quickSay(doneText, 'success');
     } catch (err) {
       quickSay(t('common.networkError'), 'error');
     }
+  }
+
+  for (const button of document.querySelectorAll('#quick-details [data-source]')) {
+    button.addEventListener('click', () => {
+      const source = button.dataset.source;
+      if (source === quick.source) return;
+      if (source === 'empty') {
+        // "Gol" acts at once (after a confirmation while there is anything to lose).
+        const go = () => { quick.source = 'empty'; applySource('clear', {}, t('setlist.cleared')); };
+        if (state.items.length || isDirty()) confirmReplace('clear', go);
+        else go();
+        return;
+      }
+      quick.source = source;
+      renderQuickDetails();
+      $(source === 'template' ? 'q-template' : 'q-copy').focus();
+    });
+  }
+
+  $('q-template').addEventListener('change', () => {
+    const templateId = Number($('q-template').value);
+    if (!templateId) return renderQuickDetails();
+    const go = () => {
+      quick.templateId = templateId;
+      applySource('apply-template', { templateId }, t('setlist.templateApplied'));
+    };
+    if (isDirty()) confirmReplace('replace', go);
+    else go();
   });
 
-  async function loadQuickTemplates() {
-    const res = await api('/api/events?when=templates');
-    quick.templates = res.ok ? res.body.events : [];
+  $('q-copy').addEventListener('change', () => {
+    const fromEventId = Number($('q-copy').value);
+    if (!fromEventId) return renderQuickDetails();
+    const from = (quick.past || []).find((e) => e.id === fromEventId);
+    const go = () => {
+      quick.copyId = fromEventId;
+      applySource('apply-copy', { fromEventId }, t('setlist.copyApplied', { name: from ? from.name : '' }));
+    };
+    if (isDirty()) confirmReplace('replace', go);
+    else go();
+  });
+
+  async function loadQuickSources() {
+    const [tpl, past] = await Promise.all([api('/api/events?when=templates'), api('/api/events?when=past')]);
+    quick.templates = tpl.ok ? tpl.body.events : [];
+    quick.past = past.ok ? past.body.events : [];
     renderQuickDetails();
+  }
+
+  // "Detalii" in the header (or the ⋯ menu): the card opens and gets the focus.
+  function openQuickDetails() {
+    const box = $('quick-details');
+    if (box.hidden) return;
+    box.open = true;
+    box.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    $('q-name').focus({ preventScroll: true });
   }
 
   // Server data -> state (keeps the selection by position after a save).
@@ -859,36 +936,9 @@
   function wireDialog(dialog) {
     dialog.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', () => dialog.close()));
   }
-  ['details-dialog', 'template-dialog'].forEach((id) => wireDialog($(id)));
+  ['template-dialog', 'replace-dialog'].forEach((id) => wireDialog($(id)));
 
-  $('details-button').addEventListener('click', () => {
-    const ev = state.event;
-    $('d-name').value = ev.name;
-    $('d-date').value = ev.eventDate;
-    $('d-time').value = ev.startTime || '';
-    $('d-notes').value = ev.notes || '';
-    $('details-message').textContent = '';
-    $('details-dialog').showModal();
-  });
-
-  $('details-form').addEventListener('submit', async (event) => {
-    event.preventDefault();
-    try {
-      const res = await api(`/api/events/${state.event.id}`, {
-        method: 'PUT',
-        body: { name: $('d-name').value, eventDate: $('d-date').value, startTime: $('d-time').value, notes: $('d-notes').value },
-      });
-      if (!res.ok) {
-        $('details-message').textContent = res.body.error || t('common.networkError');
-        return;
-      }
-      state.event = res.body.event;
-      $('details-dialog').close();
-      renderHeader();
-    } catch (err) {
-      $('details-message').textContent = t('common.networkError');
-    }
-  });
+  $('details-button').addEventListener('click', openQuickDetails);
 
   templateButton.addEventListener('click', () => {
     $('t-name').value = state.event.name;
@@ -1185,7 +1235,7 @@
         const query = params.toString();
         window.history.replaceState(null, '', `${window.location.pathname}${query ? `?${query}` : ''}`);
       }
-      loadQuickTemplates().catch(() => {});
+      loadQuickSources().catch(() => {});
       const mediaRes = await api('/api/media');
       state.media = mediaRes.ok ? mediaRes.body.media.filter((m) => m.category === 'video') : []; // backgrounds are not played as videos
     }

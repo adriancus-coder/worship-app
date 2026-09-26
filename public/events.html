@@ -12,7 +12,6 @@
     <div class="page-head">
       <h1 data-i18n="events.heading"></h1>
       <div class="page-head-actions">
-        <button type="button" class="secondary" id="new-event-options" hidden data-icon="copy" data-i18n="events.newWithOptions"></button>
         <button type="button" id="new-event" hidden data-icon="plus" data-i18n="events.newEvent"></button>
       </div>
     </div>
@@ -28,44 +27,6 @@
       <ul id="events" class="event-list"></ul>
     </div>
 
-    <dialog id="create-dialog" aria-labelledby="create-heading">
-      <form id="create-form" novalidate>
-        <h2 id="create-heading" data-i18n="events.createHeading"></h2>
-        <div class="field">
-          <label for="new-name" data-i18n="events.nameLabel"></label>
-          <input type="text" id="new-name" maxlength="120" required>
-        </div>
-        <div class="field-row">
-          <div class="field">
-            <label for="new-date" data-i18n="events.dateLabel"></label>
-            <input type="date" id="new-date" required>
-          </div>
-          <div class="field">
-            <label for="new-time" data-i18n="events.timeLabel"></label>
-            <input type="time" id="new-time">
-          </div>
-        </div>
-        <fieldset class="choice">
-          <legend data-i18n="events.sourceLegend"></legend>
-          <label class="checkbox"><input type="radio" name="source" value="empty" checked><span data-i18n="events.sourceEmpty"></span></label>
-          <label class="checkbox"><input type="radio" name="source" value="template"><span data-i18n="events.sourceTemplate"></span></label>
-          <div class="field source-select" id="template-field" hidden>
-            <label for="new-template" data-i18n="events.templateLabel"></label>
-            <select id="new-template"></select>
-          </div>
-          <label class="checkbox"><input type="radio" name="source" value="event"><span data-i18n="events.sourceEvent"></span></label>
-          <div class="field source-select" id="event-field" hidden>
-            <label for="new-source-event" data-i18n="events.eventLabel"></label>
-            <select id="new-source-event"></select>
-          </div>
-        </fieldset>
-        <p class="message error" id="create-message" role="alert"></p>
-        <div class="form-actions">
-          <button type="submit" id="create-submit" data-icon="check" data-i18n="events.create"></button>
-          <button type="button" class="secondary" id="create-cancel" data-i18n="events.cancel"></button>
-        </div>
-      </form>
-    </dialog>
   </main>
   <script src="/i18n.js"></script>
   <script src="/page.js"></script>

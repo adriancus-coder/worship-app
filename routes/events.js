@@ -176,6 +176,34 @@ function createEventsRouter({ db, auth, logger, live }) {
     respond(req, res, found.event.id);
   });
 
+  // "Detalii · Program de la · Copie a evenimentului": the setlist becomes a copy of another
+  // event's (never a template's, never its own; the items get new ids).
+  router.post('/api/events/:id/apply-copy', canEdit, (req, res) => {
+    const found = load(req, res);
+    if (!found) return;
+    const raw = String((req.body || {}).fromEventId ?? '');
+    const source = /^\d{1,15}$/.test(raw) ? events.get(req.adminId, Number(raw)) : null;
+    if (!source || source.event.isTemplate || found.event.isTemplate || source.event.id === found.event.id) {
+      return res.status(400).json({ error: req.t('errors.eventSourceInvalid') });
+    }
+    const before = live.setlistBefore(req.adminId, found.event.id);
+    events.applyFrom(req.adminId, found.event.id, source.event.id);
+    live.setlistChanged(req.adminId, found.event.id, before);
+    logger.info(`Event #${found.event.id}: setlist copied from #${source.event.id} by user #${req.user.id} (admin #${req.adminId})`);
+    respond(req, res, found.event.id);
+  });
+
+  // "Detalii · Program de la · Gol": the setlist is emptied.
+  router.post('/api/events/:id/clear', canEdit, (req, res) => {
+    const found = load(req, res);
+    if (!found) return;
+    const before = live.setlistBefore(req.adminId, found.event.id);
+    events.clearItems(req.adminId, found.event.id);
+    live.setlistChanged(req.adminId, found.event.id, before);
+    logger.info(`Event #${found.event.id}: setlist cleared by user #${req.user.id} (admin #${req.adminId})`);
+    respond(req, res, found.event.id);
+  });
+
   router.put('/api/events/:id', canEdit, (req, res) => {
     const found = load(req, res);
     if (!found) return;

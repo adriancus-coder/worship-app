@@ -2123,6 +2123,8 @@ dialog.song-pick-dialog .song-pick > .ss-results { flex: 1 1 0; height: 0; --pan
 /* "+ Eveniment nou" (one tap) next to "Cu opțiuni" (the full dialog). */
 .page-head-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
 .page-head-actions button { min-height: var(--touch); }
+/* "+ Eveniment nou" alone in the header: full width on phones. */
+@media (max-width: 599px) { .page-head-actions { flex: 1 1 100%; } .page-head-actions > button { flex: 1 1 auto; } }
 /* The editor's "Detalii" row: name, date, time, template (collapsible, scrolls with the Program). */
 .quick-details { margin: 0 0 10px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
 .quick-details[hidden] { display: none; }
@@ -2132,6 +2134,12 @@ dialog.song-pick-dialog .song-pick > .ss-results { flex: 1 1 0; height: 0; --pan
 .quick-fields input, .quick-fields select { width: 100%; min-height: var(--touch); }
 .quick-name, .quick-template { grid-column: 1 / -1; }
 .quick-details .message { margin: 0; padding: 0 12px 8px; }
+.quick-fields textarea { width: 100%; min-height: var(--touch); resize: vertical; }
+.quick-source { display: flex; flex-direction: column; gap: 8px; }
+.quick-source .field-label { font-weight: 600; }
+.quick-source .choice-group button { flex: 1 1 auto; }
+.quick-picker { display: block; margin: 0; }
+.quick-source .hint { margin: 0; }
 .quick-details .message:empty { display: none; }
 @media (min-width: 900px) { .quick-fields { grid-template-columns: 2fr 1fr 1fr 2fr; } .quick-name, .quick-template { grid-column: auto; } }
 .service-row .field { min-width: 0; }

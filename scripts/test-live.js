@@ -1325,6 +1325,16 @@ async function main() {
     assert.deepStrictEqual([applied.status, applied.body.items.map((i) => i.reference)], [200, ['Ps 91']]);
     assert.strictEqual((await api('POST', `/api/events/${plain.id}/apply-template`, other2, { templateId: plain.id })).status, 400, 'only a template');
     assert.strictEqual((await api('POST', `/api/events/${plain.id}/apply-template`, other2, { templateId: tpl.id + 1000 })).status, 400);
+    // "Program de la: Copie a evenimentului" (new ids) and "Gol"
+    const copied = await api('POST', `/api/events/${plain.id}/apply-copy`, other2, { fromEventId: q2.event.id });
+    assert.deepStrictEqual([copied.status, copied.body.items.map((i) => i.reference)], [200, ['Ps 91']]);
+    assert.notStrictEqual(copied.body.items[0].id, q2.items[0].id, 'copies get new ids');
+    assert.strictEqual((await api('POST', `/api/events/${plain.id}/apply-copy`, other2, { fromEventId: tpl.id })).status, 400, 'a template is not copied this way');
+    assert.strictEqual((await api('POST', `/api/events/${plain.id}/apply-copy`, other2, { fromEventId: plain.id })).status, 400, 'not itself');
+    assert.strictEqual((await api('POST', `/api/events/${plain.id}/apply-copy`, owner, { fromEventId: q2.event.id })).status, 404, 'another admin\'s event');
+    const cleared = await api('POST', `/api/events/${plain.id}/clear`, other2);
+    assert.deepStrictEqual([cleared.status, cleared.body.items.length], [200, 0]);
+    assert.strictEqual((await api('GET', `/api/events/${q2.event.id}`, other2)).body.items.length, 1, 'the source keeps its items');
     // "▶ Pornește live" from Acasă, in one call; another live event is ended only on request
     const home = connect(other2);
     await next(home, 'connect');
