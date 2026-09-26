@@ -199,7 +199,8 @@
     const editor = canEdit(state.me);
     const role = state.me && state.me.user.role;
     const livePage = keepFrom(`/events/${ev.id}/${role === 'operator' ? 'operator' : 'live'}`);
-    const rehearse = { key: 'rehearse.link', icon: 'rehearse', href: keepFrom(`/events/${ev.id}/rehearse`) };
+    // Rehearsal is the musical team's (owner, leader, member): the operator never gets it.
+    const rehearse = role === 'operator' ? null : { key: 'rehearse.link', icon: 'rehearse', href: keepFrom(`/events/${ev.id}/rehearse`) };
     const actions = [];
     if (!editor) {
       actions.push(ev.status === 'live'

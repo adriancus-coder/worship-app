@@ -81,6 +81,15 @@ module.exports = {
     await p.waitForSelector('#event-actions a');
     const operatorPrimary = await p.getAttribute('#event-actions a:first-child', 'href');
     check(/\/live/.test(leaderPrimary) && /\/operator/.test(operatorPrimary), 'default entry points: leader -> live page, operator -> console', { leaderPrimary, operatorPrimary });
+    // Rehearsal is the musical team's: the operator has no link anywhere and the URL sends them back.
+    check(await p.locator('#event-actions a[href*="/rehearse"]').count() === 0 && await l.locator('#event-actions a[href*="/rehearse"]').count() === 1, 'operator: no "Repetiție" on the event page (the leader keeps it)');
+    await p.goto(`${app.url}/events/${E}/rehearse`);
+    await p.waitForSelector('#event-actions a');
+    check(new URL(p.url()).pathname === `/events/${E}`, `operator: /events/${E}/rehearse redirects to the event page`);
+    const m2 = await signIn('member', { width: 1024 });
+    await m2.goto(`${app.url}/events/${E}/rehearse`);
+    check(await m2.waitForSelector('#rehearse:not([hidden]), main h1', { timeout: 5000 }).then(() => true, () => false) && /rehearse/.test(new URL(m2.url()).pathname), 'member: the rehearsal page still opens');
+    await m2.context().close();
     // The projector window and the Ecrane page are the operator's: the leader keeps the preview
     await l.goto(`${app.url}/events/${E}/live`);
     await l.waitForSelector('#live:not([hidden])');

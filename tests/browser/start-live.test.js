@@ -25,7 +25,9 @@ module.exports = {
       const p = await signIn(role, { width, lang });
       await p.reload();
       await p.waitForSelector('#now .now-card');
-      check(await cardAction(p) === (lang === 'ro' ? 'Pornește live' : 'Start live'), `${tag} Acasă on the event day: "Pornește live"`, await cardAction(p));
+      // the leader starts first; the operator prepares first and starts second (secondary)
+      const expected = role === 'operator' ? (lang === 'ro' ? 'Pregătește' : 'Prepare') : (lang === 'ro' ? 'Pornește live' : 'Start live');
+      check(await cardAction(p) === expected && await p.locator('#start-live').count() === 1, `${tag} Acasă on the event day: primary "${expected}", "Pornește live" ${role === 'operator' ? 'as the secondary button' : 'primary'}`, await cardAction(p));
       const a = await layoutAudit(p, 'main');
       check(!a.overflow && !a.small.length, `${tag} Acasă: no overflow, targets >= 44 px`, a);
       const t0 = Date.now();

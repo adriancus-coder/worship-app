@@ -72,7 +72,9 @@ function createPagesRouter({ db, auth, sendPage }) {
     sendPage(req, res, 'event');
   });
 
+  // Rehearsal is the musical team's: the operator is sent to the event page.
   router.get('/events/:id(\\d+)/rehearse', noStore, signedIn, (req, res) => {
+    if (req.session.user.role === 'operator') return res.redirect(`/events/${req.params.id}`);
     sendPage(req, res, 'rehearse');
   });
 

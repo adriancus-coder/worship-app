@@ -40,12 +40,12 @@
       return [{ text: t('home.follow'), href: `/events/${event.id}/follow?from=home`, icon: 'follow' }];
     }
     // Event roles: "▶ Pornește live" starts it and opens the live page (the console for the
-    // operator) in one tap; "Pregătește" stays next to it.
+    // operator) in one tap; "Pregătește" stays next to it. The operator prepares first
+    // (primary) and starts second; rehearsal is never theirs.
     if (EDITOR_ROLES.includes(role)) {
-      return [
-        { text: t('home.startLive'), icon: 'play', run: () => startLive(event, livePage) },
-        { text: t('home.prepare'), href: eventUrl(event, '/edit'), icon: 'edit' },
-      ];
+      const start = { text: t('home.startLive'), icon: 'play', run: () => startLive(event, livePage) };
+      const prepare = { text: t('home.prepare'), href: eventUrl(event, '/edit'), icon: 'edit' };
+      return role === 'operator' ? [prepare, start] : [start, prepare];
     }
     return [{ text: t('home.rehearse'), href: eventUrl(event, '/rehearse'), icon: 'rehearse' }];
   }
@@ -65,7 +65,9 @@
         primary.run
           ? el('button', { type: 'button', class: 'now-primary', id: 'start-live', 'data-icon': primary.icon, text: primary.text, onclick: primary.run })
           : el('a', { class: 'button now-primary', href: primary.href, 'data-icon': primary.icon, text: primary.text }),
-        secondary ? el('a', { class: 'button secondary', href: secondary.href, 'data-icon': secondary.icon, text: secondary.text }) : null),
+        !secondary ? null : secondary.run
+          ? el('button', { type: 'button', class: 'secondary', id: 'start-live', 'data-icon': secondary.icon, text: secondary.text, onclick: secondary.run })
+          : el('a', { class: 'button secondary', href: secondary.href, 'data-icon': secondary.icon, text: secondary.text })),
       // Live for more than a day (someone forgot to end it): a small hint with "Încheie".
       live && staleLive(event) ? el('p', { class: 'now-stale', id: 'stale-live' },
         el('span', { text: t('home.staleLive') }),
