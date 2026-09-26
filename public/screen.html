@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="{{LANG}}" data-app-name="{{APP_NAME}}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#000000">
+  <meta name="robots" content="noindex">
+  <title>{{APP_NAME}}</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body class="screen-body">
+  <!-- Unpaired: pairing code. Paired: only the projector output, no UI at all. -->
+  <section id="pairing" class="pairing" hidden aria-labelledby="pairing-heading">
+    <p class="pairing-app" id="pairing-app"></p>
+    <h1 id="pairing-heading" data-i18n="screen.pairHeading"></h1>
+    <p class="pairing-code" id="pairing-code" aria-live="polite">— — —</p>
+    <p class="pairing-steps" data-i18n="screen.pairSteps"></p>
+    <p class="pairing-expiry" id="pairing-expiry" aria-live="off"></p>
+    <p class="pairing-error" id="pairing-error" role="status"></p>
+  </section>
+
+  <div id="output" class="screen-output" hidden></div>
+  <div id="video-layer" class="video-layer"></div>
+  <p id="fullscreen-hint" class="fullscreen-hint" hidden data-i18n="screen.fullscreenHint"></p>
+  <span id="offline-dot" class="offline-dot" hidden></span>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/i18n.js"></script>
+  <script src="/clock.js"></script>
+  <script src="/projector-render.js"></script>
+  <script src="/video-player.js"></script>
+  <script src="/screen.js"></script>
+</body>
+</html>

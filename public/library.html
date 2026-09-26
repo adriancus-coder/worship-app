@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="{{LANG}}" data-app-name="{{APP_NAME}}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#141318">
+  <title data-i18n="library.pageTitle">{{APP_NAME}}</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body data-shell="library" class="list-page">
+  <main class="wide">
+    <div class="page-head library-head">
+      <h1 data-i18n="library.heading"></h1>
+      <div class="head-actions">
+        <a class="button" id="new-song" href="/songs/new" hidden data-icon="plus" data-i18n="library.newSong"></a>
+        <div class="menu" id="library-menu" hidden>
+          <button type="button" class="secondary menu-button" id="library-menu-button" aria-haspopup="true" aria-expanded="false" aria-controls="library-menu-list" data-i18n-aria-label="library.moreActions"><span aria-hidden="true">⋯</span></button>
+          <div class="menu-list" id="library-menu-list" hidden>
+            <a class="menu-item" id="export-library" href="/api/songs/export" download data-i18n="library.export"></a>
+            <button type="button" class="menu-item" id="import-library" data-i18n="library.import"></button>
+          </div>
+          <input type="file" id="import-file" accept=".json,application/json" hidden>
+        </div>
+      </div>
+    </div>
+
+    <div id="library-search">
+      <form id="search-form" class="search-form" role="search" novalidate>
+        <label for="q" class="sr-only" data-i18n="library.searchLabel"></label>
+        <div class="input-row search-row">
+          <input type="search" id="q" enterkeyhint="search" autocomplete="off" autocapitalize="off" spellcheck="false"
+            maxlength="200" aria-describedby="q-hint" aria-controls="songs">
+          <button type="submit" class="secondary" id="online-search" hidden data-icon="search" data-i18n="online.searchBoth"></button>
+        </div>
+        <span class="hint" id="q-hint"></span>
+      </form>
+      <div class="library-tools">
+        <label class="sort-field"><span class="sort-label" data-i18n="library.sortLabel"></span>
+          <select id="sort">
+            <option value="az" data-i18n="library.sortAz"></option>
+            <option value="za" data-i18n="library.sortZa"></option>
+            <option value="recent" data-i18n="library.sortRecent"></option>
+          </select>
+        </label>
+      </div>
+    </div>
+
+    <!-- The results scroll here; the header above stays (CLAUDE.md "UI rules"). -->
+    <div id="library-results" data-list-pane="library.resultsPane">
+      <section class="results-section pane-section" aria-labelledby="local-heading">
+        <div class="results-head pane-heading">
+          <h2 id="local-heading" class="results-heading"><span data-i18n="library.localHeading"></span> <span id="local-count" class="results-count"></span></h2>
+        </div>
+        <p id="status" class="muted pane-state" role="status" aria-live="polite" data-i18n="library.loading"></p>
+        <ul id="songs" class="song-list"></ul>
+      </section>
+
+      <section class="results-section pane-section" id="online-section" aria-labelledby="online-heading" hidden>
+        <div class="results-head pane-heading">
+          <h2 id="online-heading" class="results-heading"><span data-i18n="library.onlineHeading"></span> <span id="online-count" class="results-count"></span></h2>
+        </div>
+        <p id="online-status" class="muted online-status" role="status" aria-live="polite"></p>
+        <p id="online-error" class="message error" role="alert"></p>
+        <ul id="online-results" class="song-list"></ul>
+      </section>
+    </div>
+
+    <dialog id="online-preview" class="preview-dialog" aria-labelledby="preview-title">
+      <div class="preview-dialog-head">
+        <div class="preview-dialog-title">
+          <p class="preview-kicker" data-i18n="online.previewHeading"></p>
+          <h2 id="preview-title" tabindex="-1"></h2>
+          <p id="preview-meta" class="muted"></p>
+        </div>
+        <button type="button" class="shell-close preview-close-x" id="preview-close-x" data-i18n-aria-label="online.close">✕</button>
+      </div>
+      <div class="preview-dialog-body">
+        <div class="preview-tools"><span data-notation-switch></span></div>
+        <div id="preview-sections" class="preview-sections"></div>
+      </div>
+      <div class="preview-dialog-foot">
+        <p id="preview-message" class="message" role="alert"></p>
+        <div class="form-actions">
+          <button type="button" id="preview-import" data-icon="import" data-i18n="online.import"></button>
+          <button type="button" id="preview-close" class="secondary" data-i18n="online.close"></button>
+        </div>
+      </div>
+    </dialog>
+
+    <section id="import-review" class="import-review" hidden aria-labelledby="import-heading" data-list-pane="import.heading">
+      <h2 id="import-heading" tabindex="-1" data-i18n="import.heading"></h2>
+      <p id="import-file-name" class="muted"></p>
+      <p id="import-status" class="muted" role="status" aria-live="polite"></p>
+      <p id="import-error" class="message error" role="alert"></p>
+
+      <div id="import-plan" hidden>
+        <details class="import-list" id="import-new"><summary></summary><ul></ul></details>
+        <details class="import-list" id="import-existing"><summary></summary><ul></ul></details>
+        <details class="import-list" id="import-invalid"><summary></summary><ul></ul></details>
+
+        <fieldset class="choice" id="import-mode">
+          <legend data-i18n="import.modeLegend"></legend>
+          <label class="checkbox"><input type="radio" name="import-mode" value="skip" checked><span data-i18n="import.modeSkip"></span></label>
+          <label class="checkbox"><input type="radio" name="import-mode" value="update"><span data-i18n="import.modeUpdate"></span></label>
+        </fieldset>
+
+      </div>
+
+      <div class="form-actions" id="import-actions">
+        <button type="button" id="import-run" data-icon="import" hidden></button>
+        <button type="button" class="secondary" id="import-cancel" data-i18n="import.cancel"></button>
+      </div>
+
+      <div id="import-result" hidden>
+        <ul class="import-summary" id="import-summary"></ul>
+        <button type="button" id="import-done" data-icon="check" data-i18n="import.back"></button>
+      </div>
+    </section>
+  </main>
+  <script src="/i18n.js"></script>
+  <script src="/chords.js"></script>
+  <script src="/sections.js"></script>
+  <script src="/page.js"></script>
+  <script src="/notation.js"></script>
+  <script src="/shell.js"></script>
+  <script src="/song-render.js"></script>
+  <script src="/list-pane.js"></script>
+  <script src="/song-search.js"></script>
+  <script src="/library.js"></script>
+  <script src="/library-import.js"></script>
+</body>
+</html>

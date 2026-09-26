@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="{{LANG}}" data-app-name="{{APP_NAME}}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#141318">
+  <title data-i18n="login.pageTitle">{{APP_NAME}}</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="lang-switch" role="group" aria-label="Limbă / Language">
+      <button type="button" data-lang="ro" lang="ro" aria-pressed="false">RO</button>
+      <button type="button" data-lang="en" lang="en" aria-pressed="false">EN</button>
+    </div>
+  </header>
+  <main>
+    <h1 data-i18n="login.heading"></h1>
+    <p class="muted" data-i18n="login.intro"></p>
+
+    <form id="login-form" novalidate>
+      <label>
+        <span data-i18n="login.emailLabel"></span>
+        <input type="email" name="email" autocomplete="username" inputmode="email" required autofocus>
+      </label>
+      <label>
+        <span data-i18n="login.passwordLabel"></span>
+        <input type="password" name="password" autocomplete="current-password" required>
+      </label>
+      <label class="checkbox">
+        <input type="checkbox" name="remember">
+        <span data-i18n="login.remember"></span>
+      </label>
+
+      <p class="message" id="message" role="alert" aria-live="polite"></p>
+      <button type="submit" data-icon="login" data-i18n="login.submit"></button>
+      <p class="forgot-row" id="forgot-row" hidden>
+        <button type="button" class="link-button" id="forgot-link" data-i18n="login.forgot"></button>
+      </p>
+    </form>
+
+    <form id="forgot-form" novalidate hidden aria-labelledby="forgot-heading">
+      <h2 id="forgot-heading" data-i18n="login.forgotHeading"></h2>
+      <p class="muted" data-i18n="login.forgotIntro"></p>
+      <label>
+        <span data-i18n="login.emailLabel"></span>
+        <input type="email" name="email" id="forgot-email" autocomplete="username" inputmode="email" required>
+      </label>
+      <p class="message" id="forgot-message" role="status" aria-live="polite"></p>
+      <div class="form-actions">
+        <button type="submit" id="forgot-submit" data-icon="mail" data-i18n="login.forgotSubmit"></button>
+        <button type="button" class="secondary" id="forgot-back" data-icon="login" data-i18n="login.backToLogin"></button>
+      </div>
+    </form>
+  </main>
+  <script src="/i18n.js"></script>
+  <script src="/login.js"></script>
+</body>
+</html>

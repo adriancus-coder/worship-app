@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="{{LANG}}" data-app-name="{{APP_NAME}}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#141318">
+  <title>{{APP_NAME}}</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body data-shell="more">
+  <main class="wide">
+    <h1 data-i18n="settings.heading"></h1>
+
+    <section class="settings-section" aria-labelledby="notation-heading">
+      <h2 id="notation-heading" data-i18n="settings.notationHeading"></h2>
+      <p class="hint" data-i18n="settings.notationHint"></p>
+      <div class="notation-choice" role="group" aria-labelledby="notation-heading">
+        <button type="button" class="secondary" data-notation="letters" aria-pressed="false" data-i18n="settings.notationLetters"></button>
+        <button type="button" class="secondary" data-notation="solfege" aria-pressed="false" data-i18n="settings.notationSolfege"></button>
+      </div>
+      <p id="notation-message" class="message" role="status" aria-live="polite"></p>
+    </section>
+
+    <section class="settings-section" aria-labelledby="theme-heading">
+      <h2 id="theme-heading" data-i18n="settings.themeHeading"></h2>
+      <p class="hint" data-i18n="settings.themeHint"></p>
+      <div class="choice-group" role="group" aria-labelledby="theme-heading">
+        <button type="button" data-theme-default="dark" aria-pressed="false" data-i18n="theme.dark"></button>
+        <button type="button" data-theme-default="light" aria-pressed="false" data-i18n="theme.light"></button>
+        <button type="button" data-theme-default="auto" aria-pressed="false" data-i18n="theme.auto"></button>
+      </div>
+      <p id="theme-message" class="message" role="status" aria-live="polite"></p>
+    </section>
+
+    <section class="settings-section" aria-labelledby="service-heading">
+      <h2 id="service-heading" data-i18n="settings.serviceHeading"></h2>
+      <p class="hint" data-i18n="settings.serviceHint"></p>
+      <div class="field-row service-row">
+        <div class="field">
+          <label for="service-day" data-i18n="settings.serviceDay"></label>
+          <select id="service-day"></select>
+        </div>
+        <div class="field">
+          <label for="service-time" data-i18n="settings.serviceTime"></label>
+          <input type="time" id="service-time" required>
+        </div>
+      </div>
+      <p id="service-message" class="message" role="status" aria-live="polite"></p>
+    </section>
+
+    <section class="settings-section" aria-labelledby="margin-heading">
+      <h2 id="margin-heading" data-i18n="settings.safeMarginHeading"></h2>
+      <p class="hint" data-i18n="settings.safeMarginHint"></p>
+      <div class="field margin-field">
+        <label for="safe-margin"><span data-i18n="settings.safeMarginLabel"></span> <output id="safe-margin-value" for="safe-margin"></output></label>
+        <input type="range" id="safe-margin" min="0" max="12" step="1" value="5">
+      </div>
+      <p id="margin-message" class="message" role="status" aria-live="polite"></p>
+    </section>
+
+    <section class="settings-section" aria-labelledby="clock-heading">
+      <h2 id="clock-heading" data-i18n="settings.clockHeading"></h2>
+      <p class="hint" data-i18n="settings.clockHint"></p>
+      <div id="clock-panel" class="clock-settings"></div>
+      <p id="clock-message" class="message" role="status" aria-live="polite"></p>
+      <h3 id="time-format-heading" data-i18n="settings.timeFormatHeading"></h3>
+      <p class="hint" data-i18n="settings.timeFormatHint"></p>
+      <div class="choice-group" role="group" aria-labelledby="time-format-heading">
+        <button type="button" data-time-format="24" aria-pressed="false" data-i18n="settings.timeFormat24"></button>
+        <button type="button" data-time-format="12" aria-pressed="false" data-i18n="settings.timeFormat12"></button>
+      </div>
+      <p id="time-format-message" class="message" role="status" aria-live="polite"></p>
+    </section>
+
+    <section class="settings-section" aria-labelledby="bg-heading">
+      <h2 id="bg-heading" data-i18n="background.settingsHeading"></h2>
+      <p class="hint" data-i18n="background.settingsHint"></p>
+      <div id="bg-defaults" class="bg-defaults"></div>
+      <p id="bg-defaults-message" class="message" role="status" aria-live="polite"></p>
+
+      <h3 id="bg-read-heading" data-i18n="background.readHeading"></h3>
+      <p class="hint" data-i18n="background.readHint"></p>
+      <div class="bg-read">
+        <p id="bg-read-empty" class="hint" hidden data-i18n="background.empty"></p>
+        <div class="bg-read-controls">
+          <div class="field">
+            <label for="bg-read-select" data-i18n="background.readPick"></label>
+            <select id="bg-read-select"></select>
+          </div>
+          <div class="field">
+            <label for="bg-dim"><span data-i18n="background.dim"></span> <output id="bg-dim-value" for="bg-dim"></output></label>
+            <input type="range" id="bg-dim" min="0" max="80" step="1">
+          </div>
+          <div class="field">
+            <label for="bg-blur"><span data-i18n="background.blur"></span> <output id="bg-blur-value" for="bg-blur"></output></label>
+            <input type="range" id="bg-blur" min="0" max="20" step="1">
+          </div>
+          <div><button type="button" id="bg-shadow" aria-pressed="true" data-i18n="background.shadow"></button></div>
+          <p id="bg-read-message" class="message" role="status" aria-live="polite"></p>
+        </div>
+        <div class="projector-preview bg-read-preview" id="bg-read-preview" aria-hidden="true"></div>
+      </div>
+    </section>
+
+    <section class="settings-section" aria-labelledby="logo-heading">
+      <h2 id="logo-heading" data-i18n="settings.logoHeading"></h2>
+      <p class="hint" data-i18n="settings.logoHint"></p>
+      <div class="logo-preview projector" id="logo-preview">
+        <img id="logo-image" alt="" hidden>
+        <span id="logo-empty" class="muted" data-i18n="settings.logoNone"></span>
+      </div>
+      <div class="form-actions">
+        <label class="button file-button" data-icon="upload">
+          <span data-i18n="settings.logoUpload"></span>
+          <input type="file" id="logo-file" accept="image/png,image/jpeg,image/webp" class="sr-only">
+        </label>
+        <button type="button" class="secondary" id="logo-remove" hidden data-icon="close" data-i18n="settings.logoRemove"></button>
+      </div>
+      <p id="logo-message" class="message" role="status" aria-live="polite"></p>
+    </section>
+
+    <section class="settings-section" aria-labelledby="email-heading">
+      <h2 id="email-heading" data-i18n="settings.emailHeading"></h2>
+      <div class="email-card" id="email-card">
+        <p id="email-status" class="email-status"></p>
+        <p class="hint" id="email-hint"></p>
+        <div class="form-actions">
+          <button type="button" class="secondary" id="email-test" hidden data-icon="mail" data-i18n="settings.emailTest"></button>
+          <a class="button secondary" id="email-guide" href="https://github.com/adriancus-coder/Whorsip-app/blob/main/docs/EMAIL.md" target="_blank" rel="noopener" data-icon="link" data-i18n="settings.emailGuide"></a>
+        </div>
+        <p id="email-message" class="message" role="status" aria-live="polite"></p>
+      </div>
+    </section>
+
+    <section class="settings-section" aria-labelledby="storage-heading">
+      <h2 id="storage-heading" data-i18n="settings.storageHeading"></h2>
+      <p id="storage-used" class="storage-used"></p>
+      <div class="storage-bar" id="storage-bar" role="img"><span id="storage-fill"></span><span id="storage-reserve"></span></div>
+      <p id="storage-hint" class="hint"></p>
+    </section>
+
+    <section class="settings-section" aria-labelledby="backup-heading">
+      <h2 id="backup-heading" data-i18n="settings.backupHeading"></h2>
+      <p class="hint" data-i18n="settings.backupHint"></p>
+      <p id="backup-last" class="backup-last"></p>
+      <div class="form-actions">
+        <a class="button" id="backup-download" href="/api/backup" download data-icon="import" data-i18n="settings.backupDownload"></a>
+      </div>
+      <p id="backup-message" class="message" role="status" aria-live="polite"></p>
+    </section>
+  </main>
+  <script src="/i18n.js"></script>
+  <script src="/page.js"></script>
+  <script src="/shell.js"></script>
+  <script src="/clock.js"></script>
+  <script src="/projector-render.js"></script>
+  <script src="/clock-panel.js"></script>
+  <script src="/background-picker.js"></script>
+  <script src="/settings.js"></script>
+</body>
+</html>

@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="{{LANG}}" data-app-name="{{APP_NAME}}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#141318">
+  <title>{{APP_NAME}}</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body data-shell="events" class="list-page">
+  <main class="wide event-page">
+    <p class="back"><a id="back-link" href="/events"></a></p>
+    <p id="status" class="muted" role="status" aria-live="polite" data-i18n="events.loading"></p>
+
+    <div id="event" hidden>
+      <div class="draft-banner" id="draft-banner" role="alert" hidden>
+        <p><strong data-i18n="setlist.draftFound"></strong> <span id="draft-time" class="muted"></span></p>
+        <div class="form-actions">
+          <button type="button" id="draft-restore" data-icon="undo" data-i18n="setlist.draftRestore"></button>
+          <button type="button" class="secondary" id="draft-discard" data-i18n="setlist.draftDiscard"></button>
+        </div>
+      </div>
+
+      <header class="event-head">
+        <h1 id="event-name"></h1>
+        <p id="event-when" class="event-when"></p>
+        <p class="event-summary"><span id="event-status" class="pill"></span> <span id="event-counts"></span></p>
+        <p id="event-notes" class="event-notes" hidden></p>
+        <!-- The actions stay in view (the page is a list page); on phones the secondary tools
+             (Detalii, Salvează ca șablon) sit in the "⋯" menu. -->
+        <div class="event-actions-row">
+          <nav class="event-actions" id="event-actions" data-i18n-aria-label="setlist.actionsLabel"></nav>
+          <button type="button" class="secondary menu-button event-more" id="event-more" hidden aria-haspopup="true" aria-expanded="false" aria-controls="event-tools" data-i18n-aria-label="setlist.moreActions"><span aria-hidden="true">⋯</span></button>
+        </div>
+        <div class="event-tools" id="event-tools">
+          <button type="button" class="secondary" id="details-button" hidden data-icon="details" data-i18n="setlist.details"></button>
+          <button type="button" class="secondary" id="template-button" hidden data-icon="template" data-i18n="setlist.saveTemplate"></button>
+        </div>
+        <p id="action-message" class="message" role="status" aria-live="polite"></p>
+      </header>
+
+      <div class="editor-grid">
+        <section class="setlist-pane" aria-labelledby="setlist-heading">
+          <h2 id="setlist-heading" data-i18n="setlist.heading"></h2>
+          <p id="reorder-hint" class="hint" hidden data-i18n="setlist.reorderHint"></p>
+          <!-- The Program scrolls here (with the add bar under it); the event header stays. -->
+          <div class="setlist-scroll" data-list-pane="setlist.heading">
+          <!-- "Detalii": name, date, time, notes and where the Program starts from (template /
+               a copy of a past event / empty), on one card; open right after "+ Eveniment nou",
+               reopened any time from the header's "Detalii". -->
+          <details class="quick-details" id="quick-details" hidden>
+            <summary id="quick-summary"></summary>
+            <div class="quick-fields">
+              <div class="field quick-name">
+                <label for="q-name" data-i18n="events.nameLabel"></label>
+                <input type="text" id="q-name" maxlength="120" required>
+              </div>
+              <div class="field">
+                <label for="q-date" data-i18n="events.dateLabel"></label>
+                <input type="date" id="q-date" required>
+              </div>
+              <div class="field">
+                <label for="q-time" data-i18n="events.timeLabel"></label>
+                <input type="time" id="q-time">
+              </div>
+              <div class="field quick-name">
+                <label for="q-notes" data-i18n="setlist.notesLabel"></label>
+                <textarea id="q-notes" rows="2" maxlength="2000"></textarea>
+              </div>
+              <div class="field quick-template quick-source">
+                <span class="field-label" id="q-source-label" data-i18n="setlist.programFrom"></span>
+                <div class="choice-group" role="group" aria-labelledby="q-source-label">
+                  <button type="button" data-source="template" aria-pressed="false" data-i18n="setlist.fromTemplate"></button>
+                  <button type="button" data-source="copy" aria-pressed="false" data-i18n="setlist.fromCopy"></button>
+                  <button type="button" data-source="empty" aria-pressed="false" data-i18n="setlist.fromEmpty"></button>
+                </div>
+                <label class="quick-picker" id="q-template-field"><span class="sr-only" data-i18n="setlist.templateLabel"></span><select id="q-template" data-i18n-aria-label="setlist.templateLabel"></select></label>
+                <label class="quick-picker" id="q-copy-field" hidden><span class="sr-only" data-i18n="setlist.copyLabel"></span><select id="q-copy" data-i18n-aria-label="setlist.copyLabel"></select></label>
+                <p class="hint" id="q-source-hint"></p>
+              </div>
+            </div>
+            <p class="message" id="quick-message" role="status" aria-live="polite"></p>
+          </details>
+          <p id="setlist-empty" class="muted pane-state" hidden data-i18n="setlist.empty"></p>
+          <ol id="items" class="setlist"></ol>
+          <div class="add-bar" id="add-bar" role="group" data-i18n-aria-label="setlist.addLabel" hidden>
+            <button type="button" class="secondary" data-add="song" data-icon="plus" data-i18n="setlist.addSong"></button>
+            <button type="button" class="secondary" data-add="verse" data-icon="plus" data-i18n="setlist.addVerse"></button>
+            <button type="button" class="secondary" data-add="video" data-icon="plus" data-i18n="setlist.addVideo"></button>
+            <button type="button" class="secondary" data-add="announcement" data-icon="plus" data-i18n="setlist.addAnnouncement"></button>
+            <button type="button" class="secondary" data-add="sermon" data-icon="plus" data-i18n="setlist.addSermon"></button>
+          </div>
+          <div class="delete-area" id="delete-area" hidden>
+            <button type="button" class="delete-link" id="delete-button"><svg class="delete-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg><span data-i18n="setlist.deleteEvent"></span></button>
+          </div>
+          </div>
+        </section>
+        <section class="detail-pane" id="detail-home" aria-live="polite" data-pane-label="setlist.details">
+          <div id="detail" class="item-detail"></div>
+        </section>
+      </div>
+
+      <div class="save-bar" id="save-bar" hidden>
+        <p id="save-state" class="save-state" role="status" aria-live="polite"></p>
+        <button type="button" id="save-button" data-icon="check" data-i18n="setlist.save"></button>
+      </div>
+
+    </div>
+
+    <!-- "+ Cântare": the shared song search (public/song-search.js) in pick mode. -->
+    <dialog id="song-dialog" aria-labelledby="song-dialog-heading" class="wide-dialog song-pick-dialog">
+      <div class="song-pick-head">
+        <h2 id="song-dialog-heading" data-i18n="setlist.pickSongHeading"></h2>
+        <button type="button" class="shell-close preview-close-x" id="song-dialog-x" data-i18n-aria-label="setlist.pickClose">✕</button>
+      </div>
+      <div id="song-search" class="song-pick"></div>
+      <div class="form-actions">
+        <button type="button" class="secondary" id="song-dialog-close" data-i18n="setlist.pickClose"></button>
+      </div>
+    </dialog>
+
+    <dialog id="template-dialog" aria-labelledby="template-heading">
+      <form id="template-form" novalidate>
+        <h2 id="template-heading" data-i18n="setlist.templateHeading"></h2>
+        <div class="field">
+          <label for="t-name" data-i18n="setlist.templateNameLabel"></label>
+          <input type="text" id="t-name" maxlength="120" required>
+        </div>
+        <p class="message error" id="template-message" role="alert"></p>
+        <div class="form-actions">
+          <button type="submit" data-i18n="setlist.templateSave"></button>
+          <button type="button" class="secondary" data-close data-i18n="setlist.cancel"></button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="replace-dialog" aria-labelledby="replace-heading" aria-describedby="replace-text">
+      <h2 id="replace-heading"></h2>
+      <p id="replace-text"></p>
+      <div class="form-actions">
+        <button type="button" id="replace-yes"></button>
+        <button type="button" class="secondary" data-close data-i18n="setlist.cancel"></button>
+      </div>
+    </dialog>
+
+    <dialog id="leave-dialog" aria-labelledby="leave-heading" aria-describedby="leave-text">
+      <form method="dialog">
+        <h2 id="leave-heading" data-i18n="setlist.leaveHeading"></h2>
+        <p id="leave-text" data-i18n="setlist.leaveText"></p>
+        <p class="message error" id="leave-message" role="alert"></p>
+        <div class="leave-actions">
+          <button type="button" id="leave-save" data-i18n="setlist.leaveSave"></button>
+          <button type="button" class="secondary" id="leave-discard" data-i18n="setlist.leaveDiscard"></button>
+          <button type="submit" class="secondary" value="stay" id="leave-stay" data-i18n="setlist.leaveStay"></button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="delete-dialog" aria-labelledby="delete-text">
+      <form method="dialog">
+        <p id="delete-text"></p>
+        <p class="muted" data-i18n="setlist.deleteWarning"></p>
+        <p class="message error" id="delete-message" role="alert"></p>
+        <div class="form-actions">
+          <button type="button" class="danger" id="confirm-delete" data-i18n="setlist.deleteConfirmButton"></button>
+          <button type="submit" class="secondary" value="cancel" data-i18n="setlist.cancel"></button>
+        </div>
+      </form>
+    </dialog>
+  </main>
+  <script src="/i18n.js"></script>
+  <script src="/chords.js"></script>
+  <script src="/sections.js"></script>
+  <script src="/page.js"></script>
+  <script src="/list-pane.js"></script>
+  <script src="/notation.js"></script>
+  <script src="/shell.js"></script>
+  <script src="/song-render.js"></script>
+  <script src="/song-search.js"></script>
+  <script src="/background-picker.js"></script>
+  <script src="/arrange-sheet.js"></script>
+  <script src="/press.js"></script>
+  <script src="/event.js"></script>
+</body>
+</html>

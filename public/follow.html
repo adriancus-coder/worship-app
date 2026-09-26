@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="{{LANG}}" data-app-name="{{APP_NAME}}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#141318">
+  <title>{{APP_NAME}}</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body class="follow-body" data-shell="exit" data-stage>
+  <main class="wide follow-page">
+    <p id="status" class="muted" role="status" aria-live="polite" data-i18n="events.loading"></p>
+
+    <div id="follow" hidden>
+      <header class="follow-head">
+        <p class="follow-event"><span id="event-name"></span> <span id="event-status" class="pill"></span></p>
+        <p id="connection" class="connection" role="status" aria-live="polite"><span class="dot" aria-hidden="true"></span><span id="connection-text"></span></p>
+      </header>
+      <div id="live-bar" class="live-bar" hidden>
+        <p id="live-bar-text" aria-live="polite"></p>
+        <button type="button" class="secondary" id="go-live" data-i18n="follow.goLive"></button>
+      </div>
+      <div id="offline-banner" class="emergency-banner" role="alert" hidden>
+        <p class="emergency-title" data-i18n="follow.offline.banner"></p>
+        <p class="emergency-detail" data-i18n="follow.offline.detail"></p>
+      </div>
+      <p id="wake-hint" class="hint wake-hint" hidden>
+        <span data-i18n="follow.wakeHint"></span>
+        <button type="button" class="secondary" id="wake-hint-close" data-i18n="follow.wakeHintClose"></button>
+      </p>
+
+      <div class="rehearse-bar">
+        <p id="position" class="rehearse-position" aria-live="polite"></p>
+        <div class="rehearse-tools">
+          <span data-notation-switch></span>
+          <button type="button" class="secondary" id="text-only" aria-pressed="false" data-i18n="song.textOnly" hidden></button>
+          <button type="button" class="secondary" id="whole-song" data-icon="follow" data-i18n="arrange.readOnlyButton" hidden></button>
+          <div class="size-tools" role="group" data-i18n-aria-label="rehearse.textSize">
+            <button type="button" class="secondary icon-button" id="text-smaller" data-i18n-aria-label="rehearse.textSmaller"><span aria-hidden="true">A−</span></button>
+            <button type="button" class="secondary icon-button" id="text-larger" data-i18n-aria-label="rehearse.textLarger"><span aria-hidden="true">A+</span></button>
+          </div>
+        </div>
+      </div>
+
+      <article id="slide" class="rehearse-slide follow-slide"></article>
+      <div id="manual-nav" class="live-nav manual-nav" role="group" data-i18n-aria-label="follow.navLabel" hidden>
+        <button type="button" class="secondary" id="manual-prev" data-i18n="live.prev"></button>
+        <button type="button" class="secondary" id="manual-next" data-i18n="follow.offline.next"></button>
+      </div>
+      <nav id="jump-nav" class="follow-jump" aria-labelledby="jump-heading" hidden>
+        <h2 id="jump-heading" class="follow-setlist-heading" data-i18n="follow.setlistNav"></h2>
+        <ol id="jump-list"></ol>
+      </nav>
+      <button type="button" class="back-live" id="back-live" hidden data-i18n="follow.back"></button>
+    </div>
+  </main>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/i18n.js"></script>
+  <script src="/chords.js"></script>
+  <script src="/sections.js"></script>
+  <script src="/page.js"></script>
+  <script src="/notation.js"></script>
+  <script src="/shell.js"></script>
+  <script src="/song-render.js"></script>
+  <script src="/positions.js"></script>
+  <script src="/event-cache.js"></script>
+  <script src="/live-client.js"></script>
+  <script src="/arrange-sheet.js"></script>
+  <script src="/follow.js"></script>
+</body>
+</html>

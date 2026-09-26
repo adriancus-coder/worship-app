@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="{{LANG}}" data-app-name="{{APP_NAME}}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#141318">
+  <title data-i18n="setup.pageTitle">{{APP_NAME}}</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="lang-switch" role="group" aria-label="Limbă / Language">
+      <button type="button" data-lang="ro" lang="ro" aria-pressed="false">RO</button>
+      <button type="button" data-lang="en" lang="en" aria-pressed="false">EN</button>
+    </div>
+  </header>
+  <main>
+    <h1 data-i18n="setup.heading"></h1>
+    <p class="muted" data-i18n="setup.intro"></p>
+
+    <form id="setup-form" novalidate>
+      <div class="field">
+        <label for="setup-token" data-i18n="setup.tokenLabel"></label>
+        <div class="input-row">
+          <input type="password" id="setup-token" name="setupToken" autocomplete="off"
+            autocapitalize="off" autocorrect="off" spellcheck="false"
+            aria-describedby="setup-token-hint" required>
+          <button type="button" id="toggle-token" class="secondary" aria-pressed="false"
+            aria-controls="setup-token" data-i18n="setup.showToken"></button>
+        </div>
+        <span class="hint" id="setup-token-hint" data-i18n="setup.tokenHint"></span>
+      </div>
+
+      <fieldset>
+        <legend data-i18n="setup.adminLegend"></legend>
+        <label>
+          <span data-i18n="setup.adminNameLabel"></span>
+          <input type="text" name="adminName" maxlength="100" required>
+        </label>
+      </fieldset>
+
+      <fieldset>
+        <legend data-i18n="setup.ownerLegend"></legend>
+        <label>
+          <span data-i18n="setup.ownerNameLabel"></span>
+          <input type="text" name="ownerName" autocomplete="name" maxlength="100" required>
+        </label>
+        <label>
+          <span data-i18n="setup.ownerEmailLabel"></span>
+          <input type="email" name="ownerEmail" autocomplete="email" inputmode="email" required>
+        </label>
+        <label>
+          <span data-i18n="setup.ownerPasswordLabel"></span>
+          <input type="password" name="ownerPassword" autocomplete="new-password" minlength="10" required>
+          <span class="hint" data-i18n="setup.passwordHint" data-i18n-vars='{"min":10}'></span>
+        </label>
+      </fieldset>
+
+      <p class="message" id="message" role="alert" aria-live="polite"></p>
+      <button type="submit" data-icon="check" data-i18n="setup.submit"></button>
+    </form>
+
+    <div id="done" hidden>
+      <p class="message success" data-i18n="setup.done"></p>
+      <a class="button" href="/login" data-icon="login" data-i18n="setup.goToLogin"></a>
+    </div>
+  </main>
+  <script src="/i18n.js"></script>
+  <script src="/setup.js"></script>
+</body>
+</html>

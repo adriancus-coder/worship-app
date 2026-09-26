@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="{{LANG}}" data-app-name="{{APP_NAME}}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#141318">
+  <title data-i18n="events.pageTitle">{{APP_NAME}}</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body data-shell="events" class="list-page">
+  <main class="wide">
+    <div class="page-head">
+      <h1 data-i18n="events.heading"></h1>
+      <div class="page-head-actions">
+        <button type="button" id="new-event" hidden data-icon="plus" data-i18n="events.newEvent"></button>
+      </div>
+    </div>
+
+    <div class="tabs" role="tablist" data-i18n-aria-label="events.tabsLabel">
+      <button type="button" role="tab" id="tab-upcoming" aria-controls="events-panel" aria-selected="true" data-i18n="events.tabUpcoming"></button>
+      <button type="button" role="tab" id="tab-past" aria-controls="events-panel" aria-selected="false" tabindex="-1" data-i18n="events.tabPast"></button>
+      <button type="button" role="tab" id="tab-templates" aria-controls="events-panel" aria-selected="false" tabindex="-1" hidden data-i18n="events.tabTemplates"></button>
+    </div>
+
+    <div id="events-panel" role="tabpanel" data-list-pane="events.listPane">
+      <p id="status" class="muted pane-state" role="status" aria-live="polite" data-i18n="events.loading"></p>
+      <ul id="events" class="event-list"></ul>
+    </div>
+
+  </main>
+  <script src="/i18n.js"></script>
+  <script src="/page.js"></script>
+  <script src="/list-pane.js"></script>
+  <script src="/shell.js"></script>
+  <script src="/events.js"></script>
+</body>
+</html>

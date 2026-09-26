@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="{{LANG}}" data-app-name="{{APP_NAME}}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#141318">
+  <title data-i18n="editor.pageTitleNew">{{APP_NAME}}</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body data-shell="library">
+  <main class="wide">
+    <h1 id="editor-heading" data-i18n="editor.headingNew"></h1>
+    <p id="status" class="muted" role="status" aria-live="polite"></p>
+    <form id="song-form" novalidate hidden>
+      <!-- The editor component (public/song-editor.js): title, author, key, sections, preview. -->
+      <div id="song-editor"></div>
+
+      <div class="message error" id="message" role="alert" aria-live="assertive"></div>
+      <div class="form-actions">
+        <button type="submit" id="save" data-icon="check" data-i18n="editor.save"></button>
+        <a class="button secondary" id="cancel" href="/library" data-i18n="editor.cancel"></a>
+      </div>
+    </form>
+
+    <div class="delete-area" id="delete-area" hidden>
+      <button type="button" class="delete-link" id="delete-song"><svg class="delete-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg><span data-i18n="editor.deleteSong"></span></button>
+    </div>
+
+    <dialog id="delete-dialog" aria-labelledby="delete-dialog-text">
+      <form method="dialog">
+        <p id="delete-dialog-text"></p>
+        <p class="muted" data-i18n="editor.deleteWarning"></p>
+        <p class="message error" id="delete-message" role="alert"></p>
+        <div class="form-actions">
+          <button type="button" class="danger" id="confirm-delete" data-i18n="editor.deleteConfirmButton"></button>
+          <button type="submit" class="secondary" value="cancel" data-i18n="editor.cancel"></button>
+        </div>
+      </form>
+    </dialog>
+  </main>
+  <script src="/i18n.js"></script>
+  <script src="/chords.js"></script>
+  <script src="/sections.js"></script>
+  <script src="/page.js"></script>
+  <script src="/notation.js"></script>
+  <script src="/shell.js"></script>
+  <script src="/song-render.js"></script>
+  <script src="/background-picker.js"></script>
+  <script src="/song-editor.js"></script>
+  <script src="/song-edit.js"></script>
+</body>
+</html>

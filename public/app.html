@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="{{LANG}}" data-app-name="{{APP_NAME}}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#141318">
+  <title data-i18n="home.pageTitle">{{APP_NAME}}</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body data-shell="home">
+  <main class="wide home-page">
+    <h1 data-i18n="home.heading"></h1>
+    <p id="status" class="muted" role="status" aria-live="polite" data-i18n="app.loading"></p>
+    <div id="now" aria-live="polite"></div>
+    <div id="install-card"></div>
+    <div id="backup-card"></div>
+    <section id="upcoming-section" class="home-section" aria-labelledby="upcoming-heading" hidden>
+      <h2 id="upcoming-heading" data-i18n="home.upcomingHeading"></h2>
+      <ul id="upcoming" class="home-upcoming"></ul>
+    </section>
+    <section id="quick-section" class="home-section" aria-labelledby="quick-heading" hidden>
+      <h2 id="quick-heading" data-i18n="home.quickHeading"></h2>
+      <div class="home-quick">
+        <a class="button secondary" href="/events?new=1" data-icon="plus" data-i18n="events.newEvent"></a>
+        <a class="button secondary" id="quick-new-song" href="/songs/new" data-icon="plus" data-i18n="home.newSong"></a>
+      </div>
+    </section>
+
+    <!-- "▶ Pornește live" while another event is live: end that one first? -->
+    <dialog id="switch-dialog" aria-labelledby="switch-heading">
+      <h2 id="switch-heading"></h2>
+      <p id="switch-text"></p>
+      <p id="switch-message" class="message error" role="alert"></p>
+      <div class="form-actions">
+        <button type="button" class="danger" id="switch-yes" data-icon="play" data-i18n="home.switchYes"></button>
+        <button type="button" class="secondary" id="switch-cancel" data-i18n="live.endCancel"></button>
+      </div>
+    </dialog>
+  </main>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/i18n.js"></script>
+  <script src="/page.js"></script>
+  <script src="/shell.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>
