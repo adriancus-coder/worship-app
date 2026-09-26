@@ -341,6 +341,41 @@
     renderDetail();
     renderSaveBar();
     renderTeam();
+    renderProposals();
+  }
+
+  // Song proposals (public/proposals-ui.js): members propose from the event page; the event
+  // roles decide in the editor ("Propuneri (n)"); the open count badges the header.
+  const proposalsBox = { ui: null, mode: null };
+  function renderProposals() {
+    const ev = state.event;
+    const editor = canEdit(state.me);
+    const wanted = ev.isTemplate ? null : (editor ? (state.editing && ev.status !== 'finished' ? 'roles' : 'badge') : 'member');
+    if (proposalsBox.mode === wanted) return;
+    proposalsBox.mode = wanted;
+    $('proposals').replaceChildren();
+    if (wanted === 'member') proposalsBox.ui = window.PROPOSALS_UI.member($('proposals'), { eventId: ev.id });
+    else if (wanted === 'roles') proposalsBox.ui = window.PROPOSALS_UI.roles($('proposals'), { eventId: ev.id, live: () => state.event.status === 'live', onCount: renderProposalsBadge });
+    else if (wanted === 'badge') api(`/api/events/${ev.id}/proposals`).then((res) => { if (res.ok) renderProposalsBadge(res.body.openCount); }).catch(() => {});
+  }
+  // A proposal added in the editor: the server has the new item; the editor takes it (as a
+  // whole when nothing is unsaved, else appended to the unsaved list so a save keeps it).
+  document.addEventListener('proposals:changed', async (event) => {
+    if (!event.detail || event.detail.from !== 'roles' || !state.event) return;
+    const res = await api(`/api/events/${state.event.id}`).catch(() => null);
+    if (!res || !res.ok) return;
+    if (!isDirty()) return applyEvent(res.body, true);
+    const known = new Set(state.items.map((it) => it.id).filter(Boolean));
+    for (const item of res.body.items) if (!known.has(item.id)) state.items.push(fromServer(item));
+    renderItems();
+    renderSaveBar();
+  });
+
+  function renderProposalsBadge(n) {
+    const badge = $('proposals-badge');
+    badge.hidden = !n;
+    badge.textContent = n ? t('proposals.badge', { n }) : '';
+    if (n && !state.editing) { badge.classList.add('linkish'); badge.onclick = () => { window.location.assign(keepFrom(`/events/${state.event.id}/edit`)); }; }
   }
 
   // --- the team (public/team-card.js): the editor's Echipa tab (owner, leader) or the card ----

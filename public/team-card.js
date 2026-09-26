@@ -78,7 +78,6 @@
         el('div', { class: 'team-card-head' },
           el('h2', { id: 'team-card-heading', text: t('assign.heading') }),
           el('p', { class: 'team-card-summary', text: summaryText(d.summary) })),
-        d.assignments.length ? null : el('p', { class: 'muted', text: t('assign.empty') }),
         ...[...groups.values()].map((g) => el('div', { class: 'team-group' },
           el('h3', { text: g.name }),
           el('ul', { class: 'team-group-list' }, ...g.rows.map((row) => el('li', { class: `assign-row assign-row-${row.status}${meIds.has(row.id) ? ' mine' : ''}` },

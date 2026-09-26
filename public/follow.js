@@ -263,6 +263,14 @@
     renderHead();
     renderNav();
     renderSlide();
+    mountProposals();
+  }
+
+  // "Propune o cântare" (public/proposals-ui.js): once the page has its event.
+  let proposals = null;
+  function mountProposals() {
+    if (proposals || !state.event || window.EVENT_CACHE.offline()) return;
+    proposals = window.PROPOSALS_UI.member($('proposals'), { eventId });
   }
 
   // --- the person's own place ---------------------------------------------------------

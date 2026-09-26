@@ -24,7 +24,7 @@
       <header class="event-head">
         <h1 id="event-name"></h1>
         <p id="event-when" class="event-when"></p>
-        <p class="event-summary"><span id="event-status" class="pill"></span> <span id="event-counts"></span></p>
+        <p class="event-summary"><span id="event-status" class="pill"></span> <span id="event-counts"></span> <span id="proposals-badge" class="pill proposals-badge" hidden></span></p>
         <p id="event-notes" class="event-notes" hidden></p>
         <button type="button" class="team-summary" id="team-summary" hidden></button>
         <!-- The actions stay in view (the page is a list page); on phones the secondary tools
@@ -46,7 +46,6 @@
         <button type="button" role="tab" id="tab-team" aria-controls="team-panel" aria-selected="false" tabindex="-1"><span data-i18n="assign.tabTeam"></span> <span class="tab-count" id="tab-team-count"></span></button>
       </div>
       <div id="team-panel" class="team-panel" role="tabpanel" hidden></div>
-      <div id="team-card"></div>
 
       <div class="editor-grid" id="editor-program">
         <section class="setlist-pane" aria-labelledby="setlist-heading">
@@ -90,6 +89,10 @@
             </div>
             <p class="message" id="quick-message" role="status" aria-live="polite"></p>
           </details>
+          <!-- The team card (everyone) and the proposals (members: propose; event roles: decide)
+               scroll with the Program, so the save bar stays above the tab bar on phones. -->
+          <div id="team-card"></div>
+          <div id="proposals"></div>
           <p id="setlist-empty" class="muted pane-state" hidden data-i18n="setlist.empty"></p>
           <ol id="items" class="setlist"></ol>
           <div class="add-bar" id="add-bar" role="group" data-i18n-aria-label="setlist.addLabel" hidden>
@@ -190,6 +193,7 @@
   <script src="/arrange-sheet.js"></script>
   <script src="/press.js"></script>
   <script src="/team-card.js"></script>
+  <script src="/proposals-ui.js"></script>
   <script src="/event.js"></script>
 </body>
 </html>

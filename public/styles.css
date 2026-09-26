@@ -1550,7 +1550,7 @@ button.op-step:disabled { opacity: 1; cursor: default; }
 }
 .info-toast[hidden] { display: none; }
 /* A song proposal while live: text + three actions + ✕, top right, stays until answered. */
-.info-toast.proposal-toast { display: flex; flex-direction: column; gap: 8px; max-width: min(420px, calc(100vw - 24px)); padding: 12px 44px 12px 14px; position: fixed; }
+.info-toast.proposal-toast { display: flex; flex-direction: column; gap: 8px; max-width: min(420px, calc(100vw - 24px)); padding: 12px 44px 12px 14px; position: fixed; pointer-events: auto; }
 .proposal-toast-text { margin: 0; overflow-wrap: anywhere; }
 .proposal-toast-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 .proposal-toast-actions button { flex: 1 1 auto; padding: 8px 10px; }
@@ -1661,6 +1661,33 @@ button.op-step:disabled { opacity: 1; cursor: default; }
 .push-state { font-weight: 600; }
 .push-state[data-state="on"] { color: var(--success); }
 .push-state[data-state="denied"], .push-state[data-state="unsupported"], .push-state[data-state="serveroff"] { color: var(--text-muted); }
+.proposals { display: flex; flex-direction: column; gap: 8px; margin: 12px 0; }
+.proposals-heading { margin: 0; font-size: 1rem; }
+.proposals-member > button { align-self: flex-start; }
+.proposal-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.proposal-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 8px 10px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+.proposal-row-added { border-color: var(--success); }
+.proposal-row-declined { opacity: 0.85; }
+.proposal-title { font-weight: 600; }
+.proposal-pill { border-color: var(--border); color: var(--text-muted); }
+.proposal-open { color: var(--accent-text); border-color: var(--accent-fill); }
+.proposal-added { color: var(--success); border-color: var(--success); }
+.proposal-declined { color: var(--text-muted); }
+.proposal-by, .proposal-note, .proposal-decision { flex: 1 1 100%; font-size: 0.875rem; color: var(--text-muted); }
+.proposal-note::before { content: '„'; }
+.proposal-note::after { content: '”'; }
+.proposal-actions { flex: 1 1 100%; display: flex; flex-wrap: wrap; gap: 6px; }
+.proposal-actions button { flex: 1 1 auto; padding: 8px 10px; }
+.proposal-decline-note { flex: 1 1 160px; min-height: var(--touch); }
+.proposal-message:empty { display: none; }
+.proposal-dialog .hint { margin: 8px 0; }
+.proposal-note-step { display: flex; flex-direction: column; gap: 8px; }
+.proposal-note-step[hidden] { display: none; }
+.proposal-picked { margin: 0; font-weight: 600; }
+.proposal-note-label { display: flex; flex-direction: column; gap: 4px; }
+.proposals-badge { color: var(--accent-text); border-color: var(--accent-fill); text-decoration: none; }
+.proposals-badge.linkish { cursor: pointer; }
+.now-proposals { display: inline-flex; align-items: center; min-height: var(--touch); margin-top: 8px; padding: 6px 12px; }
 .team-positions { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 0 !important; font-size: 0.875rem; }
 .position-pill { border-color: var(--border); color: var(--text-muted); }
 .positions-choice { margin: 4px 0 12px; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius); }

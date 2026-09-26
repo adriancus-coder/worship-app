@@ -330,6 +330,9 @@
   const backgroundButton = window.BG_PICKER.liveButton($('bg-live'), { send });
   // The corner clock (clock.set: show / corner / size; key K toggles it).
   const clockPanel = window.CLOCK_PANEL.create($('clock-panel'), { t, el, onChange: (patch) => send('clock.set', patch) });
+  // "Propuneri (n)" under the add panel (public/proposals-ui.js).
+  window.PROPOSALS_UI.roles($('proposals'), { eventId, live: () => Boolean(state.snap && state.snap.status === 'live'), position: 'afterCurrent' });
+
   // A song proposal while live: the toast's actions decide it through the API (routes/proposals.js).
   const toast = window.LIVE_MODES.toast($('info-toast'), {
     t, el,
@@ -496,7 +499,7 @@
       if (state.event) renderHead();
     });
     state.client.socket.on('projector:video-status', (status) => videoPanel.status(status));
-    state.client.socket.on('live:notice', toast.show);
+    state.client.socket.on('live:notice', (n) => { toast.show(n); if (n && n.type === 'proposal') document.dispatchEvent(new CustomEvent('proposals:changed')); });
     state.client.socket.on('live:handover', (ev) => { modes.handover(ev); big.update(state.snap, items()); });
     renderConnection('connecting');
   })().catch(() => {

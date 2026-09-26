@@ -449,6 +449,9 @@
 
   // Together / separate and the team mode; the info toast for additions from the console.
   const modes = window.LIVE_MODES.controls($('mode-controls'), { send, t, el });
+  // "Propuneri (n)" in the aside (public/proposals-ui.js): the same decisions as the toast.
+  window.PROPOSALS_UI.roles($('proposals'), { eventId, live: () => Boolean(state.snap && state.snap.status === 'live'), position: 'afterCurrent' });
+
   // A song proposal while live: the toast's actions decide it through the API (routes/proposals.js).
   const toast = window.LIVE_MODES.toast($('info-toast'), {
     t, el,
@@ -713,7 +716,7 @@
       renderProjector();
     });
     state.client.socket.on('projector:video-status', (status) => videoPanel.status(status));
-    state.client.socket.on('live:notice', toast.show);
+    state.client.socket.on('live:notice', (n) => { toast.show(n); if (n && n.type === 'proposal') document.dispatchEvent(new CustomEvent('proposals:changed')); });
     state.client.socket.on('live:handover', (ev) => { modes.handover(ev); big.update(state.snap, state.items); });
     renderConnection('connecting');
   }

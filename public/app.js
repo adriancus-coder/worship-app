@@ -90,6 +90,9 @@
             el('button', { type: 'button', 'data-icon': 'check', 'data-answer': 'accepted', text: t('assign.yes'), onclick: () => answer(event, a, 'accepted') }),
             el('button', { type: 'button', class: 'secondary', 'data-icon': 'close', 'data-answer': 'declined', text: t('assign.no'), onclick: () => answer(event, a, 'declined') }))
           : el('span', { class: `pill assign-pill assign-${a.status}`, text: t(`assign.status.${a.status}`) }))),
+      state.home.proposalsOpen
+        ? el('a', { class: 'pill proposals-badge now-proposals', href: eventUrl(event, '/edit'), text: t('proposals.badge', { n: state.home.proposalsOpen }) })
+        : null,
       state.home.teamSummary && state.home.teamSummary.total
         ? el('a', { class: `now-team-summary${state.home.teamSummary.declined ? ' has-declined' : ''}`, href: eventUrl(event), text: window.TEAM_CARD.summaryText(state.home.teamSummary) })
         : null,
