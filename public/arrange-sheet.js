@@ -14,6 +14,8 @@
 //   ARRANGE_SHEET.open({ title, song: { sections, song_key }, codes, defaultCodes,
 //     transpose, readOnly, onApply({ codes, transpose, isDefault }) })
 //   readOnly (the team): the whole song in the event's order, no controls.
+//   ARRANGE_SHEET.openForItem(item, { readOnly, onApply })   // an event's song item
+//   ARRANGE_SHEET.saveToEvent(eventId, itemId, result)       // saves at once (live pages)
 //
 // The list logic below is pure and shared with scripts/test-lib.js.
 
@@ -286,5 +288,52 @@
     return { dialog };
   }
 
-  root.ARRANGE_SHEET = { ...LOGIC, open };
+  // --- entry points: an event item -------------------------------------------------------
+
+  // Opens the sheet for a song item of an event (its song from the library; codes and key
+  // from the item). readOnly: the team's view. Resolves false when the song cannot load.
+  async function openForItem(item, { readOnly = false, onApply } = {}) {
+    const { api } = window.PAGE;
+    if (!item || item.type !== 'song' || !item.songId) return false;
+    const res = await api(`/api/songs/${item.songId}`).catch(() => null);
+    if (!res || !res.ok) return false;
+    const song = res.body.song;
+    const defaults = SECTIONS.defaultArrangement(song);
+    const codes = Array.isArray(item.arrangementCodes) ? item.arrangementCodes
+      : (item.arrangementResolved || []).map((r) => r.code);
+    open({ title: item.title || song.title, song, codes: codes.length ? codes : defaults, defaultCodes: defaults, transpose: item.transpose || 0, readOnly, onApply });
+    return true;
+  }
+
+  // Saves a new arrangement / key for one song item right away (the live pages): the
+  // event's shared setlist as the server has it now, with only that item changed.
+  // Returns { ok } or { error }.
+  async function saveToEvent(eventId, itemId, { codes, transpose, isDefault }) {
+    const { api } = window.PAGE;
+    const { t } = window.I18N;
+    const fail = (res) => ({ error: (res && res.body && res.body.error) || t('common.networkError') });
+    const current = await api(`/api/events/${eventId}`).catch(() => null);
+    if (!current || !current.ok) return fail(current);
+    const items = current.body.items.filter((it) => it.scope !== 'projector').map((it) => {
+      const out = {
+        id: it.id, type: it.type, songId: it.type === 'song' ? it.songId : null,
+        mediaId: it.type === 'video' ? it.mediaId : null,
+        title: it.title || '', body: it.body || '', reference: it.reference || '', url: it.url || '', durationMin: it.durationMin,
+      };
+      if (it.type !== 'video') out.background = it.background || null;
+      if (it.type === 'song') {
+        const mine = it.id === itemId;
+        Object.assign(out, {
+          transpose: mine ? transpose : (it.transpose || 0),
+          arrangement: mine ? (isDefault ? null : codes.join(' ')) : (it.arrangementIsDefault ? null : it.arrangement || null),
+          teamNote: it.teamNote || '', referenceUrl: it.referenceUrl || '',
+        });
+      }
+      return out;
+    });
+    const res = await api(`/api/events/${eventId}/items`, { method: 'PUT', body: { items } }).catch(() => null);
+    return res && res.ok ? { ok: true } : fail(res);
+  }
+
+  root.ARRANGE_SHEET = { ...LOGIC, open, openForItem, saveToEvent };
 })(typeof window !== 'undefined' ? window : this);

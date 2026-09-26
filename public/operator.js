@@ -143,7 +143,7 @@
     $('op-list').replaceChildren(...list.map((item, i) => {
       const tag = tagOf(item);
       const onProjector = item.id === pos.itemId;
-      return el('li', null, el('button', {
+      return el('li', { class: 'op-list-row' }, el('button', {
         type: 'button',
         class: `op-item${onProjector ? ' on-projector' : ''}${item.id === worship.itemId ? ' at-worship' : ''}${item.scope === 'projector' ? ' projector-only' : ''}`,
         'aria-current': onProjector ? 'step' : null,
@@ -160,9 +160,43 @@
             onProjector ? el('span', { class: 'marker projector', text: t('operator.onProjector') }) : null,
             item.id === worship.itemId ? el('span', { class: 'marker worship', text: t('operator.worship') }) : null)),
         el('span', { class: 'item-title', text: itemTitle(item) }),
-        tag ? el('span', { class: `op-tag tag-${tag}`, text: t(`operator.tags.${tag}`) }) : null)));
+        tag ? el('span', { class: `op-tag tag-${tag}`, text: t(`operator.tags.${tag}`) }) : null)),
+      // Arranging stays a separate button: tapping the card moves the live position.
+      arrangeable(item) ? el('button', {
+        type: 'button', class: 'secondary icon-button op-arrange', 'data-icon': 'edit', disabled: !enabled,
+        'aria-label': t('arrange.buttonLabel', { title: itemTitle(item) }), title: t('arrange.button'), onclick: () => arrange(item),
+      }) : null);
     }));
     if (!list.length) $('op-list').replaceChildren(el('li', { class: 'muted', text: t('setlist.empty') }));
+  }
+
+  // --- arranging a song during live (public/arrange-sheet.js) ---------------------------
+
+  // Shared song items (a projector-only addition is not part of the saved setlist).
+  const arrangeable = (item) => item && item.type === 'song' && item.songId && item.scope !== 'projector';
+
+  function arrange(item) {
+    window.ARRANGE_SHEET.openForItem(item, {
+      onApply: async (result) => {
+        const out = await window.ARRANGE_SHEET.saveToEvent(state.event.id, item.id, result);
+        if (out.error) return message('op-message', out.error, 'error');
+        message('op-message', t('arrange.saved'), 'success');
+        state.arranged = { itemId: item.id, codes: result.codes.join(' ') };
+        render();
+      },
+    });
+  }
+
+  // Once the new order has arrived: where the live position is now, if on that song.
+  function arrangedNote() {
+    const done = state.arranged;
+    if (!done || !live()) return;
+    const item = items().find((it) => it.id === done.itemId);
+    const steps = stepsOf(item);
+    if (!steps || steps.map((x) => x.code).join(' ') !== done.codes) return; // not yet here
+    state.arranged = null;
+    const pos = projectorPos();
+    if (pos.itemId === item.id && steps[pos.step]) message('op-message', t('arrange.moved', { label: `${steps[pos.step].code} · ${steps[pos.step].label}` }), 'success');
   }
 
   function renderCenter() {
@@ -175,7 +209,11 @@
       $('op-item-type').className = `type-badge type-${item.type}`;
       $('op-item-type').textContent = t(`setlist.types.${item.type}`);
     }
-    $('op-item-title').textContent = item ? itemTitle(item) : t(live() ? 'setlist.empty' : 'operator.notLiveShort');
+    const titleText = item ? itemTitle(item) : t(live() ? 'setlist.empty' : 'operator.notLiveShort');
+    $('op-item-title').replaceChildren(item && arrangeable(item) && enabled
+      ? el('button', { type: 'button', class: 'title-button', id: 'op-arrange-current', 'aria-label': t('arrange.buttonLabel', { title: titleText }), onclick: () => arrange(item) },
+        titleText, el('span', { class: 'title-button-hint', 'data-icon': 'edit', text: t('arrange.button') }))
+      : titleText);
     // A verse / an announcement is one step: its reference / title and the first line of its text.
     const steps = stepsOf(item) || (item ? [{ code: '', label: itemTitle(item), firstLine: bodyLine(item) }] : []);
     $('op-steps').replaceChildren(...steps.map((entry, step) => {
@@ -228,6 +266,7 @@
     renderHead();
     renderList();
     renderCenter();
+    arrangedNote();
     renderSources();
     backgroundButton.update(state.snap);
     addSearch.render(); // its actions follow live()

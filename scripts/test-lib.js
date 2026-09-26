@@ -760,6 +760,11 @@ test('live: clamp after setlist and song changes', () => {
   assert.deepStrictEqual(L.clampPosition(old, [{ id: 9, steps: 1 }, { id: 10, steps: 2 }], { itemId: 3, step: 1 }), { itemId: 10, step: 0 });
   // Empty setlist: no position; a setlist that gains items starts at the first.
   assert.deepStrictEqual(L.clampPosition(old, [], { itemId: 1, step: 2 }), { itemId: null, step: 0 });
+  // a re-arranged song keeps the same section (the nearest occurrence); a removed one clamps
+  const before = [{ id: 1, steps: 4, sections: [10, 11, 12, 11] }];
+  assert.deepStrictEqual(L.clampPosition(before, [{ id: 1, steps: 4, sections: [12, 10, 11, 11] }], { itemId: 1, step: 2 }), { itemId: 1, step: 0 });
+  assert.deepStrictEqual(L.clampPosition(before, [{ id: 1, steps: 5, sections: [10, 11, 12, 13, 11] }], { itemId: 1, step: 3 }), { itemId: 1, step: 4 });
+  assert.deepStrictEqual(L.clampPosition(before, [{ id: 1, steps: 2, sections: [10, 11] }], { itemId: 1, step: 2 }), { itemId: 1, step: 1 });
   assert.deepStrictEqual(L.clampPosition([], [{ id: 7, steps: 2 }], { itemId: null, step: 0 }), { itemId: 7, step: 0 });
 });
 
@@ -1111,11 +1116,11 @@ test('live store: both positions clamp on their own after a setlist change; pers
   cmd({ type: 'live.mode', mode: 'split' });
   cmd({ type: 'projector.goto', itemId: v1, step: 0 }, 'operator');
   const before = live.layouts(1, eventId);
-  // the song loses its repeat (3 -> 2 steps) and Ps 1 is removed
+  // the song loses its repeat (V1 C V1 -> V1 C: the position on the 2nd V1 stays on V1) and Ps 1 is removed
   save([{ id: song, type: 'song', songId: 1, arrangement: 'V1 C' }, { id: v2, type: 'verse', reference: 'Ps 2' }]);
   live.setlistChanged(1, eventId, before);
   const s = live.snapshot(1, eventId);
-  assert.deepStrictEqual([s.worship.itemId, s.worship.step], [song, 1], 'worship clamped to the last step');
+  assert.deepStrictEqual([s.worship.itemId, s.worship.step], [song, 0], 'worship stays on the same section (V1)');
   assert.deepStrictEqual([s.projector.itemId, s.projector.step, s.mode], [v2, 0, 'split'], 'projector moved to the next item');
   // a new store on the same database (a server restart) reads the same state
   const again = require('../lib/live').createLiveStore(mem).snapshot(1, eventId);

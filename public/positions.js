@@ -11,13 +11,27 @@
 (function (root) {
   const NO_POSITION = Object.freeze({ itemId: null, step: 0 });
 
+  // A song also lists the section of each step (sections), so a re-arranged song keeps the
+  // position on the same section (clampPosition).
   function layoutOf(items) {
-    return items.map((item) => ({
-      id: item.id,
-      steps: item.type === 'song' && item.songId && Array.isArray(item.arrangementResolved)
-        ? Math.max(1, item.arrangementResolved.length)
-        : 1,
-    }));
+    return items.map((item) => {
+      const song = item.type === 'song' && item.songId && Array.isArray(item.arrangementResolved);
+      const out = { id: item.id, steps: song ? Math.max(1, item.arrangementResolved.length) : 1 };
+      if (song && item.arrangementResolved.every((a) => a.sectionId !== undefined)) out.sections = item.arrangementResolved.map((a) => a.sectionId);
+      return out;
+    });
+  }
+
+  // The step of the new arrangement showing the same section as `step` did (the nearest
+  // occurrence), or -1 when that section is no longer in it.
+  function sameSectionStep(oldItem, newItem, step) {
+    if (!oldItem || !oldItem.sections || !newItem.sections) return -1;
+    const section = oldItem.sections[step];
+    let best = -1;
+    newItem.sections.forEach((id, i) => {
+      if (id === section && (best < 0 || Math.abs(i - step) < Math.abs(best - step))) best = i;
+    });
+    return best;
   }
 
   function firstPosition(layout) {
@@ -64,7 +78,10 @@
     if (!newLayout.length) return { ...NO_POSITION };
     if (!pos || pos.itemId === null) return firstPosition(newLayout);
     const same = newLayout.find((it) => it.id === pos.itemId);
-    if (same) return { itemId: same.id, step: Math.min(Math.max(pos.step, 0), same.steps - 1) };
+    if (same) {
+      const kept = sameSectionStep(oldLayout.find((it) => it.id === pos.itemId), same, pos.step);
+      return { itemId: same.id, step: kept >= 0 ? kept : Math.min(Math.max(pos.step, 0), same.steps - 1) };
+    }
     const old = indexOf(oldLayout, pos);
     if (old >= 0) {
       for (const candidate of oldLayout.slice(old + 1)) {

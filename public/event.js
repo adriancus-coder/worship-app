@@ -295,9 +295,12 @@
 
   function select(index, focusDetail) {
     if (index !== state.selected) selectedChip = -1;
+    const opening = index >= 0 && index !== state.selected;
     state.selected = index;
     renderItems();
     renderDetail();
+    // Editing: tapping a song opens the arrange sheet (the details stay under it).
+    if (opening && state.editing && state.items[index] && state.items[index].type === 'song') openArrange(state.items[index]);
     if (focusDetail) {
       const first = detail.querySelector('input, textarea, select, a');
       if (first) first.focus();
@@ -463,6 +466,20 @@
       el('button', { type: 'button', class: 'secondary', id: 'opt-key-reset', disabled: transpose === 0, onclick: () => setTranspose(0), text: t('options.keyReset') }));
   }
 
+  // The arrange sheet (public/arrange-sheet.js): Aplică sets the key and the order here and
+  // marks the editor dirty; saving stays with "Salvează".
+  function openArrange(item) {
+    window.ARRANGE_SHEET.openForItem(item, {
+      onApply: ({ codes, transpose, isDefault }) => {
+        item.transpose = transpose;
+        item.arrangementCodes = codes;
+        item.arrangementIsDefault = isDefault;
+        item.arrangementWarnings = [];
+        optionChanged(item);
+      },
+    });
+  }
+
   function arrangementBlock(item, song) {
     const codes = arrangementCodes(item, song);
     const canonical = sectionCodes(song.sections);
@@ -582,6 +599,12 @@
     if (cached === 'error') return [el('p', { class: 'message error', text: t('common.networkError') })];
 
     const song = cached;
+    if (state.editing) {
+      parts.push(el('p', null, el('button', {
+        type: 'button', class: 'secondary', id: 'opt-arrange', 'data-icon': 'edit',
+        'aria-label': t('arrange.buttonLabel', { title: itemTitle(item) }), onclick: () => openArrange(item),
+      }, t('arrange.button'))));
+    }
     parts.push(keyBlock(item, song), arrangementBlock(item, song));
     if (state.editing) {
       parts.push(

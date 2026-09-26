@@ -123,6 +123,12 @@
     return parts;
   }
 
+  // "Toată cântarea": the whole song in the event's order, read-only (public/arrange-sheet.js).
+  $('whole-song').addEventListener('click', () => {
+    const item = state.items[state.index];
+    if (item) window.ARRANGE_SHEET.openForItem(item, { readOnly: true });
+  });
+
   async function render(focusSlide) {
     const item = state.items[state.index];
     const total = state.items.length;
@@ -135,11 +141,13 @@
 
     if (!item) {
       textOnlyButton.hidden = true;
+      $('whole-song').hidden = true;
       slide.replaceChildren(el('p', { class: 'muted', text: t('rehearse.empty') }));
       return;
     }
     const isSong = item.type === 'song' && Boolean(item.songId);
     textOnlyButton.hidden = !isSong;
+    $('whole-song').hidden = !isSong;
     textOnlyButton.setAttribute('aria-pressed', String(state.textOnly));
 
     if (isSong) {

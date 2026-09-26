@@ -150,7 +150,7 @@
     const live = state.snap.status === 'live';
     $('setlist').replaceChildren(...state.items.map((item, i) => {
       const isCurrent = live && pos.itemId === item.id;
-      return el('li', null, el('button', {
+      return el('li', { class: 'op-list-row' }, el('button', {
         type: 'button',
         class: `live-item${isCurrent ? ' current' : ''}`,
         'aria-current': isCurrent ? 'step' : null,
@@ -164,7 +164,12 @@
           el('span', { class: `type-badge type-${item.type}`, text: t(`setlist.types.${item.type}`) }),
           isCurrent ? el('span', { class: 'op-markers' }, el('span', { class: 'live-badge', text: t('live.liveBadge') })) : null),
         el('span', { class: 'item-title', text: itemTitle(item) }),
-        item.type === 'song' && item.displayKey ? el('span', { class: 'item-sub', text: t('options.songKeyShort', { key: window.NOTATION.chord(item.displayKey) }) }) : null)));
+        item.type === 'song' && item.displayKey ? el('span', { class: 'item-sub', text: t('options.songKeyShort', { key: window.NOTATION.chord(item.displayKey) }) }) : null)),
+      // Arranging stays a separate button: tapping the card moves the team.
+      arrangeable(item) ? el('button', {
+        type: 'button', class: 'secondary icon-button op-arrange', 'data-icon': 'edit', disabled: !live,
+        'aria-label': t('arrange.buttonLabel', { title: itemTitle(item) }), title: t('arrange.button'), onclick: () => arrange(item),
+      }) : null);
     }));
     if (!state.items.length) $('setlist').replaceChildren(el('li', { class: 'muted', text: t('setlist.empty') }));
   }
@@ -211,7 +216,10 @@
 
     const head = el('header', { class: 'current-head' },
       el('span', { class: `type-badge type-${item.type}`, text: t(`setlist.types.${item.type}`) }),
-      el('h3', { class: 'current-title', text: itemTitle(item) }),
+      el('h3', { class: 'current-title' }, arrangeable(item) && state.snap.status === 'live'
+        ? el('button', { type: 'button', class: 'title-button', id: 'arrange-current', 'aria-label': t('arrange.buttonLabel', { title: itemTitle(item) }), onclick: () => arrange(item) },
+          itemTitle(item), el('span', { class: 'title-button-hint', 'data-icon': 'edit', text: t('arrange.button') }))
+        : itemTitle(item)),
       item.type === 'song' && item.displayKey ? el('span', { class: 'key-badge', text: t('rehearse.key', { key: window.NOTATION.chord(item.displayKey) }) }) : null);
 
     if (item.type !== 'song' || !item.songId) {
@@ -286,6 +294,35 @@
     renderSetlist();
     renderInfo();
     renderCurrent();
+    arrangedNote();
+  }
+
+  // --- arranging a song during live (public/arrange-sheet.js): saved at once ------------
+
+  const arrangeable = (item) => item && item.type === 'song' && item.songId && item.scope !== 'projector';
+
+  function arrange(item) {
+    window.ARRANGE_SHEET.openForItem(item, {
+      onApply: async (result) => {
+        const out = await window.ARRANGE_SHEET.saveToEvent(state.event.id, item.id, result);
+        if (out.error) return showMessage(out.error, true);
+        showMessage(t('arrange.saved'));
+        state.arranged = { itemId: item.id, codes: result.codes.join(' ') };
+        render();
+      },
+    });
+  }
+
+  // Once the new order has arrived: where the team is now, if on that song.
+  function arrangedNote() {
+    const done = state.arranged;
+    if (!done || state.snap.status !== 'live') return;
+    const item = state.items.find((it) => it.id === done.itemId);
+    const steps = item && item.arrangementResolved;
+    if (!steps || steps.map((x) => x.code).join(' ') !== done.codes) return; // not yet here
+    state.arranged = null;
+    const { pos } = current();
+    if (pos && pos.itemId === item.id && steps[pos.step]) showMessage(t('arrange.moved', { label: `${steps[pos.step].code} · ${steps[pos.step].label}` }));
   }
 
   function gone() {

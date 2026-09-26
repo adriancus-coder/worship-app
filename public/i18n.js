@@ -410,6 +410,11 @@
         logoRemoved: 'Logo-ul a fost șters.',
       },
       arrange: {
+        button: 'Aranjează',
+        buttonLabel: 'Aranjează „{title}”',
+        saved: 'Aranjamentul a fost salvat.',
+        moved: 'Ordinea s-a schimbat · ești la {label}',
+        readOnlyButton: 'Toată cântarea',
         kicker: 'Aranjează pentru acest eveniment',
         kickerReadOnly: 'Cântarea, în ordinea din program',
         tabsLabel: 'Aranjare',
@@ -1396,6 +1401,11 @@
         logoRemoved: 'The logo was removed.',
       },
       arrange: {
+        button: 'Arrange',
+        buttonLabel: 'Arrange “{title}”',
+        saved: 'The arrangement was saved.',
+        moved: 'The order changed · you are at {label}',
+        readOnlyButton: 'The whole song',
         kicker: 'Arrange for this event',
         kickerReadOnly: 'The song, in the event order',
         tabsLabel: 'Arrangement',

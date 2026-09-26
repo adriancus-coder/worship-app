@@ -146,11 +146,18 @@
       el('strong', { text: nextLabel(pos) }));
   }
 
+  // "Toată cântarea": the whole song in the event's order, read-only (public/arrange-sheet.js).
+  $('whole-song').addEventListener('click', () => {
+    const item = state.snap && state.items.find((it) => it.id === shownPosition().itemId);
+    if (item) window.ARRANGE_SHEET.openForItem(item, { readOnly: true });
+  });
+
   async function renderSlide() {
     const renderId = ++state.renderId;
     const snap = state.snap;
     const status = snap.status;
     textOnlyButton.hidden = true;
+    $('whole-song').hidden = true;
     if (status !== 'live') {
       $('position').textContent = '';
       if (status === 'finished') {
@@ -171,6 +178,7 @@
       return;
     }
     const index = state.items.indexOf(item);
+    $('whole-song').hidden = !(item.type === 'song' && item.songId);
     $('position').textContent = t('follow.position', { n: index + 1, total: state.items.length });
     const head = el('header', { class: 'slide-head' },
       el('span', { class: `type-badge type-${item.type}`, text: t(`setlist.types.${item.type}`) }),
