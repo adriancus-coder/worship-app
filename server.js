@@ -30,6 +30,7 @@ const { createHomeRouter } = require('./routes/home');
 const { createTeamRouter } = require('./routes/team');
 const { createPositionsRouter } = require('./routes/positions');
 const { createAssignmentsRouter } = require('./routes/assignments');
+const { createUnavailabilityRouter } = require('./routes/unavailability');
 const { createPlatformRouter } = require('./routes/platform');
 const { createPwaRouter } = require('./routes/pwa');
 const { createLiveHub } = require('./socket/live');
@@ -115,6 +116,7 @@ app.use(createTeamRouter({ db, auth, config, logger, live, email, invites }));
 app.use(createPositionsRouter({ db, auth, logger }));
 const assignmentHooks = {}; // filled by the notifications module (stage 7)
 app.use(createAssignmentsRouter({ db, auth, logger, hooks: assignmentHooks }));
+app.use(createUnavailabilityRouter({ db, auth, logger }));
 app.use(createPlatformRouter({ db, auth, config, logger, live, screensHub, storage, email, invites }));
 app.use(createInvitesRouter({ db, auth, config, logger, live, email, invites }));
 app.use(createScreensRouter({ db, auth, config, logger, screensHub }));

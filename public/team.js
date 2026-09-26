@@ -50,6 +50,8 @@
             el('span', { class: `pill role-pill role-${user.role}`, text: owner ? t('team.roles.owner') : t(`team.roles.${user.role}`) }),
             owner ? null : el('span', { class: `pill status-pill status-${status}`, text: t(`team.status.${status}`) }),
             el('span', { class: 'muted', text: lastLogin(user.lastLoginAt) })),
+          // "Indisponibil" (lib/unavailability.js): the person's upcoming ranges, for the owner.
+          (user.unavailability || []).length ? el('p', { class: 'team-unavail' }, ...user.unavailability.map((r) => el('span', { class: 'pill unavail-pill', text: t('team.unavailable', { when: r.dateFrom === r.dateTo ? formatDate(r.dateFrom, String(new Date().getFullYear())) : t('unavail.range', { from: formatDate(r.dateFrom, String(new Date().getFullYear())), to: formatDate(r.dateTo, String(new Date().getFullYear())) }) }) }))) : null,
           // The person's usual positions (lib/positions.js), the pickers' default suggestions.
           el('p', { class: 'team-positions' }, ...((user.positionIds || []).map(positionName).filter(Boolean).length
             ? user.positionIds.map(positionName).filter(Boolean).map((name) => el('span', { class: 'pill position-pill', text: name }))

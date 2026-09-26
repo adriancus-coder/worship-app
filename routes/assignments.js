@@ -5,6 +5,7 @@ const { EVENT_ROLES, createEventStore } = require('../lib/events');
 const { createAssignmentStore, ASSIGN_ROLES, MAX_NOTE } = require('../lib/assignments');
 const { createPositionStore } = require('../lib/positions');
 const { createTeamStore } = require('../lib/team');
+const { createUnavailabilityStore } = require('../lib/unavailability');
 
 // The team of an event (lib/assignments.js).
 //   GET  /api/events/:id/assignments            everyone of the admin (members: no notes but their own)
@@ -19,6 +20,7 @@ function createAssignmentsRouter({ db, auth, logger, hooks = {} }) {
   const assignments = createAssignmentStore(db);
   const positions = createPositionStore(db);
   const team = createTeamStore(db);
+  const unavailability = createUnavailabilityStore(db);
 
   router.use('/api/events/:id/assignments', auth.requireUser, (req, res, next) => {
     res.set('Cache-Control', 'no-store');
@@ -50,7 +52,11 @@ function createAssignmentsRouter({ db, auth, logger, hooks = {} }) {
     if (canAssign(req)) {
       // The picker: every active person with their usual positions (unavailability: commit 3).
       const by = positions.byUser(req.adminId);
-      body.people = team.list(req.adminId).filter((u) => u.active).map((u) => ({ id: u.id, name: u.name, role: u.role, positionIds: by.get(u.id) || [] }));
+      const busy = found.event.isTemplate ? new Map() : unavailability.onDate(req.adminId, found.event.eventDate);
+      body.people = team.list(req.adminId).filter((u) => u.active).map((u) => ({
+        id: u.id, name: u.name, role: u.role, positionIds: by.get(u.id) || [],
+        unavailable: busy.has(u.id) ? { dateFrom: busy.get(u.id).dateFrom, dateTo: busy.get(u.id).dateTo, note: busy.get(u.id).note } : null,
+      }));
     }
     return body;
   }

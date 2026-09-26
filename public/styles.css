@@ -1624,6 +1624,14 @@ button.op-step:disabled { opacity: 1; cursor: default; }
 .now-assignment { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 10px 0 0; padding: 8px 12px; border: 1px solid var(--accent-fill); border-radius: var(--radius); }
 .now-assignment-text { font-weight: 600; }
 .now-team-summary { display: inline-flex; align-items: center; min-height: var(--touch); margin-top: 8px; padding: 6px 12px; font-weight: 600; color: var(--text-muted); border: 1px solid var(--border); border-radius: var(--radius); text-decoration: none; }
+.team-unavail { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 0 !important; font-size: 0.875rem; }
+.unavail-pill { color: var(--error); border-color: var(--error); }
+.unavail { display: flex; flex-direction: column; gap: 8px; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border); }
+.unavail h2, .unavail .hint, .unavail p { margin: 0; }
+.unavail-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.unavail-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 6px 10px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+.unavail-when { font-weight: 600; flex: 1 1 auto; }
+.unavail-form .field { margin-bottom: 8px; }
 .team-positions { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 0 !important; font-size: 0.875rem; }
 .position-pill { border-color: var(--border); color: var(--text-muted); }
 .positions-choice { margin: 4px 0 12px; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius); }

@@ -1525,6 +1525,30 @@ async function main() {
     for (const id of [copy.id, tpl.id, fromTpl.id]) await api('DELETE', `/api/events/${id}`, owner);
   });
 
+  await step('unavailability: own ranges; owner / leader read everyone\'s, others not; the picker greys the person out on the event day', async () => {
+    const added = await api('POST', '/api/me/unavailability', member, { dateFrom: '2026-11-01', dateTo: '2026-11-03', note: 'Plecat' });
+    assert.deepStrictEqual([added.status, added.body.ranges.length, added.body.range.note], [201, 1, 'Plecat']);
+    assert.strictEqual((await api('POST', '/api/me/unavailability', member, { dateFrom: '2026-11-05', dateTo: '2026-11-04' })).status, 400);
+    assert.strictEqual((await api('GET', '/api/me/unavailability', member)).body.ranges.length, 1);
+    assert.strictEqual((await api('GET', '/api/unavailability', member)).status, 403, 'members never see others\' ranges');
+    assert.strictEqual((await api('GET', '/api/unavailability', operator)).status, 403);
+    assert.strictEqual((await api('GET', '/api/unavailability', presenter)).status, 403);
+    const all = await api('GET', '/api/unavailability', leader);
+    const memberId = (await api('GET', '/api/team', owner)).body.users.find((u) => u.email === 'membru@x.ro').id;
+    assert.deepStrictEqual([all.status, all.body.byUser[String(memberId)].length], [200, 1]);
+    assert.strictEqual((await api('GET', '/api/team', owner)).body.users.find((u) => u.id === memberId).unavailability.length, 1, 'Echipa carries the ranges');
+    // the picker on an event in the period
+    const evU = (await api('POST', '/api/events', owner, { name: 'În concediu', eventDate: '2026-11-02' })).body.event;
+    const picker = (await api('GET', `/api/events/${evU.id}/assignments`, leader)).body.people.find((p) => p.id === memberId);
+    assert.deepStrictEqual(picker.unavailable, { dateFrom: '2026-11-01', dateTo: '2026-11-03', note: 'Plecat' });
+    const evFree = (await api('POST', '/api/events', owner, { name: 'Liber', eventDate: '2026-11-04' })).body.event;
+    assert.strictEqual((await api('GET', `/api/events/${evFree.id}/assignments`, leader)).body.people.find((p) => p.id === memberId).unavailable, null);
+    assert.strictEqual((await api('DELETE', `/api/me/unavailability/${added.body.range.id}`, leader)).status, 404, 'not theirs');
+    assert.deepStrictEqual((await api('DELETE', `/api/me/unavailability/${added.body.range.id}`, member)).body.ranges, []);
+    await api('DELETE', `/api/events/${evU.id}`, owner);
+    await api('DELETE', `/api/events/${evFree.id}`, owner);
+  });
+
   await step('view as: an owner sees the app as member / operator / leader (every guard follows), back restores all; a leader cannot', async () => {
     const viewAs = (cookie, role) => api('PUT', '/api/me/view-as', cookie, { role });
     const page = (url, cookie) => fetch(base() + url, { headers: { Cookie: cookie }, redirect: 'manual' }).then((r) => r.status);

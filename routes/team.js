@@ -6,6 +6,9 @@ const { hashPassword, requireRole } = require('../lib/auth');
 const { temporaryPassword, validateName, validateEmail, validateRole, createTeamStore } = require('../lib/team');
 const { emailErrorResponse } = require('./invites');
 const { createPositionStore } = require('../lib/positions');
+const { createUnavailabilityStore } = require('../lib/unavailability');
+const { todayIn } = require('../lib/dates');
+const { createAdminSettings } = require('../lib/admin-settings');
 
 // The owner manages the admin's team: accounts with temporary passwords (shown once, never
 // logged), role and name changes, deactivation, password resets. Owner only; another admin's
@@ -14,6 +17,8 @@ function createTeamRouter({ db, auth, config, logger, live, email, invites }) {
   const router = express.Router();
   const team = createTeamStore(db);
   const positions = createPositionStore(db);
+  const unavailability = createUnavailabilityStore(db);
+  const settings = createAdminSettings(db);
   const withPositions = (adminId, users) => { const by = positions.byUser(adminId); return users.map((u) => ({ ...u, positionIds: by.get(u.id) || [] })); };
   const baseUrl = (req) => config.PUBLIC_BASE_URL || `${req.protocol}://${req.get('host')}`;
 
@@ -41,7 +46,11 @@ function createTeamRouter({ db, auth, config, logger, live, email, invites }) {
 
   router.get('/api/team', (req, res) => {
     // baseUrl: the address in the welcome message (null: the page uses its own origin).
-    res.json({ users: withPositions(req.adminId, team.list(req.adminId)), positions: positions.list(req.adminId), baseUrl: config.PUBLIC_BASE_URL, emailEnabled: email.enabled });
+    const busy = unavailability.byUser(req.adminId, todayIn(settings.timezone(req.adminId)));
+    res.json({
+      users: withPositions(req.adminId, team.list(req.adminId)).map((u) => ({ ...u, unavailability: busy.get(u.id) || [] })),
+      positions: positions.list(req.adminId), baseUrl: config.PUBLIC_BASE_URL, emailEnabled: email.enabled,
+    });
   });
 
   // "Trimite / Retrimite invitația": a fresh invitation link by email, while the person has

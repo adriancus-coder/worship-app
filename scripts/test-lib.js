@@ -1896,6 +1896,7 @@ testAsync('platform deletion: refused while active, the exact name, pending -> c
     const posId = Number(db.prepare("INSERT INTO positions (admin_id, name, sort) VALUES (?, 'Voce', 0)").run(a).lastInsertRowid);
     db.prepare('INSERT INTO users_positions (user_id, position_id, admin_id) VALUES (?, ?, ?)').run(userId, posId, a);
     db.prepare("INSERT INTO event_assignments (event_id, admin_id, user_id, position_id, created_at) VALUES (?, ?, ?, ?, 0)").run(eventId, a, userId, posId);
+    db.prepare("INSERT INTO unavailability (admin_id, user_id, date_from, date_to) VALUES (?, ?, '2026-10-01', '2026-10-02')").run(a, userId);
     fs.mkdirSync(path.join(dataDir, 'uploads', `admin-${a}`, 'media'), { recursive: true });
     fs.writeFileSync(path.join(dataDir, 'uploads', `admin-${a}`, 'media', 'f.bin'), Buffer.alloc(64, 1));
   };
@@ -2208,5 +2209,34 @@ test('assignments (migration 030): replace keeps answers, answers are the person
   // a copy: pending, not sent
   assert.strictEqual(A.copyFrom(1, 1, 2, 1), 2);
   assert.deepStrictEqual(A.list(1, 2).map((r) => [r.status, r.notifiedAt, r.note]), [['pending', null, null], ['pending', null, null]]);
+  mem.close();
+});
+
+test('unavailability (migration 031): own ranges, validation, who is busy on a date, upcoming per user', () => {
+  const Database = require('better-sqlite3');
+  const { runMigrations } = require('../lib/db');
+  const { createUnavailabilityStore, validateRange } = require('../lib/unavailability');
+  const mem = new Database(':memory:');
+  mem.pragma('foreign_keys = ON');
+  runMigrations(mem);
+  mem.prepare("INSERT INTO admins (id, name, created_at) VALUES (1, 'A', 0)").run();
+  mem.prepare("INSERT INTO users (id, admin_id, email, name, password_hash, role, created_at) VALUES (1, 1, 'a@x.ro', 'A', 'x', 'member', 0), (2, 1, 'b@x.ro', 'B', 'x', 'member', 0)").run();
+  const U = createUnavailabilityStore(mem);
+  const k = (key) => key;
+  assert.deepStrictEqual(validateRange({ dateFrom: '2026-10-10' }, k), { value: { dateFrom: '2026-10-10', dateTo: '2026-10-10', note: '' } }, 'one day');
+  assert.deepStrictEqual(validateRange({ dateFrom: '2026-10-10', dateTo: '2026-10-12', note: ' Concediu ' }, k).value, { dateFrom: '2026-10-10', dateTo: '2026-10-12', note: 'Concediu' });
+  assert.ok(validateRange({ dateFrom: '2026-10-12', dateTo: '2026-10-10' }, k).error && validateRange({ dateFrom: '2026-13-40' }, k).error && validateRange({}, k).error);
+  const a = U.add(1, 1, { dateFrom: '2026-10-10', dateTo: '2026-10-12', note: 'Concediu' });
+  U.add(1, 1, { dateFrom: '2026-09-01', dateTo: '2026-09-02', note: '' });
+  U.add(1, 2, { dateFrom: '2026-10-11', dateTo: '2026-10-11', note: '' });
+  assert.deepStrictEqual(U.listForUser(1, 1, '2026-09-05').map((r) => r.dateFrom), ['2026-10-10'], 'past ranges are gone from the list');
+  assert.deepStrictEqual([...U.onDate(1, '2026-10-11').keys()], [1, 2]);
+  assert.strictEqual(U.onDate(1, '2026-10-11').get(1).note, 'Concediu');
+  assert.deepStrictEqual([...U.onDate(1, '2026-10-13').keys()], []);
+  assert.deepStrictEqual([...U.byUser(1, '2026-10-11').keys()], [1, 2]);
+  assert.strictEqual(U.removeOwn(1, 2, a.id), false, 'not theirs');
+  assert.strictEqual(U.removeOwn(1, 1, a.id), true);
+  assert.deepStrictEqual([...U.onDate(1, '2026-10-11').keys()], [2]);
+  assert.throws(() => mem.prepare("INSERT INTO unavailability (admin_id, user_id, date_from, date_to) VALUES (1, 1, '2026-10-12', '2026-10-10')").run(), /CHECK/);
   mem.close();
 });
