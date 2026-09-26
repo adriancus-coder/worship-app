@@ -87,8 +87,17 @@
     return sectionCodes(sections);
   }
 
+  // The first lyric line of a section: chords stripped, spaces collapsed, empty lines
+  // skipped. The one helper for the live step buttons, the arrange sheet and the event
+  // editor's order summary.
+  function firstLyricLine(content) {
+    const chords = typeof module === 'object' && module.exports ? require('./chords.js') : root.CHORDS;
+    return chords.stripChords(content || '').split('\n').map((line) => line.replace(/\s+/g, ' ').trim()).find(Boolean) || '';
+  }
+
   const SECTIONS = {
     SECTION_TYPES,
+    firstLyricLine,
     SONG_KEYS,
     TYPE_CODES,
     sectionLabels,

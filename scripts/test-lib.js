@@ -1342,6 +1342,9 @@ test('arrange sheet: insert after the chosen row, move, remove, reset, key, flow
   assert.deepStrictEqual(A.flow(song.sections, ['V1', 'C', 'X9', 'C', 'B']).map((x) => `${x.code}:${x.index}`), ['V1:0', 'C:1', 'C:1', 'B:3']);
   // the first lyric line of a row, chords stripped (empty lines skipped)
   assert.deepStrictEqual(song.sections.map((sec) => A.firstLine(sec.content)), ['Ne ridici din noaptea grea', 'Sfânt, sfânt, sfânt', 'A doua strofă', 'Punte']);
+  // one helper everywhere: the step buttons (server), the sheet and the editor summary
+  assert.strictEqual(A.firstLine('[G]  Doi   spații\n'), require('../lib/sections').firstLyricLine('[G]  Doi   spații\n'));
+  assert.strictEqual(require('../lib/sections').firstLyricLine('\n[C]Sfânt, [G/B]sfânt'), 'Sfânt, sfânt');
   // transposed sections: +2 moves G to A, the lyrics stay
   const up = A.transposed(song, 2);
   assert.strictEqual(up[0].content, '[A]Ne ridici din [E]noaptea grea\n[F#m]Tu ești lumina mea');

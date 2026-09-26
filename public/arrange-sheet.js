@@ -61,10 +61,8 @@
     return codes.map((code) => ({ code, index: SECTIONS.codeIndex(code, sections) })).filter((x) => x.index >= 0);
   }
 
-  // The first lyric line of a section (chords stripped).
-  function firstLine(content) {
-    return CHORDS.stripChords(content || '').split('\n').map((line) => line.replace(/\s+/g, ' ').trim()).find(Boolean) || '';
-  }
+  // The first lyric line of a section: the shared helper (public/sections.js).
+  const firstLine = (content) => SECTIONS.firstLyricLine(content);
 
   // Sections with their chords moved to the key after `transpose` semitones.
   function transposed(song, transpose) {

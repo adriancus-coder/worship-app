@@ -488,7 +488,7 @@
     const isDefault = item.arrangementIsDefault !== false;
     const rows = codes.map((code) => {
       const index = canonical.indexOf(code);
-      const line = index >= 0 ? window.ARRANGE_SHEET.firstLine(song.sections[index].content) : '';
+      const line = index >= 0 ? window.SECTIONS.firstLyricLine(song.sections[index].content) : '';
       return el('li', { class: 'order-summary-row', title: line || null },
         el('span', { class: 'step-head' }, el('span', { class: 'step-code', text: code }), el('span', { class: 'step-label', text: labels[index] || code })),
         line ? el('span', { class: 'step-line', text: line }) : null);
