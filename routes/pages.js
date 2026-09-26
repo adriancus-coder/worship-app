@@ -122,6 +122,11 @@ function createPagesRouter({ db, auth, sendPage }) {
     if (!req.session.platformOwner) return res.redirect('/app');
     sendPage(req, res, 'platform');
   });
+  // One church on the platform page (its counts, team and screens).
+  router.get('/platform/:id(\\d+)', noStore, signedIn, (req, res) => {
+    if (!req.session.platformOwner) return res.redirect('/app');
+    sendPage(req, res, 'platform-church');
+  });
 
   // Admin settings (the church logo): owner only.
   router.get('/settings', noStore, signedIn, (req, res) => {

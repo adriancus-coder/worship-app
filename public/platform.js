@@ -60,7 +60,8 @@
       const usage = t('platform.storage', { used: size(admin.storageBytes), max: size(admin.mediaMaxBytes) });
       return el('li', { class: `team-row church-row${admin.active ? '' : ' inactive'}${admin.platform ? ' platform' : ''}` },
         el('div', { class: 'team-main' },
-          el('p', { class: 'team-name' }, el('span', { text: admin.name }),
+          // The name opens the church's page (counts, team, screens).
+          el('p', { class: 'team-name' }, el('a', { class: 'church-link', href: `/platform/${admin.id}`, text: admin.name, 'aria-label': t('platformChurch.open', { name: admin.name }) }),
             admin.platform ? el('span', { class: 'pill platform-pill', text: t('platform.platformChurch') }) : null),
           el('p', { class: 'team-email', text: admin.ownerEmail || '—' }),
           el('p', { class: 'team-meta' },

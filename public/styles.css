@@ -2020,3 +2020,37 @@ dialog.song-pick-dialog .song-pick > .ss-results { flex: 1 1 0; height: 0; --pan
 .quick-details .message:empty { display: none; }
 @media (min-width: 900px) { .quick-fields { grid-template-columns: 2fr 1fr 1fr 2fr; } .quick-name, .quick-template { grid-column: auto; } }
 .service-row .field { min-width: 0; }
+
+/* One church on the platform (/platform/:id): header card, usage cards, settings, backup. */
+.church-link { display: inline-flex; align-items: center; min-height: var(--touch); color: var(--text); text-decoration: underline; text-decoration-color: var(--border); text-underline-offset: 3px; }
+.church-link:hover, .church-link:focus-visible { text-decoration-color: currentColor; }
+.church-head { margin: 0 0 12px; padding: 12px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+.church-title { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.church-title h1 { margin: 0; font-size: 1.5rem; overflow-wrap: anywhere; }
+.church-head > .muted { margin: 6px 0 0; overflow-wrap: anywhere; }
+.church-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.church-actions button { flex: 1 1 calc(50% - 4px); min-height: var(--touch); }
+.church-actions button[hidden] { display: none; }
+.church-head .message { margin: 8px 0 0; }
+.church-head .message:empty { display: none; }
+@media (min-width: 720px) { .church-actions button { flex: none; } }
+.usage-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin: 0 0 10px; }
+.usage-card { padding: 10px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); min-width: 0; }
+.usage-card p { margin: 0; overflow-wrap: anywhere; }
+.usage-value { font-size: 1.5rem; font-weight: 700; }
+.usage-label { font-weight: 600; overflow-wrap: normal; hyphens: auto; }
+.usage-detail { margin-top: 2px !important; font-size: 0.8125rem; color: var(--text-muted); }
+.church-card { margin: 0 0 10px; padding: 12px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+.church-card-title { margin: 0 0 8px; font-size: 1rem; }
+.church-card p { margin: 0; }
+.church-card .storage-used { margin-bottom: 8px; }
+.church-card .message { margin-top: 8px; }
+.church-card.warn { border-color: var(--error); }
+.church-settings { display: grid; grid-template-columns: max-content 1fr; gap: 4px 12px; margin: 0; }
+.church-settings dt { color: var(--text-muted); }
+.church-settings dd { margin: 0; overflow-wrap: anywhere; }
+#panel-team .page-head { margin-bottom: 8px; }
+#panel-team .page-head .muted { flex: 1 1 200px; margin: 0; }
+#team-own { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 0 0 10px; }
+#team-own[hidden] { display: none; }
+.church-page [role="tabpanel"][hidden] { display: none; }

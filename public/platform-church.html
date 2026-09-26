@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="{{LANG}}" data-app-name="{{APP_NAME}}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#141318">
+  <title data-i18n="platformChurch.pageTitle">{{APP_NAME}}</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body data-shell="more" class="list-page">
+  <main class="wide team-page church-page">
+    <p class="back"><a id="back-link" href="/platform" data-i18n="platformChurch.back"></a></p>
+    <p id="status" class="muted" role="status" aria-live="polite" data-i18n="events.loading"></p>
+
+    <div id="church" hidden>
+      <!-- The header card: who, status, when; the church-level actions. -->
+      <header class="church-head">
+        <div class="church-title">
+          <h1 id="church-name"></h1>
+          <span id="church-status" class="pill status-pill"></span>
+          <span id="church-platform" class="pill platform-pill" hidden data-i18n="platform.platformChurch"></span>
+        </div>
+        <p id="church-meta" class="muted"></p>
+        <div class="church-actions" id="church-actions">
+          <button type="button" class="secondary" id="act-reset" data-icon="key" data-i18n="platform.reset"></button>
+          <button type="button" class="secondary" id="act-quota" data-icon="upload" data-i18n="platform.quota"></button>
+          <button type="button" class="secondary danger-text" id="act-deactivate" data-icon="close" data-i18n="platform.deactivate"></button>
+          <button type="button" class="secondary" id="act-reactivate" data-icon="restart" data-i18n="platform.reactivate"></button>
+        </div>
+        <p id="page-message" class="message" role="status" aria-live="polite"></p>
+      </header>
+
+      <div class="tabs" role="tablist" data-i18n-aria-label="platformChurch.tabsLabel">
+        <button type="button" role="tab" id="tab-overview" aria-controls="panel-overview" aria-selected="true" data-i18n="platformChurch.tabOverview"></button>
+        <button type="button" role="tab" id="tab-team" aria-controls="panel-team" aria-selected="false" tabindex="-1" data-i18n="platformChurch.tabTeam"></button>
+        <button type="button" role="tab" id="tab-screens" aria-controls="panel-screens" aria-selected="false" tabindex="-1" data-i18n="platformChurch.tabScreens"></button>
+      </div>
+
+      <!-- Prezentare: usage cards, the storage bar, the settings summary, the last backup. -->
+      <section id="panel-overview" role="tabpanel" aria-labelledby="tab-overview" class="team-pane" data-list-pane="platformChurch.tabOverview">
+        <div class="usage-grid" id="usage"></div>
+        <section class="church-card" aria-labelledby="storage-heading">
+          <h2 id="storage-heading" class="church-card-title" data-i18n="platformChurch.storageHeading"></h2>
+          <p id="storage-text" class="storage-used"></p>
+          <div class="storage-bar" id="storage-bar" aria-hidden="true"><span class="storage-fill" id="storage-fill"></span></div>
+        </section>
+        <section class="church-card" aria-labelledby="settings-heading">
+          <h2 id="settings-heading" class="church-card-title" data-i18n="platformChurch.settingsHeading"></h2>
+          <dl class="church-settings" id="settings"></dl>
+        </section>
+        <section class="church-card" id="backup-card" aria-labelledby="backup-heading">
+          <h2 id="backup-heading" class="church-card-title" data-i18n="platformChurch.backupHeading"></h2>
+          <p id="backup-text"></p>
+          <p id="backup-warning" class="message error" role="alert" hidden data-i18n="platformChurch.backupOld"></p>
+        </section>
+      </section>
+
+      <!-- Echipa: the church's accounts, the same interactions as /team. -->
+      <section id="panel-team" role="tabpanel" aria-labelledby="tab-team" hidden>
+        <div class="page-head">
+          <p class="muted" id="team-intro" data-i18n="platformChurch.teamIntro"></p>
+          <button type="button" id="add-person" data-icon="person-plus" data-i18n="team.add"></button>
+        </div>
+        <!-- The platform's own church: one editor for its accounts. -->
+        <p id="team-own" class="hint" hidden><span data-i18n="platformChurch.ownTeam"></span> <a href="/team" class="button secondary" data-icon="team" data-i18n="platformChurch.ownTeamLink"></a></p>
+        <div class="team-pane" data-list-pane="platformChurch.tabTeam">
+          <p id="team-status" class="muted pane-state" role="status" aria-live="polite"></p>
+          <ul id="team" class="team-list"></ul>
+        </div>
+      </section>
+
+      <!-- Ecrane: the paired screens, with revoke. -->
+      <section id="panel-screens" role="tabpanel" aria-labelledby="tab-screens" hidden>
+        <p class="muted" data-i18n="platformChurch.screensIntro"></p>
+        <div class="team-pane" data-list-pane="platformChurch.tabScreens">
+          <p id="screens-status" class="muted pane-state" role="status" aria-live="polite"></p>
+          <ul id="screens" class="screen-list"></ul>
+        </div>
+      </section>
+    </div>
+
+    <dialog id="add-dialog" aria-labelledby="add-heading">
+      <form id="add-form" method="dialog" novalidate>
+        <h2 id="add-heading" data-i18n="team.addHeading"></h2>
+        <label><span data-i18n="team.nameLabel"></span><input type="text" id="add-name" maxlength="100" autocomplete="off" required></label>
+        <label><span data-i18n="team.emailLabel"></span><input type="email" id="add-email" maxlength="254" inputmode="email" autocomplete="off" autocapitalize="off" spellcheck="false" required></label>
+        <fieldset class="role-choice">
+          <legend data-i18n="team.roleLabel"></legend>
+          <label class="role-option"><input type="radio" name="add-role" value="leader"><span><strong data-i18n="team.roles.leader"></strong><span class="hint" data-i18n="team.roleHelp.leader"></span></span></label>
+          <label class="role-option"><input type="radio" name="add-role" value="operator"><span><strong data-i18n="team.roles.operator"></strong><span class="hint" data-i18n="team.roleHelp.operator"></span></span></label>
+          <label class="role-option"><input type="radio" name="add-role" value="member" checked><span><strong data-i18n="team.roles.member"></strong><span class="hint" data-i18n="team.roleHelp.member"></span></span></label>
+        </fieldset>
+        <p id="add-message" class="message error" role="alert"></p>
+        <div class="form-actions">
+          <button type="submit" id="add-submit" data-icon="person-plus" data-i18n="team.create"></button>
+          <button type="button" class="secondary" data-close data-i18n="team.cancel"></button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="edit-dialog" aria-labelledby="edit-heading">
+      <form id="edit-form" method="dialog" novalidate>
+        <h2 id="edit-heading" data-i18n="team.editHeading"></h2>
+        <label><span data-i18n="team.nameLabel"></span><input type="text" id="edit-name" maxlength="100" autocomplete="off" required></label>
+        <label><span data-i18n="team.roleLabel"></span>
+          <select id="edit-role">
+            <option value="leader" data-i18n="team.roles.leader"></option>
+            <option value="operator" data-i18n="team.roles.operator"></option>
+            <option value="member" data-i18n="team.roles.member"></option>
+          </select>
+        </label>
+        <p id="edit-message" class="message error" role="alert"></p>
+        <div class="form-actions">
+          <button type="submit" id="edit-submit" data-icon="check" data-i18n="team.save"></button>
+          <button type="button" class="secondary" data-close data-i18n="team.cancel"></button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="quota-dialog" aria-labelledby="quota-heading">
+      <form id="quota-form" method="dialog" novalidate>
+        <h2 id="quota-heading"></h2>
+        <label><span data-i18n="platform.quotaLabel"></span><input type="number" id="quota-mb" min="1" step="1" inputmode="numeric"></label>
+        <p id="quota-hint" class="hint"></p>
+        <p id="quota-message" class="message error" role="alert"></p>
+        <div class="form-actions">
+          <button type="submit" id="quota-submit" data-icon="check" data-i18n="team.save"></button>
+          <button type="button" class="secondary" data-close data-i18n="team.cancel"></button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="confirm-dialog" aria-labelledby="confirm-heading">
+      <h2 id="confirm-heading"></h2>
+      <p id="confirm-text"></p>
+      <p id="confirm-message" class="message error" role="alert"></p>
+      <div class="form-actions">
+        <button type="button" id="confirm-yes"></button>
+        <button type="button" class="secondary" data-close data-i18n="team.cancel"></button>
+      </div>
+    </dialog>
+
+    <dialog id="result-dialog" class="result-dialog" aria-labelledby="result-heading">
+      <h2 id="result-heading"></h2>
+      <p class="result-warning" role="alert" data-i18n="team.shownOnce"></p>
+      <dl class="result-card">
+        <dt data-i18n="team.emailLabel"></dt>
+        <dd id="result-email"></dd>
+        <dt data-i18n="team.temporaryPassword"></dt>
+        <dd id="result-password" class="result-password" translate="no"></dd>
+      </dl>
+      <button type="button" class="secondary" id="copy-password" data-icon="copy" data-i18n="team.copy"></button>
+      <label class="result-message-label"><span data-i18n="team.messageLabel"></span>
+        <textarea id="result-message" rows="6" readonly></textarea>
+      </label>
+      <div class="form-actions">
+        <button type="button" id="copy-message" data-icon="copy" data-i18n="team.copyMessage"></button>
+        <button type="button" class="secondary" id="share-message" hidden data-icon="share" data-i18n="team.share"></button>
+      </div>
+      <p id="copy-status" class="message success" role="status" aria-live="polite"></p>
+      <div class="form-actions">
+        <button type="button" class="secondary" data-close data-i18n="team.done"></button>
+      </div>
+    </dialog>
+  </main>
+  <script src="/i18n.js"></script>
+  <script src="/page.js"></script>
+  <script src="/list-pane.js"></script>
+  <script src="/shell.js"></script>
+  <script src="/platform-church.js"></script>
+</body>
+</html>
