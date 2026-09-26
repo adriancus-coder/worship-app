@@ -1640,6 +1640,32 @@ test('"■ Sfârșit": moves after an ended item; the frame while ended', () => 
   assert.strictEqual(projectorFrame(snap({ itemId: 2, step: 0, ended: false }, { ...split, ended: true }), event, new Map()).kind, 'black');
 });
 
+test('backup temp sweep: leftover .backup-* folders older than 1 h go at startup, fresh ones stay', () => {
+  const fs = require('fs');
+  const os = require('os');
+  const path = require('path');
+  const Database = require('better-sqlite3');
+  const { runMigrations } = require('../lib/db');
+  const { createBackupService, SWEEP_AFTER_MS } = require('../lib/backup');
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'wa-sweep-'));
+  const db = new Database(':memory:');
+  runMigrations(db);
+  const backups = createBackupService({ db, dataDir, config: { APP_NAME: 'x', VERSION: '0' } });
+  const old = path.join(dataDir, '.backup-old');
+  const fresh = path.join(dataDir, '.backup-fresh');
+  fs.mkdirSync(old);
+  fs.writeFileSync(path.join(old, 'worship.db'), 'x');
+  fs.mkdirSync(fresh);
+  fs.mkdirSync(path.join(dataDir, 'uploads'));
+  const twoHoursAgo = new Date(Date.now() - 2 * SWEEP_AFTER_MS);
+  fs.utimesSync(old, twoHoursAgo, twoHoursAgo);
+  assert.strictEqual(backups.sweepTemp(), 1);
+  assert.deepStrictEqual(fs.readdirSync(dataDir).sort(), ['.backup-fresh', 'uploads'], 'the fresh one (a request in progress) and everything else stay');
+  assert.strictEqual(backups.sweepTemp(), 0, 'nothing more to do');
+  db.close();
+  fs.rmSync(dataDir, { recursive: true, force: true });
+});
+
 (async () => {
   for (const [name, fn] of asyncTests) {
     try {

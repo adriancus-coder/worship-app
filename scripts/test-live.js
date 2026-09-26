@@ -1102,7 +1102,20 @@ async function main() {
       copy.close();
       fs.rmSync(copyFile, { force: true });
     }
-    assert.ok(!fs.readdirSync(dataDir).some((n) => n.startsWith('.backup-')), 'temp files removed');
+    // Removed before the response finishes; polled anyway, so a slow disk never fails this.
+    const leftovers = () => fs.readdirSync(dataDir).filter((n) => n.startsWith('.backup-'));
+    for (let i = 0; i < 40 && leftovers().length; i++) await new Promise((r) => setTimeout(r, 50));
+    assert.deepStrictEqual(leftovers(), [], 'temp files removed');
+    // A client that goes away mid-download: the temp copy still goes.
+    const ctrl = new AbortController();
+    const partial = fetch(`${base()}/api/backup`, { headers: { Cookie: owner }, signal: ctrl.signal });
+    const started = await partial;
+    const reader = started.body.getReader();
+    await reader.read();
+    ctrl.abort();
+    await reader.read().catch(() => {});
+    for (let i = 0; i < 40 && leftovers().length; i++) await new Promise((r) => setTimeout(r, 50));
+    assert.deepStrictEqual(leftovers(), [], 'temp files removed after an abort');
     const info = (await api('GET', '/api/settings', owner)).body.backup;
     assert.strictEqual(info.lastBytes, zip.length);
     assert.ok(Date.now() - info.lastAt < 60000);
