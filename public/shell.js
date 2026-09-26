@@ -23,6 +23,7 @@
     media: 'M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zM10 9l5 3-5 3z',
     screens: 'M3 4h18v12H3zM8 20h8M12 16v4',
     team: 'M16 19v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1M9 10a3 3 0 1 0 0-6 3 3 0 0 0 0 6M22 19v-1a4 4 0 0 0-3-3.9M16 4.1a3 3 0 0 1 0 5.8',
+    platform: 'M3 21h18M5 21V8l7-5 7 5v13M9 21v-6h6v6M9 10h.01M15 10h.01',
     settings: 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-2.9-1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 3.1 15H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.2-2.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 9 4.6V4a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0 1.2 2.9H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z',
     password: 'M6 11h12a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1zM8 11V7a4 4 0 0 1 8 0v4M12 15v2',
     logout: 'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9',
@@ -153,6 +154,8 @@
     { id: 'screens', href: '/screens', key: 'shell.screens', icon: 'screens', roles: EDITOR_ROLES },
     { id: 'team', href: '/team', key: 'shell.team', icon: 'team', roles: ['owner'] },
     { id: 'settings', href: '/settings', key: 'shell.settings', icon: 'settings', roles: ['owner'] },
+    // The platform owner only (the churches on this server).
+    { id: 'platform', href: '/platform', key: 'shell.platform', icon: 'platform', roles: ['owner'], platform: true },
   ].map(pageRow);
   const accountLinks = [
     { id: 'password', href: '/change-password', key: 'shell.password', icon: 'password', roles: ['owner', 'leader', 'operator', 'member'] },
@@ -304,7 +307,7 @@
     if (me) {
       whoName.textContent = me.user.name;
       whoRole.textContent = t('shell.roleAt', { role: t(`roles.${me.user.role}`), adminName: me.admin.name });
-      for (const p of pageLinks) p.item.hidden = !p.roles.includes(me.user.role);
+      for (const p of pageLinks) p.item.hidden = !p.roles.includes(me.user.role) || (p.platform && !me.platformOwner);
     } else {
       whoName.textContent = t('shell.more');
     }

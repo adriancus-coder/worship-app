@@ -91,6 +91,7 @@ function createAuthRouter({ db, auth, config, logger, live }) {
         themeOwn: req.user.theme || null,
       },
       admin: req.admin,
+      platformOwner: Boolean(req.platformOwner), // "Mai mult → Platformă"
     });
   });
 

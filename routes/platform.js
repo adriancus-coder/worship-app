@@ -14,7 +14,7 @@ const HOUR_MS = 60 * 60 * 1000;
 // list, create (with an owner and a temporary password shown once), deactivate /
 // reactivate, a new temporary password for a church's owner, the media quota. Every
 // action is logged. Everyone else gets 403.
-function createPlatformRouter({ db, auth, config, logger, live, screensHub }) {
+function createPlatformRouter({ db, auth, config, logger, live, screensHub, storage }) {
   const router = express.Router();
   const store = createPlatformStore(db, { dataDir: config.DATA_DIR, defaultMediaMaxBytes: config.MEDIA_MAX_ADMIN_BYTES });
   const createLimiter = createRequestLimiter({ maxRequests: CREATE_LIMIT, windowMs: HOUR_MS });
@@ -40,7 +40,8 @@ function createPlatformRouter({ db, auth, config, logger, live, screensHub }) {
 
   router.get('/api/platform/admins', (req, res) => {
     // baseUrl: the address in the welcome message (null: the page uses its own origin).
-    res.json({ admins: store.list(auth.platformAdminId()), baseUrl: config.PUBLIC_BASE_URL, defaultMediaMaxBytes: config.MEDIA_MAX_ADMIN_BYTES });
+    // disk: the whole data disk, for the total against it.
+    res.json({ admins: store.list(auth.platformAdminId()), baseUrl: config.PUBLIC_BASE_URL, defaultMediaMaxBytes: config.MEDIA_MAX_ADMIN_BYTES, disk: storage.usage() });
   });
 
   router.post('/api/platform/admins', asyncRoute(async (req, res) => {
