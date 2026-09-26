@@ -16,7 +16,7 @@
   const $ = (id) => document.getElementById(id);
   const eventId = Number(window.location.pathname.split('/')[2]);
 
-  const state = { event: null, items: [], loadedKey: null, loading: null, songs: new Map(), snap: null, client: null, queue: Promise.resolve(), cached: null };
+  const state = { event: null, items: [], loadedKey: null, loading: null, songs: new Map(), snap: null, seq: 0, client: null, queue: Promise.resolve(), cached: null };
 
   // --- data -------------------------------------------------------------------------
 
@@ -672,17 +672,20 @@
       onState: (snap) => {
         if (emergency.reconnected) reconcile(snap);
         state.snap = snap;
+        // Only a newer snapshot makes this one stale - not a presence update, which replaces
+        // state.snap too (else a page joined while someone else is online never renders).
+        const seq = ++state.seq;
         // While the event is live the "new version" toast waits (public/pwa.js).
         document.documentElement.toggleAttribute('data-pwa-hold', snap.status === 'live');
         if (!emergency.active) window.EVENT_CACHE.save({ eventId, snap });
         syncSetlist(snap).then(() => {
-          if (state.snap !== snap || !state.event) return;
+          if (state.seq !== seq || !state.event) return;
           $('status').hidden = true;
           $('live').hidden = false;
           render();
           renderProjector();
           videoPanel.setSetlist(state.items);
-          videoPanel.update(snap);
+          videoPanel.update(state.snap); // with the presence that may have arrived meanwhile
         }).catch(() => {}); // server unreachable meanwhile: the next snapshot tries again
       },
       onPresence: (presence) => {

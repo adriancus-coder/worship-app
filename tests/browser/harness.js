@@ -182,6 +182,9 @@ async function signIn(ctx, role, { width = 1024, height, lang = 'ro', touch = wi
   });
   const page = await context.newPage();
   page.on('pageerror', (err) => ctx.errors.push(`${role} ${width}: ${err.message}`));
+  // Console messages are kept aside (a test that aborts prints them: run.js).
+  ctx.console = ctx.console || [];
+  page.on('console', (msg) => { if (msg.type() === 'error' || msg.type() === 'warning') ctx.console.push(`${role} ${width}: ${msg.text().slice(0, 300)}`); });
   await page.goto(`${ctx.app.url}/login`);
   await page.fill('[name=email]', USERS[role]);
   await page.fill('[name=password]', PASSWORD);

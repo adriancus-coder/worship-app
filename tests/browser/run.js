@@ -37,6 +37,20 @@ async function runOne(file) {
     check(ctx.errors.length === 0, 'no uncaught page errors', ctx.errors);
   } catch (err) {
     check(false, 'test ran to the end', err.stack || String(err));
+    // What the open pages were showing, for a wait that never ended.
+    if (ctx.errors.length) console.log(`  page errors so far:\n    ${ctx.errors.join('\n    ')}`);
+    if (ctx.console && ctx.console.length) console.log(`  console so far:\n    ${ctx.console.slice(-12).join('\n    ')}`);
+    for (const page of ctx.pages) {
+      if (page.isClosed()) continue;
+      const info = await page.evaluate(() => ({
+        url: location.pathname,
+        status: (document.getElementById('status') || {}).textContent,
+        connection: (document.getElementById('connection-text') || {}).textContent,
+        hiddenMain: ['live', 'console', 'follow', 'event'].map((id) => { const n = document.getElementById(id); return n ? `${id}:${n.hidden}` : null; }).filter(Boolean).join(' '),
+        body: document.body.innerText.slice(0, 200).replace(/\s+/g, ' '),
+      })).catch((e) => ({ error: String(e) }));
+      console.log(`  page ${JSON.stringify(info)}`);
+    }
   } finally {
     if (browser) await browser.close().catch(() => {});
     if (app) await app.stop().catch(() => {});
