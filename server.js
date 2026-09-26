@@ -33,6 +33,8 @@ const { createAssignmentsRouter } = require('./routes/assignments');
 const { createUnavailabilityRouter } = require('./routes/unavailability');
 const { createPushRouter } = require('./routes/push');
 const { createPush } = require('./lib/push');
+const { createNotifications } = require('./lib/notifications');
+const { createNotificationsRouter } = require('./routes/notifications');
 const { createPlatformRouter } = require('./routes/platform');
 const { createPwaRouter } = require('./routes/pwa');
 const { createLiveHub } = require('./socket/live');
@@ -72,7 +74,8 @@ setInterval(cleanupSessions, SESSION_CLEANUP_MS).unref();
 
 // Live rooms and projector screens: routes notify the hubs; they attach to socket.io below.
 const screensHub = createScreensHub({ db, logger, config });
-const live = createLiveHub({ db, auth, logger, screensHub });
+const liveHooks = {}; // filled by the notifications module below
+const live = createLiveHub({ db, auth, logger, screensHub, hooks: liveHooks });
 
 const app = express();
 app.disable('x-powered-by');
@@ -122,6 +125,14 @@ app.use(createUnavailabilityRouter({ db, auth, logger }));
 const push = createPush({ db, config, logger });
 logger.info(push.enabled ? 'Push: enabled (VAPID keys set)' : 'Push: disabled (no VAPID keys; npm run vapid, docs/PUSH.md)');
 app.use(createPushRouter({ auth, logger, push }));
+// The notifications centre: rows + pushes for the team events; the hooks of the live hub and
+// the assignments router; a minute tick for the day-before reminders (idempotent).
+const notifications = createNotifications({ db, logger, push });
+liveHooks.onLiveStarted = (adminId, eventId) => notifications.onLiveStarted(adminId, eventId);
+liveHooks.onSetlistChanged = (adminId, eventId) => notifications.onSetlistChanged(adminId, eventId);
+assignmentHooks.onDeclined = ({ req, event, row }) => notifications.onDeclined(req.adminId, event, row).catch((err) => logger.error('declined notification failed', err));
+app.use(createNotificationsRouter({ auth, config, notifications }));
+setInterval(() => notifications.tick().catch((err) => logger.error('reminder tick failed', err)), 60 * 1000).unref();
 app.use(createPlatformRouter({ db, auth, config, logger, live, screensHub, storage, email, invites }));
 app.use(createInvitesRouter({ db, auth, config, logger, live, email, invites }));
 app.use(createScreensRouter({ db, auth, config, logger, screensHub }));

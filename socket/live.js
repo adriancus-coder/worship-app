@@ -26,7 +26,10 @@ const homeRoom = (adminId) => `admin:${adminId}:home`;
 const isId = (value) => Number.isInteger(value) && value > 0;
 
 // Created before the HTTP routes (they notify it), attached to socket.io once it exists.
-function createLiveHub({ db, auth, logger, screensHub }) {
+// hooks (filled later by the notifications module): onLiveStarted(adminId, eventId),
+// onSetlistChanged(adminId, eventId); both may return a promise, never awaited here.
+function createLiveHub({ db, auth, logger, screensHub, hooks = {} }) {
+  const fire = (name, ...args) => { try { const out = hooks[name] && hooks[name](...args); if (out && out.catch) out.catch((err) => logger.error(`${name} hook failed`, err)); } catch (err) { logger.error(`${name} hook failed`, err); } };
   const store = createLiveStore(db);
   // A restart forgets pending handover requests (the pages that made them reconnect fresh).
   const cleared = store.clearHandovers();
@@ -221,6 +224,7 @@ function createLiveHub({ db, auth, logger, screensHub }) {
       logger.info(`Handover ${ev.type} by user #${userId} (event #${cmd.eventId}, admin #${adminId})`);
     }
     if (result.changed && (cmd.type === 'event.start' || cmd.type === 'event.end')) notifyHome(adminId, cmd.eventId);
+    if (result.changed && cmd.type === 'event.start') fire('onLiveStarted', adminId, cmd.eventId);
     // A leader's switch that became a request: the page shows "Cerere trimisă…", not the switch.
     const pending = result.handoverEvent && result.handoverEvent.type === 'requested' ? { handover: 'requested', expiresAt: result.handoverEvent.expiresAt } : {};
     reply(ack, { ok: true, version: result.version, ...pending });
@@ -333,6 +337,7 @@ function createLiveHub({ db, auth, logger, screensHub }) {
         broadcast(adminId, eventId);
         notifyHome(adminId, eventId);
       }
+      if (result.changed) fire('onLiveStarted', adminId, eventId);
       return { ok: true };
     } catch (err) {
       if (!(err instanceof LiveError)) throw err;
@@ -374,6 +379,7 @@ function createLiveHub({ db, auth, logger, screensHub }) {
   // The setlist was saved: a live event clamps its position (new version); either way the
   // room gets the new snapshot, whose setlistKey tells clients to reload the setlist.
   function setlistChanged(adminId, eventId, before) {
+    fire('onSetlistChanged', adminId, eventId);
     if (!io) return;
     store.setlistChanged(adminId, eventId, before);
     broadcast(adminId, eventId);

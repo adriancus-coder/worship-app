@@ -25,7 +25,21 @@
       <p id="push-message" class="message" role="status" aria-live="polite"></p>
     </section>
 
-    <div id="notif-list-root"></div>
+    <section class="notif-section" aria-labelledby="notif-list-heading">
+      <div class="notif-list-head">
+        <h2 id="notif-list-heading" data-i18n="notif.listHeading"></h2>
+        <button type="button" class="secondary" id="notif-read-all" hidden data-icon="check" data-i18n="notif.markAll"></button>
+      </div>
+      <p id="notif-status" class="muted" role="status" aria-live="polite" data-i18n="app.loading"></p>
+      <ul id="notif-list" class="notif-list"></ul>
+    </section>
+
+    <section class="notif-section" aria-labelledby="notif-prefs-heading">
+      <h2 id="notif-prefs-heading" data-i18n="notif.prefsHeading"></h2>
+      <p class="hint" data-i18n="notif.prefsHint"></p>
+      <div id="notif-prefs" class="checkbox-list notif-prefs"></div>
+      <p id="prefs-message" class="message" role="status" aria-live="polite"></p>
+    </section>
   </main>
   <script src="/i18n.js"></script>
   <script src="/page.js"></script>

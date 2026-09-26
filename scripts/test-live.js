@@ -1558,6 +1558,58 @@ async function main() {
     assert.strictEqual((await api('GET', '/api/push/config')).status, 401, 'signed in only');
   });
 
+  await step('notifications: declined -> owner + leader; a setlist change -> the assigned members once per 10 min; live start -> live_started; unread / read / prefs; the reminder tick once', async () => {
+    const posList = (await api('GET', '/api/positions', owner)).body.positions;
+    const memberId = (await api('GET', '/api/team', owner)).body.users.find((u) => u.email === 'membru@x.ro').id;
+    const voceId = posList.find((p) => p.name === 'Voce').id;
+    const evN = (await api('POST', '/api/events', owner, { name: 'Notificări', eventDate: '2026-12-06', startTime: '10:00' })).body.event;
+    await api('PUT', `/api/events/${evN.id}/assignments`, leader, { assignments: [{ userId: memberId, positionId: voceId }] });
+    const before = (await api('GET', '/api/notifications', member)).body;
+    const mine = (await api('GET', `/api/events/${evN.id}/assignments`, member)).body.me[0];
+    await api('POST', `/api/events/${evN.id}/assignments/${mine.id}/respond`, member, { status: 'declined', note: 'Plecat' });
+    const forLeader = (await api('GET', '/api/notifications', leader)).body;
+    const forOwner = (await api('GET', '/api/notifications', owner)).body;
+    assert.ok(forLeader.notifications.some((n) => n.kind === 'declined' && /Membru nu poate: Voce/.test(n.title) && /Plecat/.test(n.body)), 'the leader hears who declined, with the note');
+    assert.ok(forOwner.notifications.some((n) => n.kind === 'declined'), 'the owner too');
+    assert.ok(!(await api('GET', '/api/notifications', operator)).body.notifications.some((n) => n.kind === 'declined'), 'not the operator');
+    // back to pending, then the Program changes: one notification, throttled
+    await api('POST', `/api/events/${evN.id}/assignments/${mine.id}/respond`, member, { status: 'accepted' });
+    await api('PUT', `/api/events/${evN.id}/items`, owner, { items: [{ type: 'verse', reference: 'Ps 1' }] });
+    await api('PUT', `/api/events/${evN.id}/items`, owner, { items: [{ type: 'verse', reference: 'Ps 2' }] });
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    let list = (await api('GET', '/api/notifications', member)).body;
+    assert.strictEqual(list.notifications.filter((n) => n.kind === 'setlist_changed' && n.eventId === evN.id).length, 1, 'two saves, one notification (10-minute throttle)');
+    assert.ok(list.unread >= before.unread + 1);
+    assert.deepStrictEqual((await api('GET', '/api/notifications/unread', member)).body, { unread: list.unread });
+    // live start (from the home route): live_started to the assigned member
+    assert.strictEqual((await api('POST', `/api/events/${evN.id}/start`, owner, {})).status, 200);
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    list = (await api('GET', '/api/notifications', member)).body;
+    assert.ok(list.notifications.some((n) => n.kind === 'live_started' && n.eventId === evN.id && n.url === `/events/${evN.id}/follow`), 'live_started with the follow link');
+    await api('POST', `/api/events/${evN.id}/end`, owner, {});
+    // read
+    const one = list.notifications[0].id;
+    assert.deepStrictEqual((await api('POST', '/api/notifications/read', member, { ids: [one] })).body.changed, 1);
+    assert.strictEqual((await api('POST', '/api/notifications/read', member, { all: true })).body.unread, 0);
+    assert.strictEqual((await api('POST', '/api/notifications/read', member, {})).status, 400);
+    // prefs: off means no row
+    assert.strictEqual((await api('PUT', '/api/notifications/prefs', member, { setlist_changed: false })).body.prefs.setlist_changed, false);
+    await api('PUT', `/api/events/${evN.id}/items`, owner, { items: [{ type: 'verse', reference: 'Ps 3' }] });
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    assert.strictEqual((await api('GET', '/api/notifications/unread', member)).body.unread, 0, 'switched off: nothing new');
+    await api('PUT', '/api/notifications/prefs', member, { setlist_changed: true });
+    // the reminder tick (test hook): tomorrow's event at 18:00 church time, once
+    const tz = (await api('GET', '/api/settings', owner)).body;
+    void tz;
+    const evT = (await api('POST', '/api/events', owner, { name: 'Mâine', eventDate: '2026-12-07', startTime: '10:00' })).body.event;
+    await api('PUT', `/api/events/${evT.id}/assignments`, leader, { assignments: [{ userId: memberId, positionId: voceId }] });
+    assert.strictEqual((await api('POST', '/api/notifications/tick', owner, { now: '2026-12-06T12:00:00Z' })).body.sent, 0, 'before 18:00 (Europe/Oslo): nothing');
+    assert.strictEqual((await api('POST', '/api/notifications/tick', owner, { now: '2026-12-06T17:30:00Z' })).body.sent, 1, '18:30 church time: one reminder');
+    assert.strictEqual((await api('POST', '/api/notifications/tick', owner, { now: '2026-12-06T17:31:00Z' })).body.sent, 0, 'the next minute: nothing (idempotent, as after a restart)');
+    assert.ok((await api('GET', '/api/notifications', member)).body.notifications.some((n) => n.kind === 'reminder' && n.eventId === evT.id));
+    for (const id of [evN.id, evT.id]) await api('DELETE', `/api/events/${id}`, owner);
+  });
+
   await step('view as: an owner sees the app as member / operator / leader (every guard follows), back restores all; a leader cannot', async () => {
     const viewAs = (cookie, role) => api('PUT', '/api/me/view-as', cookie, { role });
     const page = (url, cookie) => fetch(base() + url, { headers: { Cookie: cookie }, redirect: 'manual' }).then((r) => r.status);

@@ -1898,6 +1898,8 @@ testAsync('platform deletion: refused while active, the exact name, pending -> c
     db.prepare("INSERT INTO event_assignments (event_id, admin_id, user_id, position_id, created_at) VALUES (?, ?, ?, ?, 0)").run(eventId, a, userId, posId);
     db.prepare("INSERT INTO unavailability (admin_id, user_id, date_from, date_to) VALUES (?, ?, '2026-10-01', '2026-10-02')").run(a, userId);
     db.prepare("INSERT INTO push_subscriptions (admin_id, user_id, endpoint, p256dh, auth, created_at) VALUES (?, ?, ?, 'p', 'a', 0)").run(a, userId, `https://push.test/${a}`);
+    db.prepare("INSERT INTO notifications (admin_id, user_id, kind, title, event_id, created_at) VALUES (?, ?, 'assigned', 'T', ?, 0)").run(a, userId, eventId);
+    db.prepare("INSERT INTO notification_prefs (user_id, admin_id, kind, enabled) VALUES (?, ?, 'reminder', 0)").run(userId, a);
     fs.mkdirSync(path.join(dataDir, 'uploads', `admin-${a}`, 'media'), { recursive: true });
     fs.writeFileSync(path.join(dataDir, 'uploads', `admin-${a}`, 'media', 'f.bin'), Buffer.alloc(64, 1));
   };
@@ -2302,5 +2304,59 @@ testAsync('web push (lib/push.js): keys, VAPID header, aes128gcm round trip, del
   assert.strictEqual(push.listForUser(1, 1)[0].failedCount, 1, 'other failures only count');
   assert.strictEqual(push.unsubscribe(1, 1, 'https://push.test/send/1'), true);
   assert.strictEqual(push.hasSubscription(1, 1), false);
+  mem.close();
+});
+
+testAsync('notifications (migration 033): rows in the person\'s language + push when subscribed; prefs; declined -> leaders; setlist throttle; reminders once', async () => {
+  const Database = require('better-sqlite3');
+  const { runMigrations } = require('../lib/db');
+  const { createNotifications, KINDS } = require('../lib/notifications');
+  const mem = new Database(':memory:');
+  mem.pragma('foreign_keys = ON');
+  runMigrations(mem);
+  mem.prepare("INSERT INTO admins (id, name, created_at) VALUES (1, 'A', 0)").run();
+  mem.prepare("INSERT INTO admin_settings (admin_id, key, value) VALUES (1, 'timezone', 'Europe/Bucharest')").run();
+  mem.prepare("INSERT INTO users (id, admin_id, email, name, password_hash, role, created_at, locale) VALUES (1, 1, 'o@x.ro', 'Ana', 'x', 'owner', 0, 'ro'), (2, 1, 'l@x.ro', 'Lider', 'x', 'leader', 0, 'en'), (3, 1, 'm@x.ro', 'Maria', 'x', 'member', 0, 'en'), (4, 1, 'p@x.ro', 'Petru', 'x', 'member', 0, NULL)").run();
+  mem.prepare("INSERT INTO events (id, admin_id, name, event_date, start_time, status, created_at, updated_at) VALUES (1, 1, 'Duminică', '2026-10-04', '10:00', 'planned', 0, 0)").run();
+  const pos = mem.prepare("INSERT INTO positions (admin_id, name, sort) VALUES (1, 'Chitară', 0)").run().lastInsertRowid;
+  mem.prepare("INSERT INTO event_assignments (event_id, admin_id, user_id, position_id, status, created_at) VALUES (1, 1, 3, ?, 'pending', 0), (1, 1, 4, ?, 'accepted', 0), (1, 1, 2, ?, 'declined', 0)").run(pos, pos, pos);
+  const pushed = [];
+  const push = { enabled: true, hasSubscription: (a, u) => u === 3, sendToUser: async (a, u, payload) => { pushed.push({ u, ...payload }); return { sent: 1, failed: 0, removed: 0 }; } };
+  const logs = [];
+  const N = createNotifications({ db: mem, logger: { info: (m) => logs.push(m), warn: () => {}, error: () => {} }, push });
+  assert.deepStrictEqual(N.KINDS, KINDS);
+  // assigned: one per person, in their language; a push only for the subscribed one
+  const rows = N.assignments.list(1, 1);
+  const out = await N.onAssigned(1, { id: 1, name: 'Duminică', eventDate: '2026-10-04', startTime: '10:00' }, rows.filter((r) => r.status === 'pending'), 'Lider');
+  assert.deepStrictEqual(out, { sent: 1, withPush: 1, withoutPush: 0, userIds: [3] });
+  const maria = N.list(1, 3);
+  assert.deepStrictEqual([maria.length, maria[0].kind, maria[0].title, maria[0].url, maria[0].readAt], [1, 'assigned', 'You are scheduled: Chitară', '/events/1', null], 'English for Maria');
+  assert.deepStrictEqual([pushed.length, pushed[0].u, pushed[0].tag, pushed[0].title], [1, 3, 'assigned-1', 'You are scheduled: Chitară']);
+  // declined: the owner and the leaders, not the one who declined (the leader here)
+  await N.onDeclined(1, { id: 1, name: 'Duminică', eventDate: '2026-10-04' }, rows.find((r) => r.userId === 2));
+  assert.deepStrictEqual([N.list(1, 1).length, N.list(1, 2).length, N.list(1, 3).length], [1, 0, 1]);
+  assert.strictEqual(N.list(1, 1)[0].title, 'Lider nu poate: Chitară', 'Romanian for Ana');
+  // prefs: off suppresses (row and push); default all on
+  assert.deepStrictEqual(N.prefs(1, 4), Object.fromEntries(KINDS.map((k) => [k, true])));
+  N.setPrefs(1, 4, { live_started: false, bogus: false });
+  assert.strictEqual(N.prefs(1, 4).live_started, false);
+  assert.strictEqual(await N.onLiveStarted(1, 1), 1, 'Maria yes, Petru off, the leader declined');
+  // setlist changes: the pending / accepted people, once per 10 minutes
+  assert.strictEqual(await N.onSetlistChanged(1, 1), 2);
+  assert.strictEqual(await N.onSetlistChanged(1, 1), 0, 'throttled');
+  mem.prepare("UPDATE notifications SET created_at = created_at - 11 * 60 * 1000 WHERE kind = 'setlist_changed'").run();
+  assert.strictEqual(await N.onSetlistChanged(1, 1), 2, 'after 10 minutes again');
+  // reminders: tomorrow's event, after 18:00 church time, once
+  assert.strictEqual(await N.tick(new Date('2026-10-03T14:59:00Z')), 0, '17:59 in Bucharest: not yet');
+  assert.strictEqual(await N.tick(new Date('2026-10-03T15:00:00Z')), 2, '18:00: Maria and Petru (the leader declined)');
+  assert.strictEqual(await N.tick(new Date('2026-10-03T15:01:00Z')), 0, 'never twice (a restart would find the rows)');
+  assert.strictEqual(await N.tick(new Date('2026-10-04T15:00:00Z')), 0, 'the day itself: nothing');
+  // reading
+  assert.strictEqual(N.unread(1, 3), 5);
+  assert.strictEqual(N.markRead(1, 3, [N.list(1, 3)[0].id]), 1);
+  assert.strictEqual(N.unread(1, 3), 4);
+  assert.strictEqual(N.markRead(1, 3, 'all'), 4);
+  assert.strictEqual(N.unread(1, 3), 0);
+  assert.strictEqual(N.markRead(1, 4, [N.list(1, 3)[0].id]), 0, 'not theirs');
   mem.close();
 });

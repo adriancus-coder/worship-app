@@ -115,7 +115,7 @@
     document.addEventListener('i18n:change', render);
     body.prepend(exit);
     body.classList.add('has-shell-exit');
-    window.SHELL = { me: mePromise };
+    window.SHELL = { me: mePromise, setUnread, refreshUnread };
     return;
   }
 
@@ -140,9 +140,22 @@
   });
 
   const moreLabel = el('span', { class: 'shell-label' });
+  // The unread notifications badge (lib/notifications.js): fetched on load and when the page
+  // comes back to the front; the notifications page clears it.
+  const moreBadge = el('span', { class: 'shell-badge', hidden: true, 'aria-hidden': 'true' });
   const moreButton = el('button', {
     type: 'button', class: 'shell-item shell-more', 'aria-expanded': 'false', 'aria-controls': 'shell-panel',
-  }, icon('more'), moreLabel);
+  }, icon('more'), moreLabel, moreBadge);
+  function setUnread(n) {
+    moreBadge.hidden = !n;
+    moreBadge.textContent = n > 99 ? '99+' : String(n);
+    moreButton.setAttribute('aria-label', n ? `${t('shell.more')} · ${t('shell.unread', { n })}` : t('shell.more'));
+  }
+  function refreshUnread() {
+    fetch('/api/notifications/unread', { cache: 'no-store' }).then((res) => (res.ok ? res.json() : null)).then((body) => { if (body) setUnread(body.unread); }).catch(() => {});
+  }
+  refreshUnread();
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') refreshUnread(); });
   if (mode === 'more') moreButton.classList.add('current');
   list.append(el('li', {}, moreButton));
 
@@ -488,5 +501,5 @@
   body.prepend(nav);
   body.append(backdrop, panel);
 
-  window.SHELL = { me: mePromise, open };
+  window.SHELL = { me: mePromise, open, setUnread, refreshUnread };
 })();

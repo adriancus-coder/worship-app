@@ -1632,6 +1632,22 @@ button.op-step:disabled { opacity: 1; cursor: default; }
 .unavail-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 6px 10px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
 .unavail-when { font-weight: 600; flex: 1 1 auto; }
 .unavail-form .field { margin-bottom: 8px; }
+.shell-badge { position: absolute; top: 6px; right: calc(50% - 22px); min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; font-size: 0.7rem; font-weight: 700; line-height: 18px; text-align: center; color: var(--on-accent); background: var(--accent-fill); }
+.shell-badge[hidden] { display: none; }
+.shell-more { position: relative; }
+.notif-section { display: flex; flex-direction: column; gap: 8px; margin-top: 20px; }
+.notif-section h2, .notif-section .hint { margin: 0; }
+.notif-list-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.notif-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.notif-link { display: flex; gap: 10px; align-items: flex-start; min-height: var(--touch); padding: 8px 10px; color: var(--text); text-decoration: none; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+.notif-row.unread .notif-link { border-color: var(--accent-fill); }
+.notif-dot { flex: none; width: 10px; height: 10px; margin-top: 6px; border-radius: 50%; background: var(--border); }
+.notif-row.unread .notif-dot { background: var(--accent-fill); }
+.notif-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.notif-title { font-weight: 700; }
+.notif-body { font-size: 0.9375rem; }
+.notif-when { font-size: 0.8125rem; color: var(--text-muted); }
+.notif-prefs .checkbox { flex: 1 1 220px; }
 .push-card { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
 .push-card h2, .push-card .hint, .push-card p { margin: 0; }
 .push-card .form-actions { margin: 0; }
