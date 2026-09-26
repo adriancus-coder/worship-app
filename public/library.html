@@ -35,6 +35,8 @@
         <span class="hint" id="q-hint"></span>
       </form>
       <div class="library-tools">
+        <!-- A single toggle (its own border, aria-pressed): only the songs without a key. -->
+        <button type="button" class="secondary filter-toggle" id="filter-no-key" aria-pressed="false" data-i18n="library.filterNoKey"></button>
         <label class="sort-field"><span class="sort-label" data-i18n="library.sortLabel"></span>
           <select id="sort">
             <option value="az" data-i18n="library.sortAz"></option>

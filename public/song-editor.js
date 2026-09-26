@@ -1,6 +1,7 @@
 'use strict';
 
-// The song editor as a component: title, key, author, the sections (type, label, text with
+// The song editor as a component: a "Detalii" card (title, author, key with its value
+// large and a hint while empty), the sections (type, label, text with
 // chords in brackets or pasted chord-over-lyrics lines, note; move / remove / add) and the
 // live preview in the reader's notation. The /songs/new and /songs/:id/edit page
 // (public/song-edit.js) and the live "+ Cântare nouă" sheet (public/live-new-song.js) use
@@ -38,12 +39,21 @@
     const sectionsBox = el('div', { id: ids.sections, class: 'sections-editor' });
     const addButton = el('button', { type: 'button', id: ids.addSection, class: 'secondary', 'data-icon': 'plus' });
     const preview = el('div', { id: ids.preview });
-    const labels = { title: el('label', { for: ids.title }), author: el('label', { for: ids.author }), key: el('label', { for: ids.key }), sections: el(h), preview: el(h, { id: `${ids.preview}-heading` }) };
+    const labels = { details: el(h, { id: `${ids.key}-details-heading` }), title: el('label', { for: ids.title }), author: el('label', { for: ids.author }), key: el('label', { for: ids.key }), sections: el(h), preview: el(h, { id: `${ids.preview}-heading` }) };
+    // The key row: the current value large in the reader's notation next to the picker, and a
+    // hint while it is empty ("Adaugă tonul ca să poți transpune").
+    const keyValue = el('output', { class: 'song-key-value editor-key-value', for: ids.key, 'aria-live': 'polite' });
+    const keyHint = el('span', { class: 'hint editor-key-hint', id: `${ids.key}-hint` });
+    keySelect.setAttribute('aria-describedby', keyHint.id);
     container.classList.add('song-editor');
     container.replaceChildren(
-      el('div', { class: 'field' }, labels.title, titleInput),
-      el('div', { class: 'field' }, labels.author, authorInput),
-      el('div', { class: 'field' }, labels.key, keySelect),
+      el('section', { class: 'editor-details', 'aria-labelledby': labels.details.id },
+        labels.details,
+        el('div', { class: 'field' }, labels.title, titleInput),
+        el('div', { class: 'field' }, labels.author, authorInput),
+        el('div', { class: 'field editor-key-field' }, labels.key,
+          el('div', { class: 'editor-key-row' }, keyValue, keySelect),
+          keyHint)),
       options.extra || '',
       labels.sections,
       sectionsBox,
@@ -59,7 +69,17 @@
         // Shown in the reader's notation (Sol, Lam); the value stays the letter key.
         ...SONG_KEYS.map((key) => el('option', { value: key, text: window.NOTATION.chord(key) })));
       keySelect.value = value;
+      renderKeyValue();
     }
+
+    function renderKeyValue() {
+      const key = keySelect.value;
+      keyValue.textContent = key ? window.NOTATION.chord(key) : t('editor.keyNone');
+      keyValue.classList.toggle('song-key-unset-text', !key);
+      keyHint.textContent = key ? '' : t('editor.keyHint');
+      keyHint.hidden = Boolean(key);
+    }
+    keySelect.addEventListener('change', renderKeyValue);
 
     function field(id, labelText, control, hint) {
       return el('div', { class: 'field' },
@@ -182,6 +202,7 @@
     });
 
     function renderTexts() {
+      labels.details.textContent = t('editor.detailsHeading');
       labels.title.textContent = t('editor.titleLabel');
       labels.author.textContent = t('editor.authorLabel');
       labels.key.textContent = t('editor.keyLabel');
@@ -216,6 +237,7 @@
       authorInput.value = s.author || '';
       renderKeys();
       keySelect.value = s.song_key || '';
+      renderKeyValue();
       render();
       state.base = snapshot();
     }

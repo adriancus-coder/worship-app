@@ -2080,11 +2080,31 @@ button.title-button {
 button.title-button:hover .title-button-hint { text-decoration: underline; }
 .title-button-hint { display: inline-flex; align-items: center; gap: 4px; font-size: 0.875rem; font-weight: 700; color: var(--accent-text); }
 
-.arrange-key-missing { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 0 0 12px; padding: 8px 12px; border: 1px dashed var(--border); border-radius: var(--radius); }
-.arrange-key-missing-text { margin: 0; font-weight: 700; }
-.arrange-key-missing select { min-height: var(--touch); }
-.song-key-missing { margin: 8px 0 12px; }
-.arrange-key-missing .message:empty { display: none; }
+/* The song's key, easy to find and change: "Ton: Sol · Schimbă" (arrange-sheet.js keyBox). */
+.song-key-box { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin: 0 0 12px; }
+.song-key-label { font-weight: 500; color: var(--text-muted); }
+.song-key-value { font-size: 1.5rem; font-weight: 800; line-height: 1.2; }
+.song-key-unset .song-key-label, .song-key-unset-text, .song-key-unset .song-key-dot { color: var(--accent-text); font-weight: 700; }
+.song-key-dot { color: var(--text-muted); }
+button.song-key-change { min-height: var(--touch); padding: 8px 6px; font-weight: 700; color: var(--accent-text); background: none; border: 0; }
+button.song-key-change:hover { text-decoration: underline; }
+.song-key-picker { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.song-key-picker select { width: auto; min-width: 9rem; min-height: var(--touch); }
+.song-key-box .message { flex-basis: 100%; margin: 0; }
+.song-key-box .message:empty { display: none; }
+.song-key-row { margin: 4px 0 8px; }
+.arrange-order .song-key-box { margin-bottom: 8px; }
+
+/* Song editor: the "Detalii" card (title, author, key) at the top. */
+.editor-details { display: flex; flex-direction: column; gap: 12px; margin: 0 0 16px; padding: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+.editor-details > h2, .editor-details > h3 { margin: 0; }
+.editor-key-row { display: flex; align-items: center; gap: 12px; }
+.editor-key-row select { flex: 0 1 12rem; width: auto; }
+.editor-key-value { flex: none; min-width: 2.5rem; }
+.editor-key-hint:empty { display: none; }
+
+/* Library: the "fără ton" tag and the "Fără ton" filter toggle. */
+.tag-no-key { padding: 1px 6px; font-size: 0.6875rem; font-weight: 800; letter-spacing: 0.05em; border-radius: 4px; border: 1px solid currentColor; color: var(--accent-text); }
 
 /* Event editor: the order summary and "Aranjează cântarea". */
 .order-summary { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
@@ -2172,7 +2192,8 @@ dialog, .op-add { --pane-bg: var(--surface); }
 
 /* --- List pages: where the panes are ---------------------------------------------------------- */
 /* Library: title, "+ Cântare nouă", "⋯", the search field and the sort stay; results scroll. */
-.library-tools { display: flex; justify-content: flex-end; margin: 0 0 8px; }
+.library-tools { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; margin: 0 0 8px; }
+.library-tools .filter-toggle { min-height: var(--touch); }
 .library-tools .sort-field { display: flex; flex-direction: row; align-items: center; gap: 8px; margin: 0; font-size: 0.875rem; font-weight: 500; color: var(--text-muted); }
 .library-tools .sort-field select { width: auto; }
 #library-results .results-section { margin-top: 0; }

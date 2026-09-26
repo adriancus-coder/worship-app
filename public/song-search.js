@@ -96,6 +96,8 @@
     const $ = (id) => document.getElementById(p + id);
     const input = $('q');
     const sort = mode === 'library' ? $('sort') : null;
+    const noKeyToggle = mode === 'library' ? $('filter-no-key') : null; // "Fără ton"
+    const noKey = () => Boolean(noKeyToggle && noKeyToggle.getAttribute('aria-pressed') === 'true');
     const status = $('status');
     const list = $('songs');
     const form = $('search-form');
@@ -133,6 +135,15 @@
       return [song.song_key ? t('library.key', { key: window.NOTATION.chord(song.song_key) }) : null, song.author].filter(Boolean).join(' · ');
     }
 
+    // Under the title: "Ton Sol · author", or the small "fără ton" tag for a song without a key.
+    function metaLine(song) {
+      const meta = songMeta(song);
+      if (!meta && song.song_key) return null;
+      return el('span', { class: 'song-meta' },
+        song.song_key ? null : el('span', { class: 'tag tag-no-key', text: t('library.noKeyTag') }),
+        meta && !song.song_key ? ' · ' : '', meta);
+    }
+
     function actionButton(action, index, busyKey, disabled, onRun) {
       const busy = local.busy === busyKey || online.busy === busyKey;
       return el('button', {
@@ -146,7 +157,7 @@
         return el('li', null,
           el('a', { class: 'song-link', href: `/songs/${song.id}` },
             el('span', { class: 'song-title', text: song.title }),
-            songMeta(song) ? el('span', { class: 'song-meta', text: songMeta(song) }) : null,
+            metaLine(song),
             song.matchedIn === 'lyrics' ? el('span', { class: 'song-hint', text: t('library.matchedInLyrics') }) : null));
       }
       const hint = options.songHint ? options.songHint(song) : (song.matchedIn === 'lyrics' ? t('library.matchedInLyrics') : '');
@@ -154,7 +165,7 @@
       return el('li', { class: 'result-row' },
         el('div', { class: 'result-text' },
           el('span', { class: 'song-title', text: song.title }),
-          songMeta(song) ? el('span', { class: 'song-meta', text: songMeta(song) }) : null,
+          metaLine(song),
           hint ? el('span', { class: 'song-hint', text: hint }) : null),
         el('div', { class: 'result-actions' }, actions.map((action, i) => actionButton(action, i, `local:${song.id}:${i}`, options.disabled && options.disabled(),
           () => runLocal(song, action, i)))));
@@ -201,6 +212,7 @@
       tone('muted');
       if (local.songs.length) setStatus('');
       else if (local.lastQuery) setStatus(t('library.noResults', { q: local.lastQuery }));
+      else if (noKey()) setStatus(t('library.noKeyNone'));
       else if (mode === 'pick') setStatus(options.emptyQuery === 'none' ? '' : t('library.emptyMember'));
       else setStatus(t(canEdit(me) ? 'library.empty' : 'library.emptyMember'));
     }
@@ -212,6 +224,7 @@
         const qs = new URLSearchParams();
         if (query) qs.set('q', query);
         if (sort.value !== 'az') qs.set('sort', sort.value);
+        if (noKey()) qs.set('noKey', '1');
         const search = qs.toString();
         window.history.replaceState(null, '', search ? `?${search}` : window.location.pathname);
       } else if (!query && options.emptyQuery === 'none') {
@@ -223,6 +236,7 @@
       try {
         const qs = { q: query, sort: sort ? sort.value : 'az' };
         if (options.withHistory) qs.withHistory = '1';
+        if (noKey()) qs.noKey = '1';
         const { ok, body } = await api(`/api/songs?${new URLSearchParams(qs)}`);
         if (id !== local.request) return; // a newer search is on its way
         if (!ok) {
@@ -538,6 +552,12 @@
       search(query);
     });
     if (sort) sort.addEventListener('change', load);
+    if (noKeyToggle) {
+      noKeyToggle.addEventListener('click', () => {
+        noKeyToggle.setAttribute('aria-pressed', String(!noKey()));
+        load();
+      });
+    }
 
     if (importButton) {
       importButton.addEventListener('click', async () => {

@@ -13,8 +13,9 @@
     <p id="status" class="muted" role="status" aria-live="polite" data-i18n="library.loading"></p>
     <article id="song" hidden>
       <h1 id="song-title"></h1>
+      <!-- "Ton: Sol · Schimbă" (public/arrange-sheet.js keyBox): always shown, under the title. -->
+      <div id="song-key" class="song-key-row"></div>
       <p id="song-meta" class="muted"></p>
-      <div id="song-key-missing" class="song-key-missing" hidden></div>
       <div class="song-actions">
         <button type="button" id="text-only" class="secondary" aria-pressed="false" data-i18n="song.textOnly"></button>
         <span data-notation-switch></span>

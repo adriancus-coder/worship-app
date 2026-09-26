@@ -44,7 +44,8 @@ function createSongsRouter({ db, auth, config, logger, live }) {
   router.get('/api/songs', (req, res) => {
     const q = typeof req.query.q === 'string' ? req.query.q.slice(0, LIMITS.queryMax) : '';
     const sort = SORT_MODES.includes(req.query.sort) ? req.query.sort : 'az';
-    const list = songs.list(req.adminId, { q, sort });
+    // ?noKey=1: only the songs without a key (the library's "Fără ton" filter).
+    const list = songs.list(req.adminId, { q, sort, noKey: req.query.noKey === '1' });
     // ?withHistory=1 adds lastSung (the last date it was sung: lib/events.js lastSungMap).
     if (req.query.withHistory === '1') {
       const day = today(req);

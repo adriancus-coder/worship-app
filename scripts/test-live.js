@@ -239,6 +239,12 @@ async function main() {
     assert.strictEqual((await api('PUT', '/api/songs/1', leader, { song_key: 'H' })).status, 400);
     const back = await api('PUT', '/api/songs/1', owner, { song_key: '' });
     assert.deepStrictEqual([back.status, back.body.song.song_key], [200, null]);
+    // the library's "Fără ton" filter: only the songs without a key (song 1 has none now)
+    const noKey = (await api('GET', '/api/songs?noKey=1', member)).body.songs;
+    assert.ok(noKey.some((s) => s.id === 1) && noKey.every((s) => !s.song_key), 'noKey=1 lists only keyless songs');
+    assert.strictEqual((await api('PUT', '/api/songs/1', leader, { song_key: 'G' })).status, 200);
+    assert.ok(!(await api('GET', '/api/songs?noKey=1', member)).body.songs.some((s) => s.id === 1), 'a song with a key leaves the filter');
+    assert.ok((await api('GET', '/api/songs', member)).body.songs.some((s) => s.id === 1), 'without the filter: every song');
     assert.strictEqual((await api('POST', '/api/songs/import', operator, { songs: [] })).status, 400, 'the operator may import (an empty file is refused as such)');
     assert.strictEqual((await api('GET', '/api/songs/export', operator)).status, 200);
     for (const [method, url, body] of [['POST', '/api/songs/import', { songs: [] }], ['GET', '/api/songs/export']]) {

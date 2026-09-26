@@ -97,7 +97,7 @@
     }
   }
 
-  // canSetKey: a song without a key offers a key picker, saved to the library song.
+  // canSetKey: the "Original: <key> · Schimbă" row changes the library song's key.
   // goTo: the live pages' "Mergi la cântare" (tapping a song there opens this sheet).
   function open({ title, song, codes, defaultCodes, transpose = 0, readOnly = false, canSetKey = false, goTo = null, onApply }) {
     const { el } = window.PAGE;
@@ -221,7 +221,9 @@
       keyOut.textContent = keyText();
       panels.order.replaceChildren(
         el('div', { class: 'arrange-panel-head' }, el('h3', { id: 'arrange-order-h', text: t('arrange.order') })),
-        song.song_key ? null : keyMissing(),
+        // "Original: Sol · Schimbă": the library song's key, always shown; the editor roles
+        // change it here (saved to the song at once, sections untouched).
+        keyBox(song, canSetKey, () => render(), { label: 'arrange.keyOriginalLabel', id: 'arrange-original-key' }),
         el('div', { class: 'key-row arrange-key-row', role: 'group', 'aria-label': t('options.keyLabel') },
           el('button', { type: 'button', class: 'secondary icon-button', id: 'arrange-key-down', 'aria-label': t('options.keyDown'), disabled: state.transpose <= -TRANSPOSE_MAX, onclick: () => setTranspose(state.transpose - 1) }, el('span', { 'aria-hidden': 'true', text: '−' })),
           keyOut,
@@ -235,9 +237,6 @@
           onclick: () => { state.codes = defaultCodes.slice(); render(); },
         }, t('options.resetArrangement')));
     }
-
-    // "Tonul original nu e setat" (common for imports): see keyMissingBox below.
-    const keyMissing = () => keyMissingBox(song, canSetKey, () => render());
 
     function renderFlow(sections) {
       const order = flow(sections, state.codes);
@@ -288,35 +287,57 @@
     return { dialog };
   }
 
-  // --- a song without a key (the sheet and the song page) -------------------------------
+  // --- the song's key, easy to find and change (the sheet and the song page) -------------
 
-  // "Tonul original nu e setat" and, for owner / leader (canSet), a key picker in the
-  // reader's notation (values stay letters). Saving sends only the key (PUT /api/songs/:id
-  // { song_key }: sections and their hashes untouched); onSaved(song) after it is stored.
-  function keyMissingBox(song, canSet, onSaved) {
+  // One row: "<label>: Sol · Schimbă" with the key large in the reader's notation, or, with
+  // no key, "Tonul nu e setat · Setează" in the accent colour. canSet (the editor roles):
+  // Schimbă / Setează opens an inline picker (values stay letters); saving sends only the
+  // key (PUT /api/songs/:id { song_key }: sections and their hashes untouched), then
+  // onSaved(song). Without canSet the row is read-only (the team sees the key, no button).
+  function keyBox(song, canSet, onSaved, { label = 'song.keyLabel', id = null } = {}) {
     const { el, api } = window.PAGE;
     const { t } = window.I18N;
-    const box = el('div', { class: 'arrange-key-missing', role: 'note' }, el('p', { class: 'arrange-key-missing-text', text: t('arrange.keyMissing') }));
-    if (!canSet) return box;
+    const box = el('div', { class: 'song-key-box', id, role: 'group', 'aria-label': t(label) });
     const message = el('p', { class: 'message', role: 'status' });
-    const select = el('select', {
-      class: 'key-pick', 'aria-label': t('arrange.keyPick'),
-      onchange: async () => {
-        if (!select.value) return;
-        select.disabled = true;
-        const res = await api(`/api/songs/${song.id}`, { method: 'PUT', body: { song_key: select.value } }).catch(() => null);
-        if (res && res.ok) {
-          song.song_key = res.body.song.song_key;
-          if (onSaved) onSaved(res.body.song);
-          return;
-        }
-        select.disabled = false;
-        message.className = 'message error';
-        message.textContent = (res && res.body && res.body.error) || t('common.networkError');
-      },
-    }, el('option', { value: '', text: t('arrange.keyPick') }),
-    SECTIONS.SONG_KEYS.map((key) => el('option', { value: key, text: window.NOTATION.chord(key) })));
-    box.append(select, message);
+
+    async function save(select) {
+      select.disabled = true;
+      const res = await api(`/api/songs/${song.id}`, { method: 'PUT', body: { song_key: select.value } }).catch(() => null);
+      if (res && res.ok) {
+        song.song_key = res.body.song.song_key;
+        show(false);
+        if (onSaved) onSaved(res.body.song);
+        return;
+      }
+      select.disabled = false;
+      message.className = 'message error';
+      message.textContent = (res && res.body && res.body.error) || t('common.networkError');
+    }
+
+    function show(picking) {
+      const has = Boolean(song.song_key);
+      box.classList.toggle('song-key-unset', !has);
+      message.className = 'message';
+      message.textContent = '';
+      // "Ton: Sol" / "Original: Sol"; without a key just "Tonul nu e setat" (no label).
+      const parts = has
+        ? [el('span', { class: 'song-key-label', text: `${t(label)}:` }), el('strong', { class: 'song-key-value', text: window.NOTATION.chord(song.song_key) })]
+        : [el('span', { class: 'song-key-unset-text', text: t('song.keyUnset') })];
+      if (canSet && !picking) {
+        parts.push(el('span', { class: 'song-key-dot', 'aria-hidden': 'true', text: '·' }),
+          el('button', { type: 'button', class: 'song-key-change', 'data-icon': 'edit', text: t(has ? 'song.keyChange' : 'song.keySet'), onclick: () => { show(true); box.querySelector('select').focus(); } }));
+      } else if (canSet) {
+        const select = el('select', { class: 'key-pick', 'aria-label': t('arrange.keyPick'), onchange: () => save(select) },
+          el('option', { value: '', text: t('arrange.keyPick') }),
+          SECTIONS.SONG_KEYS.map((key) => el('option', { value: key, text: window.NOTATION.chord(key) })));
+        select.value = song.song_key || '';
+        parts.push(el('span', { class: 'song-key-picker' }, select,
+          el('button', { type: 'button', class: 'secondary song-key-cancel', text: t('arrange.cancel'), onclick: () => { show(false); box.querySelector('.song-key-change').focus(); } })));
+      }
+      box.replaceChildren(...parts, message);
+    }
+
+    show(false);
     return box;
   }
 
@@ -370,5 +391,5 @@
     return res && res.ok ? { ok: true } : fail(res);
   }
 
-  root.ARRANGE_SHEET = { ...LOGIC, open, openForItem, saveToEvent, keyMissingBox };
+  root.ARRANGE_SHEET = { ...LOGIC, open, openForItem, saveToEvent, keyBox };
 })(typeof window !== 'undefined' ? window : this);

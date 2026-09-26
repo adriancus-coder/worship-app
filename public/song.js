@@ -44,17 +44,13 @@
     if (!song) return;
     setTitle('song.pageTitle', { title: song.title });
     document.getElementById('song-title').textContent = song.title;
-    const meta = [
-      song.song_key ? t('song.key', { key: window.NOTATION.chord(song.song_key) }) : null,
-      song.author ? t('song.author', { author: song.author }) : null,
-    ].filter(Boolean).join(' · ');
+    // The key row, always: "Ton: Sol · Schimbă" (the editor roles change it inline) or
+    // "Tonul nu e setat · Setează"; the team sees the key without the button.
+    document.getElementById('song-key').replaceChildren(window.ARRANGE_SHEET.keyBox(song, canSetKey, () => render(), { id: 'song-key-box' }));
+    const meta = song.author ? t('song.author', { author: song.author }) : '';
     const metaEl = document.getElementById('song-meta');
     metaEl.textContent = meta;
     metaEl.hidden = !meta;
-    // No key yet (common for imports): say so; owner / leader can set it here.
-    const keyBox = document.getElementById('song-key-missing');
-    keyBox.replaceChildren(...(song.song_key ? [] : [window.ARRANGE_SHEET.keyMissingBox(song, canSetKey, () => render())]));
-    keyBox.hidden = Boolean(song.song_key);
 
     textOnlyButton.setAttribute('aria-pressed', String(textOnly));
     document.getElementById('sections').replaceChildren(...window.SONG_RENDER.sectionsView(song.sections, { textOnly }));
