@@ -1281,6 +1281,15 @@ body.has-shell .shell-panel-body { padding-bottom: 12px; } /* the tab bar alread
 .shell-row-label { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
 .shell-row[aria-current="page"], .shell-row[aria-current="page"] .shell-icon { color: var(--accent-text); }
 .shell-setting { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; padding: 0 8px; }
+.shell-setting[hidden] { display: none; }
+/* "Vezi aplicația ca": the slim bar above every page while an owner views the app as another
+   role (never on /screen: it has no shell). Sticky, inside the safe area; the pages below keep
+   their own layout, list pages included (the bar takes its height from the flex column). */
+.view-as-bar { position: sticky; top: 0; z-index: 55; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 2px 12px; margin: 0; padding: calc(2px + env(safe-area-inset-top, 0px)) 12px 2px; font-size: 0.875rem; font-weight: 700; color: var(--on-accent); background: var(--accent-fill); }
+.view-as-bar[hidden] { display: none; }
+.view-as-back { min-height: var(--touch); padding: 0 14px; font-size: 0.875rem; font-weight: 700; color: var(--accent-fill); background: var(--on-accent); border: 0; border-radius: 999px; }
+.view-as-back:focus-visible { outline: 3px solid var(--on-accent); outline-offset: 2px; }
+body.has-view-as.list-page > .view-as-bar { flex: 0 0 auto; }
 .shell-setting-label { font-weight: 600; }
 .shell-logout { margin-top: 8px; color: var(--error); border-top: 1px solid var(--border); border-radius: 0; }
 .shell-logout .shell-icon { color: var(--error); }

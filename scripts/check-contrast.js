@@ -47,6 +47,7 @@ const PAIRS = [
   ['text-muted', 'surface', TEXT, 'hints on cards'],
   ['text-muted', 'surface-2', TEXT, 'hints on raised areas'],
   ['on-accent', 'accent-fill', TEXT, 'primary buttons, selected options'],
+  ['accent-fill', 'on-accent', TEXT, '"Revino la proprietar" on the view-as bar'],
   ['accent-text', 'background', TEXT, 'links, accent text'],
   ['accent-text', 'surface', TEXT, 'accent text on cards'],
   ['accent-text', 'accent-soft', TEXT, 'accent text on the current item'],

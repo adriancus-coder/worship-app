@@ -80,6 +80,29 @@
     }).catch(() => {}); // the wa_lang cookie already holds the choice
   });
 
+  // --- "Vezi aplicația ca": the persistent bar while an owner views the app as another role --
+  // The only thing on the page that keeps working with owner rights is "Revino la proprietar".
+
+  const VIEW_AS_ROLES = ['leader', 'operator', 'member'];
+  function setViewAs(role) {
+    return fetch('/api/me/view-as', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ role }) })
+      .then((res) => { if (res.ok) window.location.assign('/app'); });
+  }
+  const viewAsText = el('span', { class: 'view-as-text' });
+  const viewAsBack = el('button', { type: 'button', class: 'view-as-back', onclick: () => { viewAsBack.disabled = true; setViewAs(null); } });
+  const viewAsBar = el('div', { class: 'view-as-bar', id: 'view-as-bar', role: 'status', hidden: true }, viewAsText, viewAsBack);
+  body.prepend(viewAsBar);
+  function renderViewAs(me) {
+    const active = Boolean(me && me.user.viewAs);
+    viewAsBar.hidden = !active;
+    body.classList.toggle('has-view-as', active);
+    if (!active) return;
+    viewAsText.textContent = t('shell.viewAsBar', { role: t(`roles.${me.user.viewAs}`) });
+    viewAsBack.textContent = t('shell.viewAsBack');
+  }
+  mePromise.then((me) => renderViewAs(me));
+  document.addEventListener('i18n:change', () => mePromise.then((me) => renderViewAs(me)));
+
   // --- full-screen work pages: "← Ieși" only --------------------------------------------
 
   if (mode === 'exit') {
@@ -195,6 +218,19 @@
     }
   }
 
+  // "Vezi aplicația ca": Proprietar · Lider · Operator · Membru (an owner only). Choosing one
+  // reloads to Acasă as that role; the bar above the page brings the owner back.
+  const viewAsLabel = el('span', { class: 'shell-setting-label', id: 'shell-view-as-label' });
+  const viewAsButtons = ['owner', ...VIEW_AS_ROLES].map((value) => el('button', {
+    type: 'button', 'data-view-as': value, 'aria-pressed': 'false',
+    onclick: () => {
+      const current = me && (me.user.viewAs || 'owner');
+      if (value !== current) setViewAs(value === 'owner' ? null : value);
+    },
+  }));
+  const viewAsSwitch = el('div', { class: 'choice-group view-as-switch', role: 'group', 'aria-labelledby': 'shell-view-as-label' }, ...viewAsButtons);
+  const viewAsRow = el('div', { class: 'shell-setting shell-setting-stack', hidden: true }, viewAsLabel, viewAsSwitch);
+
   const logoutLabel = el('span', { class: 'shell-row-label' });
   const logout = el('button', {
     type: 'button',
@@ -232,7 +268,8 @@
       section('shell.sections.preferences',
         el('div', { class: 'shell-setting' }, langLabel, langSwitch),
         el('div', { class: 'shell-setting' }, notationLabel, notationSlot),
-        el('div', { class: 'shell-setting shell-setting-stack' }, themeLabel, themeSwitch)),
+        el('div', { class: 'shell-setting shell-setting-stack' }, themeLabel, themeSwitch),
+        viewAsRow),
       section('shell.sections.account',
         installRow,
         el('ul', { class: 'shell-rows' }, ...accountLinks.map((p) => p.item)),
@@ -304,10 +341,16 @@
     installLabel.textContent = t('pwa.install');
     for (const p of pageLinks) p.label.textContent = t(p.key);
     if (notationGroup.renderSwitch) notationGroup.renderSwitch();
+    viewAsLabel.textContent = t('shell.viewAs');
+    for (const b of viewAsButtons) b.textContent = t(`team.roles.${b.dataset.viewAs}`);
     if (me) {
       whoName.textContent = me.user.name;
       whoRole.textContent = t('shell.roleAt', { role: t(`roles.${me.user.role}`), adminName: me.admin.name });
       for (const p of pageLinks) p.item.hidden = !p.roles.includes(me.user.role) || (p.platform && !me.platformOwner);
+      // a real owner (also while viewing as someone else) may switch the view
+      viewAsRow.hidden = me.user.realRole !== 'owner';
+      const current = me.user.viewAs || 'owner';
+      for (const b of viewAsButtons) b.setAttribute('aria-pressed', String(b.dataset.viewAs === current));
     } else {
       whoName.textContent = t('shell.more');
     }

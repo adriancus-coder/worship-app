@@ -425,6 +425,9 @@
         platform: 'Platformă',
         language: 'Limbă',
         roleAt: '{role} · {adminName}',
+        viewAs: 'Vezi aplicația ca',
+        viewAsBar: 'Vezi ca {role}',
+        viewAsBack: 'Revino la proprietar',
         close: 'Închide',
         sections: {
           navigation: 'Navigare',
@@ -1617,6 +1620,9 @@
         platform: 'Platform',
         language: 'Language',
         roleAt: '{role} · {adminName}',
+        viewAs: 'View the app as',
+        viewAsBar: 'Viewing as {role}',
+        viewAsBack: 'Back to owner',
         close: 'Close',
         sections: {
           navigation: 'Navigation',
