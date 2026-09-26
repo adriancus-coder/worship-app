@@ -199,8 +199,10 @@ async function main() {
     for (const method of ['PUT', 'DELETE']) assert.strictEqual((await api(method, '/api/songs/1', operator, { title: 'X' })).status, 403);
     // the original key alone (the arrange sheet): owner / leader only, a known key or ''
     assert.strictEqual((await api('PUT', '/api/songs/1', operator, { song_key: 'A' })).status, 403);
+    const sectionsBefore = JSON.stringify((await api('GET', '/api/songs/1', leader)).body.song.sections);
     const keyed = await api('PUT', '/api/songs/1', leader, { song_key: 'A' });
-    assert.deepStrictEqual([keyed.status, keyed.body.song.song_key, keyed.body.song.sections.length > 0], [200, 'A', true]);
+    assert.deepStrictEqual([keyed.status, keyed.body.song.song_key], [200, 'A']);
+    assert.strictEqual(JSON.stringify(keyed.body.song.sections), sectionsBefore, 'sections and content hashes untouched');
     assert.strictEqual((await api('PUT', '/api/songs/1', leader, { song_key: 'H' })).status, 400);
     const back = await api('PUT', '/api/songs/1', owner, { song_key: '' });
     assert.deepStrictEqual([back.status, back.body.song.song_key], [200, null]);

@@ -11,6 +11,7 @@
   const TEXT_ONLY_KEY = 'wa_text_only';
 
   let song = null;
+  let canSetKey = false;
   let textOnly = false;
   try {
     textOnly = window.localStorage.getItem(TEXT_ONLY_KEY) === '1';
@@ -35,6 +36,10 @@
     const metaEl = document.getElementById('song-meta');
     metaEl.textContent = meta;
     metaEl.hidden = !meta;
+    // No key yet (common for imports): say so; owner / leader can set it here.
+    const keyBox = document.getElementById('song-key-missing');
+    keyBox.replaceChildren(...(song.song_key ? [] : [window.ARRANGE_SHEET.keyMissingBox(song, canSetKey, () => render())]));
+    keyBox.hidden = Boolean(song.song_key);
 
     textOnlyButton.setAttribute('aria-pressed', String(textOnly));
     document.getElementById('sections').replaceChildren(...window.SONG_RENDER.sectionsView(song.sections, { textOnly }));
@@ -68,6 +73,7 @@
     song = songRes.body.song;
     editLink.href = `/songs/${song.id}/edit`;
     editLink.hidden = !canEdit(meRes.body);
+    canSetKey = canEdit(meRes.body);
     setStatus('');
     article.hidden = false;
     render();

@@ -236,32 +236,8 @@
         }, t('options.resetArrangement')));
     }
 
-    // "Tonul original nu e setat" (common for imports): owner / leader pick it here; it is
-    // saved on the library song (PUT /api/songs/:id with the key only).
-    function keyMissing() {
-      const box = el('div', { class: 'arrange-key-missing', role: 'note' }, el('p', { class: 'arrange-key-missing-text', text: t('arrange.keyMissing') }));
-      if (!canSetKey) return box;
-      const message = el('p', { class: 'message', role: 'status' });
-      const select = el('select', {
-        id: 'arrange-key-pick', 'aria-label': t('arrange.keyPick'),
-        onchange: async () => {
-          if (!select.value) return;
-          select.disabled = true;
-          const res = await window.PAGE.api(`/api/songs/${song.id}`, { method: 'PUT', body: { song_key: select.value } }).catch(() => null);
-          if (res && res.ok) {
-            song.song_key = res.body.song.song_key;
-            render();
-            return;
-          }
-          select.disabled = false;
-          message.className = 'message error';
-          message.textContent = (res && res.body && res.body.error) || t('common.networkError');
-        },
-      }, el('option', { value: '', text: t('arrange.keyPick') }),
-      SECTIONS.SONG_KEYS.map((key) => el('option', { value: key, text: window.NOTATION.chord(key) })));
-      box.append(select, message);
-      return box;
-    }
+    // "Tonul original nu e setat" (common for imports): see keyMissingBox below.
+    const keyMissing = () => keyMissingBox(song, canSetKey, () => render());
 
     function renderFlow(sections) {
       const order = flow(sections, state.codes);
@@ -310,6 +286,38 @@
     dialog.showModal();
     heading.focus({ preventScroll: true });
     return { dialog };
+  }
+
+  // --- a song without a key (the sheet and the song page) -------------------------------
+
+  // "Tonul original nu e setat" and, for owner / leader (canSet), a key picker in the
+  // reader's notation (values stay letters). Saving sends only the key (PUT /api/songs/:id
+  // { song_key }: sections and their hashes untouched); onSaved(song) after it is stored.
+  function keyMissingBox(song, canSet, onSaved) {
+    const { el, api } = window.PAGE;
+    const { t } = window.I18N;
+    const box = el('div', { class: 'arrange-key-missing', role: 'note' }, el('p', { class: 'arrange-key-missing-text', text: t('arrange.keyMissing') }));
+    if (!canSet) return box;
+    const message = el('p', { class: 'message', role: 'status' });
+    const select = el('select', {
+      class: 'key-pick', 'aria-label': t('arrange.keyPick'),
+      onchange: async () => {
+        if (!select.value) return;
+        select.disabled = true;
+        const res = await api(`/api/songs/${song.id}`, { method: 'PUT', body: { song_key: select.value } }).catch(() => null);
+        if (res && res.ok) {
+          song.song_key = res.body.song.song_key;
+          if (onSaved) onSaved(res.body.song);
+          return;
+        }
+        select.disabled = false;
+        message.className = 'message error';
+        message.textContent = (res && res.body && res.body.error) || t('common.networkError');
+      },
+    }, el('option', { value: '', text: t('arrange.keyPick') }),
+    SECTIONS.SONG_KEYS.map((key) => el('option', { value: key, text: window.NOTATION.chord(key) })));
+    box.append(select, message);
+    return box;
   }
 
   // --- entry points: an event item -------------------------------------------------------
@@ -362,5 +370,5 @@
     return res && res.ok ? { ok: true } : fail(res);
   }
 
-  root.ARRANGE_SHEET = { ...LOGIC, open, openForItem, saveToEvent };
+  root.ARRANGE_SHEET = { ...LOGIC, open, openForItem, saveToEvent, keyMissingBox };
 })(typeof window !== 'undefined' ? window : this);

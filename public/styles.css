@@ -1803,6 +1803,7 @@ button.title-button:hover .title-button-hint { text-decoration: underline; }
 .arrange-key-missing { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 0 0 12px; padding: 8px 12px; border: 1px dashed var(--border); border-radius: var(--radius); }
 .arrange-key-missing-text { margin: 0; font-weight: 700; }
 .arrange-key-missing select { min-height: var(--touch); }
+.song-key-missing { margin: 8px 0 12px; }
 .arrange-key-missing .message:empty { display: none; }
 
 /* Event editor: the order summary and "Aranjează cântarea". */
