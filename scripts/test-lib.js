@@ -812,20 +812,20 @@ test('projector frames: sources, items, no chords, idle', () => {
   const state = (itemId, step, source = 'content') => ({ version: 7, eventId: 3, status: 'live',
     worship: { itemId, step }, projector: { follows: 'worship', itemId: null, step: 0, source } });
   const frame = (itemId, step, source, logoUrl) => projectorFrame(state(itemId, step, source), { items }, new Map([[1, song]]), { logoUrl });
-  assert.deepStrictEqual(frame(1, 0), { kind: 'lyrics', lines: ['Ne ridici din noaptea grea', 'Tu ești lumina mea'], version: 7, eventId: 3, background: null, clock: null });
+  assert.deepStrictEqual(frame(1, 0), { kind: 'lyrics', lines: ['Ne ridici din noaptea grea', 'Tu ești lumina mea'], version: 7, eventId: 3, background: null, clock: null, safeMargin: 5 });
   assert.deepStrictEqual(frame(1, 1).lines, ['Sfânt, sfânt']);
   assert.ok(!/\[[A-G]/.test(frame(1, 2).lines.join('\n')), 'no chords reach the projector');
-  assert.deepStrictEqual(frame(2, 0), { kind: 'verse', reference: 'Psalmul 23:1', text: 'Domnul este Păstorul meu.', version: 7, eventId: 3, background: null, clock: null });
-  assert.deepStrictEqual(frame(3, 0), { kind: 'announcement', title: 'Agapă', body: 'După serviciu', version: 7, eventId: 3, background: null, clock: null });
+  assert.deepStrictEqual(frame(2, 0), { kind: 'verse', reference: 'Psalmul 23:1', text: 'Domnul este Păstorul meu.', version: 7, eventId: 3, background: null, clock: null, safeMargin: 5 });
+  assert.deepStrictEqual(frame(3, 0), { kind: 'announcement', title: 'Agapă', body: 'După serviciu', version: 7, eventId: 3, background: null, clock: null, safeMargin: 5 });
   assert.strictEqual(frame(4, 0).title, 'Predica');
   assert.deepStrictEqual([frame(5, 0).kind, frame(5, 0).title], ['title', 'Rugăciune']);
   assert.strictEqual(frame(6, 0).kind, 'black', 'video: black until stage 5b');
   assert.deepStrictEqual([frame(7, 0).kind, frame(7, 0).title], ['title', 'Cântare ștearsă']);
-  assert.deepStrictEqual(frame(1, 0, 'black'), { kind: 'black', version: 7, eventId: 3, background: null, clock: null });
-  assert.deepStrictEqual(frame(1, 0, 'logo', '/api/logo/x.png'), { kind: 'logo', logoUrl: '/api/logo/x.png', version: 7, eventId: 3, background: null, clock: null });
+  assert.deepStrictEqual(frame(1, 0, 'black'), { kind: 'black', version: 7, eventId: 3, background: null, clock: null, safeMargin: 5 });
+  assert.deepStrictEqual(frame(1, 0, 'logo', '/api/logo/x.png'), { kind: 'logo', logoUrl: '/api/logo/x.png', version: 7, eventId: 3, background: null, clock: null, safeMargin: 5 });
   assert.strictEqual(frame(1, 0, 'logo').logoUrl, null);
   assert.strictEqual(frame(99, 0).kind, 'black', 'no item at the position');
-  assert.deepStrictEqual(projectorFrame(null, null, null, { logoUrl: '/api/logo/x.png' }), { kind: 'idle', logoUrl: '/api/logo/x.png', version: 0, eventId: null, background: null, clock: null });
+  assert.deepStrictEqual(projectorFrame(null, null, null, { logoUrl: '/api/logo/x.png' }), { kind: 'idle', logoUrl: '/api/logo/x.png', version: 0, eventId: null, background: null, clock: null, safeMargin: 5 });
   assert.strictEqual(projectorFrame({ ...state(1, 0), status: 'finished' }, { items }, new Map()).kind, 'idle');
 });
 
@@ -954,7 +954,7 @@ test('projector frames: a prepared video rides along, plays only on the video so
     projector: { follows: 'worship', itemId: null, step: 0, source },
     video: { state: videoState, seq: 5, volume: 0.8, position: 0 } });
   const f = (source, videoState, m = media) => projectorFrame(st(source, videoState), { items }, new Map(), { videoMedia: m });
-  assert.deepStrictEqual(f('content', 'prepared'), { kind: 'verse', reference: 'Ps 1', text: 'Ferice', version: 3, eventId: 2, background: null, clock: null,
+  assert.deepStrictEqual(f('content', 'prepared'), { kind: 'verse', reference: 'Ps 1', text: 'Ferice', version: 3, eventId: 2, background: null, clock: null, safeMargin: 5,
     video: { state: 'prepared', seq: 5, volume: 0.8, position: 0, media } });
   assert.strictEqual(f('video', 'playing').kind, 'video');
   assert.strictEqual(f('video', 'paused').kind, 'video');
@@ -2080,7 +2080,7 @@ test('migration 027: the presenter role; existing users and sessions keep their 
   assert.throws(() => mem.prepare("INSERT INTO users (admin_id, email, name, password_hash, role, created_at) VALUES (1, 'p@x.ro', 'P', 'x', 'presenter', 0)").run(), /CHECK/);
   mem.exec('CREATE TABLE schema_migrations (name TEXT PRIMARY KEY, applied_at INTEGER NOT NULL)');
   for (const f of files.filter((x) => x < '027')) mem.prepare('INSERT INTO schema_migrations (name, applied_at) VALUES (?, 0)').run(f);
-  assert.deepStrictEqual(runMigrations(mem), ['027_role_presenter.sql']);
+  assert.ok(runMigrations(mem).includes('027_role_presenter.sql'));
   assert.deepStrictEqual(mem.prepare('SELECT id, role, locale, theme FROM users ORDER BY id').all(), [{ id: 1, role: 'owner', locale: 'en', theme: 'light' }, { id: 2, role: 'leader', locale: null, theme: null }], 'no user changed');
   assert.deepStrictEqual(mem.prepare('SELECT id, view_as FROM sessions ORDER BY id').all(), [{ id: 's1', view_as: 'member' }, { id: 's2', view_as: null }]);
   assert.strictEqual(mem.prepare('SELECT COUNT(*) FROM user_tokens').pluck().get(), 1, 'references survive');
@@ -2093,5 +2093,42 @@ test('migration 027: the presenter role; existing users and sessions keep their 
   assert.deepStrictEqual(SCREEN_ROLES, ['owner', 'operator']);
   assert.deepStrictEqual(VIEW_AS_ROLES, ['presenter', 'leader', 'operator', 'member']);
   assert.deepStrictEqual(validateRole('presenter', (k) => k), { value: 'presenter' });
+  mem.close();
+});
+
+test('safe margin: 0-12 % parsed, 5 by default; on every frame; a screen may override (migration 028)', () => {
+  const Database = require('better-sqlite3');
+  const { runMigrations } = require('../lib/db');
+  const { createAdminSettings, parseSafeMargin, SAFE_MARGIN } = require('../lib/admin-settings');
+  const { createScreenStore } = require('../lib/screens');
+  const { projectorFrame } = require('../lib/projector');
+  assert.deepStrictEqual([parseSafeMargin('8'), parseSafeMargin(0), parseSafeMargin(12), parseSafeMargin(13), parseSafeMargin(-1), parseSafeMargin('x'), parseSafeMargin(2.5), parseSafeMargin(null)], [8, 0, 12, null, null, null, null, null]);
+  assert.deepStrictEqual(SAFE_MARGIN, { min: 0, max: 12, fallback: 5 });
+  const mem = new Database(':memory:');
+  mem.pragma('foreign_keys = ON');
+  runMigrations(mem);
+  mem.prepare("INSERT INTO admins (id, name, created_at) VALUES (1, 'A', 0)").run();
+  const settings = createAdminSettings(mem);
+  assert.strictEqual(settings.safeMargin(1), 5, 'the default');
+  settings.set(1, 'safe_margin', '8');
+  assert.strictEqual(settings.safeMargin(1), 8);
+  settings.set(1, 'safe_margin', '40');
+  assert.strictEqual(settings.safeMargin(1), 5, 'a bad stored value falls back');
+  // frames: the margin given, else 5; a bad one -> 5
+  assert.strictEqual(projectorFrame(null, null, null, { safeMargin: 8 }).safeMargin, 8);
+  assert.strictEqual(projectorFrame(null, null, null, {}).safeMargin, 5);
+  assert.strictEqual(projectorFrame(null, null, null, { safeMargin: 99 }).safeMargin, 5);
+  const live = { status: 'live', version: 3, eventId: 1, projector: { source: 'black', follows: 'worship' }, worship: { itemId: null, step: 0 }, video: null, clock: null };
+  assert.deepStrictEqual([projectorFrame(live, { items: [] }, new Map(), { safeMargin: 0 }).kind, projectorFrame(live, { items: [] }, new Map(), { safeMargin: 0 }).safeMargin], ['black', 0], '0 is a value, not a fallback');
+  // the screen's own margin
+  const screens = createScreenStore(mem);
+  mem.prepare("INSERT INTO screens (id, admin_id, name, token_hash, created_at) VALUES (1, 1, 'S', 'h', 0)").run();
+  assert.strictEqual(screens.get(1, 1).safeMargin, null, 'null: the church default');
+  assert.strictEqual(screens.setSafeMargin(1, 1, 8), true);
+  assert.strictEqual(screens.get(1, 1).safeMargin, 8);
+  assert.throws(() => mem.prepare('UPDATE screens SET safe_margin = 13 WHERE id = 1').run(), /CHECK/);
+  assert.strictEqual(screens.setSafeMargin(1, 1, null), true);
+  assert.strictEqual(screens.list(1)[0].safeMargin, null);
+  assert.strictEqual(screens.setSafeMargin(2, 1, 3), false, 'another admin: nothing');
   mem.close();
 });

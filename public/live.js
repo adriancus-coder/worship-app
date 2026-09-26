@@ -363,10 +363,10 @@
   // --- projector panel --------------------------------------------------------------
 
   // The small preview renders exactly the frame the screens get (same render module).
-  const preview = window.PROJECTOR_RENDER.create($('projector-preview'), { videoPlaceholder: true });
+  const preview = window.PROJECTOR_RENDER.create($('projector-preview'), { videoPlaceholder: true, guide: true });
   // Video controls (a module the operator console will reuse in stage 6).
   const videoPanel = window.VIDEO_PANEL.create($('video-panel'), { send, api, t, el });
-  const projector = { screens: 0, logoUrl: null, frame: null };
+  const projector = { screens: 0, logoUrl: null, frame: null, safeMargin: null };
   const backgroundButton = window.BG_PICKER.liveButton($('bg-live'), { send });
   // The corner clock (clock.set: show / corner / size; key K toggles it).
   const clockPanel = window.CLOCK_PANEL.create($('clock-panel'), { t, el, onChange: (patch) => send('clock.set', patch) });
@@ -426,6 +426,7 @@
       videoPanel.setScreens(reply.screens);
       if (reply.videoStatus && reply.videoStatus.length) videoPanel.status(reply.videoStatus);
       renderProjector();
+      if (Number.isInteger(reply.safeMargin)) projector.safeMargin = reply.safeMargin;
       if (reply.logoUrl !== projector.logoUrl) {
         projector.logoUrl = reply.logoUrl || null;
         if (state.event) cacheEvent();
@@ -508,6 +509,7 @@
       logoUrl,
       videoMedia: last && last.video ? last.video.media : null, // keeps a prepared video loaded
       backgrounds: state.snap.backgrounds || null, // the event's backgrounds, from the last snapshot
+      safeMargin: projector.safeMargin === null ? (last ? last.safeMargin : undefined) : projector.safeMargin,
     });
   }
 

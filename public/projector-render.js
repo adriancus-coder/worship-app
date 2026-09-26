@@ -6,8 +6,11 @@
 //
 // Text is white on black, centred, and auto-fitted: the largest font size (between a
 // minimum and a maximum, relative to the container height) at which every line fits inside
-// safe margins of 5 % on each side. Song line breaks are kept; long lines wrap. Content
-// fades in (150 ms); black appears at once.
+// the safe margins (frame.safeMargin, % of each edge; 5 by default: "Margine de siguranță
+// proiector", against projectors that crop the edges). The logo and the corner clock keep the
+// same margin; backgrounds and video are not inset. A preview (guide: true) draws a faint
+// dashed rectangle at the margin. Song line breaks are kept; long lines wrap. Content fades
+// in (150 ms); black appears at once.
 //
 // Backgrounds (frame.background, lib/backgrounds.js) sit on their own layer under the text:
 // an image (cover-fit) or a silent looping video, dimmed and blurred as set per background,
@@ -33,9 +36,11 @@
   const CLOCK_REM = 16;
   const reducedMotion = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
 
+  const DEFAULT_SAFE_MARGIN = 5;
+
   // videoPlaceholder: the small preview shows "▶ title" for a video frame (the screen itself
-  // plays it on its own layer, see video-player.js).
-  function create(container, { resolveLogo = async (url) => url, videoPlaceholder = false } = {}) {
+  // plays it on its own layer, see video-player.js). guide: the dashed safe-margin rectangle.
+  function create(container, { resolveLogo = async (url) => url, videoPlaceholder = false, guide = false } = {}) {
     container.classList.add('projector');
     const backdrop = document.createElement('div');
     backdrop.className = 'projector-backdrop';
@@ -45,7 +50,28 @@
     clockNode.className = 'display-clock';
     clockNode.setAttribute('aria-hidden', 'true');
     clockNode.hidden = true;
-    container.replaceChildren(backdrop, stage, clockNode);
+    const guideNode = document.createElement('div');
+    guideNode.className = 'projector-safe-guide';
+    guideNode.setAttribute('aria-hidden', 'true');
+    guideNode.hidden = !guide;
+    container.replaceChildren(backdrop, stage, guideNode, clockNode);
+    let margin = DEFAULT_SAFE_MARGIN; // % of each edge
+
+    // The margin in px of this container (CSS variables for the stage, the clock and the guide).
+    function sizeMargin() {
+      const m = margin / 100;
+      container.style.setProperty('--safe-x', `${(container.clientWidth * m).toFixed(2)}px`);
+      container.style.setProperty('--safe-y', `${(container.clientHeight * m).toFixed(2)}px`);
+    }
+    function applyMargin(percent) {
+      const next = Number.isInteger(percent) && percent >= 0 && percent <= 12 ? percent : DEFAULT_SAFE_MARGIN;
+      if (next !== margin) {
+        margin = next;
+        container.dataset.safeMargin = String(margin);
+      }
+      sizeMargin();
+    }
+    container.dataset.safeMargin = String(margin);
     let current = null;
     let token = 0;
     const loaded = new Map(); // media id -> { node, ready: Promise<boolean> }
@@ -115,8 +141,8 @@
       const height = container.clientHeight;
       const width = container.clientWidth;
       if (!height || !width) return;
-      const maxW = width * 0.9;
-      const maxH = height * 0.9;
+      const maxW = width * (1 - 2 * margin / 100);
+      const maxH = height * (1 - 2 * margin / 100);
       let lo = Math.max(6, height * MIN_FONT);
       let hi = Math.max(lo, height * MAX_FONT);
       box.style.fontSize = `${hi}px`;
@@ -297,6 +323,7 @@
 
     async function show(frame) {
       if (!frame) return;
+      applyMargin(frame.safeMargin);
       applyClock(frame.clock || null);
       setBackground(frame.background || null, frame.kind === 'black');
       if (frame.nextBackground) load(frame.nextBackground);
@@ -323,6 +350,7 @@
     }
 
     function resized() {
+      sizeMargin();
       fit();
       if (shown) style(shown.layer, shown.bg);
       if (clock) sizeClock();

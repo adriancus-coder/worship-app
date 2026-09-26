@@ -6,7 +6,7 @@ const { isValidTime } = require('../lib/dates');
 const { requireRole } = require('../lib/auth');
 const { MAX_BYTES, sniff, createLogoStore } = require('../lib/logo');
 const { createScreenStore } = require('../lib/screens');
-const { NOTATIONS, THEME_DEFAULTS, TIME_FORMATS, createAdminSettings } = require('../lib/admin-settings');
+const { NOTATIONS, THEME_DEFAULTS, TIME_FORMATS, createAdminSettings, parseSafeMargin } = require('../lib/admin-settings');
 const { parsePatch: parseClockPatch } = require('../lib/clock');
 const { parseChoice, createBackgroundStore } = require('../lib/backgrounds');
 const { createMediaSigner } = require('../lib/media');
@@ -43,6 +43,7 @@ function createSettingsRouter({ db, auth, config, logger, screensHub, live, stor
       service: settings.service(req.adminId),
       clock: settings.clock(req.adminId),
       timeFormat: settings.timeFormat(req.adminId),
+      safeMargin: settings.safeMargin(req.adminId),
       backgroundDefaults: backgrounds.defaults(req.adminId),
       backup: backups.lastBackup(req.adminId),
       storage: storage.usage(),
@@ -108,6 +109,16 @@ function createSettingsRouter({ db, auth, config, logger, screensHub, live, stor
     const clock = settings.setClock(req.adminId, patch);
     screensHub.update(req.adminId); // the idle screen shows the defaults
     res.json({ clock });
+  });
+
+  // "Margine de siguranță proiector": 0-12 % of each edge kept free of text, clock and logo
+  // (overscan). Every screen without its own value follows it at once.
+  router.put('/api/settings/safe-margin', (req, res) => {
+    const percent = parseSafeMargin((req.body || {}).percent);
+    if (percent === null) return res.status(400).json({ error: req.t('errors.safeMarginInvalid') });
+    settings.set(req.adminId, 'safe_margin', String(percent));
+    screensHub.marginChanged(req.adminId);
+    res.json({ safeMargin: percent });
   });
 
   // '24' | '12': the format of every clock (the projector's, the live pages').

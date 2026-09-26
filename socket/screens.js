@@ -61,10 +61,12 @@ function createScreensHub({ db, logger, config }) {
     return { ...settings.clock(adminId), timeZone: settings.timezone(adminId), format: settings.timeFormat(adminId) };
   }
 
-  // The frame the admin's screens should show now.
+  // The frame the admin's screens should show now (with the church safe margin; a screen with
+  // its own margin gets it swapped in, see sendFrame).
   function frameFor(adminId) {
     const eventId = live.liveEventId(adminId);
-    if (!eventId) return projectorFrame(null, null, null, { logoUrl: logoUrl(adminId), clock: clockDefaults(adminId) });
+    const safeMargin = settings.safeMargin(adminId);
+    if (!eventId) return projectorFrame(null, null, null, { logoUrl: logoUrl(adminId), clock: clockDefaults(adminId), safeMargin });
     const state = live.snapshot(adminId, eventId);
     const found = events.get(adminId, eventId, { scope: 'all' }); // the operator's items too
     const songs = new Map();
@@ -76,6 +78,7 @@ function createScreensHub({ db, logger, config }) {
       if (ready) songs.set(current.id, ready.song);
     }
     return projectorFrame(state, found, songs, {
+      safeMargin,
       logoUrl: logoUrl(adminId),
       videoMedia: videoMedia(adminId, state.video, found ? found.items : []),
       backgrounds: backgrounds.forEvent(adminId, eventId, state.backgroundOverride),
@@ -84,6 +87,12 @@ function createScreensHub({ db, logger, config }) {
 
   const withoutVersion = (frame) => JSON.stringify({ ...frame, version: undefined });
 
+  // The frame as one screen shows it: its own safe margin when it has one.
+  function forScreen(frame, socket) {
+    const own = socket.data.safeMargin;
+    return own === null || own === undefined ? frame : { ...frame, safeMargin: own };
+  }
+
   // Something the projector may show changed: send the new frame if it differs.
   function update(adminId) {
     if (!nsp) return;
@@ -91,8 +100,23 @@ function createScreensHub({ db, logger, config }) {
     const key = withoutVersion(frame);
     if (lastSent.get(adminId) === key) return;
     lastSent.set(adminId, key);
-    nsp.to(screensRoom(adminId)).emit('projector:frame', frame);
+    for (const socket of socketsOf(adminId)) socket.emit('projector:frame', forScreen(frame, socket));
     mainIo.to(watchersRoom(adminId)).emit('projector:frame', frame);
+  }
+
+  // The church safe margin or one screen's changed: the screens re-read theirs and get the
+  // current frame again (the watchers too, for the church value).
+  function marginChanged(adminId, screenId = null) {
+    if (!nsp) return;
+    const frame = frameFor(adminId);
+    lastSent.set(adminId, withoutVersion(frame));
+    for (const socket of socketsOf(adminId)) {
+      if (screenId !== null && socket.data.screenId !== screenId) continue;
+      const screen = screens.get(adminId, socket.data.screenId);
+      socket.data.safeMargin = screen ? screen.safeMargin : null;
+      socket.emit('projector:frame', forScreen(frame, socket));
+    }
+    if (screenId === null) mainIo.to(watchersRoom(adminId)).emit('projector:frame', frame);
   }
 
   function socketsOf(adminId) {
@@ -116,6 +140,7 @@ function createScreensHub({ db, logger, config }) {
       screens: screenCount(adminId),
       videoStatus: [...(videoStatus.get(adminId) || new Map()).values()],
       logoUrl: logoUrl(adminId), // for pages that compute frames themselves (public/frames.js)
+      safeMargin: settings.safeMargin(adminId), // the same pages' frames carry it too
       adminId, // names the BroadcastChannel to this admin's projector windows (emergency mode)
     };
   }
@@ -183,7 +208,7 @@ function createScreensHub({ db, logger, config }) {
       const screen = screens.findByToken(socket.handshake.auth && socket.handshake.auth.token);
       if (!screen) return next(new Error('unauthorized'));
       if (!screen.adminActive) return next(new Error('suspended')); // deactivated church: retries later
-      socket.data = { screenId: screen.id, adminId: screen.adminId };
+      socket.data = { screenId: screen.id, adminId: screen.adminId, safeMargin: screen.safeMargin };
       next();
     });
     nsp.on('connection', (socket) => {
@@ -191,7 +216,7 @@ function createScreensHub({ db, logger, config }) {
       screens.touch(screenId);
       socket.join(screensRoom(adminId));
       socket.emit('screen:hello', { screen: { id: screenId }, adminId });
-      socket.emit('projector:frame', frameFor(adminId));
+      socket.emit('projector:frame', forScreen(frameFor(adminId), socket));
       sendCount(adminId);
       socket.on('screen:video-status', (payload) => onScreenVideoStatus(socket, payload));
       socket.on('screen:video-local', (payload) => onScreenVideoLocal(socket, payload));
@@ -224,7 +249,7 @@ function createScreensHub({ db, logger, config }) {
   // pages compute the same frames offline) and the editor's "Implicit (…)".
   const backgroundsFor = (adminId, eventId, override) => backgrounds.forEvent(adminId, eventId, override);
 
-  return { attach, update, frameFor, onlineIds, revoked, suspend, watch, setVideoHandler, lastVideoPosition, backgroundsFor };
+  return { attach, update, marginChanged, frameFor, onlineIds, revoked, suspend, watch, setVideoHandler, lastVideoPosition, backgroundsFor };
 }
 
 module.exports = { NAMESPACE, screensRoom, createScreensHub };

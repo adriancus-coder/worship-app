@@ -38,6 +38,7 @@
     renderThemeDefault(res.body.themeDefault);
     renderService(res.body.service);
     renderClock(res.body.clock);
+    renderMargin(res.body.safeMargin);
     renderTimeFormat(res.body.timeFormat);
     renderEmail(res.body.email);
     renderBackup(res.body.backup);
@@ -193,6 +194,20 @@
   $('service-day').addEventListener('change', saveService);
   $('service-time').addEventListener('change', saveService);
   document.addEventListener('i18n:change', () => renderService());
+
+  // "Margine de siguranță proiector" (0-12 %): saved on change, every screen follows at once.
+  function renderMargin(value) {
+    if (Number.isInteger(value)) $('safe-margin').value = String(value);
+    $('safe-margin-value').textContent = `${$('safe-margin').value} %`;
+  }
+  $('safe-margin').addEventListener('input', () => renderMargin());
+  $('safe-margin').addEventListener('change', async () => {
+    const res = await api('/api/settings/safe-margin', { method: 'PUT', body: { percent: Number($('safe-margin').value) } });
+    const out = $('margin-message');
+    out.className = `message ${res.ok ? 'success' : 'error'}`;
+    out.textContent = res.ok ? t('settings.safeMarginSaved', { n: res.body.safeMargin }) : res.body.error || t('common.networkError');
+    if (res.ok) renderMargin(res.body.safeMargin);
+  });
 
   // The corner clock a new event starts with (public/clock-panel.js, the live pages' controls).
   let clock = null;

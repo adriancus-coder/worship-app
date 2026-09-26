@@ -319,7 +319,7 @@
 
   // --- projector preview, screens, video --------------------------------------------
 
-  const preview = window.PROJECTOR_RENDER.create($('projector-preview'), { videoPlaceholder: true });
+  const preview = window.PROJECTOR_RENDER.create($('projector-preview'), { videoPlaceholder: true, guide: true });
   const videoPanel = window.VIDEO_PANEL.create($('video-panel'), {
     send, api, t, el,
     canAddUrl: false, // adding to the media library: owner / leader, on /media

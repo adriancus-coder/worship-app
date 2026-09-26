@@ -4,6 +4,7 @@ const express = require('express');
 const { requireRole } = require('../lib/auth');
 const { createFailureLimiter, createRequestLimiter } = require('../lib/rate-limit');
 const { validateScreenName, createScreenStore } = require('../lib/screens');
+const { parseSafeMargin, createAdminSettings } = require('../lib/admin-settings');
 
 const { SCREEN_ROLES } = require('../lib/events');
 const TEN_MINUTES = 10 * 60 * 1000;
@@ -16,6 +17,7 @@ const SCREEN_TOKEN_HEADER = 'x-screen-token';
 function createScreensRouter({ db, auth, config, logger, screensHub }) {
   const router = express.Router();
   const screens = createScreenStore(db);
+  const settings = createAdminSettings(db);
   const canManage = requireRole(...SCREEN_ROLES);
   const pairingLimiter = createRequestLimiter({ maxRequests: 10, windowMs: TEN_MINUTES });
   const codeLimiter = createFailureLimiter({ maxFailures: 5, windowMs: TEN_MINUTES });
@@ -106,7 +108,7 @@ function createScreensRouter({ db, auth, config, logger, screensHub }) {
   router.get('/api/screens', (req, res) => {
     const online = screensHub.onlineIds(req.adminId);
     // baseUrl: the address of the projector page ("adresa proiectorului"), null -> the page's origin.
-    res.json({ screens: screens.list(req.adminId).map((s) => ({ ...s, online: online.has(s.id) })), baseUrl: config.PUBLIC_BASE_URL });
+    res.json({ screens: screens.list(req.adminId).map((s) => ({ ...s, online: online.has(s.id) })), baseUrl: config.PUBLIC_BASE_URL, safeMargin: settings.safeMargin(req.adminId) });
   });
 
   router.put('/api/screens/:id', (req, res) => {
@@ -115,6 +117,19 @@ function createScreensRouter({ db, auth, config, logger, screensHub }) {
     if (!id || !screens.get(req.adminId, id)) return res.status(404).json({ error: req.t('errors.screenNotFound') });
     if (name.error) return res.status(400).json({ error: name.error });
     screens.rename(req.adminId, id, name.value);
+    res.json({ screen: screens.get(req.adminId, id) });
+  });
+
+  // The screen's own "Margine de siguranță" { percent: 0-12 | null } (null: the church default).
+  router.put('/api/screens/:id/margin', (req, res) => {
+    const id = screenId(req);
+    if (!id || !screens.get(req.adminId, id)) return res.status(404).json({ error: req.t('errors.screenNotFound') });
+    const raw = (req.body || {}).percent;
+    const percent = raw === null ? null : parseSafeMargin(raw);
+    if (percent === undefined || (raw !== null && percent === null)) return res.status(400).json({ error: req.t('errors.safeMarginInvalid') });
+    screens.setSafeMargin(req.adminId, id, percent);
+    screensHub.marginChanged(req.adminId, id);
+    logger.info(`Screen #${id} safe margin ${percent === null ? 'follows the church default' : `${percent} %`} (user #${req.user.id}, admin #${req.adminId})`);
     res.json({ screen: screens.get(req.adminId, id) });
   });
 

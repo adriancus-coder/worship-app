@@ -422,6 +422,34 @@ async function main() {
     assert.strictEqual((await frameWhere(otherScreen, () => true)).kind, 'idle');
   });
 
+  await step('safe margin: 5 % on every frame; the church value (owner only) reaches every screen; a screen\'s own value wins', async () => {
+    assert.strictEqual(screen.frames.at(-1).safeMargin, 5, 'the default on the frame');
+    assert.strictEqual((await api('GET', '/api/settings', owner)).body.safeMargin, 5);
+    assert.strictEqual((await api('PUT', '/api/settings/safe-margin', leader, { percent: 8 })).status, 403, 'owner only');
+    assert.strictEqual((await api('PUT', '/api/settings/safe-margin', owner, { percent: 13 })).status, 400);
+    assert.strictEqual((await api('PUT', '/api/settings/safe-margin', owner, { percent: 8 })).status, 200);
+    let frame = await frameWhere(screen, (f) => f.safeMargin === 8);
+    assert.strictEqual(frame.kind, 'lyrics', 'the current frame again, with the new margin');
+    assert.strictEqual((await api('GET', '/api/screens', owner)).body.safeMargin, 8, 'the list carries the church value');
+    assert.strictEqual(otherScreen.frames.every((f) => f.safeMargin === 5), true, 'another admin\'s screens are untouched');
+    // this screen's own value
+    const mine = (await api('GET', '/api/screens', owner)).body.screens.find((s) => s.name === 'Proiector sală');
+    assert.strictEqual((await api('PUT', `/api/screens/${mine.id}/margin`, owner, { percent: 20 })).status, 400);
+    assert.strictEqual((await api('PUT', `/api/screens/${mine.id}/margin`, leader, { percent: 2 })).status, 403, 'SCREEN_ROLES only');
+    const own = await api('PUT', `/api/screens/${mine.id}/margin`, operator, { percent: 2 });
+    assert.deepStrictEqual([own.status, own.body.screen.safeMargin], [200, 2]);
+    frame = await frameWhere(screen, (f) => f.safeMargin === 2);
+    assert.strictEqual(frame.kind, 'lyrics');
+    assert.strictEqual((await api('PUT', '/api/settings/safe-margin', owner, { percent: 6 })).status, 200);
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    assert.strictEqual(screen.frames.at(-1).safeMargin, 2, 'the church change does not override the screen\'s own value');
+    // back to the church default
+    assert.strictEqual((await api('PUT', `/api/screens/${mine.id}/margin`, owner, { percent: null })).body.screen.safeMargin, null);
+    frame = await frameWhere(screen, (f) => f.safeMargin === 6);
+    assert.strictEqual((await api('PUT', '/api/settings/safe-margin', owner, { percent: 5 })).status, 200);
+    await frameWhere(screen, (f) => f.safeMargin === 5);
+  });
+
   await step('worship moves and projector.source change the screen frame; member refused', async () => {
     await send(lead.socket, { type: 'worship.goto', itemId: i2, step: 0 });
     let frame = await frameWhere(screen, (f) => f.kind === 'verse');

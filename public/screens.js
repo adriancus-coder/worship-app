@@ -11,7 +11,7 @@
   const $ = (id) => document.getElementById(id);
   const REFRESH_MS = 15000;
 
-  const state = { screens: null, baseUrl: null, renaming: null, revoking: null, addressOpen: new Set() };
+  const state = { screens: null, baseUrl: null, safeMargin: 5, renaming: null, revoking: null, addressOpen: new Set() };
 
   // "Adresa proiectorului": PUBLIC_BASE_URL when set, else this page's origin.
   const screenAddress = () => `${state.baseUrl || window.location.origin}/screen`;
@@ -53,8 +53,31 @@
         el('button', { type: 'button', class: 'secondary', 'data-icon': 'edit', text: t('screens.rename'), 'aria-label': t('screens.renameLabel', { name: screen.name }), onclick: () => openRename(screen) }),
         el('button', { type: 'button', class: 'secondary', 'data-icon': 'link', text: t('screens.rowAddress'), 'aria-expanded': String(state.addressOpen.has(screen.id)), 'aria-label': t('screens.rowAddressLabel', { name: screen.name }), onclick: () => toggleAddress(screen) }),
         el('button', { type: 'button', class: 'secondary', 'data-icon': 'close', text: t('screens.revoke'), 'aria-label': t('screens.revokeLabel', { name: screen.name }), onclick: () => openRevoke(screen) })),
+      // "Margine de siguranță": this screen's own value or the church default (settings).
+      marginControl(screen),
       // "Adresa proiectorului" for this screen: to reopen a PC that lost its window.
       state.addressOpen.has(screen.id) ? addressBox(screen) : null)));
+  }
+
+  function marginControl(screen) {
+    const select = el('select', { 'aria-label': t('screens.marginLabelFor', { name: screen.name }), 'data-margin': String(screen.id) },
+      el('option', { value: '', text: t('screens.marginDefault', { n: state.safeMargin }) }),
+      ...Array.from({ length: 13 }, (_, n) => el('option', { value: String(n), text: t('screens.marginPercent', { n }) })));
+    select.value = screen.safeMargin === null || screen.safeMargin === undefined ? '' : String(screen.safeMargin);
+    const message = el('span', { class: 'message', role: 'status' });
+    select.addEventListener('change', async () => {
+      const percent = select.value === '' ? null : Number(select.value);
+      const res = await api(`/api/screens/${screen.id}/margin`, { method: 'PUT', body: { percent } });
+      if (!res.ok) {
+        message.className = 'message error';
+        message.textContent = res.body.error || t('common.networkError');
+        return;
+      }
+      state.screens = state.screens.map((s) => (s.id === screen.id ? { ...s, ...res.body.screen, online: s.online } : s));
+      message.className = 'message success';
+      message.textContent = t('screens.marginSaved', { name: screen.name, value: percent === null ? t('screens.marginDefault', { n: state.safeMargin }) : t('screens.marginPercent', { n: percent }) });
+    });
+    return el('label', { class: 'screen-margin' }, el('span', { class: 'hint', text: t('screens.marginLabel') }), select, message);
   }
 
   function addressBox(screen) {
@@ -82,6 +105,7 @@
     }
     state.screens = res.body.screens;
     state.baseUrl = res.body.baseUrl || null;
+    if (Number.isInteger(res.body.safeMargin)) state.safeMargin = res.body.safeMargin;
     render();
     renderAddress();
   }

@@ -40,6 +40,7 @@
   --projector-text-shadow-strong: rgba(0, 0, 0, 0.85);
   --projector-dim: #000;
   --projector-hint: #bbb;
+  --projector-guide: #8a8a8a;
   --projector-hint-bg: rgba(255, 255, 255, 0.08);
   --projector-offline: #a33;
   /* The iPhone "Add to Home Screen" drawings copy iOS colours in every theme. */
@@ -1023,6 +1024,13 @@ button.live-item:disabled { opacity: 1; cursor: default; }
 /* "Adresa proiectorului" under a screen row */
 .screen-address { flex: 1 1 100%; display: flex; flex-direction: column; gap: 6px; padding-top: 6px; border-top: 1px solid var(--border); }
 .screen-address .hint, .screen-address .message { margin: 0; }
+.screen-margin { flex: 1 1 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 0; }
+.screen-margin select { min-height: var(--touch); }
+.screen-margin .hint, .screen-margin .message { margin: 0; }
+.margin-field label { display: flex; justify-content: space-between; gap: 8px; }
+.margin-field output { font-variant-numeric: tabular-nums; font-weight: 700; }
+.margin-field input[type="range"] { display: block; width: 100%; max-width: 480px; min-height: var(--touch); margin: 0; accent-color: var(--accent-fill); }
+#margin-hint { margin: 8px 0 0; }
 .address-box { display: flex; flex-wrap: wrap; gap: 8px; }
 .address-box input { flex: 1 1 200px; min-width: 0; min-height: var(--touch); }
 .address-actions { margin: 8px 0 0; }
@@ -1041,11 +1049,15 @@ button.live-item:disabled { opacity: 1; cursor: default; }
 /* --- projector output (the /screen page and the leader's preview) --------------------------- */
 
 .projector { position: relative; overflow: hidden; background: var(--projector-bg); color: var(--projector-text); }
-.projector-stage { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; opacity: 0; }
+/* --safe-x / --safe-y: the safe margin in px (projector-render.js); the stage, the logo and the
+   clock keep inside it, the backdrop and the video layer do not. */
+.projector-stage { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: var(--safe-y, 0px) var(--safe-x, 0px); opacity: 0; }
+.projector-safe-guide { position: absolute; top: var(--safe-y, 0px); right: var(--safe-x, 0px); bottom: var(--safe-y, 0px); left: var(--safe-x, 0px); border: 1px dashed var(--projector-guide); opacity: 0.6; pointer-events: none; z-index: 1; }
+.projector-safe-guide[hidden] { display: none; }
 .projector-stage.visible { opacity: 1; }
 .projector-text {
-  width: 90%;
-  max-height: 90%;
+  width: 100%;
+  max-height: 100%;
   text-align: center;
   line-height: 1.22;
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -1087,10 +1099,10 @@ button.live-item:disabled { opacity: 1; cursor: default; }
   white-space: nowrap;
 }
 .display-clock[hidden] { display: none; }
-.display-clock.top-left { top: calc(20px * var(--clock-ratio, 1)); left: calc(24px * var(--clock-ratio, 1)); }
-.display-clock.top-right { top: calc(20px * var(--clock-ratio, 1)); right: calc(24px * var(--clock-ratio, 1)); }
-.display-clock.bottom-left { bottom: calc(20px * var(--clock-ratio, 1)); left: calc(24px * var(--clock-ratio, 1)); }
-.display-clock.bottom-right { bottom: calc(20px * var(--clock-ratio, 1)); right: calc(24px * var(--clock-ratio, 1)); }
+.display-clock.top-left { top: calc(var(--safe-y, 0px) + 20px * var(--clock-ratio, 1)); left: calc(var(--safe-x, 0px) + 24px * var(--clock-ratio, 1)); }
+.display-clock.top-right { top: calc(var(--safe-y, 0px) + 20px * var(--clock-ratio, 1)); right: calc(var(--safe-x, 0px) + 24px * var(--clock-ratio, 1)); }
+.display-clock.bottom-left { bottom: calc(var(--safe-y, 0px) + 20px * var(--clock-ratio, 1)); left: calc(var(--safe-x, 0px) + 24px * var(--clock-ratio, 1)); }
+.display-clock.bottom-right { bottom: calc(var(--safe-y, 0px) + 20px * var(--clock-ratio, 1)); right: calc(var(--safe-x, 0px) + 24px * var(--clock-ratio, 1)); }
 
 /* --- the /screen page ------------------------------------------------------------------------- */
 

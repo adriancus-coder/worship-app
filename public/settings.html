@@ -48,6 +48,16 @@
       <p id="service-message" class="message" role="status" aria-live="polite"></p>
     </section>
 
+    <section class="settings-section" aria-labelledby="margin-heading">
+      <h2 id="margin-heading" data-i18n="settings.safeMarginHeading"></h2>
+      <p class="hint" data-i18n="settings.safeMarginHint"></p>
+      <div class="field margin-field">
+        <label for="safe-margin"><span data-i18n="settings.safeMarginLabel"></span> <output id="safe-margin-value" for="safe-margin"></output></label>
+        <input type="range" id="safe-margin" min="0" max="12" step="1" value="5">
+      </div>
+      <p id="margin-message" class="message" role="status" aria-live="polite"></p>
+    </section>
+
     <section class="settings-section" aria-labelledby="clock-heading">
       <h2 id="clock-heading" data-i18n="settings.clockHeading"></h2>
       <p class="hint" data-i18n="settings.clockHint"></p>
