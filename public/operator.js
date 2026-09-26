@@ -136,7 +136,11 @@
       $('cross-jump').disabled = pos.itemId === state.snap.worship.itemId && pos.step === state.snap.worship.step;
     }
     $('op-screens').textContent = state.screens === 1 ? t('live.projector.screensOne') : t('live.projector.screens', { n: state.screens });
+    liveClock.update(state.snap, live() ? projectorPos() : null);
   }
+
+  // The time and "Live de hh:mm" / "pe elementul curent de mm:ss" (the item this console drives).
+  const liveClock = window.LIVE_CLOCK.create($('live-clock'), { t });
 
   function renderList() {
     const enabled = live();
@@ -419,6 +423,7 @@
     render();
     videoPanel.render();
     clockPanel.render();
+    liveClock.render();
     // Section labels come from the server in the connection's language: reconnect.
     state.client.socket.disconnect().connect();
   });

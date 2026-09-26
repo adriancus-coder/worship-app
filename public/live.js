@@ -130,7 +130,11 @@
     $('start-button').hidden = status !== 'planned';
     $('end-button').hidden = status !== 'live';
     renderPresence();
+    liveClock.update(snap, snap.worship);
   }
+
+  // The time and "Live de hh:mm" / "pe elementul curent de mm:ss" in the status line.
+  const liveClock = window.LIVE_CLOCK.create($('live-clock'), { t });
 
   function renderPresence() {
     const presence = (state.snap && state.snap.presence) || {};
@@ -633,6 +637,7 @@
     videoPanel.render();
     modes.render();
     clockPanel.render();
+    liveClock.render();
     // Section labels come from the server in the page language: reload.
     const key = state.loadedKey;
     state.loadedKey = null;

@@ -869,6 +869,13 @@ main.live-page { max-width: 1400px; }
 .connection[data-state="reconnecting"] .dot { background: var(--accent-fill); }
 .connection[data-state="offline"] { color: var(--error); }
 .connection[data-state="offline"] .dot { background: var(--error); }
+/* The status-line clock (public/live-clock.js): the time, and the elapsed time as a slim
+   toggle (event / current item) with a full touch target; no blinking colon. */
+.live-clock { display: inline-flex; align-items: center; gap: 8px; margin: 0; font-size: 0.875rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.live-time { font-weight: 700; color: var(--text); }
+.live-elapsed { min-height: var(--touch); padding: 0 8px; color: var(--text-muted); background: transparent; border: 1px solid transparent; border-radius: var(--radius); font-size: inherit; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.live-elapsed:hover, .live-elapsed:focus-visible { border-color: var(--border); color: var(--text); }
+.live-elapsed[hidden] { display: none; }
 
 /* Emergency mode: the live page runs the projector without the server; the follow page
    navigates manually. */
@@ -2113,7 +2120,9 @@ dialog.big-lyrics.scrolls .big-body { align-items: flex-start; overflow-y: auto;
 .big-lines { margin: 0; }
 .big-ended { color: var(--text-muted); }
 .big-next { margin: 0; padding: 4px 16px; text-align: center; font-size: 0.9375rem; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.big-status { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 0; padding: 2px 16px; font-size: 0.8125rem; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.big-status { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 0 16px; margin: 0; padding: 0 16px; font-size: 0.8125rem; color: var(--text-muted); }
+.big-status-text { display: inline-flex; align-items: center; gap: 8px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.big-status .live-clock { font-size: 0.8125rem; }
 .big-dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--border); }
 .big-dot[data-state="connected"] { background: var(--success); }
 .big-dot[data-state="reconnecting"], .big-dot[data-state="connecting"] { background: var(--accent-fill); }

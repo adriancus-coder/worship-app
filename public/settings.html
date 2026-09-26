@@ -53,6 +53,13 @@
       <p class="hint" data-i18n="settings.clockHint"></p>
       <div id="clock-panel" class="clock-settings"></div>
       <p id="clock-message" class="message" role="status" aria-live="polite"></p>
+      <h3 id="time-format-heading" data-i18n="settings.timeFormatHeading"></h3>
+      <p class="hint" data-i18n="settings.timeFormatHint"></p>
+      <div class="choice-group" role="group" aria-labelledby="time-format-heading">
+        <button type="button" data-time-format="24" aria-pressed="false" data-i18n="settings.timeFormat24"></button>
+        <button type="button" data-time-format="12" aria-pressed="false" data-i18n="settings.timeFormat12"></button>
+      </div>
+      <p id="time-format-message" class="message" role="status" aria-live="polite"></p>
     </section>
 
     <section class="settings-section" aria-labelledby="bg-heading">

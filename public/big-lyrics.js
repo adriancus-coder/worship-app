@@ -72,7 +72,11 @@
       parts.text = el('div', { class: 'big-text' });
       parts.next = el('p', { class: 'big-next' });
       parts.body = el('div', { class: 'big-body' }, parts.text);
-      parts.status = el('p', { class: 'big-status', role: 'status', 'aria-live': 'polite' });
+      parts.statusText = el('span', { class: 'big-status-text', role: 'status', 'aria-live': 'polite' });
+      parts.clock = el('span');
+      parts.status = el('div', { class: 'big-status' }, parts.statusText, parts.clock);
+      // The time and the elapsed time (public/live-clock.js), for the position this view drives.
+      parts.liveClock = window.LIVE_CLOCK.create(parts.clock, { t });
       parts.textOnly = el('button', { type: 'button', class: 'secondary big-tool', 'aria-pressed': 'false', onclick: () => setTextOnly(!state.textOnly) });
       parts.smaller = el('button', { type: 'button', class: 'secondary big-tool', text: 'A−', onclick: () => setScale(-SCALE.step) });
       parts.larger = el('button', { type: 'button', class: 'secondary big-tool', text: 'A+', onclick: () => setScale(SCALE.step) });
@@ -242,7 +246,8 @@
       parts.larger.disabled = state.scale >= SCALE.max - 1e-9;
       parts.prev.textContent = t('live.prev');
       const { value, conn, text } = statusLine();
-      parts.status.replaceChildren(el('span', { class: 'big-dot', 'data-state': value, 'aria-hidden': 'true' }), `${conn} · ${text}`);
+      parts.statusText.replaceChildren(el('span', { class: 'big-dot', 'data-state': value, 'aria-hidden': 'true' }), `${conn} · ${text}`);
+      parts.liveClock.update(snap, pos);
       if (!item || snap.status !== 'live') {
         parts.label.textContent = '';
         parts.text.replaceChildren(el('p', { class: 'big-lines', text: t('setlist.empty') }));

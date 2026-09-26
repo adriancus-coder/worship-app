@@ -61,7 +61,7 @@
       clockTimer = null;
       if (!clock) return;
       const now = new Date();
-      const text = window.CLOCK.formatTime(now, clock.timeZone);
+      const text = window.CLOCK.formatTime(now, clock.timeZone, clock.format);
       if (clockNode.textContent !== text) clockNode.textContent = text;
       // The next minute boundary (a little after, so the minute has surely changed).
       clockTimer = setTimeout(tick, 60000 - (now.getSeconds() * 1000 + now.getMilliseconds()) + 50);

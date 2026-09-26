@@ -58,7 +58,7 @@ function createScreensHub({ db, logger, config }) {
 
   // The church default clock, for the idle screen (a live event carries its own).
   function clockDefaults(adminId) {
-    return { ...settings.clock(adminId), timeZone: settings.timezone(adminId) };
+    return { ...settings.clock(adminId), timeZone: settings.timezone(adminId), format: settings.timeFormat(adminId) };
   }
 
   // The frame the admin's screens should show now.

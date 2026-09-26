@@ -363,16 +363,18 @@ function createLiveHub({ db, auth, logger, screensHub }) {
     notifyHome(adminId, eventId);
   }
 
-  // A background choice or setting changed (song, church default, readability, a media item
-  // deleted): the live event's room and screens get the new frames.
-  function backgroundsChanged(adminId) {
+  // A church setting the live pages and the screens show changed (a background choice or
+  // readability, a media item deleted, the time format): the live event's room gets a new
+  // snapshot and the screens new frames.
+  function settingsChanged(adminId) {
     if (!io) return;
     const eventId = store.liveEventId(adminId);
     if (eventId) broadcast(adminId, eventId);
     else screensHub.update(adminId);
   }
+  const backgroundsChanged = settingsChanged;
 
-  return { attach, closeSession, closeUser, closeAdmin, startEvent, roomName, setlistBefore, setlistChanged, songBefore, songChanged, eventChanged, backgroundsChanged };
+  return { attach, closeSession, closeUser, closeAdmin, startEvent, roomName, setlistBefore, setlistChanged, songBefore, songChanged, eventChanged, backgroundsChanged, settingsChanged };
 }
 
 module.exports = { createLiveHub, roomName };

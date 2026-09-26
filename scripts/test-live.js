@@ -485,7 +485,7 @@ async function main() {
 
   await step('corner clock: defaults on every frame, clock.set versioned and broadcast, hidden while a video plays; member refused', async () => {
     let frame = await frameWhere(screen, (f) => f.version === version);
-    assert.deepStrictEqual(frame.clock, { show: true, position: 'bottom-right', scale: 1.8, timeZone: 'Europe/Oslo' }, 'the defaults, with the church timezone');
+    assert.deepStrictEqual(frame.clock, { show: true, position: 'bottom-right', scale: 1.8, timeZone: 'Europe/Oslo', format: '24' }, 'the defaults, with the church timezone and time format');
     assert.strictEqual((await frameWhere(otherScreen, () => true)).clock.show, true, 'the idle screen has the clock too');
     const refused = await emit(mem.socket, 'live:command', { eventId: ev.id, type: 'projector.source', source: 'content' });
     assert.strictEqual(refused.code, 'forbidden');
@@ -514,6 +514,17 @@ async function main() {
     assert.deepStrictEqual([snap.clock.position, snap.clock.scale], ['top-left', 1.8], 'the running event of admin 1 keeps its own');
     await send(lead.socket, { type: 'clock.set', position: 'bottom-right' });
     await frameWhere(screen, (f) => f.version === version);
+    // the time format (owner only): the live room gets a new snapshot, the screens a new frame
+    assert.strictEqual((await api('PUT', '/api/settings/time-format', leader, { format: '12' })).status, 403);
+    assert.strictEqual((await api('PUT', '/api/settings/time-format', owner, { format: '10' })).status, 400);
+    const fresh = next(mem.socket, 'live:state', (s) => s.clock.format === '12');
+    assert.deepStrictEqual((await api('PUT', '/api/settings/time-format', owner, { format: '12' })).body, { timeFormat: '12' });
+    assert.strictEqual((await fresh).version, version, 'the same version: a setting, not a command');
+    assert.strictEqual((await frameWhere(screen, (f) => f.clock && f.clock.format === '12')).version, version, 'the screens got the frame');
+    assert.strictEqual((await api('GET', '/api/settings', owner)).body.timeFormat, '12');
+    const back = next(mem.socket, 'live:state', (s) => s.clock.format === '24');
+    await api('PUT', '/api/settings/time-format', owner, { format: '24' });
+    await back;
   });
 
   await step('together: leader and operator move ONE position, applied in order with versions', async () => {

@@ -38,6 +38,7 @@
     renderThemeDefault(res.body.themeDefault);
     renderService(res.body.service);
     renderClock(res.body.clock);
+    renderTimeFormat(res.body.timeFormat);
     renderBackup(res.body.backup);
     renderStorage(res.body.storage);
     await renderBackgrounds(res.body.backgroundDefaults || {});
@@ -209,6 +210,22 @@
     if (clock) clockPanel.update({ clock, enabled: true });
   }
 
+  // 24 h / 12 h, for every clock (the projector's and the live pages').
+  function renderTimeFormat(format) {
+    for (const button of document.querySelectorAll('[data-time-format]')) {
+      button.setAttribute('aria-pressed', String(button.dataset.timeFormat === format));
+    }
+  }
+  for (const button of document.querySelectorAll('[data-time-format]')) {
+    button.addEventListener('click', async () => {
+      const res = await api('/api/settings/time-format', { method: 'PUT', body: { format: button.dataset.timeFormat } });
+      const out = $('time-format-message');
+      out.className = `message ${res.ok ? 'success' : 'error'}`;
+      out.textContent = res.ok ? t('settings.timeFormatSaved') : res.body.error || t('common.networkError');
+      if (res.ok) renderTimeFormat(res.body.timeFormat);
+    });
+  }
+
   function renderThemeDefault(theme) {
     for (const button of document.querySelectorAll('[data-theme-default]')) {
       button.setAttribute('aria-pressed', String(button.dataset.themeDefault === theme));
@@ -273,6 +290,7 @@
     bgMessage('bg-defaults-message', '');
     $('backup-message').textContent = '';
     $('clock-message').textContent = '';
+    $('time-format-message').textContent = '';
     clockPanel.render();
     renderBackup(null);
     renderStorage(null);

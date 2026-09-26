@@ -1652,6 +1652,8 @@ test('corner clock: settings, the three fields on every frame, hidden while a vi
   assert.strictEqual(CLOCK.parsePatch({ show: 'yes' }), null, 'nothing usable');
   assert.deepStrictEqual([CLOCK.formatTime(new Date('2026-09-27T10:05:00Z'), 'Europe/Oslo'), CLOCK.formatTime(new Date('2026-09-27T23:05:00Z'), 'UTC')], ['12:05', '23:05'], '24 h, HH:MM');
   assert.strictEqual(CLOCK.formatTime(new Date('2026-09-27T10:05:00Z'), 'Not/AZone').length, 5, 'an unknown timezone falls back');
+  assert.deepStrictEqual([CLOCK.formatTime(new Date('2026-09-27T10:05:00Z'), 'Europe/Oslo', '12'), CLOCK.formatTime(new Date('2026-09-27T00:05:00Z'), 'UTC', '12')], ['12:05 PM', '12:05 AM'], '12 h');
+  assert.deepStrictEqual([CLOCK.formatDuration(0), CLOCK.formatDuration(3723000), CLOCK.formatDuration(65000, { seconds: true }), CLOCK.formatDuration(3723000, { seconds: true })], ['00:00', '01:02', '01:05', '1:02:03']);
   // frames: the clock of the live state on every kind, false on a video frame; idle: the defaults given
   const items = [{ id: 1, type: 'verse', reference: 'Ps 1', body: 'Ferice' }, { id: 2, type: 'announcement', title: 'A', body: 'b' }];
   const media = { type: 'upload', src: '/x.mp4', mime: 'video/mp4', title: 'Clip' };
@@ -1659,7 +1661,7 @@ test('corner clock: settings, the three fields on every frame, hidden while a vi
   const st = (source, itemId = 1, videoState = 'none', c = clock) => ({ version: 3, eventId: 2, status: 'live', worship: { itemId, step: 0 },
     projector: { follows: 'worship', itemId: null, step: 0, source }, video: { state: videoState, seq: 1, volume: 1, position: 0 }, clock: c });
   const f = (source, itemId, videoState) => projectorFrame(st(source, itemId, videoState), { items }, new Map(), { videoMedia: media, logoUrl: '/api/logo/x.png' });
-  const expected = { show: true, position: 'top-left', scale: 1.2, timeZone: 'Europe/Oslo' };
+  const expected = { show: true, position: 'top-left', scale: 1.2, timeZone: 'Europe/Oslo', format: '24' };
   assert.deepStrictEqual(f('content', 1).clock, expected, 'verse');
   assert.deepStrictEqual(f('content', 2).clock, expected, 'announcement');
   assert.deepStrictEqual(f('logo').clock, expected, 'logo');
@@ -1671,8 +1673,9 @@ test('corner clock: settings, the three fields on every frame, hidden while a vi
   assert.strictEqual(f('content', 1, 'prepared').clock.show, true, 'a prepared video does not hide it');
   assert.strictEqual(projectorFrame(st('content', 1, 'none', { ...clock, show: false }), { items }, new Map()).clock.show, false, 'hidden by the operator');
   const idle = projectorFrame(null, null, null, { logoUrl: null, clock: { show: true, position: 'bottom-left', scale: 0.7, timeZone: 'UTC' } });
-  assert.deepStrictEqual([idle.kind, idle.clock], ['idle', { show: true, position: 'bottom-left', scale: 0.7, timeZone: 'UTC' }], 'idle: the church defaults');
-  assert.deepStrictEqual(clockFrame({ show: true, position: 'nowhere', scale: 3 }, 'lyrics'), { show: true, position: 'bottom-right', scale: 1.8, timeZone: null }, 'normalised');
+  assert.deepStrictEqual([idle.kind, idle.clock], ['idle', { show: true, position: 'bottom-left', scale: 0.7, timeZone: 'UTC', format: '24' }], 'idle: the church defaults');
+  assert.strictEqual(projectorFrame(null, null, null, { clock: { ...CLOCK.DEFAULTS, format: '12' } }).clock.format, '12', 'the 12 h format rides along');
+  assert.deepStrictEqual(clockFrame({ show: true, position: 'nowhere', scale: 3 }, 'lyrics'), { show: true, position: 'bottom-right', scale: 1.8, timeZone: null, format: '24' }, 'normalised');
   // the store: a new event starts from the church defaults; clock.set changes the running one
   const { mem, live, eventId } = liveFixture();
   const settings = require('../lib/admin-settings').createAdminSettings(mem);
@@ -1681,10 +1684,10 @@ test('corner clock: settings, the three fields on every frame, hidden while a vi
   const cmd = (c, role = 'leader') => live.command(1, eventId, c, undefined, role);
   const code = (c, role) => { try { cmd(c, role); return 'ok'; } catch (err) { return err.code; } };
   const snap = () => live.snapshot(1, eventId);
-  assert.deepStrictEqual(snap().clock, { show: true, position: 'top-right', scale: 0.7, timeZone: 'Europe/Oslo' }, 'not yet live: what it would start with');
+  assert.deepStrictEqual(snap().clock, { show: true, position: 'top-right', scale: 0.7, timeZone: 'Europe/Oslo', format: '24' }, 'not yet live: what it would start with');
   assert.strictEqual(code({ type: 'clock.set', show: false }), 'notLive');
   cmd({ type: 'event.start' }, 'operator');
-  assert.deepStrictEqual(snap().clock, { show: true, position: 'top-right', scale: 0.7, timeZone: 'Europe/Oslo' }, 'started from the church defaults');
+  assert.deepStrictEqual(snap().clock, { show: true, position: 'top-right', scale: 0.7, timeZone: 'Europe/Oslo', format: '24' }, 'started from the church defaults');
   let v = snap().version;
   assert.strictEqual(code({ type: 'clock.set', show: false }, 'member'), 'forbidden');
   assert.strictEqual(code({ type: 'clock.set' }), 'badCommand', 'nothing to change');
@@ -1694,7 +1697,7 @@ test('corner clock: settings, the three fields on every frame, hidden while a vi
   cmd({ type: 'clock.set', show: false });
   assert.strictEqual(snap().version, v + 1, 'unchanged: no-op');
   cmd({ type: 'clock.set', show: true, position: 'bottom-left', scale: 4 }, 'owner');
-  assert.deepStrictEqual(snap().clock, { show: true, position: 'bottom-left', scale: 1.8, timeZone: 'Europe/Oslo' }, 'all three at once, the scale clamped');
+  assert.deepStrictEqual(snap().clock, { show: true, position: 'bottom-left', scale: 1.8, timeZone: 'Europe/Oslo', format: '24' }, 'all three at once, the scale clamped');
   assert.strictEqual(mem.prepare('SELECT show_clock || clock_position || clock_scale FROM live_state WHERE event_id = ?').pluck().get(eventId), '1bottom-left1.8', 'persisted');
   cmd({ type: 'worship.next' });
   assert.strictEqual(snap().clock.position, 'bottom-left', 'other commands leave it alone');
@@ -1704,7 +1707,10 @@ test('corner clock: settings, the three fields on every frame, hidden while a vi
   cmd({ type: 'event.end' });
   const again = require('../lib/events').createEventStore(mem).create(1, 1, { name: 'E2', eventDate: '2026-10-11', startTime: null, notes: null });
   live.command(1, again, { type: 'event.start' }, undefined, 'leader');
-  assert.deepStrictEqual(live.snapshot(1, again).clock, { show: false, position: 'top-right', scale: 0.7, timeZone: 'Europe/Oslo' });
+  settings.set(1, 'time_format', '12');
+  assert.deepStrictEqual(live.snapshot(1, again).clock, { show: false, position: 'top-right', scale: 0.7, timeZone: 'Europe/Oslo', format: '12' }, 'the time format is a church setting, read live');
+  settings.set(1, 'time_format', 'x');
+  assert.strictEqual(settings.timeFormat(1), '24', 'an unknown format falls back');
   v = live.snapshot(1, again).version;
   const frame = projectorFrame(live.snapshot(1, again), { items: [] }, new Map());
   assert.deepStrictEqual([frame.kind, frame.clock.show, frame.clock.position], ['black', false, 'top-right'], 'the frame carries the state clock');

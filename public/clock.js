@@ -6,10 +6,12 @@
 // traffic per minute).
 //
 //   clock settings: { show: boolean, position: one of POSITIONS, scale: SCALE_MIN..SCALE_MAX }
-//   on a frame:     { show, position, scale, timeZone } (show is false while a video plays)
+//   on a frame:     { show, position, scale, timeZone, format } (show is false while a video plays)
+// format: '24' (HH:MM) or '12' (h:MM AM/PM), a church setting used by every clock.
 
 (function (root) {
   const POSITIONS = ['top-left', 'top-right', 'bottom-left', 'bottom-right'];
+  const TIME_FORMATS = ['24', '12'];
   const SCALE_MIN = 0.7;
   const SCALE_MAX = 1.8;
   const SCALE_STEP = 0.1;
@@ -44,22 +46,38 @@
   }
 
   const formatters = new Map();
-  // 'HH:MM' (24 h) in a timezone; an unknown timezone falls back to the device's own.
-  function formatTime(date, timeZone) {
-    const key = timeZone || '';
+  // The time in a timezone: 'HH:MM' (24 h) or 'h:MM AM' (12 h); an unknown timezone falls
+  // back to the device's own.
+  function formatTime(date, timeZone, format = '24') {
+    const twelve = format === '12';
+    const key = `${format}|${timeZone || ''}`;
     if (!formatters.has(key)) {
+      const options = twelve
+        ? { hour: 'numeric', minute: '2-digit', hour12: true }
+        : { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' };
       let f;
       try {
-        f = new Intl.DateTimeFormat('en-GB', { timeZone: timeZone || undefined, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+        f = new Intl.DateTimeFormat(twelve ? 'en-US' : 'en-GB', { timeZone: timeZone || undefined, ...options });
       } catch (err) {
-        f = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+        f = new Intl.DateTimeFormat(twelve ? 'en-US' : 'en-GB', options);
       }
       formatters.set(key, f);
     }
-    return formatters.get(key).format(date);
+    return formatters.get(key).format(date).replace(/ /g, ' ');
   }
 
-  const CLOCK = { POSITIONS, SCALE_MIN, SCALE_MAX, SCALE_STEP, DEFAULTS, clampScale, normalize, parsePatch, formatTime };
+  // A duration in ms -> 'hh:mm' (long: false) or 'mm:ss' ('hh:mm:ss' from an hour on).
+  function formatDuration(ms, { seconds = false } = {}) {
+    const total = Math.max(0, Math.floor(ms / 1000));
+    const two = (n) => String(n).padStart(2, '0');
+    const h = Math.floor(total / 3600);
+    const m = Math.floor((total % 3600) / 60);
+    const s = total % 60;
+    if (!seconds) return `${two(h)}:${two(m)}`;
+    return h > 0 ? `${h}:${two(m)}:${two(s)}` : `${two(m)}:${two(s)}`;
+  }
+
+  const CLOCK = { POSITIONS, TIME_FORMATS, SCALE_MIN, SCALE_MAX, SCALE_STEP, DEFAULTS, clampScale, normalize, parsePatch, formatTime, formatDuration };
 
   if (typeof module === 'object' && module.exports) module.exports = CLOCK;
   else root.CLOCK = CLOCK;

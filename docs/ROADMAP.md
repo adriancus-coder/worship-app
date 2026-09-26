@@ -116,7 +116,12 @@ never implement a later stage early. Mockups: claude.ai design canvas
   scale }`, event roles, versioned and broadcast; key K toggles it): shown or not, the
   corner, the size 70–180 % (default 180 %, bottom right). A new event starts from the church
   defaults (Settings → "Ceasul pe proiector"), which the idle screen shows too. The screens
-  and the previews tick it themselves (no server traffic per minute).
+  and the previews tick it themselves (no server traffic per minute). The time format (24 h,
+  or 12 h; Settings) applies to every clock.
+- **Time on the live pages** (`public/live-clock.js`): the leader page, the console and the
+  big lyrics view show the time and "Live de hh:mm" since the event started in their status
+  line; a tap switches to "pe elementul curent de mm:ss" (the item that page drives) and
+  back. Ticks every second without re-rendering the page.
 - **Emergency mode:** the leader's live page and the projector window on the same PC keep
   working without internet (BroadcastChannel + locally cached event and songs): the main
   position and Black / Logo only (mode switches and additions wait for the server). The

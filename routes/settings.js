@@ -5,7 +5,7 @@ const { isValidTime } = require('../lib/dates');
 const { requireRole } = require('../lib/auth');
 const { MAX_BYTES, sniff, createLogoStore } = require('../lib/logo');
 const { createScreenStore } = require('../lib/screens');
-const { NOTATIONS, THEME_DEFAULTS, createAdminSettings } = require('../lib/admin-settings');
+const { NOTATIONS, THEME_DEFAULTS, TIME_FORMATS, createAdminSettings } = require('../lib/admin-settings');
 const { parsePatch: parseClockPatch } = require('../lib/clock');
 const { parseChoice, createBackgroundStore } = require('../lib/backgrounds');
 const { createMediaSigner } = require('../lib/media');
@@ -41,6 +41,7 @@ function createSettingsRouter({ db, auth, config, logger, screensHub, live, stor
       themeDefault: settings.themeDefault(req.adminId),
       service: settings.service(req.adminId),
       clock: settings.clock(req.adminId),
+      timeFormat: settings.timeFormat(req.adminId),
       backgroundDefaults: backgrounds.defaults(req.adminId),
       backup: backups.lastBackup(req.adminId),
       storage: storage.usage(),
@@ -91,6 +92,15 @@ function createSettingsRouter({ db, auth, config, logger, screensHub, live, stor
     const clock = settings.setClock(req.adminId, patch);
     screensHub.update(req.adminId); // the idle screen shows the defaults
     res.json({ clock });
+  });
+
+  // '24' | '12': the format of every clock (the projector's, the live pages').
+  router.put('/api/settings/time-format', (req, res) => {
+    const format = (req.body || {}).format;
+    if (!TIME_FORMATS.includes(format)) return res.status(400).json({ error: req.t('errors.timeFormatInvalid') });
+    settings.set(req.adminId, 'time_format', format);
+    live.settingsChanged(req.adminId); // live pages and screens re-read it at once
+    res.json({ timeFormat: format });
   });
 
   // The church default chord notation, for users without their own preference.

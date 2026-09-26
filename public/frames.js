@@ -24,7 +24,7 @@
 // media id, 'none' or null), else the item's background resolved by the server over the
 // item, the song and the church default (backgrounds.items), else none (lib/backgrounds.js).
 // And the corner clock (public/clock.js), on every kind of frame:
-//   clock: { show, position, scale, timeZone } | null
+//   clock: { show, position, scale, timeZone, format } | null
 // from the live state (state.clock) or, idle, the church defaults (the `clock` option);
 // `show` is false on a video frame (never over a video). The screens tick it themselves.
 
@@ -91,7 +91,7 @@
   function clockFrame(clock, kind) {
     if (!clock) return null;
     const c = normalizeClock(clock);
-    return { show: c.show && kind !== 'video', position: c.position, scale: c.scale, timeZone: clock.timeZone || null };
+    return { show: c.show && kind !== 'video', position: c.position, scale: c.scale, timeZone: clock.timeZone || null, format: clock.format === '12' ? '12' : '24' };
   }
 
   // state: live snapshot of the admin's live event, or null when none is live.
