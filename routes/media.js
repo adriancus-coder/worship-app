@@ -8,7 +8,7 @@ const { createScreenStore } = require('../lib/screens');
 const { parseReadability, createBackgroundStore } = require('../lib/backgrounds');
 const { createMediaQuota } = require('../lib/platform');
 
-const EDITOR_ROLES = ['owner', 'leader'];
+const { EDITOR_ROLES } = require('../lib/events');
 
 // Media library (videos and backgrounds for the projector), scoped to req.adminId.
 //   GET    /api/media                  list (owner, leader, operator), with the church's
@@ -71,7 +71,7 @@ function createMediaRouter({ db, auth, config, logger, live, storage }) {
 
   // The list also for the operator (the video panel on the operator console); changes:
   // owner and leader only.
-  router.get('/api/media', requireRole(...EDITOR_ROLES, 'operator'), (req, res) => {
+  router.get('/api/media', requireRole(...EDITOR_ROLES), (req, res) => {
     const used = media.usedBytes(req.adminId);
     res.json({
       media: media.list(req.adminId),

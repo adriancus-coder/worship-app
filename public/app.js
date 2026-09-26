@@ -136,7 +136,7 @@
         el('span', { class: `pill pill-${event.status}`, text: t(`events.status.${event.status}`) })))));
     renderBackupCard();
     $('quick-section').hidden = !editor() || !top;
-    $('quick-new-song').hidden = !canEditLibrary(state.me); // the library: owner and leader
+    $('quick-new-song').hidden = !canEditLibrary(state.me); // the library: the editor roles
   }
 
   // The owner's backup reminder (no backup for 30 days, or never): one card, dismissible.

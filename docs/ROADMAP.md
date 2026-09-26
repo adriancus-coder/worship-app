@@ -28,8 +28,11 @@ never implement a later stage early. Mockups: claude.ai design canvas
   `lib/events.js`) have the same rights over events, always: create, edit, templates,
   delete, start, end, move the live position, projector, sources, video, live mode and
   team mode. They see templates. Members see every event as soon as it exists (never
-  templates) and send no commands. The library (writing), media,
-  screens, team and settings keep their own rules (owner / leader, or owner).
+  templates) and send no commands. The same three roles (EDITOR_ROLES = EVENT_ROLES) edit
+  the library (create, edit, delete, file import / export, the key, backgrounds), media
+  and screens; leader and operator differ only by the page an event opens on (live page /
+  console) - both can open either. Owner-only stays owner-only: settings, team, logo,
+  backup, platform.
 - **Two live modes** (`live.mode`, any event role; a new start is *together*):
   - *Împreună* (together, default) — ONE main position. The leader page and the operator
     console both move it; the projector and the team phones follow it. Projector-position

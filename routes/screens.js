@@ -5,7 +5,7 @@ const { requireRole } = require('../lib/auth');
 const { createFailureLimiter, createRequestLimiter } = require('../lib/rate-limit');
 const { validateScreenName, createScreenStore } = require('../lib/screens');
 
-const EDITOR_ROLES = ['owner', 'leader'];
+const { EDITOR_ROLES } = require('../lib/events');
 const TEN_MINUTES = 10 * 60 * 1000;
 const SCREEN_TOKEN_HEADER = 'x-screen-token';
 
@@ -73,7 +73,7 @@ function createScreensRouter({ db, auth, logger, screensHub }) {
 
   // A one-time link (60 s) that pairs the window opening it, without a code: from the
   // leader's live page or the operator console.
-  router.post('/api/screens/auto-claim', auth.requireUser, requireRole(...EDITOR_ROLES, 'operator'), noStore, (req, res) => {
+  router.post('/api/screens/auto-claim', auth.requireUser, requireRole(...EDITOR_ROLES), noStore, (req, res) => {
     const name = validateScreenName((req.body || {}).name, req.t);
     if (name.error) return res.status(400).json({ error: name.error });
     const link = screens.createLink(req.adminId, req.user.id, name.value);

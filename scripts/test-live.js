@@ -218,11 +218,17 @@ async function main() {
     }
     assert.strictEqual((await api('GET', '/api/events?when=templates', member)).status, 403);
     assert.strictEqual((await api('GET', `/api/events/${ev.id}`, member)).status, 200, 'member: every event');
-    // the library, media, screens, team and settings keep their rules
-    assert.strictEqual((await api('POST', '/api/songs', operator, { title: 'X', sections: [{ type: 'verse', content: 'x' }] })).status, 403);
-    for (const method of ['PUT', 'DELETE']) assert.strictEqual((await api(method, '/api/songs/1', operator, { title: 'X' })).status, 403);
-    // the original key alone (the arrange sheet): owner / leader only, a known key or ''
-    assert.strictEqual((await api('PUT', '/api/songs/1', operator, { song_key: 'A' })).status, 403);
+    // the operator has every leader right: the library (create, edit, delete, import /
+    // export, the key), media and screens; members none; team and settings stay the owner's
+    const opSong = await api('POST', '/api/songs', operator, { title: 'A operatorului', sections: [{ type: 'verse', content: 'x' }] });
+    assert.strictEqual(opSong.status, 201, JSON.stringify(opSong.body));
+    assert.strictEqual((await api('PUT', `/api/songs/${opSong.body.song.id}`, operator, { title: 'A operatorului 2', sections: [{ type: 'verse', content: 'y' }] })).status, 200);
+    assert.strictEqual((await api('PUT', `/api/songs/${opSong.body.song.id}/background`, operator, { background: null })).status, 200);
+    assert.strictEqual((await api('DELETE', `/api/songs/${opSong.body.song.id}`, operator)).status, 200);
+    assert.strictEqual((await api('POST', '/api/songs', member, { title: 'X', sections: [{ type: 'verse', content: 'x' }] })).status, 403);
+    for (const method of ['PUT', 'DELETE']) assert.strictEqual((await api(method, '/api/songs/1', member, { title: 'X' })).status, 403);
+    // the original key alone (the arrange sheet): the editor roles, a known key or ''
+    assert.strictEqual((await api('PUT', '/api/songs/1', member, { song_key: 'A' })).status, 403);
     const sectionsBefore = JSON.stringify((await api('GET', '/api/songs/1', leader)).body.song.sections);
     const keyed = await api('PUT', '/api/songs/1', leader, { song_key: 'A' });
     assert.deepStrictEqual([keyed.status, keyed.body.song.song_key], [200, 'A']);
@@ -230,8 +236,11 @@ async function main() {
     assert.strictEqual((await api('PUT', '/api/songs/1', leader, { song_key: 'H' })).status, 400);
     const back = await api('PUT', '/api/songs/1', owner, { song_key: '' });
     assert.deepStrictEqual([back.status, back.body.song.song_key], [200, null]);
-    assert.strictEqual((await api('POST', '/api/songs/import', operator, { songs: [] })).status, 403);
-    assert.strictEqual((await api('GET', '/api/songs/export', operator)).status, 403);
+    assert.strictEqual((await api('POST', '/api/songs/import', operator, { songs: [] })).status, 400, 'the operator may import (an empty file is refused as such)');
+    assert.strictEqual((await api('GET', '/api/songs/export', operator)).status, 200);
+    for (const [method, url, body] of [['POST', '/api/songs/import', { songs: [] }], ['GET', '/api/songs/export']]) {
+      assert.strictEqual((await api(method, url, member, body)).status, 403, `member ${url}`);
+    }
     // ... but resursecrestine.ro is open to the event roles (a too-short query stops before
     // any network access, past the role check); members stay out
     for (const path of ['search', 'preview', 'import']) {
@@ -239,7 +248,17 @@ async function main() {
       assert.strictEqual((await api('POST', `/api/resurse/${path}`, operator, body)).status, 400, `operator ${path}`);
       assert.strictEqual((await api('POST', `/api/resurse/${path}`, member, body)).status, 403, `member ${path}`);
     }
-    assert.strictEqual((await api('POST', '/api/media/url', operator, { title: 'X', url: 'https://youtu.be/dQw4w9WgXcQ' })).status, 403);
+    const opMedia = await api('POST', '/api/media/url', operator, { title: 'Al operatorului', url: 'https://youtu.be/dQw4w9WgXcQ' });
+    assert.strictEqual(opMedia.status, 201, JSON.stringify(opMedia.body));
+    assert.strictEqual((await api('PUT', `/api/media/${opMedia.body.media.id}`, operator, { title: 'Redenumit' })).status, 200);
+    assert.strictEqual((await api('DELETE', `/api/media/${opMedia.body.media.id}`, operator)).status, 200);
+    assert.strictEqual((await api('POST', '/api/media/url', member, { title: 'X', url: 'https://youtu.be/dQw4w9WgXcQ' })).status, 403);
+    assert.strictEqual((await api('GET', '/api/media', member)).status, 403);
+    await pairScreen(operator, 'Al operatorului'); // the operator pairs a screen (claim 201, collected)
+    const opScreen = (await api('GET', '/api/screens', operator)).body.screens.find((x) => x.name === 'Al operatorului');
+    assert.strictEqual((await api('PUT', `/api/screens/${opScreen.id}`, operator, { name: 'Redenumit' })).status, 200);
+    assert.strictEqual((await api('DELETE', `/api/screens/${opScreen.id}`, operator)).status, 200);
+    assert.strictEqual((await api('GET', '/api/screens', member)).status, 403);
     assert.strictEqual((await api('GET', '/api/team', operator)).status, 403);
     assert.strictEqual((await api('GET', '/api/settings', operator)).status, 403);
     assert.strictEqual((await api('DELETE', `/api/events/${id}`, operator)).status, 200);

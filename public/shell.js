@@ -12,7 +12,7 @@
 
 (function () {
   const { t } = window.I18N;
-  const EDITOR_ROLES = ['owner', 'leader'];
+  const EDITOR_ROLES = ['owner', 'leader', 'operator']; // mirrors lib/events.js EDITOR_ROLES
   const NOTATION_KEY = 'wa_chord_notation';
 
   const ICONS = {

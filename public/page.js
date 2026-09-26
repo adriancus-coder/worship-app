@@ -42,14 +42,17 @@
     return node;
   }
 
-  // Library writing (songs, resursecrestine), media and screens: owner and leader.
+  // Full rights over events (create, edit, templates, live): mirrors EVENT_ROLES in
+  // lib/events.js. The same roles edit the library, media and screens (EDITOR_ROLES):
+  // leader and operator differ only by the page they land on.
+  const EVENT_ROLES = ['owner', 'leader', 'operator'];
+  const EDITOR_ROLES = EVENT_ROLES;
+
+  // Library writing (songs, resursecrestine), media and screens.
   function canEdit(me) {
-    return Boolean(me && ['owner', 'leader'].includes(me.user.role));
+    return Boolean(me && EDITOR_ROLES.includes(me.user.role));
   }
 
-  // Full rights over events (create, edit, templates, live): mirrors EVENT_ROLES in
-  // lib/events.js.
-  const EVENT_ROLES = ['owner', 'leader', 'operator'];
   function canEditEvents(me) {
     return Boolean(me && EVENT_ROLES.includes(me.user.role));
   }

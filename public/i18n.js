@@ -200,8 +200,8 @@
           member: 'Membru',
         },
         roleHelp: {
-          leader: 'Pregătește evenimentele și conduce live-ul; vede tot și răspunde la propunerile operatorului.',
-          operator: 'Controlează proiectorul din consola operator când liderul îi dă controlul; poate propune cântări.',
+          leader: 'Aceleași drepturi ca operatorul: biblioteca, evenimentele, media, ecranele și live-ul. La un eveniment ajunge pe pagina Live.',
+          operator: 'Aceleași drepturi ca liderul: biblioteca, evenimentele, media, ecranele și live-ul. La un eveniment ajunge în consola operator.',
           member: 'Vede programul, versurile și acordurile și urmărește live pe telefon.',
         },
         create: 'Creează contul',
@@ -1320,8 +1320,8 @@
           member: 'Member',
         },
         roleHelp: {
-          leader: 'Prepares events and leads live; sees everything and answers the operator’s proposals.',
-          operator: 'Controls the projector from the operator console when the leader hands it over; can propose songs.',
+          leader: 'The same rights as the operator: library, events, media, screens and live. An event opens on the Live page.',
+          operator: 'The same rights as the leader: library, events, media, screens and live. An event opens in the operator console.',
           member: 'Sees the setlist, lyrics and chords and follows live on the phone.',
         },
         create: 'Create account',

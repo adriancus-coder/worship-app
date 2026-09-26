@@ -6,7 +6,7 @@ const { LIMITS, KEYS, SORT_MODES, DuplicateTitleError, validateSong, createSongS
 const { parseChoice, createBackgroundStore } = require('../lib/backgrounds');
 const { createMediaSigner } = require('../lib/media');
 const { MAX_SONGS, LibraryFileError, parseLibraryFile, planImport } = require('../lib/library-import');
-const { createEventStore } = require('../lib/events');
+const { EDITOR_ROLES, createEventStore } = require('../lib/events');
 const { createAdminSettings } = require('../lib/admin-settings');
 const { todayIn } = require('../lib/dates');
 
@@ -21,7 +21,7 @@ function createSongsRouter({ db, auth, config, logger, live }) {
   const songs = createSongStore(db);
   const events = createEventStore(db);
   const settings = createAdminSettings(db);
-  const canEdit = requireRole('owner', 'leader');
+  const canEdit = requireRole(...EDITOR_ROLES);
   const today = (req) => todayIn(settings.timezone(req.adminId));
 
   function songId(req) {

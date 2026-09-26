@@ -59,6 +59,8 @@ module.exports = {
         await q.click('.shell-more');
         const list = await q.$$eval('#shell-panel li:not([hidden]) .shell-row[data-page]', (l) => l.map((a) => a.dataset.page));
         check(!list.includes('team') && !list.includes('settings'), `[${width}] ${role}: no team / settings in "Mai mult"`, list);
+        const editor = role !== 'member';
+        check(list.includes('media') === editor && list.includes('screens') === editor, `[${width}] ${role}: media / screens ${editor ? 'listed (the editor roles)' : 'hidden'}`, list);
         await q.context().close();
       }
       await p.context().close();

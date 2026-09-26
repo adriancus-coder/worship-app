@@ -1,10 +1,9 @@
 'use strict';
 
 const express = require('express');
-const { EVENT_ROLES } = require('../lib/events');
+const { EVENT_ROLES, EDITOR_ROLES } = require('../lib/events');
 
 // Library, media and screens pages: owner and leader.
-const EDITOR_ROLES = ['owner', 'leader'];
 
 function createPagesRouter({ db, auth, sendPage }) {
   const router = express.Router();
