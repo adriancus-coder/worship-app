@@ -4,7 +4,7 @@
 // a socket joins at most one event room, "admin:<adminId>:event:<eventId>", and receives
 // full `live:state` snapshots from the server (the single source of truth).
 
-const { LiveError, createLiveStore } = require('../lib/live');
+const { LiveError, HANDOVER_ANSWER_ROLES, createLiveStore } = require('../lib/live');
 const { EVENT_ROLES } = require('../lib/events');
 const { resolveLang, t: translate } = require('../lib/i18n');
 
@@ -16,7 +16,7 @@ const COMMANDS = ['event.start', 'event.end', 'worship.next', 'worship.prev', 'w
   'live.mode', 'team.mode', 'background.set',
   'projector.next', 'projector.prev', 'projector.goto', 'projector.syncToWorship', 'projector.source',
   'video.prepare', 'video.play', 'video.pause', 'video.restart', 'video.stop', 'video.volume',
-  'clock.set', 'operator.addItem'];
+  'clock.set', 'handover.accept', 'handover.refuse', 'handover.cancel', 'operator.addItem'];
 // Roles that may send commands at all; the store decides the rest (lib/live.js permission).
 const COMMAND_ROLES = EVENT_ROLES;
 
@@ -28,6 +28,9 @@ const isId = (value) => Number.isInteger(value) && value > 0;
 // Created before the HTTP routes (they notify it), attached to socket.io once it exists.
 function createLiveHub({ db, auth, logger, screensHub }) {
   const store = createLiveStore(db);
+  // A restart forgets pending handover requests (the pages that made them reconnect fresh).
+  const cleared = store.clearHandovers();
+  if (cleared) logger.info(`Cleared ${cleared} pending handover request(s) at startup`);
   const presenceTimers = new Map();
   let io = null;
 
@@ -159,6 +162,25 @@ function createLiveHub({ db, auth, logger, screensHub }) {
     io.to(homeRoom(adminId)).emit('home:changed', { eventId });
   }
 
+  // An owner or operator page is in the room (someone who can answer a leader's request to
+  // take the projector).
+  function hasApprovers(adminId, eventId) {
+    for (const id of io.sockets.adapter.rooms.get(roomName(adminId, eventId)) || []) {
+      const socket = io.sockets.sockets.get(id);
+      if (socket && HANDOVER_ANSWER_ROLES.includes(socket.data.role)) return true;
+    }
+    return false;
+  }
+
+  // The handover request and its answers, to every event-role page in the room (the leader
+  // sees the answer, the console the request); team phones are not concerned.
+  function handoverNotice(adminId, eventId, payload) {
+    for (const id of io.sockets.adapter.rooms.get(roomName(adminId, eventId)) || []) {
+      const socket = io.sockets.sockets.get(id);
+      if (socket && COMMAND_ROLES.includes(socket.data.role)) socket.emit('live:handover', { eventId, ...payload });
+    }
+  }
+
   function fail(socket, ack, code, extra) {
     reply(ack, { ok: false, code, error: tr(socket, `live.errors.${code}`), ...extra });
   }
@@ -182,7 +204,7 @@ function createLiveHub({ db, auth, logger, screensHub }) {
     const command = cmd.type === 'video.pause' ? { ...cmd, position: screensHub.lastVideoPosition(adminId) } : cmd;
     let result;
     try {
-      result = store.command(adminId, cmd.eventId, command, expected, role);
+      result = store.command(adminId, cmd.eventId, command, expected, role, { userId, hasApprovers: hasApprovers(adminId, cmd.eventId) });
     } catch (err) {
       if (!(err instanceof LiveError)) throw err;
       if (err.code === 'stale') return fail(socket, ack, 'stale', { state: fullSnapshot(adminId, cmd.eventId, role, socket.data.lang) });
@@ -193,8 +215,15 @@ function createLiveHub({ db, auth, logger, screensHub }) {
     }
     if (result.changed) broadcast(adminId, cmd.eventId);
     if (result.notice) notice(adminId, cmd.eventId, { ...result.notice, by: socket.data.userName, byUserId: userId }, socket.id);
+    if (result.handoverEvent) {
+      const ev = { ...result.handoverEvent, by: socket.data.userName };
+      handoverNotice(adminId, cmd.eventId, ev);
+      logger.info(`Handover ${ev.type} by user #${userId} (event #${cmd.eventId}, admin #${adminId})`);
+    }
     if (result.changed && (cmd.type === 'event.start' || cmd.type === 'event.end')) notifyHome(adminId, cmd.eventId);
-    reply(ack, { ok: true, version: result.version });
+    // A leader's switch that became a request: the page shows "Cerere trimisă…", not the switch.
+    const pending = result.handoverEvent && result.handoverEvent.type === 'requested' ? { handover: 'requested', expiresAt: result.handoverEvent.expiresAt } : {};
+    reply(ack, { ok: true, version: result.version, ...pending });
   }
 
   // Video events from the screens: the end of a video, a local file chosen on the PC.

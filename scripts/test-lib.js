@@ -1718,6 +1718,72 @@ test('corner clock: settings, the three fields on every frame, hidden while a vi
   mem.close();
 });
 
+test('projector handover: a leader\'s split -> together waits for the operator; accept / refuse / timeout / auto-accept / owner and operator direct / cancel', () => {
+  const { live, eventId } = liveFixture();
+  const { HANDOVER_TTL_MS } = require('../lib/live');
+  const T = Date.now();
+  const cmd = (c, role, ctx = {}) => live.command(1, eventId, c, undefined, role, { now: T, ...ctx });
+  const code = (c, role, ctx) => { try { cmd(c, role, ctx); return 'ok'; } catch (err) { return err.code; } };
+  const snap = () => live.snapshot(1, eventId);
+  const approvers = { userId: 5, hasApprovers: true };
+  cmd({ type: 'event.start' }, 'operator');
+  cmd({ type: 'live.mode', mode: 'split' }, 'operator');
+  // the leader asks; the mode stays split, the request is pending (versioned)
+  let r = cmd({ type: 'live.mode', mode: 'together' }, 'leader', approvers);
+  assert.deepStrictEqual([r.changed, r.handoverEvent.type, r.handoverEvent.expiresAt], [true, 'requested', T + HANDOVER_TTL_MS]);
+  assert.strictEqual(snap().mode, 'split', 'nothing changes yet');
+  assert.deepStrictEqual(snap().handover, { requestedBy: 5, requestedAt: T, expiresAt: T + HANDOVER_TTL_MS }, 'pending in the snapshot');
+  const v = snap().version;
+  r = cmd({ type: 'live.mode', mode: 'together' }, 'leader', approvers);
+  assert.deepStrictEqual([r.changed, r.handoverEvent.type, r.handoverEvent.again, snap().version], [false, 'requested', true, v], 'asking again: the same request');
+  // only owner / operator answer; refuse changes nothing but the request
+  assert.strictEqual(code({ type: 'handover.accept' }, 'leader', approvers), 'forbidden');
+  assert.strictEqual(code({ type: 'handover.accept' }, 'member'), 'forbidden');
+  r = cmd({ type: 'handover.refuse' }, 'operator', { userId: 7 });
+  assert.deepStrictEqual([r.handoverEvent.type, r.handoverEvent.byUserId, r.handoverEvent.requestedBy, snap().mode, snap().handover], ['refused', 7, 5, 'split', null]);
+  assert.strictEqual(code({ type: 'handover.accept' }, 'operator'), 'noHandover', 'nothing pending any more');
+  // accept: together, the projector shows the main position
+  cmd({ type: 'live.mode', mode: 'together' }, 'leader', approvers);
+  r = cmd({ type: 'handover.accept' }, 'owner', { userId: 1 });
+  assert.deepStrictEqual([r.handoverEvent.type, snap().mode, snap().projector.follows, snap().handover], ['accepted', 'together', 'worship', null]);
+  // timeout: after 60 s the request is gone (silently); accepting then says so
+  cmd({ type: 'live.mode', mode: 'split' }, 'operator');
+  cmd({ type: 'live.mode', mode: 'together' }, 'leader', approvers);
+  assert.ok(snap().handover, 'pending');
+  assert.strictEqual(code({ type: 'handover.accept' }, 'operator', { now: T + HANDOVER_TTL_MS }), 'noHandover', 'expired');
+  cmd({ type: 'worship.next' }, 'leader', { now: T + HANDOVER_TTL_MS + 5 });
+  assert.strictEqual(live.snapshot(1, eventId).handover, null, 'an expired request is dropped by the next change');
+  assert.strictEqual(snap().mode, 'split');
+  // auto-accept: nobody in the room can answer
+  r = cmd({ type: 'live.mode', mode: 'together' }, 'leader', { userId: 5, hasApprovers: false });
+  assert.deepStrictEqual([snap().mode, r.handoverEvent], ['together', null], 'applied at once');
+  // the owner and the operator switch directly, both ways; the leader to split too
+  cmd({ type: 'live.mode', mode: 'split' }, 'leader', approvers);
+  assert.strictEqual(snap().mode, 'split', 'leader together -> split: direct');
+  cmd({ type: 'live.mode', mode: 'together' }, 'owner', approvers);
+  assert.strictEqual(snap().mode, 'together', 'owner: direct');
+  cmd({ type: 'live.mode', mode: 'split' }, 'operator', approvers);
+  cmd({ type: 'live.mode', mode: 'together' }, 'operator', approvers);
+  assert.strictEqual(snap().mode, 'together', 'operator: direct both ways');
+  // cancel; an operator's direct switch while pending settles it; the end of the event too
+  cmd({ type: 'live.mode', mode: 'split' }, 'operator');
+  cmd({ type: 'live.mode', mode: 'together' }, 'leader', approvers);
+  r = cmd({ type: 'handover.cancel' }, 'leader', { userId: 5 });
+  assert.deepStrictEqual([r.handoverEvent.type, snap().handover, snap().mode], ['cancelled', null, 'split']);
+  assert.strictEqual(code({ type: 'handover.cancel' }, 'leader'), 'noHandover');
+  cmd({ type: 'live.mode', mode: 'together' }, 'leader', approvers);
+  r = cmd({ type: 'live.mode', mode: 'together' }, 'operator', { userId: 7, hasApprovers: true });
+  assert.deepStrictEqual([snap().mode, snap().handover, r.handoverEvent.type, r.handoverEvent.direct], ['together', null, 'accepted', true], 'the operator switching settles the request');
+  cmd({ type: 'live.mode', mode: 'split' }, 'operator');
+  cmd({ type: 'live.mode', mode: 'together' }, 'leader', approvers);
+  assert.strictEqual(live.clearHandovers(), 1, 'a restart clears pending requests');
+  assert.strictEqual(snap().handover, null);
+  cmd({ type: 'live.mode', mode: 'together' }, 'leader', approvers);
+  cmd({ type: 'event.end' }, 'leader');
+  assert.strictEqual(snap().handover, null, 'the end of the event clears it');
+  assert.strictEqual(code({ type: 'handover.accept' }, 'operator'), 'notLive');
+});
+
 testAsync('platform deletion: refused while active, the exact name, pending -> cancel, the purge removes every row and the folder, a final zip', async () => {
   const fs = require('fs');
   const os = require('os');
