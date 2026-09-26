@@ -40,7 +40,7 @@ module.exports = {
     await owner.goto(`${app.url}/team`);
     await owner.waitForSelector('#team .team-row');
     let mails = await owner.locator('#team .team-actions [data-icon="mail"]').count();
-    check(mails === 3, 'team rows (three people who never signed in): "Trimite link de resetare" each, no "Retrimite" (they signed in at the seed)', mails);
+    check(mails === 4, 'team rows (four people who signed in at the seed): "Trimite link de resetare" each, no "Retrimite"', mails);
     await owner.click('#add-person');
     await owner.waitForSelector('#add-dialog[open]');
     check(!(await owner.isHidden('#add-submit-email')) && !(await owner.getAttribute('#add-submit-email', 'class')) && (await owner.getAttribute('#add-submit', 'class')) === 'secondary' && !(await owner.isHidden('#add-email-hint')), '+ Adaugă persoană: "Trimite invitația pe email" primary, "Creează contul" secondary, the hint');

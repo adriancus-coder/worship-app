@@ -8,7 +8,7 @@ const { LiveError, HANDOVER_ANSWER_ROLES, createLiveStore } = require('../lib/li
 const { EVENT_ROLES } = require('../lib/events');
 const { resolveLang, t: translate } = require('../lib/i18n');
 
-const ROLES = ['owner', 'leader', 'operator', 'member'];
+const ROLES = ['owner', 'presenter', 'leader', 'operator', 'member'];
 const PRESENCE_DEBOUNCE_MS = 1000;
 const SESSION_SWEEP_MS = 30 * 1000;
 

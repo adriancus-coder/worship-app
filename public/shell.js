@@ -12,7 +12,7 @@
 
 (function () {
   const { t } = window.I18N;
-  const EDITOR_ROLES = ['owner', 'leader', 'operator']; // mirrors lib/events.js EDITOR_ROLES
+  const EDITOR_ROLES = ['owner', 'presenter', 'leader', 'operator']; // mirrors lib/events.js EDITOR_ROLES
   const NOTATION_KEY = 'wa_chord_notation';
 
   const ICONS = {
@@ -83,7 +83,7 @@
   // --- "Vezi aplicația ca": the persistent bar while an owner views the app as another role --
   // The only thing on the page that keeps working with owner rights is "Revino la proprietar".
 
-  const VIEW_AS_ROLES = ['leader', 'operator', 'member'];
+  const VIEW_AS_ROLES = ['presenter', 'leader', 'operator', 'member'];
   function setViewAs(role) {
     return fetch('/api/me/view-as', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ role }) })
       .then((res) => { if (res.ok) window.location.assign('/app'); });
@@ -181,7 +181,7 @@
     { id: 'platform', href: '/platform', key: 'shell.platform', icon: 'platform', roles: ['owner'], platform: true },
   ].map(pageRow);
   const accountLinks = [
-    { id: 'password', href: '/change-password', key: 'shell.password', icon: 'password', roles: ['owner', 'leader', 'operator', 'member'] },
+    { id: 'password', href: '/change-password', key: 'shell.password', icon: 'password', roles: ['owner', 'presenter', 'leader', 'operator', 'member'] },
   ].map(pageRow);
   const pageLinks = [...navLinks, ...accountLinks];
 

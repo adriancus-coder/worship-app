@@ -74,7 +74,7 @@
   function renderOverview() {
     const a = state.admin;
     const u = a.usage;
-    const roles = ['owner', 'leader', 'operator', 'member'].map((r) => `${u.usersByRole[r]} ${t(`team.roles.${r}`).toLowerCase()}`).join(' · ');
+    const roles = ['owner', 'presenter', 'leader', 'operator', 'member'].map((r) => `${u.usersByRole[r]} ${t(`team.roles.${r}`).toLowerCase()}`).join(' · ');
     const events = ['planned', 'live', 'finished'].map((st) => `${u.eventsByStatus[st]} ${t(`events.status.${st}`).toLowerCase()}`).join(' · ');
     $('usage').replaceChildren(
       usageCard(t('platformChurch.usersLabel'), a.users, `${roles} · ${t('platformChurch.usersActive', { n: u.usersActive })}`),

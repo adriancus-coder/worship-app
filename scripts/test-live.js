@@ -153,6 +153,7 @@ async function main() {
   addUser.run(1, 'lider@x.ro', 'Lider', hash, 'leader');
   addUser.run(1, 'membru@x.ro', 'Membru', hash, 'member');
   addUser.run(1, 'operator@x.ro', 'Operator', hash, 'operator');
+  addUser.run(1, 'prezentator@x.ro', 'Prezentator', hash, 'presenter');
   db.prepare("INSERT INTO admins (id, name, created_at) VALUES (2, 'Alta', 0)").run();
   addUser.run(2, 'alt@x.ro', 'Alt', hash, 'owner');
   db.close();
@@ -160,6 +161,7 @@ async function main() {
   const leader = await login('lider@x.ro');
   const member = await login('membru@x.ro');
   const operator = await login('operator@x.ro');
+  const presenter = await login('prezentator@x.ro');
   const other = await login('alt@x.ro');
 
   // Event: a song V1 C V2 C B C (6 steps), a verse, a song with 2 sections (2 steps).
@@ -266,6 +268,28 @@ async function main() {
       assert.strictEqual((await api(method, url, leader, body)).status, 403, `leader ${url}`);
     }
     assert.strictEqual((await fetch(`${base()}/screens`, { headers: { Cookie: leader }, redirect: 'manual' })).status, 302, 'leader: /screens redirects');
+    // the presenter: exactly the leader's rights (events, library, media, live; no screens)
+    const prSong = await api('POST', '/api/songs', presenter, { title: 'A prezentatorului', sections: [{ type: 'verse', content: 'x' }] });
+    assert.strictEqual(prSong.status, 201, 'presenter: the library');
+    assert.strictEqual((await api('DELETE', `/api/songs/${prSong.body.song.id}`, presenter)).status, 200);
+    const prEvent = await api('POST', '/api/events', presenter, { name: 'A prezentatorului', eventDate: '2026-10-11' });
+    assert.strictEqual(prEvent.status, 201, 'presenter: events');
+    assert.strictEqual((await api('GET', '/api/events?when=templates', presenter)).status, 200, 'presenter: templates');
+    assert.strictEqual((await api('GET', '/api/media', presenter)).status, 200, 'presenter: media');
+    assert.strictEqual((await api('DELETE', `/api/events/${prEvent.body.event.id}`, presenter)).status, 200);
+    for (const [method, url, body] of [['GET', '/api/screens'], ['POST', '/api/screens/auto-claim', { name: 'X' }], ['GET', '/api/team'], ['GET', '/api/settings']]) {
+      assert.strictEqual((await api(method, url, presenter, body)).status, 403, `presenter ${url}`);
+    }
+    assert.strictEqual((await fetch(`${base()}/screens`, { headers: { Cookie: presenter }, redirect: 'manual' })).status, 302, 'presenter: /screens redirects');
+    for (const [url, status] of [['/rehearse', 200], ['/live', 200], ['/operator', 200], ['/edit', 200]]) {
+      assert.strictEqual((await fetch(`${base()}/events/${ev.id}${url}`, { headers: { Cookie: presenter }, redirect: 'manual' })).status, status, `presenter ${url}`);
+    }
+    // the team: a presenter can be created and given the role; the label never leaks the internal word
+    const prez = await api('POST', '/api/team', owner, { name: 'Prez', email: 'prez2@x.ro', role: 'presenter' });
+    assert.strictEqual(prez.status, 201, JSON.stringify(prez.body));
+    assert.strictEqual((await api('PATCH', `/api/team/${prez.body.user.id}`, owner, { name: 'Prez', role: 'leader' })).status, 200);
+    assert.strictEqual((await api('PATCH', `/api/team/${prez.body.user.id}`, owner, { name: 'Prez', role: 'presenter' })).status, 200);
+    assert.strictEqual((await api('GET', '/api/team', owner)).body.users.filter((u) => u.role === 'presenter').length, 2, 'listed with the role');
     assert.strictEqual((await api('POST', '/api/screens/auto-claim', operator, { name: 'Fereastra operatorului' })).status, 201);
     assert.strictEqual((await api('GET', '/api/team', operator)).status, 403);
     assert.strictEqual((await api('GET', '/api/settings', operator)).status, 403);
@@ -1356,6 +1380,9 @@ async function main() {
     const page = (url, cookie) => fetch(base() + url, { headers: { Cookie: cookie }, redirect: 'manual' }).then((r) => r.status);
     assert.strictEqual((await viewAs(leader, 'member')).status, 403, 'only an owner');
     assert.strictEqual((await viewAs(owner, 'owner')).status, 400, 'not a view-as role');
+    assert.strictEqual((await viewAs(owner, 'presenter')).status, 200, 'presenter is a view-as role');
+    assert.strictEqual((await api('GET', '/api/auth/me', owner)).body.user.role, 'presenter');
+    assert.strictEqual((await api('GET', '/api/screens', owner)).status, 403, 'as presenter: no screens');
     assert.strictEqual((await viewAs(owner, 'member')).status, 200);
     let me = (await api('GET', '/api/auth/me', owner)).body;
     assert.deepStrictEqual([me.user.role, me.user.realRole, me.user.viewAs, me.platformOwner], ['member', 'owner', 'member', false], 'the effective role is member');

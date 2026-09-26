@@ -1550,7 +1550,7 @@ button.op-step:disabled { opacity: 1; cursor: default; }
 @media (min-width: 720px) { .team-actions { flex: 0 1 auto; } .team-actions button { flex: none; } }
 .role-pill { border-color: var(--border); color: var(--text); }
 .role-owner { color: var(--on-accent); background: var(--accent-fill); border-color: var(--accent-fill); }
-.role-leader { color: var(--accent-text); border-color: var(--accent-fill); }
+.role-presenter, .role-leader { color: var(--accent-text); border-color: var(--accent-fill); }
 .role-operator { color: var(--worship); border-color: var(--worship); }
 .status-active { color: var(--success); border-color: var(--success); }
 .status-inactive { color: var(--text-muted); border-color: var(--border); }

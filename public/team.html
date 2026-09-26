@@ -27,6 +27,7 @@
         <label><span data-i18n="team.emailLabel"></span><input type="email" id="add-email" maxlength="254" inputmode="email" autocomplete="off" autocapitalize="off" spellcheck="false" required></label>
         <fieldset class="role-choice">
           <legend data-i18n="team.roleLabel"></legend>
+          <label class="role-option"><input type="radio" name="add-role" value="presenter"><span><strong data-i18n="team.roles.presenter"></strong><span class="hint" data-i18n="team.roleHelp.presenter"></span></span></label>
           <label class="role-option"><input type="radio" name="add-role" value="leader"><span><strong data-i18n="team.roles.leader"></strong><span class="hint" data-i18n="team.roleHelp.leader"></span></span></label>
           <label class="role-option"><input type="radio" name="add-role" value="operator"><span><strong data-i18n="team.roles.operator"></strong><span class="hint" data-i18n="team.roleHelp.operator"></span></span></label>
           <label class="role-option"><input type="radio" name="add-role" value="member" checked><span><strong data-i18n="team.roles.member"></strong><span class="hint" data-i18n="team.roleHelp.member"></span></span></label>
@@ -47,6 +48,7 @@
         <label><span data-i18n="team.nameLabel"></span><input type="text" id="edit-name" maxlength="100" autocomplete="off" required></label>
         <label><span data-i18n="team.roleLabel"></span>
           <select id="edit-role">
+            <option value="presenter" data-i18n="team.roles.presenter"></option>
             <option value="leader" data-i18n="team.roles.leader"></option>
             <option value="operator" data-i18n="team.roles.operator"></option>
             <option value="member" data-i18n="team.roles.member"></option>

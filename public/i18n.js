@@ -216,12 +216,14 @@
         roleLabel: 'Rol',
         roles: {
           owner: 'Proprietar',
+          presenter: 'Prezentator',
           leader: 'Lider',
           operator: 'Operator',
           member: 'Membru',
         },
         roleHelp: {
-          leader: 'Biblioteca, evenimentele, media și live-ul. La un eveniment ajunge pe pagina Live. Ecranele proiectorului le deschide operatorul; în modul Separat preia proiectorul doar cu acordul lui.',
+          presenter: 'Pregătește evenimentele și derulează cântările pentru echipă; ajunge pe pagina Live. Biblioteca, evenimentele, media și live-ul. Ecranele proiectorului le deschide operatorul; în modul Separat preia proiectorul doar cu acordul lui.',
+          leader: 'Conduce muzical de pe scenă; aceleași drepturi ca prezentatorul, ajunge direct în versurile mari. Repetiția (versuri și acorduri) îi este la îndemână.',
           operator: 'Biblioteca, evenimentele, media și live-ul, plus ecranele proiectorului (împerechere, „Deschide ecranul proiectorului”) și cântări noi scrise în timpul slujbei. La un eveniment ajunge în consola operator, unde acceptă sau refuză cererea liderului de a prelua proiectorul. Repetiția (versuri și acorduri pentru muzicieni) nu îi apare.',
           member: 'Vede programul, versurile și acordurile și urmărește live pe telefon.',
         },
@@ -955,6 +957,7 @@
         },
         presenceRoles: {
           owner: 'proprietari {n}',
+          presenter: 'prezentatori {n}',
           leader: 'lideri {n}',
           operator: 'operatori {n}',
           member: 'membri {n}',
@@ -1283,6 +1286,7 @@
       },
       roles: {
         owner: 'proprietar',
+        presenter: 'prezentator',
         leader: 'lider worship',
         operator: 'operator',
         member: 'membru',
@@ -1497,12 +1501,14 @@
         roleLabel: 'Role',
         roles: {
           owner: 'Owner',
+          presenter: 'Presenter',
           leader: 'Leader',
           operator: 'Operator',
           member: 'Member',
         },
         roleHelp: {
-          leader: 'Library, events, media and live. An event opens on the Live page. The projector screens are the operator’s; in Separate mode the leader takes the projector only with their consent.',
+          presenter: 'Prepares the events and runs the songs for the team; an event opens on the Live page. Library, events, media and live. The projector screens are the operator’s; in Separate mode the presenter takes the projector only with their consent.',
+          leader: 'Leads the music from the stage; the same rights as the presenter, an event opens straight in the big lyrics. The rehearsal view (lyrics and chords) is at hand.',
           operator: 'Library, events, media and live, plus the projector screens (pairing, “Open the projector screen”) and new songs written during the service. An event opens in the operator console, where they accept or refuse the leader’s request to take the projector. The rehearsal view (lyrics and chords for the musicians) is not shown to them.',
           member: 'Sees the setlist, lyrics and chords and follows live on the phone.',
         },
@@ -2236,6 +2242,7 @@
         },
         presenceRoles: {
           owner: 'owners {n}',
+          presenter: 'presenters {n}',
           leader: 'leaders {n}',
           operator: 'operators {n}',
           member: 'members {n}',
@@ -2564,6 +2571,7 @@
       },
       roles: {
         owner: 'owner',
+        presenter: 'presenter',
         leader: 'worship leader',
         operator: 'operator',
         member: 'member',

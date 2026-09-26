@@ -138,7 +138,7 @@
 
   function renderPresence() {
     const presence = (state.snap && state.snap.presence) || {};
-    const parts = ['leader', 'owner', 'operator', 'member'].filter((role) => presence[role])
+    const parts = ['presenter', 'leader', 'owner', 'operator', 'member'].filter((role) => presence[role])
       .map((role) => t(`live.presenceRoles.${role}`, { n: presence[role] }));
     const total = Object.values(presence).reduce((a, b) => a + b, 0);
     $('presence').textContent = `${t('live.online', { n: total })}${parts.length ? ` · ${parts.join(' · ')}` : ''}`;

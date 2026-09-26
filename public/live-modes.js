@@ -113,7 +113,7 @@
           button.setAttribute('aria-pressed', String(button.dataset.value === current));
         }
       }
-      const leader = me && me.role === 'leader';
+      const leader = me && (me.role === 'leader' || me.role === 'presenter'); // their switch waits for the operator
       hint.textContent = snap.mode === 'split'
         ? t(leader ? 'live.modes.splitLeaderHint' : 'live.modes.splitHint')
         : t('live.modes.togetherHint');

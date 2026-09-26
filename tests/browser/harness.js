@@ -14,7 +14,7 @@ const { hashPassword } = require('../../lib/auth');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const PASSWORD = 'parola-lunga-1';
-const USERS = { owner: 'ana@example.ro', leader: 'lider@x.ro', operator: 'op@x.ro', member: 'm@x.ro' };
+const USERS = { owner: 'ana@example.ro', presenter: 'prez@x.ro', leader: 'lider@x.ro', operator: 'op@x.ro', member: 'm@x.ro' };
 const FIXTURES = path.join(__dirname, 'fixtures');
 
 function freePort() {
@@ -123,6 +123,7 @@ async function seed(app) {
   const db = new Database(path.join(app.dataDir, 'worship.db'));
   const hash = await hashPassword(PASSWORD);
   const insert = db.prepare('INSERT INTO users (admin_id, email, name, password_hash, role, created_at) VALUES (1, ?, ?, ?, ?, 0)');
+  insert.run(USERS.presenter, 'Prezentator', hash, 'presenter');
   insert.run(USERS.leader, 'Lider', hash, 'leader');
   insert.run(USERS.operator, 'Operator', hash, 'operator');
   insert.run(USERS.member, 'Membru', hash, 'member');

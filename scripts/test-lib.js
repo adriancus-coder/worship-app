@@ -1022,7 +1022,7 @@ function liveFixture() {
 
 test('live permissions: the event roles alike in both modes; member nothing', () => {
   const { permission } = require('../lib/live');
-  const E = ['owner', 'leader', 'operator'];
+  const E = ['owner', 'presenter', 'leader', 'operator'];
   const together = {
     'worship.next': E, 'worship.goto': E, 'event.start': E, 'event.end': E, 'live.mode': E, 'team.mode': E,
     'projector.next': [], 'projector.goto': [], 'projector.syncToWorship': [],
@@ -1031,7 +1031,7 @@ test('live permissions: the event roles alike in both modes; member nothing', ()
   const split = { ...together, 'projector.next': E, 'projector.goto': E, 'projector.syncToWorship': E };
   for (const [mode, table] of [['together', together], ['split', split]]) {
     for (const [type, allowed] of Object.entries(table)) {
-      for (const role of ['owner', 'leader', 'operator', 'member']) {
+      for (const role of ['owner', 'presenter', 'leader', 'operator', 'member']) {
         const code = permission(role, type, mode);
         assert.strictEqual(code === null, allowed.includes(role), `${role} ${type} (${mode}): ${code}`);
       }
@@ -2057,5 +2057,41 @@ testAsync('invite / reset links: 32 random bytes, only the hash stored, 7 days /
   assert.ok(r && /Resetarea parolei/.test(sent[1].subject) && /o oră/.test(sent[1].text), 'a reset link, RO from the request');
   assert.strictEqual(tokens.find('reset', r[1]).state, 'valid');
   assert.ok(!logs.some((line) => line.includes(m[1]) || line.includes(r[1])), 'no token in the log');
+  mem.close();
+});
+
+test('migration 027: the presenter role; existing users and sessions keep their rows and view_as', () => {
+  const Database = require('better-sqlite3');
+  const fs = require('fs');
+  const path = require('path');
+  const { runMigrations } = require('../lib/db');
+  const { EVENT_ROLES, EDITOR_ROLES, SCREEN_ROLES } = require('../lib/events');
+  const { validateRole } = require('../lib/team');
+  const { VIEW_AS_ROLES } = require('../lib/auth');
+  const mem = new Database(':memory:');
+  mem.pragma('foreign_keys = ON');
+  const dir = path.join(__dirname, '..', 'lib', 'migrations');
+  const files = fs.readdirSync(dir).filter((f) => f.endsWith('.sql')).sort();
+  for (const f of files.filter((x) => x < '027')) mem.exec(fs.readFileSync(path.join(dir, f), 'utf8'));
+  mem.prepare("INSERT INTO admins (id, name, created_at) VALUES (1, 'A', 0)").run();
+  mem.prepare("INSERT INTO users (id, admin_id, email, name, password_hash, role, created_at, locale, theme) VALUES (1, 1, 'o@x.ro', 'O', 'x', 'owner', 0, 'en', 'light'), (2, 1, 'l@x.ro', 'L', 'x', 'leader', 0, NULL, NULL)").run();
+  mem.prepare("INSERT INTO sessions (id, user_id, admin_id, created_at, expires_at, view_as) VALUES ('s1', 1, 1, 0, 9999999999999, 'member'), ('s2', 2, 1, 0, 9999999999999, NULL)").run();
+  mem.prepare("INSERT INTO user_tokens (user_id, admin_id, kind, token_hash, created_at, expires_at) VALUES (2, 1, 'invite', 'h', 0, 9999999999999)").run();
+  assert.throws(() => mem.prepare("INSERT INTO users (admin_id, email, name, password_hash, role, created_at) VALUES (1, 'p@x.ro', 'P', 'x', 'presenter', 0)").run(), /CHECK/);
+  mem.exec('CREATE TABLE schema_migrations (name TEXT PRIMARY KEY, applied_at INTEGER NOT NULL)');
+  for (const f of files.filter((x) => x < '027')) mem.prepare('INSERT INTO schema_migrations (name, applied_at) VALUES (?, 0)').run(f);
+  assert.deepStrictEqual(runMigrations(mem), ['027_role_presenter.sql']);
+  assert.deepStrictEqual(mem.prepare('SELECT id, role, locale, theme FROM users ORDER BY id').all(), [{ id: 1, role: 'owner', locale: 'en', theme: 'light' }, { id: 2, role: 'leader', locale: null, theme: null }], 'no user changed');
+  assert.deepStrictEqual(mem.prepare('SELECT id, view_as FROM sessions ORDER BY id').all(), [{ id: 's1', view_as: 'member' }, { id: 's2', view_as: null }]);
+  assert.strictEqual(mem.prepare('SELECT COUNT(*) FROM user_tokens').pluck().get(), 1, 'references survive');
+  mem.prepare("INSERT INTO users (admin_id, email, name, password_hash, role, created_at) VALUES (1, 'p@x.ro', 'P', 'x', 'presenter', 0)").run();
+  mem.prepare("UPDATE sessions SET view_as = 'presenter' WHERE id = 's1'").run();
+  assert.throws(() => mem.prepare("UPDATE users SET role = 'admin' WHERE id = 2").run(), /CHECK/);
+  // one definition each: the presenter has the leader's rights everywhere, never the screens
+  assert.deepStrictEqual(EVENT_ROLES, ['owner', 'presenter', 'leader', 'operator']);
+  assert.strictEqual(EDITOR_ROLES, EVENT_ROLES);
+  assert.deepStrictEqual(SCREEN_ROLES, ['owner', 'operator']);
+  assert.deepStrictEqual(VIEW_AS_ROLES, ['presenter', 'leader', 'operator', 'member']);
+  assert.deepStrictEqual(validateRole('presenter', (k) => k), { value: 'presenter' });
   mem.close();
 });

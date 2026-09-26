@@ -39,7 +39,7 @@ module.exports = {
       const p = await signIn('owner', { width, lang });
       await p.goto(`${app.url}/app`);
       let m = await menuPages(p);
-      check(m.viewAs.join(',') === 'owner:true,leader:false,operator:false,member:false' && m.pages.includes('team') && m.pages.includes('platform'), `${tag} owner: the switch with Proprietar selected; Echipa and Platformă in the menu`, m);
+      check(m.viewAs.join(',') === 'owner:true,presenter:false,leader:false,operator:false,member:false' && m.pages.includes('team') && m.pages.includes('platform'), `${tag} owner: the switch with Proprietar selected; Echipa and Platformă in the menu`, m);
       check(await bar(p) === null, `${tag} owner: no bar`);
       // as member
       await p.click('#shell-panel [data-view-as="member"]');
