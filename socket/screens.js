@@ -32,6 +32,7 @@ function createScreensHub({ db, logger, config }) {
   const backgrounds = createBackgroundStore(db, signer);
   const selectMedia = db.prepare('SELECT * FROM media WHERE id = ? AND admin_id = ?');
   const videoStatus = new Map(); // adminId -> Map(screenId -> last playback status of that screen)
+  const patterns = new Map(); // screenId -> the labels of the test pattern it shows (until closed / the next live frame)
   let onVideoEvent = () => {};
   let nsp = null;
   let mainIo = null;
@@ -93,6 +94,25 @@ function createScreensHub({ db, logger, config }) {
     return own === null || own === undefined ? frame : { ...frame, safeMargin: own };
   }
 
+  // "Ecran de test" (calibrating the projector): a special frame for ONE screen, with the
+  // screen's margin; the screen renders the border, the markers and its resolution. It stays
+  // until the operator closes it or the next live frame (update) arrives.
+  function patternFrame(adminId, socket, labels) {
+    return forScreen({ kind: 'pattern', version: 0, eventId: null, background: null, clock: null, safeMargin: settings.safeMargin(adminId), labels }, socket);
+  }
+
+  // on: labels { resolution, margin, name } (the operator's language); off: the current frame again.
+  function testPattern(adminId, screenId, labels) {
+    if (labels) patterns.set(screenId, labels);
+    else patterns.delete(screenId);
+    for (const socket of socketsOf(adminId)) {
+      if (socket.data.screenId !== screenId) continue;
+      socket.emit('projector:frame', labels ? patternFrame(adminId, socket, labels) : forScreen(frameFor(adminId), socket));
+    }
+    return patterns.has(screenId);
+  }
+  const showsPattern = (screenId) => patterns.has(screenId);
+
   // Something the projector may show changed: send the new frame if it differs.
   function update(adminId) {
     if (!nsp) return;
@@ -100,7 +120,10 @@ function createScreensHub({ db, logger, config }) {
     const key = withoutVersion(frame);
     if (lastSent.get(adminId) === key) return;
     lastSent.set(adminId, key);
-    for (const socket of socketsOf(adminId)) socket.emit('projector:frame', forScreen(frame, socket));
+    for (const socket of socketsOf(adminId)) {
+      patterns.delete(socket.data.screenId); // a live frame replaces a test pattern
+      socket.emit('projector:frame', forScreen(frame, socket));
+    }
     mainIo.to(watchersRoom(adminId)).emit('projector:frame', frame);
   }
 
@@ -114,7 +137,8 @@ function createScreensHub({ db, logger, config }) {
       if (screenId !== null && socket.data.screenId !== screenId) continue;
       const screen = screens.get(adminId, socket.data.screenId);
       socket.data.safeMargin = screen ? screen.safeMargin : null;
-      socket.emit('projector:frame', forScreen(frame, socket));
+      const labels = patterns.get(socket.data.screenId);
+      socket.emit('projector:frame', labels ? patternFrame(adminId, socket, labels) : forScreen(frame, socket));
     }
     if (screenId === null) mainIo.to(watchersRoom(adminId)).emit('projector:frame', frame);
   }
@@ -221,6 +245,7 @@ function createScreensHub({ db, logger, config }) {
       socket.on('screen:video-status', (payload) => onScreenVideoStatus(socket, payload));
       socket.on('screen:video-local', (payload) => onScreenVideoLocal(socket, payload));
       socket.on('disconnect', () => {
+        patterns.delete(screenId);
         if (videoStatus.has(adminId)) videoStatus.get(adminId).delete(screenId);
         sendCount(adminId);
       });
@@ -249,7 +274,7 @@ function createScreensHub({ db, logger, config }) {
   // pages compute the same frames offline) and the editor's "Implicit (…)".
   const backgroundsFor = (adminId, eventId, override) => backgrounds.forEvent(adminId, eventId, override);
 
-  return { attach, update, marginChanged, frameFor, onlineIds, revoked, suspend, watch, setVideoHandler, lastVideoPosition, backgroundsFor };
+  return { attach, update, marginChanged, testPattern, showsPattern, frameFor, onlineIds, revoked, suspend, watch, setVideoHandler, lastVideoPosition, backgroundsFor };
 }
 
 module.exports = { NAMESPACE, screensRoom, createScreensHub };

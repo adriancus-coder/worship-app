@@ -108,7 +108,7 @@ function createScreensRouter({ db, auth, config, logger, screensHub }) {
   router.get('/api/screens', (req, res) => {
     const online = screensHub.onlineIds(req.adminId);
     // baseUrl: the address of the projector page ("adresa proiectorului"), null -> the page's origin.
-    res.json({ screens: screens.list(req.adminId).map((s) => ({ ...s, online: online.has(s.id) })), baseUrl: config.PUBLIC_BASE_URL, safeMargin: settings.safeMargin(req.adminId) });
+    res.json({ screens: screens.list(req.adminId).map((s) => ({ ...s, online: online.has(s.id), testPattern: screensHub.showsPattern(s.id) })), baseUrl: config.PUBLIC_BASE_URL, safeMargin: settings.safeMargin(req.adminId) });
   });
 
   router.put('/api/screens/:id', (req, res) => {
@@ -131,6 +131,18 @@ function createScreensRouter({ db, auth, config, logger, screensHub }) {
     screensHub.marginChanged(req.adminId, id);
     logger.info(`Screen #${id} safe margin ${percent === null ? 'follows the church default' : `${percent} %`} (user #${req.user.id}, admin #${req.adminId})`);
     res.json({ screen: screens.get(req.adminId, id) });
+  });
+
+  // "Ecran de test" { on: true | false }: the calibration pattern on that screen (until closed or
+  // the next live frame). The labels travel with the frame, in the operator's language.
+  router.post('/api/screens/:id/test-pattern', (req, res) => {
+    const id = screenId(req);
+    const screen = id && screens.get(req.adminId, id);
+    if (!screen) return res.status(404).json({ error: req.t('errors.screenNotFound') });
+    const on = (req.body || {}).on !== false;
+    const labels = on ? { name: screen.name, resolution: req.t('screen.patternResolution'), margin: req.t('screen.patternMargin'), hint: req.t('screen.patternHint') } : null;
+    const shown = screensHub.testPattern(req.adminId, id, labels);
+    res.json({ screen: { ...screen, online: screensHub.onlineIds(req.adminId).has(id), testPattern: shown } });
   });
 
   router.delete('/api/screens/:id', (req, res) => {

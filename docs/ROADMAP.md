@@ -153,7 +153,19 @@ never implement a later stage early. Mockups: claude.ai design canvas
   page with "Deschide ecranul proiectorului": new window, moved fullscreen to the second
   display via the Window Management API (Chrome/Edge, one-time permission); fallback =
   drag + F11. Opened from a logged-in page it pairs automatically.
-- A PC with no operator pairs with a 6-digit code entered in the admin.
+- A PC with no operator pairs with a 6-digit code entered in the admin. /screens lists the
+  paired screens first, then "Adaugă un ecran" in two ways (from the operator console; with a
+  code, handing over "adresa proiectorului" by copy / email / share).
+- **Safe margin** (`safe_margin`, church default 5 %, 0-12; a screen may override it,
+  migration 028): text, logo and corner clock (offset = margin + 20 / 24 px) keep away from the
+  edges some projectors crop (overscan); backgrounds and video stay full-bleed. Every frame
+  carries `safeMargin`; the console and leader previews draw a dashed rectangle at it.
+- **Test pattern** ("Ecran de test" per screen on /screens): a 1 px border, dashed markers at
+  2 / 4 / 6 / 8 / 10 % with labels, the current margin, a centre cross, the screen's
+  resolution. The operator reads the first fully visible percent and presses "Aplică n %";
+  the pattern stays until closed or the next live frame. Advice shown on /screens and here:
+  when the projector's own menu has "overscan" / "screen fit", turn it off first; the margin
+  is for the rest.
 - **Corner clock** (`public/clock.js`, migration 022), as in Sanctuary Voice: HH:MM in the
   church timezone in one corner of every frame (content, verse, announcement, logo, black,
   idle), never while a video plays. Part of the live state (`clock.set { show, position,

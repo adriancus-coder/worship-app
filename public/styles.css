@@ -1024,6 +1024,10 @@ button.live-item:disabled { opacity: 1; cursor: default; }
 /* "Adresa proiectorului" under a screen row */
 .screen-address { flex: 1 1 100%; display: flex; flex-direction: column; gap: 6px; padding-top: 6px; border-top: 1px solid var(--border); }
 .screen-address .hint, .screen-address .message { margin: 0; }
+.pattern-panel { flex: 1 1 100%; display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; border: 1px dashed var(--border); border-radius: var(--radius); }
+.pattern-panel .hint, .pattern-panel .message { margin: 0; }
+.pattern-apply { display: flex; flex-wrap: wrap; gap: 6px; }
+.pattern-apply button { flex: 1 1 auto; padding: 8px 10px; }
 .screen-margin { flex: 1 1 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 0; }
 .screen-margin select { min-height: var(--touch); }
 .screen-margin .hint, .screen-margin .message { margin: 0; }
@@ -1054,6 +1058,20 @@ button.live-item:disabled { opacity: 1; cursor: default; }
 .projector-stage { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: var(--safe-y, 0px) var(--safe-x, 0px); opacity: 0; }
 .projector-safe-guide { position: absolute; top: var(--safe-y, 0px); right: var(--safe-x, 0px); bottom: var(--safe-y, 0px); left: var(--safe-x, 0px); border: 1px dashed var(--projector-guide); opacity: 0.6; pointer-events: none; z-index: 1; }
 .projector-safe-guide[hidden] { display: none; }
+/* "Ecran de test": border, percent markers, the safe margin, centre cross, resolution */
+.projector-pattern { position: absolute; inset: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--projector-text); }
+.pattern-border { position: absolute; inset: 1px; border: 1px solid var(--projector-text); }
+.pattern-rect { position: absolute; border: 1px dashed var(--projector-guide); }
+.pattern-rect.pattern-safe { border: 2px solid var(--projector-text); opacity: 0.9; }
+.pattern-label { position: absolute; padding: 0.1em 0.3em; font-size: clamp(0.7rem, 1.4vw, 1.4rem); font-weight: 700; background: var(--projector-bg); }
+.pattern-label-tl { top: 0; left: 0; }
+.pattern-label-br { right: 0; bottom: 0; }
+.pattern-cross { position: absolute; background: var(--projector-guide); opacity: 0.7; }
+.pattern-cross-h { top: 50%; left: 40%; right: 40%; height: 1px; }
+.pattern-cross-v { left: 50%; top: 40%; bottom: 40%; width: 1px; }
+.pattern-info { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 0.6em 1em; text-align: center; background: var(--projector-bg); font-size: clamp(1rem, 2.2vw, 2.4rem); line-height: 1.35; }
+.pattern-info-name { font-weight: 800; }
+.pattern-info-hint { font-size: 0.6em; opacity: 0.8; max-width: 26em; }
 .projector-stage.visible { opacity: 1; }
 .projector-text {
   width: 100%;

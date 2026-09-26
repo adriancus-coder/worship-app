@@ -293,8 +293,36 @@
       return box;
     }
 
+    // The calibration pattern ("Ecran de test"): a 1 px border, dashed markers at 2 / 4 / 6 / 8 /
+    // 10 % of each edge with their labels, the current safe margin (solid), a centre cross and,
+    // in the middle, the screen's resolution and margin.
+    function patternBox(frame) {
+      const box = el('div', 'projector-pattern');
+      box.append(el('div', 'pattern-border'));
+      for (const p of [2, 4, 6, 8, 10]) {
+        const rect = el('div', 'pattern-rect');
+        rect.style.inset = `${p}%`;
+        rect.append(el('span', 'pattern-label pattern-label-tl', `${p} %`), el('span', 'pattern-label pattern-label-br', `${p} %`));
+        box.append(rect);
+      }
+      const safe = el('div', 'pattern-rect pattern-safe');
+      safe.style.inset = `${margin}%`;
+      box.append(safe, el('div', 'pattern-cross pattern-cross-h'), el('div', 'pattern-cross pattern-cross-v'));
+      const labels = frame.labels || {};
+      const dpr = window.devicePixelRatio || 1;
+      const info = el('div', 'pattern-info');
+      info.append(
+        el('div', 'pattern-info-name', labels.name || ''),
+        el('div', 'pattern-info-line', `${labels.resolution || ''}: ${Math.round(window.innerWidth * dpr)} × ${Math.round(window.innerHeight * dpr)}`),
+        el('div', 'pattern-info-line', `${labels.margin || ''}: ${margin} %`),
+        el('div', 'pattern-info-hint', labels.hint || ''));
+      box.append(info);
+      return box;
+    }
+
     // What to put on the stage for a frame; null = black.
     async function content(frame) {
+      if (frame.kind === 'pattern') return patternBox(frame);
       if (frame.kind === 'lyrics' || frame.kind === 'verse' || frame.kind === 'announcement' || frame.kind === 'title') {
         return textBox(frame);
       }

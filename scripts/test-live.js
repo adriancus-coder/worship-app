@@ -450,6 +450,32 @@ async function main() {
     await frameWhere(screen, (f) => f.safeMargin === 5);
   });
 
+  await step('test pattern: one screen gets the pattern frame (its margin, RO labels), listed as such; off or the next live frame brings the content back', async () => {
+    const mine = (await api('GET', '/api/screens', owner)).body.screens.find((s) => s.name === 'Proiector sală');
+    assert.strictEqual((await api('POST', `/api/screens/${mine.id}/test-pattern`, leader, { on: true })).status, 403, 'SCREEN_ROLES only');
+    const on = await api('POST', `/api/screens/${mine.id}/test-pattern`, operator, { on: true });
+    assert.deepStrictEqual([on.status, on.body.screen.testPattern], [200, true]);
+    let frame = await frameWhere(screen, (f) => f.kind === 'pattern');
+    assert.deepStrictEqual([frame.safeMargin, frame.eventId, frame.labels.resolution, frame.labels.name], [5, null, 'Rezoluție', 'Proiector sală']);
+    assert.strictEqual(otherScreen.frames.some((f) => f.kind === 'pattern'), false, 'only that screen');
+    assert.strictEqual((await api('GET', '/api/screens', owner)).body.screens.find((s) => s.id === mine.id).testPattern, true);
+    // the margin applied while the pattern shows: the pattern again, with the new value
+    assert.strictEqual((await api('PUT', `/api/screens/${mine.id}/margin`, operator, { percent: 6 })).status, 200);
+    frame = await frameWhere(screen, (f) => f.kind === 'pattern' && f.safeMargin === 6);
+    assert.strictEqual((await api('POST', `/api/screens/${mine.id}/test-pattern`, operator, { on: false })).body.screen.testPattern, false);
+    frame = await frameWhere(screen, (f) => f.kind === 'lyrics' && f.safeMargin === 6);
+    // on again, then a live move replaces it
+    await api('POST', `/api/screens/${mine.id}/test-pattern`, operator, { on: true });
+    await frameWhere(screen, (f) => f.kind === 'pattern' && f.safeMargin === 6);
+    await send(lead.socket, { type: 'worship.next' });
+    frame = await frameWhere(screen, (f) => f.kind === 'lyrics' && f.version === version);
+    assert.strictEqual((await api('GET', '/api/screens', owner)).body.screens.find((s) => s.id === mine.id).testPattern, false, 'the live frame ended the pattern');
+    await send(lead.socket, { type: 'worship.prev' });
+    await frameWhere(screen, (f) => f.version === version);
+    assert.strictEqual((await api('PUT', `/api/screens/${mine.id}/margin`, operator, { percent: null })).status, 200);
+    await frameWhere(screen, (f) => f.safeMargin === 5);
+  });
+
   await step('worship moves and projector.source change the screen frame; member refused', async () => {
     await send(lead.socket, { type: 'worship.goto', itemId: i2, step: 0 });
     let frame = await frameWhere(screen, (f) => f.kind === 'verse');

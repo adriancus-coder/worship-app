@@ -51,12 +51,44 @@
         el('span', { class: 'screen-meta', text: `${screen.online ? t('screens.online') : t('screens.offline')} · ${lastSeen(screen)}` })),
       el('span', { class: 'screen-tools' },
         el('button', { type: 'button', class: 'secondary', 'data-icon': 'edit', text: t('screens.rename'), 'aria-label': t('screens.renameLabel', { name: screen.name }), onclick: () => openRename(screen) }),
+        el('button', { type: 'button', class: 'secondary', 'data-icon': 'projector', 'data-pattern': String(screen.id), 'aria-pressed': String(Boolean(screen.testPattern)), text: t(screen.testPattern ? 'screens.patternOff' : 'screens.pattern'), 'aria-label': t(screen.testPattern ? 'screens.patternOffFor' : 'screens.patternFor', { name: screen.name }), disabled: screen.online ? null : 'disabled', onclick: () => togglePattern(screen) }),
         el('button', { type: 'button', class: 'secondary', 'data-icon': 'link', text: t('screens.rowAddress'), 'aria-expanded': String(state.addressOpen.has(screen.id)), 'aria-label': t('screens.rowAddressLabel', { name: screen.name }), onclick: () => toggleAddress(screen) }),
         el('button', { type: 'button', class: 'secondary', 'data-icon': 'close', text: t('screens.revoke'), 'aria-label': t('screens.revokeLabel', { name: screen.name }), onclick: () => openRevoke(screen) })),
+      // "Ecran de test": the calibration pattern on that screen, with "Aplică n %" under it.
+      screen.testPattern ? patternPanel(screen) : null,
       // "Margine de siguranță": this screen's own value or the church default (settings).
       marginControl(screen),
       // "Adresa proiectorului" for this screen: to reopen a PC that lost its window.
       state.addressOpen.has(screen.id) ? addressBox(screen) : null)));
+  }
+
+  async function togglePattern(screen) {
+    const res = await api(`/api/screens/${screen.id}/test-pattern`, { method: 'POST', body: { on: !screen.testPattern } });
+    if (!res.ok) return setStatus(res.body.error || t('common.networkError'));
+    state.screens = state.screens.map((s) => (s.id === screen.id ? { ...s, ...res.body.screen } : s));
+    render();
+  }
+
+  // Under a screen showing the pattern: read the first fully visible percent, apply it.
+  function patternPanel(screen) {
+    const message = el('span', { class: 'message', role: 'status' });
+    const apply = async (percent) => {
+      const res = await api(`/api/screens/${screen.id}/margin`, { method: 'PUT', body: { percent } });
+      if (!res.ok) {
+        message.className = 'message error';
+        message.textContent = res.body.error || t('common.networkError');
+        return;
+      }
+      state.screens = state.screens.map((s) => (s.id === screen.id ? { ...s, ...res.body.screen, online: s.online, testPattern: s.testPattern } : s));
+      render();
+      const row = document.querySelector(`[data-pattern="${screen.id}"]`);
+      if (row) row.closest('.screen-row').querySelector('.pattern-panel .message').textContent = t('screens.patternApplied', { n: percent });
+    };
+    return el('div', { class: 'pattern-panel' },
+      el('span', { class: 'hint', text: t('screens.patternHint') }),
+      el('div', { class: 'pattern-apply', role: 'group', 'aria-label': t('screens.patternApplyLabel') },
+        ...[2, 4, 6, 8, 10].map((n) => el('button', { type: 'button', class: screen.safeMargin === n ? '' : 'secondary', 'data-apply': String(n), text: t('screens.patternApply', { n }), onclick: () => apply(n) }))),
+      message);
   }
 
   function marginControl(screen) {
