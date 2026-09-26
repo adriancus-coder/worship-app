@@ -1965,3 +1965,21 @@ dialog.song-pick-dialog .song-pick > .ss-results { flex: 1 1 0; height: 0; --pan
   .event-tools.as-menu.open { display: flex; }
   .event-tools.as-menu > button { justify-content: flex-start; }
 }
+
+/* Tap or hold (public/press.js): a press grows an accent ring for the 500 ms of a long press
+   and pops when it fires; song cards keep a visible "Aranjează" (the long press is a shortcut). */
+.press-target { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; touch-action: manipulation; }
+.press-target.pressing { transform: scale(0.98); box-shadow: inset 0 0 0 3px var(--accent-fill); transition: transform 500ms ease-out, box-shadow 500ms ease-out; }
+.press-target.held { animation: press-held 250ms ease-out; }
+@keyframes press-held { 0% { transform: scale(0.97); } 60% { transform: scale(1.01); } 100% { transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .press-target.pressing { transform: none; transition: none; }
+  .press-target.held { animation: none; }
+}
+.live-list > li, .op-list > li { position: relative; }
+.has-arrange > .live-item, .has-arrange > .op-item { min-height: 60px; padding-right: 92px; }
+.item-arrange { position: absolute; top: 6px; right: 6px; bottom: 6px; width: 80px; min-width: 0; flex-direction: column; gap: 2px; padding: 2px 4px; font-size: 0.75rem; line-height: 1.1; white-space: nowrap; }
+.press-hint { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; padding: 2px 2px 2px 12px; font-size: 0.875rem; color: var(--text-muted); background: var(--surface); border: 1px dashed var(--border); border-radius: var(--radius); }
+.press-hint-text { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.press-hint-close { flex: none; }
+.setlist-pane .press-hint { margin-top: 8px; }

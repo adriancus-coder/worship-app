@@ -558,6 +558,11 @@
           backMoved: 'Dacă altcineva a mutat-o, câștigă poziția de pe server, iar pagina Live arată „Reconectat — poziția a fost sincronizată de pe server”.',
         },
       },
+      press: {
+        hintLive: 'Apasă scurt pentru a merge acolo · Ține apăsat pentru a aranja',
+        hintEditor: 'Apasă scurt pentru a selecta · Ține apăsat pentru a aranja',
+        hintClose: 'Am înțeles, ascunde sfatul',
+      },
       operator: {
         link: 'Consolă operator',
         pageTitle: 'Operator: {name} — {appName}',
@@ -1561,6 +1566,11 @@
           backSame: 'If nobody else moved the position meanwhile, your position is sent to the server and the whole team sees it again.',
           backMoved: 'If someone else moved it, the position on the server wins, and the live page shows “Reconnected — the position was synced from the server”.',
         },
+      },
+      press: {
+        hintLive: 'Tap to go there · Press and hold to arrange',
+        hintEditor: 'Tap to select · Press and hold to arrange',
+        hintClose: 'Got it, hide the tip',
       },
       operator: {
         link: 'Operator console',

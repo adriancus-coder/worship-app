@@ -150,15 +150,14 @@
     const live = state.snap.status === 'live';
     $('setlist').replaceChildren(...state.items.map((item, i) => {
       const isCurrent = live && pos.itemId === item.id;
-      return el('li', null, el('button', {
+      const canArrange = live && arrangeable(item);
+      const goThere = () => send('worship.goto', { itemId: item.id, step: 0 });
+      const main = el('button', {
         type: 'button',
         class: `live-item${isCurrent ? ' current' : ''}`,
         'aria-current': isCurrent ? 'step' : null,
+        'aria-keyshortcuts': canArrange ? 'Shift+Enter' : null,
         disabled: !live,
-        // A song opens the arrange sheet ("Mergi la cântare" moves there); the rest move.
-        onclick: () => (arrangeable(item)
-          ? arrange(item, () => send('worship.goto', { itemId: item.id, step: 0 }))
-          : send('worship.goto', { itemId: item.id, step: 0 })),
       },
       el('span', { class: 'item-number', text: String(i + 1) }),
       // Top row: the type and, at the top right, the status badge; the title below.
@@ -167,9 +166,27 @@
           el('span', { class: `type-badge type-${item.type}`, text: t(`setlist.types.${item.type}`) }),
           isCurrent ? el('span', { class: 'op-markers' }, el('span', { class: 'live-badge', text: t('live.liveBadge') })) : null),
         el('span', { class: 'item-title', text: itemTitle(item) }),
-        item.type === 'song' && item.displayKey ? el('span', { class: 'item-sub', text: t('options.songKeyShort', { key: window.NOTATION.chord(item.displayKey) }) }) : null)));
+        item.type === 'song' && item.displayKey ? el('span', { class: 'item-sub', text: t('options.songKeyShort', { key: window.NOTATION.chord(item.displayKey) }) }) : null));
+      // Short tap: the team goes there; long press (or "Aranjează"): the arrange sheet.
+      window.PRESS.bind(main, { tap: goThere, hold: canArrange ? () => arrange(item, goThere) : null });
+      return el('li', { class: canArrange ? 'has-arrange' : null }, main, canArrange ? arrangeButton(item, () => arrange(item, goThere)) : null);
     }));
     if (!state.items.length) $('setlist').replaceChildren(el('li', { class: 'muted', text: t('setlist.empty') }));
+    showPressHint();
+  }
+
+  // The visible way to arrange a song from the Program (the long press is a shortcut).
+  function arrangeButton(item, open) {
+    return el('button', {
+      type: 'button', class: 'secondary item-arrange', 'data-icon': 'edit',
+      'aria-label': t('arrange.buttonLabel', { title: itemTitle(item) }), onclick: open,
+    }, el('span', { text: t('arrange.button') }));
+  }
+
+  function showPressHint() {
+    if ($('press-hint-live') || !state.items.some((it) => arrangeable(it)) || state.snap.status !== 'live') return;
+    const node = window.PRESS.hint('live', 'press.hintLive');
+    if (node) $('setlist').before(node);
   }
 
   function textOf(item) {

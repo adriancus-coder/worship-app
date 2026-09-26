@@ -143,13 +143,14 @@
     $('op-list').replaceChildren(...list.map((item, i) => {
       const tag = tagOf(item);
       const onProjector = item.id === pos.itemId;
-      return el('li', null, el('button', {
+      const canArrange = enabled && arrangeable(item);
+      const goThere = () => goto(item, 0);
+      const main = el('button', {
         type: 'button',
         class: `op-item${onProjector ? ' on-projector' : ''}${item.id === worship.itemId ? ' at-worship' : ''}${item.scope === 'projector' ? ' projector-only' : ''}`,
         'aria-current': onProjector ? 'step' : null,
+        'aria-keyshortcuts': canArrange ? 'Shift+Enter' : null,
         disabled: !enabled,
-        // A song opens the arrange sheet ("Mergi la cântare" moves there); the rest move.
-        onclick: () => (arrangeable(item) ? arrange(item, () => goto(item, 0)) : goto(item, 0)),
       },
       el('span', { class: 'item-number', text: String(i + 1) }),
       // Top row: the type, and the status badges at the top right (they wrap, never clip);
@@ -161,9 +162,20 @@
             onProjector ? el('span', { class: 'marker projector', text: t('operator.onProjector') }) : null,
             item.id === worship.itemId ? el('span', { class: 'marker worship', text: t('operator.worship') }) : null)),
         el('span', { class: 'item-title', text: itemTitle(item) }),
-        tag ? el('span', { class: `op-tag tag-${tag}`, text: t(`operator.tags.${tag}`) }) : null)));
+        tag ? el('span', { class: `op-tag tag-${tag}`, text: t(`operator.tags.${tag}`) }) : null));
+      // Short tap: go there (projector, or the main position together); long press (or
+      // "Aranjează"): the arrange sheet.
+      window.PRESS.bind(main, { tap: goThere, hold: canArrange ? () => arrange(item, goThere) : null });
+      return el('li', { class: canArrange ? 'has-arrange' : null }, main, canArrange ? el('button', {
+        type: 'button', class: 'secondary item-arrange', 'data-icon': 'edit',
+        'aria-label': t('arrange.buttonLabel', { title: itemTitle(item) }), onclick: () => arrange(item, goThere),
+      }, el('span', { text: t('arrange.button') })) : null);
     }));
     if (!list.length) $('op-list').replaceChildren(el('li', { class: 'muted', text: t('setlist.empty') }));
+    if (enabled && !$('press-hint-live') && list.some(arrangeable)) {
+      const node = window.PRESS.hint('live', 'press.hintLive');
+      if (node) $('op-list').before(node);
+    }
   }
 
   // --- arranging a song during live (public/arrange-sheet.js) ---------------------------

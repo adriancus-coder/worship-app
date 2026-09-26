@@ -283,7 +283,6 @@
         'aria-expanded': String(selected),
         'aria-controls': 'detail',
         'data-index': i,
-        onclick: () => select(selected ? -1 : i),
         onkeydown: (event) => onItemKey(event, i),
       },
       el('span', { class: 'item-number', 'aria-hidden': 'true', text: String(i + 1) }),
@@ -291,6 +290,11 @@
         el('span', { class: `type-badge type-${item.type}`, text: t(`setlist.types.${item.type}`) }),
         el('span', { class: `item-title${item.songDeleted ? ' deleted' : ''}`, text: title }),
         itemSubline(item) ? el('span', { class: 'item-sub', text: itemSubline(item) }) : null));
+      // Short tap selects (the details); a long press arranges a song (public/press.js).
+      window.PRESS.bind(main, {
+        tap: () => select(selected ? -1 : i),
+        hold: state.editing && item.type === 'song' && item.songId ? () => arrangeAt(i) : null,
+      });
       const tools = state.editing
         ? el('span', { class: 'item-tools' },
           toolButton('up', i, '↑', t('setlist.moveUp', { title }), i === 0),
@@ -300,6 +304,21 @@
       return el('li', { class: `setlist-item${selected ? ' selected' : ''}` }, el('div', { class: 'item-row' }, main, tools));
     }));
     placeDetail();
+    showPressHint();
+  }
+
+  // "Apasă scurt pentru a selecta · Ține apăsat pentru a aranja", once per device, while
+  // editing a Program that has a song.
+  function showPressHint() {
+    if (!state.editing || $('press-hint-editor') || !state.items.some((it) => it.type === 'song' && it.songId)) return;
+    const node = window.PRESS.hint('editor', 'press.hintEditor');
+    if (node) $('reorder-hint').after(node);
+  }
+
+  // Long press on a song: select it (its details) and open the arrange sheet.
+  function arrangeAt(index) {
+    if (state.selected !== index) select(index);
+    openArrange(state.items[index]);
   }
 
   // Narrow screens: the detail opens under the selected item. Wide: in the side pane.
@@ -325,12 +344,9 @@
   }
 
   function select(index, focusDetail) {
-    const opening = index >= 0 && index !== state.selected;
     state.selected = index;
     renderItems();
     renderDetail();
-    // Editing: tapping a song opens the arrange sheet (the details stay under it).
-    if (opening && state.editing && state.items[index] && state.items[index].type === 'song') openArrange(state.items[index]);
     if (focusDetail) {
       const first = detail.querySelector('input, textarea, select, a');
       if (first) first.focus();
