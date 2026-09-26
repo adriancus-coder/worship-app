@@ -65,6 +65,8 @@ function createScreensRouter({ db, auth, logger, screensHub }) {
   router.get('/api/screen/me', (req, res) => {
     const screen = screens.findByToken(req.get(SCREEN_TOKEN_HEADER));
     if (!screen) return res.status(401).json({ error: req.t('errors.screenUnknown') });
+    // A deactivated church: the screen keeps its token and waits (public/screen.js).
+    if (!screen.adminActive) return res.status(423).json({ code: 'suspended', error: req.t('errors.adminInactive') });
     screens.touch(screen.id);
     res.json({ screen: { id: screen.id, name: screen.name }, admin: { id: screen.adminId, name: screen.adminName } });
   });

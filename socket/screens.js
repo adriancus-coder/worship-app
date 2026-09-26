@@ -177,6 +177,7 @@ function createScreensHub({ db, logger, config }) {
     nsp.use((socket, next) => {
       const screen = screens.findByToken(socket.handshake.auth && socket.handshake.auth.token);
       if (!screen) return next(new Error('unauthorized'));
+      if (!screen.adminActive) return next(new Error('suspended')); // deactivated church: retries later
       socket.data = { screenId: screen.id, adminId: screen.adminId };
       next();
     });
@@ -199,17 +200,26 @@ function createScreensHub({ db, logger, config }) {
     setInterval(() => {
       for (const socket of nsp.sockets.values()) {
         const screen = screens.findByToken(socket.handshake.auth.token);
-        if (!screen) socket.disconnect(true);
+        if (!screen || !screen.adminActive) socket.disconnect(true);
         else screens.touch(screen.id);
       }
     }, SEEN_EVERY_MS).unref();
+  }
+
+  // A church deactivated from the platform page: its screens are told and dropped at once
+  // (they keep their tokens and try again every 30 s until it is reactivated).
+  function suspend(adminId) {
+    for (const socket of socketsOf(adminId)) {
+      socket.emit('screen:suspended');
+      socket.disconnect(true);
+    }
   }
 
   // The resolved backgrounds of an event, for the live snapshots of the event roles (their
   // pages compute the same frames offline) and the editor's "Implicit (…)".
   const backgroundsFor = (adminId, eventId, override) => backgrounds.forEvent(adminId, eventId, override);
 
-  return { attach, update, frameFor, onlineIds, revoked, watch, setVideoHandler, lastVideoPosition, backgroundsFor };
+  return { attach, update, frameFor, onlineIds, revoked, suspend, watch, setVideoHandler, lastVideoPosition, backgroundsFor };
 }
 
 module.exports = { NAMESPACE, screensRoom, createScreensHub };

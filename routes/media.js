@@ -6,6 +6,7 @@ const { requireRole } = require('../lib/auth');
 const { VARIANTS, sniffVideo, sniffImage, parseVideoUrl, validateTitle, createMediaStore, createMediaSigner } = require('../lib/media');
 const { createScreenStore } = require('../lib/screens');
 const { parseReadability, createBackgroundStore } = require('../lib/backgrounds');
+const { createMediaQuota } = require('../lib/platform');
 
 const EDITOR_ROLES = ['owner', 'leader'];
 
@@ -28,6 +29,7 @@ const EDITOR_ROLES = ['owner', 'leader'];
 function createMediaRouter({ db, auth, config, logger, live, storage }) {
   const router = express.Router();
   const media = createMediaStore(db, config.DATA_DIR);
+  const quota = createMediaQuota(db, config.MEDIA_MAX_ADMIN_BYTES); // per church (platform page)
   const signer = createMediaSigner(config.DATA_DIR);
   const screens = createScreenStore(db);
   const backgrounds = createBackgroundStore(db, signer);
@@ -47,7 +49,8 @@ function createMediaRouter({ db, auth, config, logger, live, storage }) {
     const owner = id ? adminOf.get(id) : undefined;
     if (owner === undefined) return notFound(req, res);
     const session = auth.getActiveSession(req);
-    const screen = session ? null : screens.findByToken(req.get('x-screen-token'));
+    const found = session ? null : screens.findByToken(req.get('x-screen-token'));
+    const screen = found && found.adminActive ? found : null; // a deactivated church's screens get nothing
     const allowed = (session && session.admin.id === owner)
       || (screen && screen.adminId === owner)
       || signer.verify(owner, id, req.query.exp, req.query.sig);
@@ -76,7 +79,7 @@ function createMediaRouter({ db, auth, config, logger, live, storage }) {
       maxFileBytes: config.MEDIA_MAX_FILE_BYTES,
       maxImageBytes: config.MEDIA_MAX_IMAGE_BYTES,
       maxLoopBytes: config.MEDIA_MAX_LOOP_BYTES,
-      maxAdminBytes: config.MEDIA_MAX_ADMIN_BYTES,
+      maxAdminBytes: quota(req.adminId),
       backgroundDefaults: backgrounds.defaults(req.adminId),
     });
   });
@@ -90,7 +93,8 @@ function createMediaRouter({ db, auth, config, logger, live, storage }) {
     // own limit is checked once its type is known.
     const background = req.query.as === 'background';
     const maxFile = background ? Math.max(config.MEDIA_MAX_LOOP_BYTES, config.MEDIA_MAX_IMAGE_BYTES) : config.MEDIA_MAX_FILE_BYTES;
-    const room = config.MEDIA_MAX_ADMIN_BYTES - media.usedBytes(req.adminId);
+    const maxAdmin = quota(req.adminId);
+    const room = maxAdmin - media.usedBytes(req.adminId);
     // The disk too: never below DISK_MIN_FREE_PCT free, whatever the quota allows.
     const diskRoom = storage.room();
     const limit = Math.min(maxFile, room, diskRoom);
@@ -101,7 +105,7 @@ function createMediaRouter({ db, auth, config, logger, live, storage }) {
     // -> [status, message]: the file limit first, then the church's quota, then the disk.
     const tooLarge = (bytes) => {
       if (bytes > maxFile) return [413, fileTooLarge()];
-      if (bytes > room) return [413, req.t('errors.mediaQuotaExceeded', { max: mb(config.MEDIA_MAX_ADMIN_BYTES) })];
+      if (bytes > room) return [413, req.t('errors.mediaQuotaExceeded', { max: mb(maxAdmin) })];
       return [507, req.t('errors.diskFull', { free: mb(Math.max(0, diskRoom)), pct: config.DISK_MIN_FREE_PCT })];
     };
     const declared = Number(req.get('content-length'));

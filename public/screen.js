@@ -15,6 +15,7 @@
   const CURSOR_IDLE_MS = 2000;
   const HINT_MS = 5000;
   const OFFLINE_DOT_MS = 30000;
+  const SUSPENDED_RETRY_MS = 30000;
   const LOCAL_HOLD_MS = 10000;
 
   const state = { token: null, pairing: null, pollTimer: null, countdown: null, socket: null, view: null, player: null, offlineTimer: null, logos: new Map(),
@@ -299,8 +300,10 @@
     socket.on('projector:frame', onServerFrame);
     socket.on('screen:revoked', dropToken);
     socket.on('connect_error', (err) => {
-      if (err && err.message === 'unauthorized') dropToken(); // revoked or unknown token
-      else showOffline(true);
+      if (err && err.message === 'unauthorized') return dropToken(); // revoked or unknown token
+      showOffline(true);
+      // The church is deactivated (platform page): keep the token, try again later.
+      if (err && err.message === 'suspended') setTimeout(() => { if (state.socket === socket) socket.connect(); }, SUSPENDED_RETRY_MS);
     });
     socket.on('disconnect', async (reason) => {
       showOffline(true);

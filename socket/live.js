@@ -283,6 +283,14 @@ function createLiveHub({ db, auth, logger, screensHub }) {
     }
   }
 
+  // A church deactivated from the platform page: every socket of its users closes.
+  function closeAdmin(adminId) {
+    if (!io) return;
+    for (const socket of io.sockets.sockets.values()) {
+      if (socket.data.adminId === adminId) socket.disconnect(true);
+    }
+  }
+
   // --- changes made through the HTTP API ------------------------------------------
 
   // Call before a setlist is saved; pass the result to setlistChanged afterwards.
@@ -336,7 +344,7 @@ function createLiveHub({ db, auth, logger, screensHub }) {
     else screensHub.update(adminId);
   }
 
-  return { attach, closeSession, closeUser, roomName, setlistBefore, setlistChanged, songBefore, songChanged, eventChanged, backgroundsChanged };
+  return { attach, closeSession, closeUser, closeAdmin, roomName, setlistBefore, setlistChanged, songBefore, songChanged, eventChanged, backgroundsChanged };
 }
 
 module.exports = { createLiveHub, roomName };

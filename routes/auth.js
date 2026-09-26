@@ -16,7 +16,7 @@ function createAuthRouter({ db, auth, config, logger, live }) {
   const findUser = db.prepare(`SELECT u.id, u.admin_id, u.name, u.email, u.role, u.locale, u.theme, u.password_hash,
       a.name AS admin_name
     FROM users u JOIN admins a ON a.id = u.admin_id
-    WHERE u.email = ? AND u.active = 1`);
+    WHERE u.email = ? AND u.active = 1 AND a.active = 1`); // a deactivated church: nobody logs in
   const updateLocale = db.prepare('UPDATE users SET locale = ? WHERE id = ? AND admin_id = ?');
   const touchLogin = db.prepare('UPDATE users SET last_login_at = ? WHERE id = ? AND admin_id = ?');
 

@@ -108,7 +108,8 @@ function createSettingsRouter({ db, auth, config, logger, screensHub, live, stor
   router.get('/api/logo/:file', (req, res) => {
     const found = logos.find(req.params.file);
     const session = auth.getActiveSession(req);
-    const screen = session ? null : screens.findByToken(req.get('x-screen-token'));
+    const paired = session ? null : screens.findByToken(req.get('x-screen-token'));
+    const screen = paired && paired.adminActive ? paired : null; // a deactivated church's screens get nothing
     const adminId = session ? session.admin.id : screen && screen.adminId;
     if (!found || !adminId || found.adminId !== adminId) return res.status(404).json({ error: req.t('errors.notFound') });
     res.set('Cache-Control', 'private, max-age=86400');

@@ -83,17 +83,17 @@ function slowUpload(cookie) {
 
 const base = () => `http://127.0.0.1:${port}`;
 
-async function api(method, url, cookie, body) {
+async function api(method, url, cookie, body, headers = {}) {
   const res = await fetch(base() + url, {
     method,
-    headers: { 'Content-Type': 'application/json', ...(cookie ? { Cookie: cookie } : {}) },
+    headers: { 'Content-Type': 'application/json', ...(cookie ? { Cookie: cookie } : {}), ...headers },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   return { status: res.status, body: await res.json().catch(() => null), headers: res.headers };
 }
 
-async function login(email) {
-  const res = await api('POST', '/api/auth/login', null, { email, password: PASSWORD });
+async function login(email, password = PASSWORD) {
+  const res = await api('POST', '/api/auth/login', null, { email, password });
   assert.strictEqual(res.status, 200, `login ${email}`);
   return /wa_sid=[0-9a-f]+/.exec(res.headers.get('set-cookie'))[0];
 }
@@ -1090,6 +1090,77 @@ async function main() {
     assert.strictEqual((await frameWhere(screen, (f) => f.kind === 'idle')).eventId, null, 'screens go idle');
     assert.strictEqual((await emit(l.socket, 'live:command', { type: 'worship.next', eventId: ev.id })).code, 'notLive');
     assert.strictEqual((await emit(l.socket, 'live:command', { type: 'event.start', eventId: ev.id })).code, 'finished');
+  });
+
+  await step('platform: its owner creates and manages churches; everyone else 403', async () => {
+    const other2 = await login('alt@x.ro'); // admin 2's owner: an ordinary church
+    for (const cookie of [other2, leader, member]) assert.strictEqual((await api('GET', '/api/platform/admins', cookie)).status, 403);
+    assert.strictEqual((await api('POST', '/api/platform/admins', other2, { name: 'X', ownerName: 'X', ownerEmail: 'x@x.ro' })).status, 403);
+    let list = (await api('GET', '/api/platform/admins', owner)).body.admins;
+    assert.deepStrictEqual(list.map((a) => [a.id, a.platform, a.active]), [[1, true, true], [2, false, true]]);
+    assert.ok(list[0].songs >= 2 && list[0].events >= 1 && list[0].users >= 4 && list[0].lastActivityAt > 0, JSON.stringify(list[0]));
+    // create: validation, then a church with its owner and a temporary password (once)
+    assert.strictEqual((await api('POST', '/api/platform/admins', owner, { name: '', ownerName: 'Ion', ownerEmail: 'ion.nou@x.ro' })).status, 400);
+    assert.strictEqual((await api('POST', '/api/platform/admins', owner, { name: 'Nouă', ownerName: 'Ion', ownerEmail: 'ALT@x.ro' })).status, 409, 'emails are global');
+    const created = await api('POST', '/api/platform/admins', owner, { name: 'Biserica Nouă', ownerName: 'Ion Nou', ownerEmail: 'Ion.Nou@x.ro' });
+    assert.strictEqual(created.status, 201, JSON.stringify(created.body));
+    const temp = created.body.temporaryPassword;
+    const newId = created.body.admin.id;
+    assert.deepStrictEqual([created.body.admin.name, created.body.admin.ownerEmail, created.body.admin.users, created.body.admin.songs], ['Biserica Nouă', 'ion.nou@x.ro', 1, 0]);
+    let fresh = await login('ion.nou@x.ro', temp);
+    assert.strictEqual((await api('GET', '/api/songs', fresh)).body.code, 'mustChangePassword');
+    assert.strictEqual((await api('POST', '/api/me/password', fresh, { current: temp, password: 'parola-noua-9' })).status, 200);
+    fresh = await login('ion.nou@x.ro', 'parola-noua-9');
+    assert.deepStrictEqual((await api('GET', '/api/songs', fresh)).body.songs, [], 'an empty library');
+    assert.strictEqual((await api('GET', '/api/events', fresh)).body.events.length, 0, 'no other church\'s events');
+    const set = (await api('GET', '/api/settings', fresh)).body;
+    assert.deepStrictEqual([set.chordNotationDefault, set.themeDefault, set.logo], ['letters', 'dark', null], 'default settings');
+    await api('POST', '/api/songs', fresh, { title: 'Doar a lor', sections: [{ type: 'verse', content: 'x' }] });
+    assert.ok(!(await api('GET', '/api/songs', owner)).body.songs.some((x) => x.title === 'Doar a lor'), 'the platform owner does not see their songs');
+    // quota override
+    let r = await api('PATCH', `/api/platform/admins/${newId}`, owner, { mediaMaxMb: 5 });
+    assert.deepStrictEqual([r.status, r.body.admin.mediaMaxBytes, r.body.admin.mediaMaxOverride], [200, 5 * 1024 * 1024, true]);
+    assert.strictEqual((await api('GET', '/api/media', fresh)).body.maxAdminBytes, 5 * 1024 * 1024);
+    assert.strictEqual((await api('PATCH', `/api/platform/admins/${newId}`, owner, { mediaMaxMb: 0 })).status, 400);
+    r = await api('PATCH', `/api/platform/admins/${newId}`, owner, { mediaMaxMb: null });
+    assert.strictEqual(r.body.admin.mediaMaxOverride, false);
+    // deactivate admin 2: its users get 401 and cannot log in, its screen is dropped and waits
+    assert.strictEqual((await api('POST', '/api/platform/admins/1/deactivate', owner)).status, 403, 'not the platform church');
+    assert.strictEqual((await api('POST', '/api/platform/admins/999/deactivate', owner)).status, 404);
+    const otherScreenToken = (await pairScreen(other2, 'Proiector 2')).token;
+    const s2 = connectScreen(otherScreenToken);
+    await frameWhere(s2, () => true);
+    const liveSocket = connect(other2);
+    await next(liveSocket, 'connect');
+    const suspended = next(s2, 'screen:suspended');
+    const dropped = next(liveSocket, 'disconnect');
+    r = await api('POST', '/api/platform/admins/2/deactivate', owner);
+    assert.deepStrictEqual([r.status, r.body.admin.active], [200, false]);
+    await suspended;
+    await dropped;
+    assert.strictEqual((await api('GET', '/api/auth/me', other2)).status, 401);
+    assert.strictEqual((await api('POST', '/api/auth/login', null, { email: 'alt@x.ro', password: PASSWORD })).status, 401);
+    assert.strictEqual((await api('GET', '/api/screen/me', null, undefined, { 'X-Screen-Token': otherScreenToken })).status, 423, 'the screen keeps its token');
+    const again = connectScreen(otherScreenToken);
+    assert.strictEqual((await next(again, 'connect_error')).message, 'suspended');
+    // reactivate: back
+    r = await api('POST', '/api/platform/admins/2/reactivate', owner);
+    assert.deepStrictEqual([r.status, r.body.admin.active], [200, true]);
+    const back = await login('alt@x.ro');
+    assert.strictEqual((await api('GET', '/api/auth/me', back)).status, 200);
+    await frameWhere(connectScreen(otherScreenToken), () => true);
+    // a new temporary password for a church's owner
+    r = await api('POST', `/api/platform/admins/${newId}/reset-owner-password`, owner);
+    assert.strictEqual(r.status, 200);
+    assert.strictEqual((await api('GET', '/api/auth/me', fresh)).status, 401, 'their sessions end');
+    assert.strictEqual((await api('POST', '/api/auth/login', null, { email: 'ion.nou@x.ro', password: 'parola-noua-9' })).status, 401);
+    assert.strictEqual((await api('GET', '/api/songs', await login('ion.nou@x.ro', r.body.temporaryPassword))).body.code, 'mustChangePassword');
+    // at most 10 new churches an hour
+    const codes = [];
+    for (let i = 0; i < 10; i++) codes.push((await api('POST', '/api/platform/admins', owner, { name: `B${i}`, ownerName: 'O', ownerEmail: `o${i}@b.ro` })).status);
+    assert.deepStrictEqual(codes, [201, 201, 201, 201, 201, 201, 201, 201, 201, 429]);
+    list = (await api('GET', '/api/platform/admins', owner)).body.admins;
+    assert.strictEqual(list.length, 12);
   });
 }
 
