@@ -49,6 +49,25 @@ never implement a later stage early. Mockups: claude.ai design canvas
   Switching is instant for everyone; free mode keeps each person's place.
 - **The projector never changes on its own.** Every source change is an explicit action.
   Projector sources: song, verse, video, logo, translation (bridge), black screen.
+- **Tap or hold** (`public/press.js`, one convention for every Program list): a short tap
+  runs the primary action, a long press (500 ms, cancelled by a 10 px move; a short buzz
+  and a press animation) the secondary one. Desktop equivalents: right-click, the
+  context-menu key, Shift+Enter. On the leader page and the console a tap on an item goes
+  there (moves the live position, or the projector's in split mode on the console) and a
+  long press on a song opens the arrange sheet without moving anything; in the event
+  editor a tap selects the item and a long press arranges a song. Other items: a long press
+  does nothing. The long press is only a shortcut: every song card keeps a visible
+  "Aranjează" (the editor its "Aranjează cântarea"). A dismissible hint explains it once
+  per device.
+- **End of the item** (`worship.endItem`, event roles, key E): the third button of the
+  Înapoi / Următoarea row ("Următoarea cântare →" / "Următorul element →" with the next
+  title). It moves to the first step of the next item in the list the sender drives — the
+  main position, or with `target: 'projector'` (split mode, the console) the projector's.
+  After the last item it reads "Sfârșit": the position stays (the team still sees where the
+  service is) and the projector goes to the logo, or black without one — an explicit
+  action, like every source change. In split mode the leader's button ends only the team's
+  item and never touches the projector. Versioned and broadcast like every command; phones
+  put Înapoi and the end button on one line with Următoarea (the primary) under them.
 - **Additions during live** (operator console; any event role): the sender chooses where
   the item goes, no approval:
   - "Doar pe proiector" — a projector-only item right after what the projector shows.
