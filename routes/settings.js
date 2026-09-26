@@ -12,7 +12,7 @@ const { createBackupService } = require('../lib/backup');
 // Admin settings (owner only): the church logo shown by the projector and the default
 // chord notation.
 // GET /api/logo/:file serves it to the users of that admin and to its paired screens.
-function createSettingsRouter({ db, auth, config, logger, screensHub, live }) {
+function createSettingsRouter({ db, auth, config, logger, screensHub, live, storage }) {
   const router = express.Router();
   const logos = createLogoStore(db, config.DATA_DIR);
   const screens = createScreenStore(db);
@@ -39,6 +39,7 @@ function createSettingsRouter({ db, auth, config, logger, screensHub, live }) {
       themeDefault: settings.themeDefault(req.adminId),
       backgroundDefaults: backgrounds.defaults(req.adminId),
       backup: backups.lastBackup(req.adminId),
+      storage: storage.usage(),
     });
   });
 
@@ -86,7 +87,10 @@ function createSettingsRouter({ db, auth, config, logger, screensHub, live }) {
       const buffer = Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0);
       const ext = sniff(buffer);
       if (!ext) return res.status(400).json({ error: req.t('errors.logoInvalid') });
+      const room = storage.room();
+      if (buffer.length > room) return res.status(507).json({ error: req.t('errors.diskFull', { free: `${Math.floor(room / (1024 * 1024))} MB`, pct: config.DISK_MIN_FREE_PCT }) });
       logos.save(req.adminId, buffer, ext);
+      storage.refresh();
       logger.info(`Logo updated by user #${req.user.id} (admin #${req.adminId}, ${ext}, ${buffer.length} bytes)`);
       screensHub.update(req.adminId);
       res.json({ logo: logoInfo(req.adminId) });
@@ -95,6 +99,7 @@ function createSettingsRouter({ db, auth, config, logger, screensHub, live }) {
 
   router.delete('/api/settings/logo', (req, res) => {
     logos.clear(req.adminId);
+    storage.refreshSoon();
     screensHub.update(req.adminId);
     res.json({ logo: null });
   });

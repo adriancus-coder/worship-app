@@ -1373,6 +1373,35 @@ test('backup reminder: never or older than 30 days, hidden for 30 days after "Nu
   mem.close();
 });
 
+test('storage guard: room keeps DISK_MIN_FREE_PCT free; usage of DATA_DIR; warning over 70 %', () => {
+  const fs = require('fs');
+  const os = require('os');
+  const path = require('path');
+  const { createStorageGuard } = require('../lib/storage');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wa-storage-'));
+  fs.mkdirSync(path.join(dir, 'uploads', 'admin-1', 'media'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'worship.db'), Buffer.alloc(3000));
+  fs.writeFileSync(path.join(dir, 'uploads', 'admin-1', 'media', 'a.webm'), Buffer.alloc(5000));
+  const disk = { bsize: 1000, blocks: 100, bavail: 40 }; // 100 kB, 40 kB free
+  const warnings = [];
+  const guard = createStorageGuard({ dataDir: dir, minFreePct: 15, statfs: () => disk, logger: { warn: (m) => warnings.push(m) } });
+  const u = guard.refresh();
+  assert.deepStrictEqual([u.dbBytes, u.uploadsBytes, u.dataBytes, u.diskBytes, u.freeBytes, u.minFreePct], [3000, 5000, 8000, 100000, 40000, 15]);
+  assert.strictEqual(guard.room(), 25000, '40 kB free - 15 kB kept');
+  disk.bavail = 10;
+  assert.strictEqual(guard.room(), 0, 'never negative');
+  assert.strictEqual(warnings.length, 0);
+  fs.writeFileSync(path.join(dir, 'uploads', 'admin-1', 'media', 'b.webm'), Buffer.alloc(70000));
+  guard.refresh();
+  assert.strictEqual(warnings.length, 1, 'db + uploads over 70 % of the disk');
+  assert.match(warnings[0], /over 70 %/);
+  guard.refresh();
+  assert.strictEqual(warnings.length, 1, 'warned once until it drops again');
+  const off = createStorageGuard({ dataDir: dir, minFreePct: 0, statfs: () => disk });
+  assert.strictEqual(off.room(), 10000);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
 test('media: image magic bytes; file names and kinds', () => {
   const M = require('../lib/media');
   assert.strictEqual(M.sniffImage(Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 0, 0, 0, 0, 0, 0, 0])), 'image/jpeg');

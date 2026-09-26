@@ -1819,3 +1819,11 @@ button.arrange-big { width: 100%; min-height: 52px; margin-top: 10px; font-size:
 .backup-card .hint { margin: 0; }
 .backup-card-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .backup-card-actions > * { flex: 1 1 auto; min-height: var(--touch); }
+
+/* Settings: disk usage (data of the app) with the reserved free share at the right end. */
+.storage-used { margin: 0 0 8px; font-weight: 700; }
+.storage-bar { position: relative; height: 14px; overflow: hidden; background: var(--background); border: 1px solid var(--border); border-radius: 999px; }
+#storage-fill { position: absolute; inset: 0 auto 0 0; min-width: 3px; background: var(--accent-fill); border-radius: 999px; }
+.storage-bar.high #storage-fill { background: var(--error); }
+#storage-reserve { position: absolute; inset: 0 0 0 auto; background: repeating-linear-gradient(135deg, var(--border), var(--border) 3px, transparent 3px, transparent 7px); }
+.storage-bar + .hint { margin-top: 8px; }

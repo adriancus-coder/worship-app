@@ -31,6 +31,7 @@ const { createTeamRouter } = require('./routes/team');
 const { createPwaRouter } = require('./routes/pwa');
 const { createLiveHub } = require('./socket/live');
 const { createScreensHub } = require('./socket/screens');
+const { createStorageGuard } = require('./lib/storage');
 
 const db = openDb(config.DATA_DIR);
 const applied = runMigrations(db);
@@ -40,6 +41,11 @@ if (applied.length > 0) {
   logger.info('Database schema up to date');
 }
 logger.info(`Database: ${config.DATA_DIR}/worship.db`);
+
+// Disk usage of DATA_DIR, now and after every upload / delete (lib/storage.js).
+const storage = createStorageGuard({ dataDir: config.DATA_DIR, minFreePct: config.DISK_MIN_FREE_PCT, logger });
+const usage = storage.refresh();
+logger.info(`Storage: data ${usage.dataBytes} bytes, disk free ${usage.freeBytes} of ${usage.diskBytes} bytes (uploads keep ${config.DISK_MIN_FREE_PCT} % free)`);
 
 const auth = createAuth({ db, config });
 const SESSION_CLEANUP_MS = 60 * 60 * 1000;
@@ -94,9 +100,9 @@ app.use(createEventsRouter({ db, auth, logger, live }));
 app.use(createHomeRouter({ db, auth }));
 app.use(createTeamRouter({ db, auth, config, logger, live }));
 app.use(createScreensRouter({ db, auth, logger, screensHub }));
-app.use(createSettingsRouter({ db, auth, config, logger, screensHub, live }));
-app.use(createMediaRouter({ db, auth, config, logger, live }));
-app.use(createBackupRouter({ db, auth, config, logger }));
+app.use(createSettingsRouter({ db, auth, config, logger, screensHub, live, storage }));
+app.use(createMediaRouter({ db, auth, config, logger, live, storage }));
+app.use(createBackupRouter({ db, auth, config, logger, storage }));
 app.use(createPagesRouter({ db, auth, sendPage }));
 
 app.use('/api', (req, res) => {

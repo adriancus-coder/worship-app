@@ -25,7 +25,7 @@ const EDITOR_ROLES = ['owner', 'leader'];
 //                                      the uploaded file with Range support (images: the
 //          projector version or the thumbnail), for that admin's users (session), its
 //          screens (X-Screen-Token) or a signed URL (screens).
-function createMediaRouter({ db, auth, config, logger, live }) {
+function createMediaRouter({ db, auth, config, logger, live, storage }) {
   const router = express.Router();
   const media = createMediaStore(db, config.DATA_DIR);
   const signer = createMediaSigner(config.DATA_DIR);
@@ -91,18 +91,25 @@ function createMediaRouter({ db, auth, config, logger, live }) {
     const background = req.query.as === 'background';
     const maxFile = background ? Math.max(config.MEDIA_MAX_LOOP_BYTES, config.MEDIA_MAX_IMAGE_BYTES) : config.MEDIA_MAX_FILE_BYTES;
     const room = config.MEDIA_MAX_ADMIN_BYTES - media.usedBytes(req.adminId);
-    const limit = Math.min(maxFile, room);
+    // The disk too: never below DISK_MIN_FREE_PCT free, whatever the quota allows.
+    const diskRoom = storage.room();
+    const limit = Math.min(maxFile, room, diskRoom);
     // The file limit wins the message when the file alone is too big; else the church is full.
     const fileTooLarge = () => (background
       ? req.t('errors.backgroundTooLarge', { image: mb(config.MEDIA_MAX_IMAGE_BYTES), loop: mb(config.MEDIA_MAX_LOOP_BYTES) })
       : req.t('errors.mediaTooLarge', { max: mb(maxFile) }));
-    const tooLarge = (bytes) => (bytes > maxFile
-      ? fileTooLarge()
-      : req.t('errors.mediaQuotaExceeded', { max: mb(config.MEDIA_MAX_ADMIN_BYTES) }));
+    // -> [status, message]: the file limit first, then the church's quota, then the disk.
+    const tooLarge = (bytes) => {
+      if (bytes > maxFile) return [413, fileTooLarge()];
+      if (bytes > room) return [413, req.t('errors.mediaQuotaExceeded', { max: mb(config.MEDIA_MAX_ADMIN_BYTES) })];
+      return [507, req.t('errors.diskFull', { free: mb(Math.max(0, diskRoom)), pct: config.DISK_MIN_FREE_PCT })];
+    };
     const declared = Number(req.get('content-length'));
     if (Number.isFinite(declared) && declared > limit) {
       res.set('Connection', 'close');
-      return res.status(413).json({ error: tooLarge(declared) });
+      const [status, error] = tooLarge(declared);
+      if (status === 507) logger.warn(`Upload refused: disk nearly full (admin #${req.adminId}, ${declared} bytes, room ${diskRoom})`);
+      return res.status(status).json({ error });
     }
 
     const temp = media.tempPath(req.adminId);
@@ -123,7 +130,7 @@ function createMediaRouter({ db, auth, config, logger, live }) {
     };
     req.on('data', (chunk) => {
       size += chunk.length;
-      if (size > limit) fail(413, tooLarge(size));
+      if (size > limit) fail(...tooLarge(size));
     });
     req.on('aborted', () => fail(400, req.t('errors.badRequest')));
     out.on('error', (err) => {
@@ -147,6 +154,7 @@ function createMediaRouter({ db, auth, config, logger, live }) {
       if (!video && !image) return fail(400, req.t(background ? 'errors.backgroundInvalid' : 'errors.mediaInvalid'));
       const logged = (item, mime) => {
         logger.info(`Media #${item.id} (${item.kind}) uploaded by user #${req.user.id} (admin #${req.adminId}, ${mime}, ${size} bytes)`);
+        storage.refresh();
         res.status(201).json({ media: item });
       };
       if (video) {
@@ -196,6 +204,7 @@ function createMediaRouter({ db, auth, config, logger, live }) {
     if (!id || !media.remove(req.adminId, id)) return notFound(req, res);
     live.backgroundsChanged(req.adminId); // a background in use falls back to the next level
     logger.info(`Media #${id} deleted by user #${req.user.id} (admin #${req.adminId})`);
+    storage.refreshSoon(); // the files go asynchronously
     res.json({ ok: true });
   });
 

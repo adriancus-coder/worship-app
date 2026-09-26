@@ -37,7 +37,27 @@
     renderNotation(res.body.chordNotationDefault);
     renderThemeDefault(res.body.themeDefault);
     renderBackup(res.body.backup);
+    renderStorage(res.body.storage);
     await renderBackgrounds(res.body.backgroundDefaults || {});
+  }
+
+  // --- storage: the app's data out of the whole disk; the reserved free share shaded ---
+
+  let storageInfo = null;
+  const mbText = (bytes) => `${(bytes / (1024 * 1024)).toFixed(bytes < 10 * 1024 * 1024 ? 1 : 0)} MB`;
+
+  function renderStorage(info) {
+    storageInfo = info || storageInfo;
+    if (!storageInfo) return;
+    const { dataBytes, diskBytes, freeBytes, minFreePct } = storageInfo;
+    const used = t('settings.storageUsed', { used: mbText(dataBytes), total: mbText(diskBytes) });
+    $('storage-used').textContent = used;
+    $('storage-bar').setAttribute('aria-label', used);
+    const pct = diskBytes ? Math.min(100, (dataBytes / diskBytes) * 100) : 0;
+    $('storage-fill').style.width = `${pct.toFixed(2)}%`;
+    $('storage-bar').classList.toggle('high', pct > 70);
+    $('storage-reserve').style.width = `${minFreePct}%`;
+    $('storage-hint').textContent = t('settings.storageHint', { pct: minFreePct, free: mbText(freeBytes) });
   }
 
   // --- backup: the last download and the button (GET /api/backup streams the .zip) ---
@@ -210,6 +230,7 @@
     bgMessage('bg-defaults-message', '');
     $('backup-message').textContent = '';
     renderBackup(null);
+    renderStorage(null);
     renderBackgrounds(bg.defaults).catch(() => {});
   });
 

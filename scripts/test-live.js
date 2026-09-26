@@ -36,7 +36,9 @@ function freePort() {
 async function startServer() {
   server = spawn(process.execPath, ['server.js'], {
     cwd: ROOT,
-    env: { ...process.env, DATA_DIR: dataDir, PORT: String(port), SETUP_TOKEN: 'live-test', NODE_ENV: 'test', LOG_LEVEL: 'error' },
+    // DISK_MIN_FREE_PCT: the test machine's disk may be fuller than 15 %; the guard itself is
+    // covered in test-lib (lib/storage.js with a fake disk).
+    env: { ...process.env, DATA_DIR: dataDir, PORT: String(port), SETUP_TOKEN: 'live-test', NODE_ENV: 'test', LOG_LEVEL: 'error', DISK_MIN_FREE_PCT: '1' },
     stdio: ['ignore', 'ignore', 'inherit'],
   });
   for (let i = 0; i < 100; i++) {
