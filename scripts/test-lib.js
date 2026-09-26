@@ -734,6 +734,11 @@ test('live: next / prev across songs with repeats and non-song items, stopping a
   assert.deepStrictEqual(L.nextPosition([], { itemId: null, step: 0 }), { itemId: null, step: 0 });
   // An unknown position (item gone) restarts at the first item.
   assert.deepStrictEqual(L.nextPosition(lay, { itemId: 99, step: 3 }), { itemId: 1, step: 0 });
+  // "End of this item": the next item's first step from any step; none after the last.
+  assert.deepStrictEqual(L.nextItemPosition(lay, { itemId: 1, step: 2 }), { itemId: 2, step: 0 });
+  assert.deepStrictEqual(L.nextItemPosition(lay, { itemId: 3, step: 0 }), { itemId: 4, step: 0 });
+  assert.strictEqual(L.nextItemPosition(lay, { itemId: 5, step: 0 }), null);
+  assert.strictEqual(L.nextItemPosition([], { itemId: null, step: 0 }), null);
 });
 
 test('live: goto validation', () => {

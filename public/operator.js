@@ -17,7 +17,7 @@
   const eventId = Number(window.location.pathname.split('/')[2]);
   const RESULTS_MAX = 8;
 
-  const state = { snap: null, event: null, client: null, queue: Promise.resolve(), screens: 0 };
+  const state = { snap: null, event: null, client: null, queue: Promise.resolve(), screens: 0, logoUrl: null };
 
   // --- helpers ----------------------------------------------------------------------
 
@@ -44,6 +44,8 @@
     return send('worship.goto', { itemId: item.id, step });
   }
   const move = (dir) => send(split() ? `projector.${dir}` : `worship.${dir}`);
+  // End of the item: the projector's list when separate, else the one main position.
+  const endItem = () => send('worship.endItem', split() ? { target: 'projector' } : undefined);
 
   function itemTitle(item) {
     if (!item) return '';
@@ -252,6 +254,13 @@
     $('op-prev').disabled = !enabled || !item || (index === 0 && pos.step === 0);
     $('op-next').disabled = !enabled || !after;
     $('op-next').textContent = after ? t('live.next', { label: after.itemId === pos.itemId ? stepsOf(item)[after.step].label : itemTitle(list.find((it) => it.id === after.itemId)) }) : t('live.nextEnd');
+    // "Următoarea cântare →" / "Sfârșit": the next item of the list this console drives (all
+    // items when separate, the shared ones together); after the last: logo, else black.
+    const driven = split() ? list : list.filter((it) => it.scope !== 'projector');
+    const nextItem = item ? driven[driven.findIndex((it) => it.id === item.id) + 1] || null : null;
+    const clear = state.logoUrl ? 'logo' : 'black';
+    window.LIVE.renderEndButton($('op-end-item'), { next: nextItem, title: itemTitle, clear, teamOnly: false });
+    $('op-end-item').disabled = !enabled || !item || (!nextItem && state.snap.projector.source === clear);
     const synced = live() && pos.itemId === worship.itemId && pos.step === worship.step;
     $('op-sync').hidden = !split();
     $('op-sync').disabled = !split() || synced;
@@ -308,9 +317,10 @@
       if (!reply || !reply.ok) return;
       preview.show(reply.frame);
       state.screens = reply.screens;
+      state.logoUrl = reply.logoUrl || null;
       videoPanel.setScreens(reply.screens);
       if (reply.videoStatus && reply.videoStatus.length) videoPanel.status(reply.videoStatus);
-      if (state.event) renderHead();
+      if (state.event && state.snap) render();
     });
   }
 
@@ -329,6 +339,7 @@
   }
   $('op-prev').addEventListener('click', () => move('prev'));
   $('op-next').addEventListener('click', () => move('next'));
+  $('op-end-item').addEventListener('click', endItem);
   $('op-sync').addEventListener('click', () => send('projector.syncToWorship'));
   $('cross-jump').addEventListener('click', () => send('projector.syncToWorship'));
   $('start-button').addEventListener('click', () => send('event.start'));
@@ -349,6 +360,7 @@
       ArrowRight: () => move('next'),
       ' ': () => move('next'),
       ArrowLeft: () => move('prev'),
+      e: () => { if (!$('op-end-item').disabled) endItem(); },
       b: () => toggleSource('black'),
       l: () => toggleSource('logo'),
       w: () => { if (split()) send('projector.syncToWorship'); },

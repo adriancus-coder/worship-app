@@ -1983,3 +1983,15 @@ dialog.song-pick-dialog .song-pick > .ss-results { flex: 1 1 0; height: 0; --pan
 .press-hint-text { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
 .press-hint-close { flex: none; }
 .setlist-pane .press-hint { margin-top: 8px; }
+
+/* Înapoi · end of the item · Următoarea (worship.endItem): three slots; "Următoarea" (the
+   primary) is the widest. Phones: Înapoi and the end button on one line, Următoarea below. */
+.live-nav > #next-button, .live-nav > #op-next { flex-grow: 1.4; }
+.end-item { flex-direction: column; gap: 2px; min-width: 0; line-height: 1.2; }
+.end-item-label { display: inline-flex; align-items: center; gap: 0.4em; }
+.end-item-sub { max-width: 100%; font-size: 0.8125rem; font-weight: 400; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 599px) {
+  .live-nav { flex-wrap: wrap; gap: 8px; }
+  .live-nav > button { min-height: 52px; font-size: 1rem; }
+  .live-nav > #next-button, .live-nav > #op-next { order: 3; flex: 1 0 100%; min-height: 56px; }
+}

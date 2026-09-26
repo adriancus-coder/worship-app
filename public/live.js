@@ -203,6 +203,7 @@
     const status = snap.status;
     $('prev-button').hidden = status !== 'live';
     $('next-button').hidden = status !== 'live';
+    $('end-item-button').hidden = status !== 'live';
     if (status === 'draft') {
       box.replaceChildren(el('p', { class: 'live-note' }, t('live.draftHint'), ' ', el('a', { href: `/events/${eventId}/edit`, text: t('setlist.edit') })));
       return;
@@ -220,10 +221,12 @@
       $('prev-button').disabled = true;
       $('next-button').disabled = true;
       $('next-button').textContent = t('live.nextEnd');
+      renderEndItem(null);
       return;
     }
 
     const index = state.items.indexOf(item);
+    renderEndItem(item);
     $('prev-button').disabled = index === 0 && pos.step === 0;
     const after = nextPosition(state.items, pos);
     $('next-button').disabled = !after;
@@ -272,6 +275,18 @@
     const labels = window.SECTIONS.sectionLabels(song.sections, t);
     box.append(el('div', { class: 'current-section' },
       window.SONG_RENDER.sectionsView([song.sections[sectionIndex]], { headingLevel: 4, labels: [labels[sectionIndex]] })));
+  }
+
+  // "Următoarea cântare →" / "Sfârșit" (worship.endItem, key E): the next item of the team's
+  // list; after the last one the screen goes to the logo (black without one), except in
+  // split mode, where this page does not drive the projector.
+  const clearSource = () => (projector.logoUrl ? 'logo' : 'black');
+  function renderEndItem(item) {
+    const button = $('end-item-button');
+    const next = item ? state.items[state.items.indexOf(item) + 1] || null : null;
+    const teamOnly = state.snap.mode === 'split';
+    window.LIVE.renderEndButton(button, { next, title: itemTitle, clear: clearSource(), teamOnly });
+    button.disabled = !item || (!next && (teamOnly || state.snap.projector.source === clearSource()));
   }
 
   function renderInfo() {
@@ -414,6 +429,7 @@
       if (reply.logoUrl !== projector.logoUrl) {
         projector.logoUrl = reply.logoUrl || null;
         if (state.event) cacheEvent();
+        render(); // the end button: logo or black
       }
     });
   }
@@ -434,7 +450,7 @@
   // (the server version is unchanged) this page's position is sent to the server; otherwise
   // the server wins.
 
-  const { layoutOf, nextPosition: stepNext, prevPosition: stepPrev, gotoPosition, samePosition } = window.POSITIONS;
+  const { layoutOf, nextPosition: stepNext, prevPosition: stepPrev, nextItemPosition, gotoPosition, samePosition } = window.POSITIONS;
   const emergency = { active: false, reconnected: false, base: null, dirty: false, channel: null, adminId: null };
 
   function openChannel(adminId) {
@@ -498,6 +514,11 @@
     if (type === 'worship.next') worship = stepNext(layout, worship);
     else if (type === 'worship.prev') worship = stepPrev(layout, worship);
     else if (type === 'worship.goto') worship = gotoPosition(layout, extra.itemId, extra.step) || worship;
+    else if (type === 'worship.endItem') {
+      const next = nextItemPosition(layout, worship);
+      if (next) worship = next;
+      else source = state.cached.logo ? 'logo' : 'black';
+    }
     else if (type === 'projector.source' && window.FRAMES.LEADER_SOURCES.includes(extra.source)) source = extra.source;
     else {
       showMessage(t('live.emergency.unavailable'), true);
@@ -546,6 +567,7 @@
 
   $('prev-button').addEventListener('click', () => send('worship.prev'));
   $('next-button').addEventListener('click', () => send('worship.next'));
+  $('end-item-button').addEventListener('click', () => send('worship.endItem'));
   $('start-button').addEventListener('click', () => send('event.start'));
   $('end-button').addEventListener('click', () => {
     $('end-dialog').returnValue = '';
@@ -567,6 +589,8 @@
     } else if (event.key === 'ArrowLeft') {
       event.preventDefault();
       send('worship.prev');
+    } else if (event.key === 'e' || event.key === 'E') {
+      if (!$('end-item-button').disabled) send('worship.endItem'); // end of the item
     } else if (event.key === 'b' || event.key === 'B') {
       toggleSource('black'); // black <-> content
     } else if (event.key === 'l' || event.key === 'L') {

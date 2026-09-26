@@ -12,7 +12,7 @@ const ROLES = ['owner', 'leader', 'operator', 'member'];
 const PRESENCE_DEBOUNCE_MS = 1000;
 const SESSION_SWEEP_MS = 30 * 1000;
 
-const COMMANDS = ['event.start', 'event.end', 'worship.next', 'worship.prev', 'worship.goto',
+const COMMANDS = ['event.start', 'event.end', 'worship.next', 'worship.prev', 'worship.goto', 'worship.endItem',
   'live.mode', 'team.mode', 'background.set',
   'projector.next', 'projector.prev', 'projector.goto', 'projector.syncToWorship', 'projector.source',
   'video.prepare', 'video.play', 'video.pause', 'video.restart', 'video.stop', 'video.volume',

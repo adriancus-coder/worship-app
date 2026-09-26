@@ -64,6 +64,13 @@
     return { itemId: pos.itemId, step: pos.step };
   }
 
+  // The first step of the next item ("end of this item"), or null on the last item.
+  function nextItemPosition(layout, pos) {
+    const i = indexOf(layout, pos);
+    if (i < 0) return layout.length ? firstPosition(layout) : null;
+    return i + 1 < layout.length ? { itemId: layout[i + 1].id, step: 0 } : null;
+  }
+
   // A valid position in the layout, or null.
   function gotoPosition(layout, itemId, step) {
     const item = layout.find((it) => it.id === itemId);
@@ -91,7 +98,7 @@
     return { itemId: newLayout[newLayout.length - 1].id, step: 0 };
   }
 
-  const POSITIONS = { NO_POSITION, layoutOf, firstPosition, samePosition, nextPosition, prevPosition, gotoPosition, clampPosition };
+  const POSITIONS = { NO_POSITION, layoutOf, firstPosition, samePosition, nextPosition, prevPosition, nextItemPosition, gotoPosition, clampPosition };
 
   if (typeof module === 'object' && module.exports) module.exports = POSITIONS;
   else root.POSITIONS = POSITIONS;
