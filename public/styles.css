@@ -1591,6 +1591,23 @@ button.op-step:disabled { opacity: 1; cursor: default; }
 .team-main p { margin: 0; overflow-wrap: anywhere; }
 .team-name { font-weight: 700; font-size: 1.0625rem; }
 .team-email { color: var(--text-muted); font-size: 0.9375rem; }
+.team-positions { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 0 !important; font-size: 0.875rem; }
+.position-pill { border-color: var(--border); color: var(--text-muted); }
+.positions-choice { margin: 4px 0 12px; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius); }
+.positions-choice legend { padding: 0 6px; font-weight: 600; }
+.positions-choice .hint { margin: 0 0 6px; }
+.checkbox-list { display: flex; flex-wrap: wrap; gap: 4px 16px; }
+.checkbox-list .checkbox { flex: 1 1 160px; min-height: var(--touch); margin: 0; }
+/* "Poziții în echipă" (public/positions-editor.js) */
+.positions-list { list-style: none; margin: 0 0 12px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.position-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 6px 10px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+.position-name { flex: 1 1 140px; font-weight: 600; }
+.position-name.inactive { color: var(--text-muted); text-decoration: line-through; }
+.position-rename { flex: 1 1 140px; min-height: var(--touch); }
+.position-tools { display: flex; flex-wrap: wrap; gap: 6px; margin-left: auto; }
+.position-tools button { padding: 6px 10px; }
+.positions-add { display: flex; flex-wrap: wrap; gap: 8px; }
+.positions-add input { flex: 1 1 200px; min-height: var(--touch); }
 .team-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 6px !important; font-size: 0.875rem; }
 .team-actions { display: flex; flex-wrap: wrap; gap: 8px; flex: 1 1 100%; }
 .team-actions button { flex: 1 1 auto; min-height: var(--touch); }

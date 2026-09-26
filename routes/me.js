@@ -6,7 +6,8 @@ const { NOTATIONS, createAdminSettings } = require('../lib/admin-settings');
 const { isTheme, setThemeCookie } = require('../lib/theme');
 const asyncRoute = require('../lib/async-route');
 const { hashPassword, verifyPassword, VIEW_AS_ROLES } = require('../lib/auth');
-const { MIN_PASSWORD_LENGTH } = require('../lib/team');
+const { MIN_PASSWORD_LENGTH, validateName, createTeamStore } = require('../lib/team');
+const { createPositionStore } = require('../lib/positions');
 const { createFailureLimiter } = require('../lib/rate-limit');
 
 function createMeRouter({ db, auth, config, logger, live }) {
@@ -18,6 +19,31 @@ function createMeRouter({ db, auth, config, logger, live }) {
   const deleteSession = db.prepare('DELETE FROM sessions WHERE id = ?');
 
   const updateLocale = db.prepare('UPDATE users SET locale = ? WHERE id = ? AND admin_id = ?');
+  const team = createTeamStore(db);
+  const positions = createPositionStore(db);
+  const updateProfile = db.prepare('UPDATE users SET name = ?, phone = ? WHERE id = ? AND admin_id = ?');
+  const PHONE_RE = /^[+0-9][0-9 .\-()]{4,29}$/;
+
+  // "Profilul meu": the user's own name, phone (optional) and usual positions.
+  router.get('/api/me/profile', auth.requireUser, (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    const me = team.get(req.adminId, req.user.id);
+    res.json({ profile: { name: me.name, email: me.email, phone: me.phone, positionIds: positions.ofUserIds(req.adminId, req.user.id) }, positions: positions.list(req.adminId, { activeOnly: true }) });
+  });
+
+  router.put('/api/me/profile', auth.requireUser, (req, res) => {
+    const body = req.body || {};
+    const name = validateName(body.name, req.t);
+    if (name.error) return res.status(400).json({ error: name.error });
+    const phone = typeof body.phone === 'string' ? body.phone.trim() : '';
+    if (phone && !PHONE_RE.test(phone)) return res.status(400).json({ error: req.t('errors.phoneInvalid') });
+    if (!Array.isArray(body.positionIds) || !body.positionIds.every((id) => Number.isInteger(id))) return res.status(400).json({ error: req.t('errors.badRequest') });
+    updateProfile.run(name.value, phone || null, req.user.id, req.adminId);
+    positions.setForUser(req.adminId, req.user.id, body.positionIds);
+    logger.info(`User #${req.user.id} updated their profile (admin #${req.adminId})`);
+    const me = team.get(req.adminId, req.user.id);
+    res.json({ profile: { name: me.name, email: me.email, phone: me.phone, positionIds: positions.ofUserIds(req.adminId, req.user.id) } });
+  });
 
   // "Vezi aplicația ca" (an owner only): { role: 'leader' | 'operator' | 'member' | null }.
   // The page reloads after; sockets pick the new role up on their next join / command.

@@ -1439,6 +1439,39 @@ async function main() {
     assert.ok(page.ok && /invite\.js/.test(await page.text()), 'the public page is served without a session');
   });
 
+  await step('positions: seeded, everyone reads, owner and leader manage, members not; the profile and Echipa set a person\'s positions', async () => {
+    const first = await api('GET', '/api/positions', member);
+    assert.deepStrictEqual([first.status, first.body.positions.map((p) => p.name), first.body.canManage], [200, ['Voce', 'Chitară', 'Pian/Clape', 'Bas', 'Tobe', 'Operator', 'Prezentator'], false]);
+    assert.strictEqual((await api('GET', '/api/positions', leader)).body.canManage, true);
+    assert.strictEqual((await api('POST', '/api/positions', member, { name: 'X' })).status, 403);
+    assert.strictEqual((await api('POST', '/api/positions', operator, { name: 'X' })).status, 403, 'the operator only views');
+    assert.strictEqual((await api('POST', '/api/positions', presenter, { name: 'X' })).status, 403);
+    const added = await api('POST', '/api/positions', leader, { name: 'Vioară' });
+    assert.deepStrictEqual([added.status, added.body.position.name, added.body.positions.length], [201, 'Vioară', 8]);
+    assert.strictEqual((await api('POST', '/api/positions', leader, { name: '' })).status, 400);
+    const ids = added.body.positions.map((p) => p.id);
+    assert.strictEqual((await api('PUT', '/api/positions/order', owner, { ids: [...ids].reverse() })).body.positions[0].name, 'Vioară');
+    assert.strictEqual((await api('PUT', '/api/positions/order', owner, { ids: ids.slice(1) })).status, 400);
+    const off = await api('PUT', `/api/positions/${added.body.position.id}`, owner, { active: false, name: 'Vioara' });
+    assert.deepStrictEqual([off.body.position.active, off.body.position.name], [false, 'Vioara']);
+    assert.strictEqual((await api('PUT', `/api/positions/${added.body.position.id}`, other, { name: 'Y' })).status, 404, 'another admin');
+    // the profile
+    const voce = ids[0]; // Voce (the list order was reversed above; ids keep the original order)
+    const prof = await api('PUT', '/api/me/profile', member, { name: 'Membru M.', phone: '+40 700 000 000', positionIds: [voce, added.body.position.id] });
+    assert.deepStrictEqual([prof.status, prof.body.profile.name, prof.body.profile.phone, prof.body.profile.positionIds], [200, 'Membru M.', '+40 700 000 000', [voce]], 'the inactive position is dropped');
+    assert.strictEqual((await api('PUT', '/api/me/profile', member, { name: 'M', phone: 'abc', positionIds: [] })).status, 400);
+    const got = await api('GET', '/api/me/profile', member);
+    assert.deepStrictEqual([got.body.profile.positionIds, got.body.positions.some((p) => p.name === 'Vioara')], [[voce], false], 'active positions only in the profile picker');
+    // Echipa: the owner sets someone's positions; the list carries them
+    const team = (await api('GET', '/api/team', owner)).body;
+    const m = team.users.find((u) => u.email === 'membru@x.ro');
+    assert.deepStrictEqual([m.positionIds, team.positions.length], [[voce], 8]);
+    const set = await api('PUT', `/api/team/${m.id}/positions`, owner, { positionIds: [ids[ids.length - 2]] });
+    assert.deepStrictEqual([set.status, set.body.user.positionIds], [200, [ids[ids.length - 2]]]);
+    assert.strictEqual((await api('PUT', `/api/team/${m.id}/positions`, leader, { positionIds: [] })).status, 403, 'Echipa is the owner\'s');
+    await api('PUT', '/api/me/profile', member, { name: 'Membru', phone: '', positionIds: [voce] });
+  });
+
   await step('view as: an owner sees the app as member / operator / leader (every guard follows), back restores all; a leader cannot', async () => {
     const viewAs = (cookie, role) => api('PUT', '/api/me/view-as', cookie, { role });
     const page = (url, cookie) => fetch(base() + url, { headers: { Cookie: cookie }, redirect: 'manual' }).then((r) => r.status);

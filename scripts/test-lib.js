@@ -1893,6 +1893,8 @@ testAsync('platform deletion: refused while active, the exact name, pending -> c
     db.prepare("INSERT INTO screens (admin_id, name, token_hash, created_at) VALUES (?, 'Sc', ?, 0)").run(a, `t${a}`);
     db.prepare("INSERT INTO screen_pairings (id, code, admin_id, created_at, expires_at) VALUES (?, ?, ?, 0, 9999999999999)").run(`p${a}`, `10000${a}`, a);
     db.prepare("INSERT INTO user_tokens (user_id, admin_id, kind, token_hash, created_at, expires_at) VALUES (?, ?, 'invite', ?, 0, 9999999999999)").run(userId, a, `h${a}`);
+    const posId = Number(db.prepare("INSERT INTO positions (admin_id, name, sort) VALUES (?, 'Voce', 0)").run(a).lastInsertRowid);
+    db.prepare('INSERT INTO users_positions (user_id, position_id, admin_id) VALUES (?, ?, ?)').run(userId, posId, a);
     fs.mkdirSync(path.join(dataDir, 'uploads', `admin-${a}`, 'media'), { recursive: true });
     fs.writeFileSync(path.join(dataDir, 'uploads', `admin-${a}`, 'media', 'f.bin'), Buffer.alloc(64, 1));
   };
@@ -2130,5 +2132,38 @@ test('safe margin: 0-12 % parsed, 5 by default; on every frame; a screen may ove
   assert.strictEqual(screens.setSafeMargin(1, 1, null), true);
   assert.strictEqual(screens.list(1)[0].safeMargin, null);
   assert.strictEqual(screens.setSafeMargin(2, 1, 3), false, 'another admin: nothing');
+  mem.close();
+});
+
+test('positions (migration 029): seeded once per admin, add / rename / reorder / deactivate, the users\' usual positions', () => {
+  const Database = require('better-sqlite3');
+  const { runMigrations } = require('../lib/db');
+  const { createPositionStore, DEFAULT_POSITIONS, validatePositionName } = require('../lib/positions');
+  const mem = new Database(':memory:');
+  mem.pragma('foreign_keys = ON');
+  runMigrations(mem);
+  mem.prepare("INSERT INTO admins (id, name, created_at) VALUES (1, 'A', 0), (2, 'B', 0)").run();
+  mem.prepare("INSERT INTO users (id, admin_id, email, name, password_hash, role, created_at) VALUES (1, 1, 'a@x.ro', 'A', 'x', 'member', 0), (2, 2, 'b@x.ro', 'B', 'x', 'member', 0)").run();
+  const P = createPositionStore(mem);
+  assert.deepStrictEqual(P.list(1).map((p) => p.name), DEFAULT_POSITIONS, 'seeded on first use');
+  assert.strictEqual(P.list(1).length, 7, 'not seeded twice');
+  assert.strictEqual(P.list(2).length, 7, 'per admin');
+  const violin = P.create(1, 'Vioară');
+  assert.deepStrictEqual([violin.name, violin.sort, violin.active], ['Vioară', 7, true]);
+  assert.deepStrictEqual(P.update(1, violin.id, { name: 'Vioara', active: false }), { id: violin.id, name: 'Vioara', sort: 7, active: false });
+  assert.strictEqual(P.update(2, violin.id, { name: 'x' }), null, 'another admin');
+  assert.deepStrictEqual(P.list(1, { activeOnly: true }).map((p) => p.name).length, 7, 'inactive ones out of the pickers');
+  const ids = P.list(1).map((p) => p.id);
+  assert.strictEqual(P.reorder(1, [ids[1], ids[0], ...ids.slice(2)]), true);
+  assert.deepStrictEqual(P.list(1).slice(0, 2).map((p) => p.name), ['Chitară', 'Voce']);
+  assert.strictEqual(P.reorder(1, ids.slice(1)), false, 'every id, once');
+  assert.strictEqual(P.reorder(1, [...ids.slice(1), ids[1]]), false);
+  // the users' positions: only active ones of the same admin
+  assert.strictEqual(P.setForUser(1, 1, [ids[0], ids[2], violin.id, 999]), true);
+  assert.deepStrictEqual(P.ofUserIds(1, 1), [ids[0], ids[2]], 'in the positions\' order (Voce now second, Pian third), the inactive and unknown dropped');
+  assert.deepStrictEqual([...P.byUser(1).entries()], [[1, [ids[0], ids[2]]]]);
+  assert.strictEqual(P.setForUser(1, 2, [ids[0]]), false, 'a user of another admin');
+  assert.ok(validatePositionName('   ', (k) => k).error && validatePositionName('x'.repeat(41), (k) => k).error);
+  assert.deepStrictEqual(validatePositionName('  Vioară   solo ', (k) => k), { value: 'Vioară solo' });
   mem.close();
 });

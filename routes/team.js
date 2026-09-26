@@ -5,6 +5,7 @@ const asyncRoute = require('../lib/async-route');
 const { hashPassword, requireRole } = require('../lib/auth');
 const { temporaryPassword, validateName, validateEmail, validateRole, createTeamStore } = require('../lib/team');
 const { emailErrorResponse } = require('./invites');
+const { createPositionStore } = require('../lib/positions');
 
 // The owner manages the admin's team: accounts with temporary passwords (shown once, never
 // logged), role and name changes, deactivation, password resets. Owner only; another admin's
@@ -12,6 +13,8 @@ const { emailErrorResponse } = require('./invites');
 function createTeamRouter({ db, auth, config, logger, live, email, invites }) {
   const router = express.Router();
   const team = createTeamStore(db);
+  const positions = createPositionStore(db);
+  const withPositions = (adminId, users) => { const by = positions.byUser(adminId); return users.map((u) => ({ ...u, positionIds: by.get(u.id) || [] })); };
   const baseUrl = (req) => config.PUBLIC_BASE_URL || `${req.protocol}://${req.get('host')}`;
 
   router.use('/api/team', auth.requireUser, requireRole('owner'), (req, res, next) => {
@@ -38,7 +41,7 @@ function createTeamRouter({ db, auth, config, logger, live, email, invites }) {
 
   router.get('/api/team', (req, res) => {
     // baseUrl: the address in the welcome message (null: the page uses its own origin).
-    res.json({ users: team.list(req.adminId), baseUrl: config.PUBLIC_BASE_URL, emailEnabled: email.enabled });
+    res.json({ users: withPositions(req.adminId, team.list(req.adminId)), positions: positions.list(req.adminId), baseUrl: config.PUBLIC_BASE_URL, emailEnabled: email.enabled });
   });
 
   // "Trimite / Retrimite invitația": a fresh invitation link by email, while the person has
@@ -111,6 +114,17 @@ function createTeamRouter({ db, auth, config, logger, live, email, invites }) {
       audit(req, `role ${member.role} -> ${role.value} for`, member.id);
     }
     res.json({ user: team.get(req.adminId, member.id) });
+  });
+
+  // The person's usual positions { positionIds: [...] } (active positions of this admin).
+  router.put('/api/team/:id/positions', (req, res) => {
+    const member = target(req, res);
+    if (!member) return;
+    const ids = (req.body || {}).positionIds;
+    if (!Array.isArray(ids) || !ids.every((id) => Number.isInteger(id))) return res.status(400).json({ error: req.t('errors.badRequest') });
+    positions.setForUser(req.adminId, member.id, ids);
+    audit(req, 'set the positions of', member.id);
+    res.json({ user: { ...team.get(req.adminId, member.id), positionIds: positions.ofUserIds(req.adminId, member.id) } });
   });
 
   router.post('/api/team/:id/deactivate', (req, res) => {

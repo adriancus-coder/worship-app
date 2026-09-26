@@ -176,11 +176,13 @@
     { id: 'media', href: '/media', key: 'shell.media', icon: 'media', roles: EDITOR_ROLES },
     { id: 'screens', href: '/screens', key: 'shell.screens', icon: 'screens', roles: ['owner', 'operator'] }, // lib/events.js SCREEN_ROLES
     { id: 'team', href: '/team', key: 'shell.team', icon: 'team', roles: ['owner'] },
+    { id: 'positions', href: '/positions', key: 'shell.positions', icon: 'team', roles: ['owner', 'leader'] }, // routes/positions.js MANAGE_ROLES
     { id: 'settings', href: '/settings', key: 'shell.settings', icon: 'settings', roles: ['owner'] },
     // The platform owner only (the churches on this server).
     { id: 'platform', href: '/platform', key: 'shell.platform', icon: 'platform', roles: ['owner'], platform: true },
   ].map(pageRow);
   const accountLinks = [
+    { id: 'profile', href: '/profile', key: 'shell.profile', icon: 'team', roles: ['owner', 'presenter', 'leader', 'operator', 'member'] },
     { id: 'password', href: '/change-password', key: 'shell.password', icon: 'password', roles: ['owner', 'presenter', 'leader', 'operator', 'member'] },
   ].map(pageRow);
   const pageLinks = [...navLinks, ...accountLinks];

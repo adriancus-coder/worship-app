@@ -119,6 +119,17 @@ function createPagesRouter({ db, auth, sendPage }) {
     sendPage(req, res, 'media');
   });
 
+  // "Profilul meu" (name, phone, positions, later unavailability): everyone.
+  router.get('/profile', noStore, signedIn, (req, res) => {
+    sendPage(req, res, 'profile');
+  });
+
+  // "Poziții în echipă": owner and leader (the owner also has it in Setări).
+  router.get('/positions', noStore, signedIn, (req, res) => {
+    if (!['owner', 'leader'].includes(req.session.user.role)) return res.redirect('/app');
+    sendPage(req, res, 'positions');
+  });
+
   // The team (accounts, roles, temporary passwords): owner only.
   router.get('/team', noStore, signedIn, (req, res) => {
     if (req.session.user.role !== 'owner') return res.redirect('/app');

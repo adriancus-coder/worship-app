@@ -10,7 +10,8 @@
   const { api, el, setTitle, formatDate } = window.PAGE;
   const { t } = window.I18N;
   const $ = (id) => document.getElementById(id);
-  const state = { users: [], baseUrl: null, emailEnabled: false, meId: null, editing: null, confirm: null, result: null };
+  const state = { users: [], positions: [], baseUrl: null, emailEnabled: false, meId: null, editing: null, confirm: null, result: null };
+  const positionName = (id) => { const p = state.positions.find((x) => x.id === id); return p ? p.name : null; };
 
   const baseUrl = () => state.baseUrl || window.location.origin;
 
@@ -48,7 +49,11 @@
           el('p', { class: 'team-meta' },
             el('span', { class: `pill role-pill role-${user.role}`, text: owner ? t('team.roles.owner') : t(`team.roles.${user.role}`) }),
             owner ? null : el('span', { class: `pill status-pill status-${status}`, text: t(`team.status.${status}`) }),
-            el('span', { class: 'muted', text: lastLogin(user.lastLoginAt) }))),
+            el('span', { class: 'muted', text: lastLogin(user.lastLoginAt) })),
+          // The person's usual positions (lib/positions.js), the pickers' default suggestions.
+          el('p', { class: 'team-positions' }, ...((user.positionIds || []).map(positionName).filter(Boolean).length
+            ? user.positionIds.map(positionName).filter(Boolean).map((name) => el('span', { class: 'pill position-pill', text: name }))
+            : [el('span', { class: 'muted', text: t('team.noPositions') })]))),
         owner ? null : el('div', { class: 'team-actions' },
           el('button', { type: 'button', class: 'secondary', 'data-icon': 'edit', text: t('team.edit'), 'aria-label': t('team.editFor', { name: user.name }), onclick: () => openEdit(user) }),
           // By email (only while the server can send): the invitation again while the person
@@ -72,6 +77,7 @@
       return;
     }
     state.users = res.body.users;
+    state.positions = res.body.positions || [];
     state.baseUrl = res.body.baseUrl;
     state.emailEnabled = Boolean(res.body.emailEnabled);
     $('status').hidden = true;
@@ -148,6 +154,9 @@
     $('edit-name').value = user.name;
     $('edit-role').value = user.role;
     renderRoleHelp();
+    $('edit-positions').replaceChildren(...state.positions.filter((p) => p.active || (user.positionIds || []).includes(p.id)).map((p) => el('label', { class: 'checkbox' },
+      el('input', { type: 'checkbox', name: 'edit-position', value: String(p.id), checked: (user.positionIds || []).includes(p.id) ? 'checked' : null }),
+      el('span', { text: p.name }))));
     say('edit-message', '', 'error');
     $('edit-dialog').showModal();
     $('edit-name').focus();
@@ -158,7 +167,10 @@
     const user = state.editing;
     const res = await api(`/api/team/${user.id}`, { method: 'PATCH', body: { name: $('edit-name').value, role: $('edit-role').value } });
     if (!res.ok) return say('edit-message', res.body.error || t('common.networkError'), 'error');
-    replaceUser(res.body.user);
+    const positionIds = [...document.querySelectorAll('#edit-positions input:checked')].map((box) => Number(box.value));
+    const pos = await api(`/api/team/${user.id}/positions`, { method: 'PUT', body: { positionIds } });
+    if (!pos.ok) return say('edit-message', pos.body.error || t('common.networkError'), 'error');
+    replaceUser(pos.body.user);
     $('edit-dialog').close();
     say('page-message', t('team.saved', { name: res.body.user.name }), 'success');
   });

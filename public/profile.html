@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="{{LANG}}" data-app-name="{{APP_NAME}}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#141318">
+  <title data-i18n="profile.pageTitle">{{APP_NAME}}</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body data-shell="more">
+  <main>
+    <h1 data-i18n="profile.heading"></h1>
+    <p class="muted" data-i18n="profile.intro"></p>
+    <p id="status" class="muted" role="status" aria-live="polite" data-i18n="app.loading"></p>
+
+    <form id="profile-form" novalidate hidden>
+      <label>
+        <span data-i18n="profile.nameLabel"></span>
+        <input type="text" id="p-name" maxlength="100" autocomplete="name" required>
+      </label>
+      <p class="hint" id="p-email"></p>
+      <label>
+        <span data-i18n="profile.phoneLabel"></span>
+        <input type="tel" id="p-phone" maxlength="30" autocomplete="tel" inputmode="tel">
+      </label>
+      <p class="hint" data-i18n="profile.phoneHint"></p>
+      <fieldset class="positions-choice">
+        <legend data-i18n="profile.positionsLabel"></legend>
+        <p class="hint" data-i18n="profile.positionsHint"></p>
+        <div id="p-positions" class="checkbox-list"></div>
+      </fieldset>
+      <p class="message" id="message" role="status" aria-live="polite"></p>
+      <button type="submit" id="submit" data-icon="check" data-i18n="profile.save"></button>
+    </form>
+
+    <div id="profile-extra"></div>
+  </main>
+  <script src="/i18n.js"></script>
+  <script src="/page.js"></script>
+  <script src="/shell.js"></script>
+  <script src="/profile.js"></script>
+</body>
+</html>
