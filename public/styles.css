@@ -1144,6 +1144,12 @@ body.screen-body.cursor-hidden, body.screen-body.cursor-hidden * { cursor: none;
 .settings-section { display: flex; flex-direction: column; gap: 12px; }
 .settings-section h2 { margin-bottom: 0; }
 .settings-section .hint { margin: 0; }
+/* Two side-by-side buttons in a settings card: stacked, full width, one line each on phones. */
+@media (max-width: 479px) {
+  .settings-section .form-actions, .email-card .form-actions { flex-direction: column; }
+  .settings-section .form-actions > *, .email-card .form-actions > * { flex: 1 1 auto; width: 100%; white-space: nowrap; }
+}
+@media (min-width: 480px) { .settings-section .form-actions > *, .email-card .form-actions > * { white-space: nowrap; } }
 .logo-preview { display: flex; align-items: center; justify-content: center; aspect-ratio: 16 / 9; width: 100%; max-width: 480px; border: 1px solid var(--border); border-radius: var(--radius); }
 .logo-preview img { max-width: 60%; max-height: 60%; object-fit: contain; }
 .logo-preview .muted { padding: 16px; text-align: center; }

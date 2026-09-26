@@ -234,8 +234,10 @@
   function renderEmail(info) {
     emailInfo = info || emailInfo;
     if (!emailInfo) return;
+    // Disabled: one line only (the platform administrator sets email up on the server).
     $('email-status').textContent = emailInfo.enabled ? t('settings.emailOn', { from: emailInfo.from }) : t('settings.emailOff');
-    $('email-hint').textContent = t(emailInfo.enabled ? 'settings.emailHintOn' : 'settings.emailHintOff');
+    $('email-hint').textContent = emailInfo.enabled ? t('settings.emailHintOn') : '';
+    $('email-hint').hidden = !emailInfo.enabled;
     $('email-test').hidden = !emailInfo.enabled;
   }
   $('email-test').addEventListener('click', async () => {
