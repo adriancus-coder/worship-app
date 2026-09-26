@@ -31,6 +31,8 @@ const { createTeamRouter } = require('./routes/team');
 const { createPositionsRouter } = require('./routes/positions');
 const { createAssignmentsRouter } = require('./routes/assignments');
 const { createUnavailabilityRouter } = require('./routes/unavailability');
+const { createPushRouter } = require('./routes/push');
+const { createPush } = require('./lib/push');
 const { createPlatformRouter } = require('./routes/platform');
 const { createPwaRouter } = require('./routes/pwa');
 const { createLiveHub } = require('./socket/live');
@@ -117,6 +119,9 @@ app.use(createPositionsRouter({ db, auth, logger }));
 const assignmentHooks = {}; // filled by the notifications module (stage 7)
 app.use(createAssignmentsRouter({ db, auth, logger, hooks: assignmentHooks }));
 app.use(createUnavailabilityRouter({ db, auth, logger }));
+const push = createPush({ db, config, logger });
+logger.info(push.enabled ? 'Push: enabled (VAPID keys set)' : 'Push: disabled (no VAPID keys; npm run vapid, docs/PUSH.md)');
+app.use(createPushRouter({ auth, logger, push }));
 app.use(createPlatformRouter({ db, auth, config, logger, live, screensHub, storage, email, invites }));
 app.use(createInvitesRouter({ db, auth, config, logger, live, email, invites }));
 app.use(createScreensRouter({ db, auth, config, logger, screensHub }));

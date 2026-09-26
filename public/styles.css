@@ -1632,6 +1632,13 @@ button.op-step:disabled { opacity: 1; cursor: default; }
 .unavail-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 6px 10px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
 .unavail-when { font-weight: 600; flex: 1 1 auto; }
 .unavail-form .field { margin-bottom: 8px; }
+.push-card { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+.push-card h2, .push-card .hint, .push-card p { margin: 0; }
+.push-card .form-actions { margin: 0; }
+.push-card .form-actions:empty { display: none; }
+.push-state { font-weight: 600; }
+.push-state[data-state="on"] { color: var(--success); }
+.push-state[data-state="denied"], .push-state[data-state="unsupported"], .push-state[data-state="serveroff"] { color: var(--text-muted); }
 .team-positions { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 0 !important; font-size: 0.875rem; }
 .position-pill { border-color: var(--border); color: var(--text-muted); }
 .positions-choice { margin: 4px 0 12px; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius); }

@@ -124,6 +124,11 @@ function createPagesRouter({ db, auth, sendPage }) {
     sendPage(req, res, 'profile');
   });
 
+  // "Notificări": everyone (the push toggle; the in-app list comes with the notifications module).
+  router.get('/notifications', noStore, signedIn, (req, res) => {
+    sendPage(req, res, 'notifications');
+  });
+
   // "Poziții în echipă": owner and leader (the owner also has it in Setări).
   router.get('/positions', noStore, signedIn, (req, res) => {
     if (!['owner', 'leader'].includes(req.session.user.role)) return res.redirect('/app');

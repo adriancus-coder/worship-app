@@ -1549,6 +1549,15 @@ async function main() {
     await api('DELETE', `/api/events/${evFree.id}`, owner);
   });
 
+  await step('push disabled (no VAPID keys on this server): config says so, subscribing answers 503 pushDisabled, the list is empty', async () => {
+    assert.deepStrictEqual((await api('GET', '/api/push/config', member)).body, { enabled: false, publicKey: null });
+    const r = await api('POST', '/api/push/subscriptions', member, { subscription: { endpoint: 'https://push.test/x', keys: { p256dh: 'x', auth: 'y' } } });
+    assert.deepStrictEqual([r.status, r.body.code], [503, 'pushDisabled']);
+    assert.deepStrictEqual((await api('POST', '/api/push/test', member)).status, 503);
+    assert.deepStrictEqual((await api('DELETE', '/api/push/subscriptions', member, { endpoint: 'https://push.test/x' })).body, { removed: false, subscriptions: [] });
+    assert.strictEqual((await api('GET', '/api/push/config')).status, 401, 'signed in only');
+  });
+
   await step('view as: an owner sees the app as member / operator / leader (every guard follows), back restores all; a leader cannot', async () => {
     const viewAs = (cookie, role) => api('PUT', '/api/me/view-as', cookie, { role });
     const page = (url, cookie) => fetch(base() + url, { headers: { Cookie: cookie }, redirect: 'manual' }).then((r) => r.status);

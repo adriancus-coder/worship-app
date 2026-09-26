@@ -182,6 +182,7 @@
     { id: 'platform', href: '/platform', key: 'shell.platform', icon: 'platform', roles: ['owner'], platform: true },
   ].map(pageRow);
   const accountLinks = [
+    { id: 'notifications', href: '/notifications', key: 'shell.notifications', icon: 'install', roles: ['owner', 'presenter', 'leader', 'operator', 'member'] },
     { id: 'profile', href: '/profile', key: 'shell.profile', icon: 'team', roles: ['owner', 'presenter', 'leader', 'operator', 'member'] },
     { id: 'password', href: '/change-password', key: 'shell.password', icon: 'password', roles: ['owner', 'presenter', 'leader', 'operator', 'member'] },
   ].map(pageRow);
