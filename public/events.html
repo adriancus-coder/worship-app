@@ -7,7 +7,7 @@
   <title data-i18n="events.pageTitle">{{APP_NAME}}</title>
   <link rel="stylesheet" href="/styles.css">
 </head>
-<body data-shell="events">
+<body data-shell="events" class="list-page">
   <main class="wide">
     <div class="page-head">
       <h1 data-i18n="events.heading"></h1>
@@ -20,8 +20,8 @@
       <button type="button" role="tab" id="tab-templates" aria-controls="events-panel" aria-selected="false" tabindex="-1" hidden data-i18n="events.tabTemplates"></button>
     </div>
 
-    <div id="events-panel" role="tabpanel">
-      <p id="status" class="muted" role="status" aria-live="polite" data-i18n="events.loading"></p>
+    <div id="events-panel" role="tabpanel" data-list-pane="events.listPane">
+      <p id="status" class="muted pane-state" role="status" aria-live="polite" data-i18n="events.loading"></p>
       <ul id="events" class="event-list"></ul>
     </div>
 
@@ -66,6 +66,7 @@
   </main>
   <script src="/i18n.js"></script>
   <script src="/page.js"></script>
+  <script src="/list-pane.js"></script>
   <script src="/shell.js"></script>
   <script src="/events.js"></script>
 </body>

@@ -7,7 +7,7 @@
   <title data-i18n="library.pageTitle">{{APP_NAME}}</title>
   <link rel="stylesheet" href="/styles.css">
 </head>
-<body data-shell="library">
+<body data-shell="library" class="list-page">
   <main class="wide">
     <div class="page-head library-head">
       <h1 data-i18n="library.heading"></h1>
@@ -34,26 +34,29 @@
         </div>
         <span class="hint" id="q-hint"></span>
       </form>
+      <div class="library-tools">
+        <label class="sort-field"><span class="sort-label" data-i18n="library.sortLabel"></span>
+          <select id="sort">
+            <option value="az" data-i18n="library.sortAz"></option>
+            <option value="za" data-i18n="library.sortZa"></option>
+            <option value="recent" data-i18n="library.sortRecent"></option>
+          </select>
+        </label>
+      </div>
     </div>
 
-    <div id="library-results">
-      <section class="results-section" aria-labelledby="local-heading">
-        <div class="results-head">
+    <!-- The results scroll here; the header above stays (CLAUDE.md "UI rules"). -->
+    <div id="library-results" data-list-pane="library.resultsPane">
+      <section class="results-section pane-section" aria-labelledby="local-heading">
+        <div class="results-head pane-heading">
           <h2 id="local-heading" class="results-heading"><span data-i18n="library.localHeading"></span> <span id="local-count" class="results-count"></span></h2>
-          <label class="sort-field"><span class="sr-only" data-i18n="library.sortLabel"></span>
-            <select id="sort">
-              <option value="az" data-i18n="library.sortAz"></option>
-              <option value="za" data-i18n="library.sortZa"></option>
-              <option value="recent" data-i18n="library.sortRecent"></option>
-            </select>
-          </label>
         </div>
-        <p id="status" class="muted" role="status" aria-live="polite" data-i18n="library.loading"></p>
+        <p id="status" class="muted pane-state" role="status" aria-live="polite" data-i18n="library.loading"></p>
         <ul id="songs" class="song-list"></ul>
       </section>
 
-      <section class="results-section" id="online-section" aria-labelledby="online-heading" hidden>
-        <div class="results-head">
+      <section class="results-section pane-section" id="online-section" aria-labelledby="online-heading" hidden>
+        <div class="results-head pane-heading">
           <h2 id="online-heading" class="results-heading"><span data-i18n="library.onlineHeading"></span> <span id="online-count" class="results-count"></span></h2>
         </div>
         <p id="online-status" class="muted online-status" role="status" aria-live="polite"></p>
@@ -84,7 +87,7 @@
       </div>
     </dialog>
 
-    <section id="import-review" class="import-review" hidden aria-labelledby="import-heading">
+    <section id="import-review" class="import-review" hidden aria-labelledby="import-heading" data-list-pane="import.heading">
       <h2 id="import-heading" tabindex="-1" data-i18n="import.heading"></h2>
       <p id="import-file-name" class="muted"></p>
       <p id="import-status" class="muted" role="status" aria-live="polite"></p>
@@ -121,6 +124,7 @@
   <script src="/notation.js"></script>
   <script src="/shell.js"></script>
   <script src="/song-render.js"></script>
+  <script src="/list-pane.js"></script>
   <script src="/song-search.js"></script>
   <script src="/library.js"></script>
   <script src="/library-import.js"></script>

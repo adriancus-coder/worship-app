@@ -44,21 +44,23 @@
         </div>
         <span class="hint" id="${p}q-hint"></span>
       </form>
-      <section class="results-section" aria-labelledby="${p}local-heading">
-        <div class="results-head">
+      <div class="ss-results" id="${p}results">
+      <section class="results-section pane-section" aria-labelledby="${p}local-heading">
+        <div class="results-head pane-heading">
           <${h} id="${p}local-heading" class="results-heading"><span data-i18n="library.localHeading"></span> <span id="${p}local-count" class="results-count"></span></${h}>
         </div>
-        <p id="${p}status" class="muted" role="status" aria-live="polite"></p>
+        <p id="${p}status" class="muted pane-state" role="status" aria-live="polite"></p>
         <ul id="${p}songs" class="song-list pick-results"></ul>
       </section>
-      <section class="results-section" id="${p}online-section" aria-labelledby="${p}online-heading" hidden>
-        <div class="results-head">
+      <section class="results-section pane-section" id="${p}online-section" aria-labelledby="${p}online-heading" hidden>
+        <div class="results-head pane-heading">
           <${h} id="${p}online-heading" class="results-heading"><span data-i18n="library.onlineHeading"></span> <span id="${p}online-count" class="results-count"></span></${h}>
         </div>
         <p id="${p}online-status" class="muted online-status" role="status" aria-live="polite"></p>
         <p id="${p}online-error" class="message error" role="alert"></p>
         <ul id="${p}online-results" class="song-list"></ul>
       </section>
+      </div>
       <dialog id="${p}online-preview" class="preview-dialog" aria-labelledby="${p}preview-title">
         <div class="preview-dialog-head">
           <div class="preview-dialog-title">
@@ -82,6 +84,8 @@
       </dialog>`;
     window.I18N.apply(root);
     root.querySelector('.preview-tools').append(window.NOTATION.createSwitch());
+    // The results scroll in their own pane; the search field stays (public/list-pane.js).
+    if (window.LIST_PANE) window.LIST_PANE.attach(root.querySelector('.ss-results'), () => window.I18N.t('library.resultsPane'));
   }
 
   function create(root, options = {}) {
@@ -111,6 +115,12 @@
     // --- the library part ---------------------------------------------------------------
 
     const local = { songs: null, lastQuery: '', request: 0, timer: null, busy: null, message: null };
+
+    // The status line's look (keeps other classes, e.g. pane-state in a list pane).
+    function tone(classes) {
+      status.classList.remove('muted', 'message', 'error', 'success');
+      status.classList.add(...classes.split(' '));
+    }
 
     function setStatus(text) {
       status.removeAttribute('data-i18n');
@@ -177,10 +187,10 @@
       $('local-count').textContent = local.songs.length ? `(${local.songs.length})` : '';
       if (local.message) {
         setStatus(local.message.text);
-        status.className = `message ${local.message.tone}`;
+        tone(`message ${local.message.tone}`);
         return;
       }
-      status.className = 'muted';
+      tone('muted');
       if (local.songs.length) setStatus('');
       else if (local.lastQuery) setStatus(t('library.noResults', { q: local.lastQuery }));
       else if (mode === 'pick') setStatus(options.emptyQuery === 'none' ? '' : t('library.emptyMember'));

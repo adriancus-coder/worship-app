@@ -4,7 +4,9 @@
 // scrolls it is a keyboard-focusable region (tabindex="0", role="region", aria-label), so
 // Tab reaches it and the arrows / PageDown scroll it; when it does not scroll it is left
 // out of the tab order. Panes marked data-list-pane="<i18n key of the label>" attach on
-// their own; others: LIST_PANE.attach(element, () => label).
+// their own; others: LIST_PANE.attach(element, () => label). data-pane-label="<key>" does the
+// same for a scroller styled elsewhere (e.g. the editor's details column), without the
+// .list-pane layout.
 
 (function () {
   const panes = new Set();
@@ -22,9 +24,9 @@
     }
   }
 
-  function attach(pane, label) {
+  function attach(pane, label, { layout = true } = {}) {
     if (!pane || panes.has(pane)) return;
-    pane.classList.add('list-pane');
+    if (layout) pane.classList.add('list-pane');
     pane.paneLabel = label;
     panes.add(pane);
     let frame = 0;
@@ -41,6 +43,9 @@
   function attachAll(root = document) {
     for (const pane of root.querySelectorAll('[data-list-pane]')) {
       attach(pane, () => window.I18N.t(pane.dataset.listPane));
+    }
+    for (const pane of root.querySelectorAll('[data-pane-label]')) {
+      attach(pane, () => window.I18N.t(pane.dataset.paneLabel), { layout: false });
     }
   }
 

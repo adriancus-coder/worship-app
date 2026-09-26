@@ -792,7 +792,7 @@ main.rehearse-page { flex: 1 0 auto; display: flex; flex-direction: column; padd
 
 .rehearse-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 12px; }
 .rehearse-position { margin: 0; flex: 1 1 auto; font-size: 0.875rem; font-weight: 700; color: var(--text-muted); font-variant-numeric: tabular-nums; }
-.rehearse-tools { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.rehearse-tools { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 8px; margin-left: auto; max-width: 100%; }
 .rehearse-tools > button.secondary:not(.icon-button) { padding: 10px 14px; }
 .size-tools { display: flex; gap: 6px; }
 .size-tools .icon-button { width: 44px; font-size: 1rem; }
@@ -1727,7 +1727,7 @@ button.bg-field { justify-content: flex-start; gap: 10px; min-height: var(--touc
 .song-pick-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .song-pick-head h2 { margin: 0; }
 .song-pick .results-section { margin-top: 12px; }
-.song-pick .song-list { max-height: 55vh; overflow-y: auto; }
+
 /* In narrow panels the actions wrap under the title and share the row. */
 .song-pick .result-row { flex-wrap: wrap; }
 .song-pick .result-text { flex: 1 1 12rem; min-width: 0; }
@@ -1735,7 +1735,7 @@ button.bg-field { justify-content: flex-start; gap: 10px; min-height: var(--touc
 .song-pick .result-actions button { flex: 0 1 auto; min-width: 0; max-width: 100%; white-space: normal; text-align: center; }
 .op-search .result-actions button { flex: 1 1 auto; }
 .op-search .search-row > button { flex: 1 1 100%; }
-.op-search .song-list { max-height: 50vh; overflow-y: auto; }
+
 
 /* --- Live step buttons: code + label, the first lyric line, then the badges ---------------- */
 .step-grid > li, .op-steps > li { display: flex; min-width: 0; }
@@ -1852,7 +1852,6 @@ body.list-page > main {
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
-  min-height: 0;
   padding-bottom: 12px;
 }
 body.list-page > main > * { flex: 0 0 auto; }
@@ -1872,7 +1871,9 @@ body.list-page > main > [hidden] { display: none; }
   scrollbar-color: var(--scrollbar-thumb) transparent;
   border-radius: var(--radius);
 }
-body.list-page > main > .list-pane, body.list-page .list-pane.grow { flex: 1 1 auto; }
+/* A pane that fills the page grows from a zero basis: only its minimum counts towards the
+   page's own minimum, so short screens fall back to page scrolling instead of cutting. */
+body.list-page > main > .list-pane, body.list-page .list-pane.grow { flex: 1 1 0; height: 0; }
 .list-pane > * { flex: 0 0 auto; }
 .list-pane[hidden] { display: none; }
 .list-pane:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
@@ -1887,3 +1888,63 @@ dialog, .op-add { --pane-bg: var(--surface); }
 /* Empty and loading states fill the pane instead of collapsing it. */
 .list-pane .pane-state:not([hidden]):not(:empty) { flex: 1 0 auto; display: flex; align-items: center; justify-content: center; min-height: 6rem; margin: 0; text-align: center; }
 .list-pane .pane-section:has(> .pane-state:not([hidden]):not(:empty)) { flex: 1 0 auto; display: flex; flex-direction: column; }
+
+/* --- List pages: where the panes are ---------------------------------------------------------- */
+/* Library: title, "+ Cântare nouă", "⋯", the search field and the sort stay; results scroll. */
+.library-tools { display: flex; justify-content: flex-end; margin: 0 0 8px; }
+.library-tools .sort-field { display: flex; flex-direction: row; align-items: center; gap: 8px; margin: 0; font-size: 0.875rem; font-weight: 500; color: var(--text-muted); }
+.library-tools .sort-field select { width: auto; }
+#library-results .results-section { margin-top: 0; }
+#library-results .results-section + .results-section { margin-top: 16px; }
+#library-results .results-head { margin: 0; padding: 6px 0 8px; }
+#library-results .song-list { padding-bottom: 4px; }
+/* Media and screens: the forms scroll with the list; the list heading (and filters) stick. */
+.media-list-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 8px 0; }
+.media-list-head h2 { margin: 0; }
+.media-list-head .media-filters { margin: 0; }
+.screens-pane .list-heading { margin: 16px 0 0; padding: 8px 0; }
+.events-pane-pad, #events-panel { padding-bottom: 4px; }
+/* Event page: the header stays; the Program (list, add bar) scrolls; from 900 px the details
+   column scrolls on its own. The save bar stays at the bottom. */
+body.list-page #event:not([hidden]) { flex: 1 1 auto; display: flex; flex-direction: column; }
+body.list-page #event > * { flex: 0 0 auto; }
+body.list-page #event > .editor-grid { flex: 1 1 auto; display: flex; flex-direction: column; gap: 12px; }
+body.list-page .setlist-pane { flex: 1 1 auto; display: flex; flex-direction: column; } /* never under its pane's minimum */
+@media (max-width: 899px) {
+  /* Phones: the details open inside the list; the empty "select an item" hint takes no room. */
+  body.list-page .detail-pane:has(.item-detail.is-empty) { display: none; }
+  body.list-page .setlist-scroll { --pane-min: 120px; }
+  body.list-page #reorder-hint { display: none; } /* a keyboard hint (Alt + arrows): no room for it on phones */
+}
+body.list-page .setlist-pane > * { flex: 0 0 auto; }
+body.list-page .setlist-pane > .setlist-scroll { flex: 1 1 0; height: 0; gap: 12px; }
+body.list-page .setlist-pane h2 { margin: 8px 0; }
+body.list-page .setlist-scroll .delete-area { margin-top: 8px; }
+body.list-page .save-bar { position: static; margin-top: 8px; }
+@media (min-width: 900px) {
+  body.list-page #event > .editor-grid { display: grid; grid-template-rows: minmax(0, 1fr); align-items: stretch; }
+  body.list-page .detail-pane { position: static; align-self: stretch; margin-top: 44px; max-height: none; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--scrollbar-thumb) transparent; }
+  body.list-page .detail-pane:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+}
+/* The song search in pick mode: the field stays, the results scroll. */
+.ss-results .results-section { margin-top: 0; }
+.ss-results .results-section + .results-section { margin-top: 12px; }
+.ss-results .results-head { margin: 0; padding: 6px 0; }
+/* The editor's "+ Cântare" dialog: the dialog holds the viewport, its results pane scrolls. */
+dialog.song-pick-dialog[open] { display: flex; flex-direction: column; height: min(90dvh, 900px); max-height: min(90dvh, 900px); overflow: hidden; }
+dialog.song-pick-dialog > * { flex: 0 0 auto; }
+dialog.song-pick-dialog > .song-pick { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.song-pick > * { flex: 0 0 auto; }
+dialog.song-pick-dialog .song-pick > .ss-results { flex: 1 1 0; height: 0; --pane-min: 120px; }
+/* Console add panel and live Program columns: bounded panes; the page (step grid) stays whole. */
+.op-search .ss-results { max-height: min(45dvh, 480px); --pane-min: 0px; }
+.op-list.list-pane, .live-list.list-pane { max-height: min(55dvh, 640px); --pane-min: 0px; gap: 6px; padding: 2px; }
+@media (min-width: 1024px) {
+  .op-setlist { position: sticky; top: 8px; display: flex; flex-direction: column; max-height: calc(100dvh - 16px - var(--shell-bottom, 0px)); }
+  .op-setlist > * { flex: 0 0 auto; }
+  .op-setlist > .op-list.list-pane { flex: 1 1 auto; max-height: none; min-height: 140px; }
+  .op-setlist .op-search .ss-results { max-height: 32dvh; }
+  .live-setlist { position: sticky; top: 8px; display: flex; flex-direction: column; max-height: calc(100dvh - 16px - var(--shell-bottom, 0px)); }
+  .live-setlist > * { flex: 0 0 auto; }
+  .live-setlist > .live-list.list-pane { flex: 1 1 auto; max-height: none; min-height: 140px; }
+}

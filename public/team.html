@@ -7,16 +7,18 @@
   <title data-i18n="team.pageTitle">{{APP_NAME}}</title>
   <link rel="stylesheet" href="/styles.css">
 </head>
-<body data-shell="more">
+<body data-shell="more" class="list-page">
   <main class="wide team-page">
     <div class="page-head">
       <h1 data-i18n="team.heading"></h1>
       <button type="button" id="add-person" data-icon="person-plus" data-i18n="team.add"></button>
     </div>
     <p class="muted" data-i18n="team.intro"></p>
-    <p id="status" class="muted" role="status" aria-live="polite" data-i18n="events.loading"></p>
     <p id="page-message" class="message" role="status" aria-live="polite"></p>
-    <ul id="team" class="team-list"></ul>
+    <div class="team-pane" data-list-pane="team.heading">
+      <p id="status" class="muted pane-state" role="status" aria-live="polite" data-i18n="events.loading"></p>
+      <ul id="team" class="team-list"></ul>
+    </div>
 
     <dialog id="add-dialog" aria-labelledby="add-heading">
       <form id="add-form" method="dialog" novalidate>
@@ -92,6 +94,7 @@
   </main>
   <script src="/i18n.js"></script>
   <script src="/page.js"></script>
+  <script src="/list-pane.js"></script>
   <script src="/shell.js"></script>
   <script src="/team.js"></script>
 </body>

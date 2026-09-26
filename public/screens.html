@@ -7,29 +7,32 @@
   <title>{{APP_NAME}}</title>
   <link rel="stylesheet" href="/styles.css">
 </head>
-<body data-shell="more">
+<body data-shell="more" class="list-page">
   <main class="wide">
     <h1 data-i18n="screens.heading"></h1>
     <p class="muted" data-i18n="screens.intro"></p>
 
-    <form id="pair-form" class="pair-form" novalidate>
-      <h2 data-i18n="screens.pairHeading"></h2>
-      <p class="hint" data-i18n="screens.pairHint"></p>
-      <div class="pair-fields">
-        <label><span data-i18n="screens.codeLabel"></span>
-          <input type="text" id="pair-code" inputmode="numeric" autocomplete="off" maxlength="7" pattern="\d{3} ?\d{3}" required class="mono code-input">
-        </label>
-        <label><span data-i18n="screens.nameLabel"></span>
-          <input type="text" id="pair-name" maxlength="60" required>
-        </label>
-      </div>
-      <button type="submit" id="pair-submit" data-icon="projector" data-i18n="screens.pairSubmit"></button>
-      <p id="pair-message" class="message" role="status" aria-live="polite"></p>
-    </form>
+    <!-- The pair form and the screens scroll here; the title stays. -->
+    <div class="screens-pane" data-list-pane="screens.heading">
+      <form id="pair-form" class="pair-form" novalidate>
+        <h2 data-i18n="screens.pairHeading"></h2>
+        <p class="hint" data-i18n="screens.pairHint"></p>
+        <div class="pair-fields">
+          <label><span data-i18n="screens.codeLabel"></span>
+            <input type="text" id="pair-code" inputmode="numeric" autocomplete="off" maxlength="7" pattern="\d{3} ?\d{3}" required class="mono code-input">
+          </label>
+          <label><span data-i18n="screens.nameLabel"></span>
+            <input type="text" id="pair-name" maxlength="60" required>
+          </label>
+        </div>
+        <button type="submit" id="pair-submit" data-icon="projector" data-i18n="screens.pairSubmit"></button>
+        <p id="pair-message" class="message" role="status" aria-live="polite"></p>
+      </form>
 
-    <h2 data-i18n="screens.listHeading"></h2>
-    <p id="status" class="muted" role="status" aria-live="polite" data-i18n="events.loading"></p>
-    <ul id="screens" class="screen-list"></ul>
+      <h2 class="pane-heading list-heading" data-i18n="screens.listHeading"></h2>
+      <p id="status" class="muted pane-state" role="status" aria-live="polite" data-i18n="events.loading"></p>
+      <ul id="screens" class="screen-list"></ul>
+    </div>
 
     <dialog id="rename-dialog" aria-labelledby="rename-heading">
       <form method="dialog" id="rename-form">
@@ -56,6 +59,7 @@
   </main>
   <script src="/i18n.js"></script>
   <script src="/page.js"></script>
+  <script src="/list-pane.js"></script>
   <script src="/shell.js"></script>
   <script src="/screens.js"></script>
 </body>

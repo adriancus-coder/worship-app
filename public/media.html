@@ -7,60 +7,65 @@
   <title>{{APP_NAME}}</title>
   <link rel="stylesheet" href="/styles.css">
 </head>
-<body data-shell="more">
+<body data-shell="more" class="list-page">
   <main class="wide">
     <h1 data-i18n="media.heading"></h1>
     <p class="muted" id="media-usage"></p>
 
-    <section class="pair-form media-form" aria-labelledby="upload-heading">
-      <h2 id="upload-heading" data-i18n="media.uploadHeading"></h2>
-      <p class="hint" id="upload-hint"></p>
-      <label class="button file-button" data-icon="upload">
-        <span data-i18n="media.chooseFile"></span>
-        <input type="file" id="upload-file" accept="video/mp4,video/webm" class="sr-only">
-      </label>
-      <div class="upload-progress" id="upload-progress" hidden>
-        <span id="upload-name"></span>
-        <progress id="upload-bar" max="100" value="0"></progress>
-        <span id="upload-percent" aria-live="polite"></span>
-      </div>
-      <p id="upload-message" class="message" role="status" aria-live="polite"></p>
-    </section>
+    <!-- The upload forms and the library scroll here; the title and usage stay. -->
+    <div class="media-pane" data-list-pane="media.listHeading">
+      <section class="pair-form media-form" aria-labelledby="upload-heading">
+        <h2 id="upload-heading" data-i18n="media.uploadHeading"></h2>
+        <p class="hint" id="upload-hint"></p>
+        <label class="button file-button" data-icon="upload">
+          <span data-i18n="media.chooseFile"></span>
+          <input type="file" id="upload-file" accept="video/mp4,video/webm" class="sr-only">
+        </label>
+        <div class="upload-progress" id="upload-progress" hidden>
+          <span id="upload-name"></span>
+          <progress id="upload-bar" max="100" value="0"></progress>
+          <span id="upload-percent" aria-live="polite"></span>
+        </div>
+        <p id="upload-message" class="message" role="status" aria-live="polite"></p>
+      </section>
 
-    <section class="pair-form media-form" aria-labelledby="bg-heading">
-      <h2 id="bg-heading" data-i18n="media.bgHeading"></h2>
-      <p class="hint" id="bg-hint"></p>
-      <label class="button secondary file-button" data-icon="upload">
-        <span data-i18n="media.bgChoose"></span>
-        <input type="file" id="bg-file" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm" class="sr-only">
-      </label>
-      <div class="upload-progress" id="bg-progress" hidden>
-        <span id="bg-name"></span>
-        <progress id="bg-bar" max="100" value="0"></progress>
-        <span id="bg-percent" aria-live="polite"></span>
-      </div>
-      <p id="bg-message" class="message" role="status" aria-live="polite"></p>
-    </section>
+      <section class="pair-form media-form" aria-labelledby="bg-heading">
+        <h2 id="bg-heading" data-i18n="media.bgHeading"></h2>
+        <p class="hint" id="bg-hint"></p>
+        <label class="button secondary file-button" data-icon="upload">
+          <span data-i18n="media.bgChoose"></span>
+          <input type="file" id="bg-file" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm" class="sr-only">
+        </label>
+        <div class="upload-progress" id="bg-progress" hidden>
+          <span id="bg-name"></span>
+          <progress id="bg-bar" max="100" value="0"></progress>
+          <span id="bg-percent" aria-live="polite"></span>
+        </div>
+        <p id="bg-message" class="message" role="status" aria-live="polite"></p>
+      </section>
 
-    <form class="pair-form media-form" id="url-form" novalidate aria-labelledby="url-heading">
-      <h2 id="url-heading" data-i18n="media.urlHeading"></h2>
-      <p class="hint" data-i18n="media.urlHint"></p>
-      <div class="pair-fields">
-        <label><span data-i18n="media.titleLabel"></span><input type="text" id="url-title" maxlength="120" required></label>
-        <label><span data-i18n="media.urlLabel"></span><input type="url" id="url-value" maxlength="500" inputmode="url" autocapitalize="off" spellcheck="false" required></label>
-      </div>
-      <button type="submit" class="secondary" data-icon="link" data-i18n="media.urlSubmit"></button>
-      <p id="url-message" class="message" role="status" aria-live="polite"></p>
-    </form>
+      <form class="pair-form media-form" id="url-form" novalidate aria-labelledby="url-heading">
+        <h2 id="url-heading" data-i18n="media.urlHeading"></h2>
+        <p class="hint" data-i18n="media.urlHint"></p>
+        <div class="pair-fields">
+          <label><span data-i18n="media.titleLabel"></span><input type="text" id="url-title" maxlength="120" required></label>
+          <label><span data-i18n="media.urlLabel"></span><input type="url" id="url-value" maxlength="500" inputmode="url" autocapitalize="off" spellcheck="false" required></label>
+        </div>
+        <button type="submit" class="secondary" data-icon="link" data-i18n="media.urlSubmit"></button>
+        <p id="url-message" class="message" role="status" aria-live="polite"></p>
+      </form>
 
-    <h2 id="list-heading" data-i18n="media.listHeading"></h2>
-    <div class="choice-group media-filters" role="group" data-i18n-aria-label="media.filterLabel">
-      <button type="button" data-filter="all" aria-pressed="true" data-i18n="media.filters.all"></button>
-      <button type="button" data-filter="video" aria-pressed="false" data-i18n="media.filters.video"></button>
-      <button type="button" data-filter="background" aria-pressed="false" data-i18n="media.filters.background"></button>
+      <div class="pane-heading media-list-head">
+        <h2 id="list-heading" data-i18n="media.listHeading"></h2>
+        <div class="choice-group media-filters" role="group" data-i18n-aria-label="media.filterLabel">
+          <button type="button" data-filter="all" aria-pressed="true" data-i18n="media.filters.all"></button>
+          <button type="button" data-filter="video" aria-pressed="false" data-i18n="media.filters.video"></button>
+          <button type="button" data-filter="background" aria-pressed="false" data-i18n="media.filters.background"></button>
+        </div>
+      </div>
+      <p id="status" class="muted pane-state" role="status" aria-live="polite" data-i18n="events.loading"></p>
+      <ul id="media-list" class="screen-list"></ul>
     </div>
-    <p id="status" class="muted" role="status" aria-live="polite" data-i18n="events.loading"></p>
-    <ul id="media-list" class="screen-list"></ul>
 
     <dialog id="rename-dialog" aria-labelledby="rename-heading">
       <form method="dialog" id="rename-form">
@@ -87,6 +92,7 @@
   </main>
   <script src="/i18n.js"></script>
   <script src="/page.js"></script>
+  <script src="/list-pane.js"></script>
   <script src="/shell.js"></script>
   <script src="/media.js"></script>
 </body>
