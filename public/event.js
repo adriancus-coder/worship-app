@@ -163,7 +163,37 @@
     const dirty = isDirty();
     publishButton.disabled = dirty;
     templateButton.disabled = dirty;
+    renderToolsMenu();
   }
+
+  // Phones (< 600 px): the secondary tools collapse into the "⋯" menu next to the actions,
+  // so the sticky header stays small. Wider: they are a row as before.
+  const narrow = window.matchMedia('(max-width: 599px)');
+  const toolsBox = $('event-tools');
+  const moreButton = $('event-more');
+  function openTools(open) {
+    toolsBox.classList.toggle('open', open);
+    moreButton.setAttribute('aria-expanded', String(open));
+    if (open) toolsBox.querySelector('button:not([hidden]):not([disabled])')?.focus();
+  }
+  function renderToolsMenu() {
+    const any = [...toolsBox.children].some((b) => !b.hidden);
+    moreButton.hidden = !narrow.matches || !any;
+    toolsBox.classList.toggle('as-menu', narrow.matches);
+    if (!narrow.matches || !any) openTools(false);
+  }
+  moreButton.addEventListener('click', () => openTools(!toolsBox.classList.contains('open')));
+  toolsBox.addEventListener('click', (event) => { if (narrow.matches && event.target.closest('button')) openTools(false); });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && toolsBox.classList.contains('open')) {
+      openTools(false);
+      moreButton.focus();
+    }
+  });
+  document.addEventListener('pointerdown', (event) => {
+    if (toolsBox.classList.contains('open') && !toolsBox.contains(event.target) && !moreButton.contains(event.target)) openTools(false);
+  });
+  narrow.addEventListener('change', () => { if (state.event) renderToolsMenu(); });
 
   // The event's actions: one row, exactly one primary, chosen by the moment.
   //   event roles  live -> "Intră live"; published today / tomorrow -> "Pornește live";
