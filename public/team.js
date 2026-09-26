@@ -10,7 +10,7 @@
   const { api, el, setTitle, formatDate } = window.PAGE;
   const { t } = window.I18N;
   const $ = (id) => document.getElementById(id);
-  const state = { users: [], baseUrl: null, meId: null, editing: null, confirm: null, result: null };
+  const state = { users: [], baseUrl: null, emailEnabled: false, meId: null, editing: null, confirm: null, result: null };
 
   const baseUrl = () => state.baseUrl || window.location.origin;
 
@@ -51,6 +51,12 @@
             el('span', { class: 'muted', text: lastLogin(user.lastLoginAt) }))),
         owner ? null : el('div', { class: 'team-actions' },
           el('button', { type: 'button', class: 'secondary', 'data-icon': 'edit', text: t('team.edit'), 'aria-label': t('team.editFor', { name: user.name }), onclick: () => openEdit(user) }),
+          // By email (only while the server can send): the invitation again while the person
+          // has never signed in, a reset link any time. The temporary-password card stays.
+          state.emailEnabled && user.active && !user.lastLoginAt
+            ? el('button', { type: 'button', class: 'secondary', 'data-icon': 'mail', text: t('team.resendInvite'), 'aria-label': t('team.resendInviteFor', { name: user.name }), onclick: () => sendLink('invite', user) }) : null,
+          state.emailEnabled && user.active
+            ? el('button', { type: 'button', class: 'secondary', 'data-icon': 'mail', text: t('team.sendReset'), 'aria-label': t('team.sendResetFor', { name: user.name }), onclick: () => sendLink('reset-link', user) }) : null,
           el('button', { type: 'button', class: 'secondary', 'data-icon': 'key', text: t('team.reset'), 'aria-label': t('team.resetFor', { name: user.name }), onclick: () => openConfirm('reset', user) }),
           user.active
             ? el('button', { type: 'button', class: 'secondary danger-text', 'data-icon': 'close', text: t('team.deactivate'), 'aria-label': t('team.deactivateFor', { name: user.name }), onclick: () => openConfirm('deactivate', user) })
@@ -67,8 +73,24 @@
     }
     state.users = res.body.users;
     state.baseUrl = res.body.baseUrl;
+    state.emailEnabled = Boolean(res.body.emailEnabled);
     $('status').hidden = true;
     render();
+  }
+
+  // POST /api/team/:id/invite | reset-link -> a page message with the address.
+  async function sendLink(path, user, messageId = 'page-message') {
+    say(messageId, '', 'success');
+    try {
+      const res = await api(`/api/team/${user.id}/${path}`, { method: 'POST' });
+      if (!res.ok) return say(messageId, res.body.error || t('common.networkError'), 'error');
+      replaceUser(res.body.user);
+      say(messageId, t(path === 'invite' ? 'team.invited' : 'team.resetLinkSent', { email: res.body.sentTo }), 'success');
+      return true;
+    } catch (err) {
+      say(messageId, t('common.networkError'), 'error');
+    }
+    return false;
   }
 
   function replaceUser(user) {
@@ -82,27 +104,37 @@
     button.addEventListener('click', () => button.closest('dialog').close());
   }
 
+  // With email: "Trimite invitația pe email" is the primary action and the temporary-password
+  // card the secondary one; without: the card alone.
   $('add-person').addEventListener('click', () => {
     $('add-form').reset();
     say('add-message', '', 'error');
+    $('add-submit-email').hidden = !state.emailEnabled;
+    $('add-email-hint').hidden = !state.emailEnabled;
+    $('add-submit').className = state.emailEnabled ? 'secondary' : '';
     $('add-dialog').showModal();
     $('add-name').focus();
   });
 
   $('add-form').addEventListener('submit', async (event) => {
     event.preventDefault();
+    const byEmail = state.emailEnabled && event.submitter && event.submitter.id === 'add-submit-email';
     const role = new FormData($('add-form')).get('add-role');
     $('add-submit').disabled = true;
+    $('add-submit-email').disabled = true;
     try {
       const res = await api('/api/team', { method: 'POST', body: { name: $('add-name').value, email: $('add-email').value, role } });
       if (!res.ok) return say('add-message', res.body.error || t('common.networkError'), 'error');
       await load();
       $('add-dialog').close();
+      if (byEmail && await sendLink('invite', res.body.user)) return;
+      // No email (or it failed: the page message says so): the card with the temporary password.
       showResult('created', res.body.user, res.body.temporaryPassword);
     } catch (err) {
       say('add-message', t('common.networkError'), 'error');
     } finally {
       $('add-submit').disabled = false;
+      $('add-submit-email').disabled = false;
     }
   });
 

@@ -33,6 +33,11 @@ function createPagesRouter({ db, auth, sendPage }) {
     sendPage(req, res, 'screen');
   });
 
+  // The email links: no session needed (the token decides; the page signs the person in).
+  router.get(['/invite/:token', '/reset/:token'], noStore, (req, res) => {
+    sendPage(req, res, 'invite');
+  });
+
   // Help for an internet outage during a service: no session needed (nothing private).
   router.get('/help/emergency', (req, res) => {
     sendPage(req, res, 'help-emergency');

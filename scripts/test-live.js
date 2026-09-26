@@ -1329,6 +1329,28 @@ async function main() {
     assert.strictEqual((await api('POST', '/api/settings/email/test', leader)).status, 403, 'owner only');
   });
 
+  await step('email links while email is disabled: the login flag is off, invite / reset-link / forgot answer 503 emailDisabled, a garbage token is 404', async () => {
+    assert.deepStrictEqual((await api('GET', '/api/auth/features')).body, { emailEnabled: false });
+    const users = (await api('GET', '/api/team', owner)).body;
+    assert.strictEqual(users.emailEnabled, false);
+    const someone = (await api('POST', '/api/team', owner, { name: 'Neinvitat', email: 'neinvitat@x.ro', role: 'member' })).body.user;
+    for (const path of ['invite', 'reset-link']) {
+      const r = await api('POST', `/api/team/${someone.id}/${path}`, owner);
+      assert.deepStrictEqual([r.status, r.body.code], [503, 'emailDisabled'], path);
+      assert.strictEqual((await api('POST', `/api/team/${someone.id}/${path}`, leader)).status, 403, 'owner only');
+    }
+    const forgot = await api('POST', '/api/auth/forgot', null, { email: 'ana@x.ro' });
+    assert.deepStrictEqual([forgot.status, forgot.body.code], [503, 'emailDisabled']);
+    const zeros = '0'.repeat(64);
+    for (const [kind, token] of [['invite', 'abc'], ['invite', zeros], ['reset', zeros]]) {
+      const r = await api('GET', `/api/${kind}/${token}`);
+      assert.deepStrictEqual([r.status, r.body.code], [404, 'tokenInvalid'], `${kind} ${token}`);
+      assert.strictEqual((await api('POST', `/api/${kind}/${token}`, null, { name: 'X', password: 'parola-lunga-9' })).status, 404);
+    }
+    const page = await fetch(`${base()}/invite/${zeros}`);
+    assert.ok(page.ok && /invite\.js/.test(await page.text()), 'the public page is served without a session');
+  });
+
   await step('view as: an owner sees the app as member / operator / leader (every guard follows), back restores all; a leader cannot', async () => {
     const viewAs = (cookie, role) => api('PUT', '/api/me/view-as', cookie, { role });
     const page = (url, cookie) => fetch(base() + url, { headers: { Cookie: cookie }, redirect: 'manual' }).then((r) => r.status);

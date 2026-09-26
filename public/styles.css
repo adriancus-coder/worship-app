@@ -1561,6 +1561,10 @@ button.op-step:disabled { opacity: 1; cursor: default; }
 .role-option { flex-direction: row; align-items: flex-start; gap: 12px; padding: 8px 0; cursor: pointer; }
 .role-option input { width: 22px; height: 22px; margin-top: 2px; flex: none; accent-color: var(--accent-fill); }
 .role-option > span { display: flex; flex-direction: column; gap: 2px; }
+/* "Ai uitat parola?" on /login: a text link, still a 44 px target. */
+.link-button { min-width: 0; padding: 8px 4px; font-weight: 600; color: var(--accent-text); background: none; text-decoration: underline; }
+.forgot-row { margin: 4px 0 0; text-align: center; }
+
 .result-dialog { width: min(560px, calc(100vw - 24px)); }
 .result-warning { padding: 8px 12px; border: 2px solid var(--accent-fill); border-radius: var(--radius); color: var(--accent-text); font-weight: 600; }
 .result-card { margin: 12px 0; display: grid; grid-template-columns: 1fr; gap: 2px 12px; align-items: baseline; }

@@ -32,7 +32,9 @@
           <label class="role-option"><input type="radio" name="add-role" value="member" checked><span><strong data-i18n="team.roles.member"></strong><span class="hint" data-i18n="team.roleHelp.member"></span></span></label>
         </fieldset>
         <p id="add-message" class="message error" role="alert"></p>
+        <p id="add-email-hint" class="hint" hidden data-i18n="team.sendInviteHint"></p>
         <div class="form-actions">
+          <button type="submit" id="add-submit-email" value="email" hidden data-icon="mail" data-i18n="team.sendInvite"></button>
           <button type="submit" id="add-submit" value="add" data-icon="person-plus" data-i18n="team.create"></button>
           <button type="button" class="secondary" data-close data-i18n="team.cancel"></button>
         </div>

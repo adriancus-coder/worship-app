@@ -14,7 +14,7 @@
   const churchId = Number(window.location.pathname.split('/')[2]);
   const BACKUP_OLD_MS = 30 * 24 * 60 * 60 * 1000;
   const MB = 1024 * 1024;
-  const state = { admin: null, defaultQuota: 0, baseUrl: null, users: null, screens: null, editing: null, confirm: null, result: null, tab: 'overview' };
+  const state = { admin: null, defaultQuota: 0, baseUrl: null, users: null, emailEnabled: false, screens: null, editing: null, confirm: null, result: null, tab: 'overview' };
 
   const baseUrl = () => state.baseUrl || window.location.origin;
   const path = (suffix = '') => `/api/platform/admins/${churchId}${suffix}`;
@@ -133,6 +133,10 @@
         // The church's owner is managed through the church (the header actions), never here.
         owner || own ? null : el('div', { class: 'team-actions' },
           el('button', { type: 'button', class: 'secondary', 'data-icon': 'edit', text: t('team.edit'), 'aria-label': t('team.editFor', { name: user.name }), onclick: () => openEdit(user) }),
+          state.emailEnabled && user.active && !user.lastLoginAt
+            ? el('button', { type: 'button', class: 'secondary', 'data-icon': 'mail', text: t('team.resendInvite'), 'aria-label': t('team.resendInviteFor', { name: user.name }), onclick: () => sendLink('invite', user) }) : null,
+          state.emailEnabled && user.active
+            ? el('button', { type: 'button', class: 'secondary', 'data-icon': 'mail', text: t('team.sendReset'), 'aria-label': t('team.sendResetFor', { name: user.name }), onclick: () => sendLink('reset-link', user) }) : null,
           el('button', { type: 'button', class: 'secondary', 'data-icon': 'key', text: t('team.reset'), 'aria-label': t('team.resetFor', { name: user.name }), onclick: () => openConfirm('userReset', user) }),
           user.active
             ? el('button', { type: 'button', class: 'secondary danger-text', 'data-icon': 'close', text: t('team.deactivate'), 'aria-label': t('team.deactivateFor', { name: user.name }), onclick: () => openConfirm('userDeactivate', user) })
@@ -148,7 +152,23 @@
       return;
     }
     state.users = res.body.users;
+    state.emailEnabled = Boolean(res.body.emailEnabled);
     renderTeam();
+  }
+
+  // The invitation again / a reset link by email (routes/platform.js) -> a page message.
+  async function sendLink(suffix, user) {
+    say('page-message', '', 'success');
+    try {
+      const res = await api(path(`/users/${user.id}/${suffix}`), { method: 'POST' });
+      if (!res.ok) return say('page-message', res.body.error || t('common.networkError'), 'error');
+      replaceUser(res.body.user);
+      say('page-message', t(suffix === 'invite' ? 'team.invited' : 'team.resetLinkSent', { email: res.body.sentTo }), 'success');
+      return true;
+    } catch (err) {
+      say('page-message', t('common.networkError'), 'error');
+    }
+    return false;
   }
 
   function replaceUser(user) {
@@ -324,24 +344,31 @@
   $('add-person').addEventListener('click', () => {
     $('add-form').reset();
     say('add-message', '', 'error');
+    $('add-submit-email').hidden = !state.emailEnabled;
+    $('add-email-hint').hidden = !state.emailEnabled;
+    $('add-submit').className = state.emailEnabled ? 'secondary' : '';
     $('add-dialog').showModal();
     $('add-name').focus();
   });
 
   $('add-form').addEventListener('submit', async (event) => {
     event.preventDefault();
+    const byEmail = state.emailEnabled && event.submitter && event.submitter.id === 'add-submit-email';
     const role = new FormData($('add-form')).get('add-role');
     $('add-submit').disabled = true;
+    $('add-submit-email').disabled = true;
     try {
       const res = await api(path('/users'), { method: 'POST', body: { name: $('add-name').value, email: $('add-email').value, role } });
       if (!res.ok) return say('add-message', res.body.error || t('common.networkError'), 'error');
       await loadTeam();
       $('add-dialog').close();
+      if (byEmail && await sendLink('invite', res.body.user)) return;
       showResult('team.createdHeading', { name: res.body.user.name }, res.body.user.email, res.body.temporaryPassword);
     } catch (err) {
       say('add-message', t('common.networkError'), 'error');
     } finally {
       $('add-submit').disabled = false;
+      $('add-submit-email').disabled = false;
     }
   });
 

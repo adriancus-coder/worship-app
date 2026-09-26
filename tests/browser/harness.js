@@ -30,7 +30,8 @@ const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // --- the server --------------------------------------------------------------------
 
-// options.preload: modules loaded into the server first (e.g. fixtures/mock-resurse.js).
+// options.preload: modules loaded into the server first (e.g. fixtures/mock-resurse.js);
+// options.env: extra environment for the server (e.g. RESEND_API_KEY with fixtures/mock-resend.js).
 async function startApp(options = {}) {
   const port = await freePort();
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'wa-browser-'));
@@ -44,6 +45,7 @@ async function startApp(options = {}) {
       env: {
         ...process.env, DATA_DIR: dataDir, PORT: String(port), SETUP_TOKEN: 'browser-test', NODE_ENV: 'test', LOG_LEVEL: 'warn', DISK_MIN_FREE_PCT: '1',
         NODE_OPTIONS: (options.preload || []).map((file) => `--require ${JSON.stringify(file)}`).join(' '),
+        ...(options.env || {}),
       },
       stdio: ['ignore', 'pipe', 'pipe'],
     });

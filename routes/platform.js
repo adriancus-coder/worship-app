@@ -7,6 +7,7 @@ const { temporaryPassword, validateName, validateEmail, validateRole, createTeam
 const { createScreenStore } = require('../lib/screens');
 const { validateAdminName, validateQuota, createPlatformStore, createDeletionSweep } = require('../lib/platform');
 const { createRequestLimiter } = require('../lib/rate-limit');
+const { emailErrorResponse } = require('./invites');
 
 const CREATE_LIMIT = 10; // new churches per hour
 const HOUR_MS = 60 * 60 * 1000;
@@ -17,8 +18,9 @@ const HOUR_MS = 60 * 60 * 1000;
 // deletion in two steps (schedule 7 days ahead on a deactivated church, typing its name;
 // cancel while pending; a daily sweep purges, final backup first). Every action is logged.
 // Everyone else gets 403.
-function createPlatformRouter({ db, auth, config, logger, live, screensHub, storage }) {
+function createPlatformRouter({ db, auth, config, logger, live, screensHub, storage, email, invites }) {
   const router = express.Router();
+  const baseUrl = (req) => config.PUBLIC_BASE_URL || `${req.protocol}://${req.get('host')}`;
   const store = createPlatformStore(db, { dataDir: config.DATA_DIR, defaultMediaMaxBytes: config.MEDIA_MAX_ADMIN_BYTES });
   const createLimiter = createRequestLimiter({ maxRequests: CREATE_LIMIT, windowMs: HOUR_MS });
   const sweep = createDeletionSweep({ db, dataDir: config.DATA_DIR, config, logger, platformAdminId: () => auth.platformAdminId() });
@@ -157,8 +159,38 @@ function createPlatformRouter({ db, auth, config, logger, live, screensHub, stor
   router.get('/api/platform/admins/:id/users', (req, res) => {
     const admin = target(req, res);
     if (!admin) return;
-    res.json({ users: team.list(admin.id), baseUrl: config.PUBLIC_BASE_URL });
+    res.json({ users: team.list(admin.id), baseUrl: config.PUBLIC_BASE_URL, emailEnabled: email.enabled });
   });
+
+  // The same email links as on /team, for a church's people (never its owner).
+  router.post('/api/platform/admins/:id/users/:userId/invite', asyncRoute(async (req, res) => {
+    const admin = target(req, res);
+    if (!admin) return;
+    const member = targetUser(req, res, admin);
+    if (!member) return;
+    if (member.lastLoginAt) return res.status(409).json({ code: 'alreadySignedIn', error: req.t('errors.alreadySignedIn') });
+    try {
+      await invites.invite({ adminId: admin.id, user: member, adminName: admin.name, invitedBy: req.user.name, baseUrl: baseUrl(req), lang: req.lang });
+    } catch (err) {
+      return emailErrorResponse(req, res, err);
+    }
+    auditUser(req, admin, 'sent an invitation to', member.id);
+    res.json({ ok: true, user: team.get(admin.id, member.id), sentTo: member.email });
+  }));
+
+  router.post('/api/platform/admins/:id/users/:userId/reset-link', asyncRoute(async (req, res) => {
+    const admin = target(req, res);
+    if (!admin) return;
+    const member = targetUser(req, res, admin);
+    if (!member) return;
+    try {
+      await invites.reset({ adminId: admin.id, user: member, adminName: admin.name, baseUrl: baseUrl(req), lang: req.lang });
+    } catch (err) {
+      return emailErrorResponse(req, res, err);
+    }
+    auditUser(req, admin, 'sent a reset link to', member.id);
+    res.json({ ok: true, user: team.get(admin.id, member.id), sentTo: member.email });
+  }));
 
   const auditUser = (req, admin, what, userId) => logger.info(`Platform: ${what} user #${userId} of church #${admin.id} by user #${req.user.id} (admin #${req.adminId})`);
 

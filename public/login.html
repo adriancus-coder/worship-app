@@ -34,6 +34,23 @@
 
       <p class="message" id="message" role="alert" aria-live="polite"></p>
       <button type="submit" data-icon="login" data-i18n="login.submit"></button>
+      <p class="forgot-row" id="forgot-row" hidden>
+        <button type="button" class="link-button" id="forgot-link" data-i18n="login.forgot"></button>
+      </p>
+    </form>
+
+    <form id="forgot-form" novalidate hidden aria-labelledby="forgot-heading">
+      <h2 id="forgot-heading" data-i18n="login.forgotHeading"></h2>
+      <p class="muted" data-i18n="login.forgotIntro"></p>
+      <label>
+        <span data-i18n="login.emailLabel"></span>
+        <input type="email" name="email" id="forgot-email" autocomplete="username" inputmode="email" required>
+      </label>
+      <p class="message" id="forgot-message" role="status" aria-live="polite"></p>
+      <div class="form-actions">
+        <button type="submit" id="forgot-submit" data-icon="mail" data-i18n="login.forgotSubmit"></button>
+        <button type="button" class="secondary" id="forgot-back" data-icon="login" data-i18n="login.backToLogin"></button>
+      </div>
     </form>
   </main>
   <script src="/i18n.js"></script>

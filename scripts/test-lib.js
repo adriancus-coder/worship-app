@@ -1892,6 +1892,7 @@ testAsync('platform deletion: refused while active, the exact name, pending -> c
     db.prepare("INSERT INTO media (admin_id, kind, title, created_at) VALUES (?, 'url', 'M', 0)").run(a);
     db.prepare("INSERT INTO screens (admin_id, name, token_hash, created_at) VALUES (?, 'Sc', ?, 0)").run(a, `t${a}`);
     db.prepare("INSERT INTO screen_pairings (id, code, admin_id, created_at, expires_at) VALUES (?, ?, ?, 0, 9999999999999)").run(`p${a}`, `10000${a}`, a);
+    db.prepare("INSERT INTO user_tokens (user_id, admin_id, kind, token_hash, created_at, expires_at) VALUES (?, ?, 'invite', ?, 0, 9999999999999)").run(userId, a, `h${a}`);
     fs.mkdirSync(path.join(dataDir, 'uploads', `admin-${a}`, 'media'), { recursive: true });
     fs.writeFileSync(path.join(dataDir, 'uploads', `admin-${a}`, 'media', 'f.bin'), Buffer.alloc(64, 1));
   };
@@ -1996,3 +1997,65 @@ if (failures.length > 0) {
 }
 console.log(`test-lib: ${passed} tests passed`);
 }
+
+testAsync('invite / reset links: 32 random bytes, only the hash stored, 7 days / 1 hour, single use, a new one spends the old, the service mails the link', async () => {
+  const Database = require('better-sqlite3');
+  const { runMigrations } = require('../lib/db');
+  const { createTokenStore, createInviteService, TTL_MS, TOKEN_RE, hashToken } = require('../lib/invites');
+  const { createEmail } = require('../lib/email');
+  const mem = new Database(':memory:');
+  mem.pragma('foreign_keys = ON');
+  runMigrations(mem);
+  mem.prepare("INSERT INTO admins (id, name, created_at) VALUES (1, 'Maranata', 0), (2, 'B', 0)").run();
+  mem.prepare("INSERT INTO users (id, admin_id, email, name, password_hash, role, created_at) VALUES (1, 1, 'ion@x.ro', 'Ion', 'x', 'member', 0), (2, 2, 'b@x.ro', 'B', 'x', 'owner', 0)").run();
+  const tokens = createTokenStore(mem);
+  const T0 = 1_700_000_000_000;
+  const raw = tokens.create(1, 1, 'invite', T0);
+  assert.ok(TOKEN_RE.test(raw), 'raw token: 64 hex chars');
+  const stored = mem.prepare('SELECT token_hash, expires_at, used_at FROM user_tokens').all();
+  assert.deepStrictEqual(stored, [{ token_hash: hashToken(raw), expires_at: T0 + TTL_MS.invite, used_at: null }], 'the hash, never the token');
+  const found = tokens.find('invite', raw, T0 + 1000);
+  assert.deepStrictEqual([found.state, found.user_id, found.admin_id, found.name, found.email, found.admin_name], ['valid', 1, 1, 'Ion', 'ion@x.ro', 'Maranata']);
+  assert.strictEqual(tokens.find('reset', raw, T0), null, 'another kind: unknown');
+  assert.strictEqual(tokens.find('invite', 'zz', T0), null);
+  assert.strictEqual(tokens.find('invite', raw.toUpperCase(), T0), null, 'case matters (the regex)');
+  assert.strictEqual(tokens.find('invite', raw, T0 + TTL_MS.invite).state, 'expired', 'exactly 7 days later: expired');
+  assert.strictEqual(tokens.consume('invite', raw, T0 + TTL_MS.invite), null, 'an expired one cannot be spent');
+  const spent = tokens.consume('invite', raw, T0 + 5000);
+  assert.strictEqual(spent.user_id, 1);
+  assert.strictEqual(tokens.consume('invite', raw, T0 + 6000), null, 'single use');
+  assert.strictEqual(tokens.find('invite', raw, T0 + 6000).state, 'used');
+  // a new token of the kind spends the older unused one; the other kind is untouched
+  const r1 = tokens.create(1, 1, 'reset', T0);
+  const i2 = tokens.create(1, 1, 'invite', T0);
+  const r2 = tokens.create(1, 1, 'reset', T0);
+  assert.strictEqual(tokens.find('reset', r1, T0 + 1).state, 'used', 'the older reset was spent');
+  assert.deepStrictEqual([tokens.find('reset', r2, T0 + 1).state, tokens.find('invite', i2, T0 + 1).state], ['valid', 'valid']);
+  assert.strictEqual(tokens.find('reset', r2, T0 + TTL_MS.reset).state, 'expired', 'a reset lasts one hour');
+  // a deactivated user or church: unknown
+  mem.prepare('UPDATE users SET active = 0 WHERE id = 1').run();
+  assert.strictEqual(tokens.find('invite', i2, T0 + 1), null);
+  mem.prepare('UPDATE users SET active = 1 WHERE id = 1').run();
+  mem.prepare('UPDATE admins SET active = 0 WHERE id = 1').run();
+  assert.strictEqual(tokens.find('invite', i2, T0 + 1), null);
+  mem.prepare('UPDATE admins SET active = 1 WHERE id = 1').run();
+  // the service: the email carries the link; the log never does
+  const sent = [];
+  const logs = [];
+  const logger = { info: (m) => logs.push(m), warn: (m) => logs.push(m) };
+  const templates = createEmail({ config: { RESEND_API_KEY: '', EMAIL_FROM: '' }, logger }).templates;
+  const email = { enabled: true, templates, send: async (adminId, message) => { sent.push({ adminId, ...message }); return 'em_1'; } };
+  const service = createInviteService({ db: mem, config: { APP_NAME: 'Worship' }, logger, email });
+  await service.invite({ adminId: 1, user: { id: 1, email: 'ion@x.ro', locale: 'en' }, adminName: 'Maranata', invitedBy: 'Ana', baseUrl: 'https://w.example', lang: 'ro' });
+  const m = /https:\/\/w\.example\/invite\/([0-9a-f]{64})/.exec(sent[0].text);
+  assert.ok(m, 'the link in the text');
+  assert.deepStrictEqual([sent[0].adminId, sent[0].to, sent[0].kind, sent[0].userId, /Invitation/.test(sent[0].subject), /Ana added you/.test(sent[0].text), sent[0].html.includes(m[0])], [1, 'ion@x.ro', 'invite', 1, true, true, true], 'the user\'s locale wins over the request language');
+  assert.strictEqual(tokens.find('invite', m[1]).state, 'valid');
+  assert.strictEqual(tokens.find('invite', i2, T0 + 1).state, 'used', 'the earlier invitation was spent');
+  await service.reset({ adminId: 1, user: { id: 1, email: 'ion@x.ro', locale: null }, adminName: 'Maranata', baseUrl: 'https://w.example', lang: 'ro' });
+  const r = /https:\/\/w\.example\/reset\/([0-9a-f]{64})/.exec(sent[1].text);
+  assert.ok(r && /Resetarea parolei/.test(sent[1].subject) && /o oră/.test(sent[1].text), 'a reset link, RO from the request');
+  assert.strictEqual(tokens.find('reset', r[1]).state, 'valid');
+  assert.ok(!logs.some((line) => line.includes(m[1]) || line.includes(r[1])), 'no token in the log');
+  mem.close();
+});

@@ -34,6 +34,8 @@ const { createLiveHub } = require('./socket/live');
 const { createScreensHub } = require('./socket/screens');
 const { createStorageGuard } = require('./lib/storage');
 const { createEmail } = require('./lib/email');
+const { createInviteService } = require('./lib/invites');
+const { createInvitesRouter } = require('./routes/invites');
 const { createShutdown } = require('./lib/shutdown');
 
 const db = openDb(config.DATA_DIR);
@@ -54,6 +56,7 @@ const auth = createAuth({ db, config });
 // Outgoing email (Resend); disabled without RESEND_API_KEY + EMAIL_FROM (lib/email.js).
 const email = createEmail({ config, logger });
 logger.info(email.enabled ? `Email: enabled, from ${config.EMAIL_FROM}` : 'Email: disabled (RESEND_API_KEY / EMAIL_FROM not set)');
+const invites = createInviteService({ db, config, logger, email }); // invitation / reset links
 const SESSION_CLEANUP_MS = 60 * 60 * 1000;
 function cleanupSessions() {
   const removed = auth.deleteExpiredSessions();
@@ -106,8 +109,9 @@ app.use(createSongsRouter({ db, auth, config, logger, live }));
 app.use(createResurseRouter({ db, auth, logger }));
 app.use(createEventsRouter({ db, auth, logger, live }));
 app.use(createHomeRouter({ db, auth }));
-app.use(createTeamRouter({ db, auth, config, logger, live }));
-app.use(createPlatformRouter({ db, auth, config, logger, live, screensHub, storage }));
+app.use(createTeamRouter({ db, auth, config, logger, live, email, invites }));
+app.use(createPlatformRouter({ db, auth, config, logger, live, screensHub, storage, email, invites }));
+app.use(createInvitesRouter({ db, auth, config, logger, live, email, invites }));
 app.use(createScreensRouter({ db, auth, logger, screensHub }));
 app.use(createSettingsRouter({ db, auth, config, logger, screensHub, live, storage, email }));
 app.use(createMediaRouter({ db, auth, config, logger, live, storage }));

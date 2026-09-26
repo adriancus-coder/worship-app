@@ -30,7 +30,73 @@
 
   document.addEventListener('i18n:change', () => {
     if (!message.dataset.i18n) clearMessage();
+    if (!forgotMessage.dataset.i18n) forgotMessage.textContent = '';
   });
+
+  // --- "Ai uitat parola?" (only when the server can send email) ---------------------
+
+  const forgotForm = document.getElementById('forgot-form');
+  const forgotMessage = document.getElementById('forgot-message');
+  const forgotButton = document.getElementById('forgot-submit');
+
+  function showForgot(on) {
+    forgotForm.hidden = !on;
+    form.hidden = on;
+    delete forgotMessage.dataset.i18n;
+    forgotMessage.textContent = '';
+    forgotMessage.className = 'message';
+    forgotButton.hidden = false;
+    if (on) {
+      document.getElementById('forgot-email').value = form.elements.email.value.trim();
+      document.getElementById('forgot-email').focus();
+    } else {
+      form.elements.email.focus();
+    }
+  }
+
+  document.getElementById('forgot-link').addEventListener('click', () => showForgot(true));
+  document.getElementById('forgot-back').addEventListener('click', () => showForgot(false));
+
+  forgotForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const email = document.getElementById('forgot-email').value.trim();
+    forgotMessage.className = 'message error';
+    if (!email) {
+      forgotMessage.dataset.i18n = 'login.forgotMissing';
+      forgotMessage.textContent = t('login.forgotMissing');
+      return;
+    }
+    forgotButton.disabled = true;
+    try {
+      const res = await fetch('/api/auth/forgot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (res.ok) {
+        // The same answer whether the account exists or not.
+        forgotMessage.className = 'message success';
+        forgotMessage.dataset.i18n = 'login.forgotDone';
+        forgotMessage.textContent = t('login.forgotDone');
+        forgotButton.hidden = true;
+        return;
+      }
+      delete forgotMessage.dataset.i18n;
+      forgotMessage.textContent = body.error || t('common.networkError');
+    } catch (err) {
+      forgotMessage.dataset.i18n = 'common.networkError';
+      forgotMessage.textContent = t('common.networkError');
+    } finally {
+      forgotButton.disabled = false;
+    }
+  });
+
+  fetch('/api/auth/features', { cache: 'no-store' }).then((res) => (res.ok ? res.json() : {})).then((features) => {
+    if (!features.emailEnabled) return;
+    document.getElementById('forgot-row').hidden = false;
+    if (new URLSearchParams(window.location.search).get('forgot') === '1') showForgot(true);
+  }).catch(() => {});
 
   form.addEventListener('submit', async (event) => {
     event.preventDefault();

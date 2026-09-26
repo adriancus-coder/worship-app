@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="{{LANG}}" data-app-name="{{APP_NAME}}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#141318">
+  <title data-i18n="invite.pageTitle">{{APP_NAME}}</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="lang-switch" role="group" aria-label="Limbă / Language">
+      <button type="button" data-lang="ro" lang="ro" aria-pressed="false">RO</button>
+      <button type="button" data-lang="en" lang="en" aria-pressed="false">EN</button>
+    </div>
+  </header>
+  <main>
+    <h1 id="heading"></h1>
+    <p id="intro" class="muted"></p>
+    <p id="status" class="muted" role="status" aria-live="polite" data-i18n="app.loading"></p>
+
+    <form id="token-form" novalidate hidden>
+      <input type="email" name="username" id="username" autocomplete="username" hidden>
+      <label id="name-field">
+        <span data-i18n="invite.nameLabel"></span>
+        <input type="text" id="name" maxlength="100" autocomplete="name" required>
+      </label>
+      <label>
+        <span data-i18n="invite.passwordLabel"></span>
+        <input type="password" id="password" autocomplete="new-password" minlength="10" required aria-describedby="password-hint">
+      </label>
+      <p class="hint" id="password-hint" data-i18n="invite.hint"></p>
+      <label>
+        <span data-i18n="invite.confirmLabel"></span>
+        <input type="password" id="confirm" autocomplete="new-password" required>
+      </label>
+      <p class="message" id="message" role="alert" aria-live="polite"></p>
+      <button type="submit" id="submit" data-icon="key"></button>
+    </form>
+
+    <div id="problem" hidden>
+      <p class="message error" id="problem-text" role="alert"></p>
+      <p class="muted" id="problem-hint"></p>
+      <div class="form-actions">
+        <a class="button secondary" id="new-link" href="/login?forgot=1" hidden data-icon="mail" data-i18n="invite.requestNew"></a>
+        <a class="button secondary" id="to-login" href="/login" data-icon="login" data-i18n="invite.toLogin"></a>
+      </div>
+    </div>
+  </main>
+  <script src="/i18n.js"></script>
+  <script src="/invite.js"></script>
+</body>
+</html>

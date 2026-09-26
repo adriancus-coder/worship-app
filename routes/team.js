@@ -4,13 +4,15 @@ const express = require('express');
 const asyncRoute = require('../lib/async-route');
 const { hashPassword, requireRole } = require('../lib/auth');
 const { temporaryPassword, validateName, validateEmail, validateRole, createTeamStore } = require('../lib/team');
+const { emailErrorResponse } = require('./invites');
 
 // The owner manages the admin's team: accounts with temporary passwords (shown once, never
 // logged), role and name changes, deactivation, password resets. Owner only; another admin's
 // users do not exist here (404). The owner's own row cannot be changed here.
-function createTeamRouter({ db, auth, config, logger, live }) {
+function createTeamRouter({ db, auth, config, logger, live, email, invites }) {
   const router = express.Router();
   const team = createTeamStore(db);
+  const baseUrl = (req) => config.PUBLIC_BASE_URL || `${req.protocol}://${req.get('host')}`;
 
   router.use('/api/team', auth.requireUser, requireRole('owner'), (req, res, next) => {
     res.set('Cache-Control', 'no-store');
@@ -36,8 +38,37 @@ function createTeamRouter({ db, auth, config, logger, live }) {
 
   router.get('/api/team', (req, res) => {
     // baseUrl: the address in the welcome message (null: the page uses its own origin).
-    res.json({ users: team.list(req.adminId), baseUrl: config.PUBLIC_BASE_URL });
+    res.json({ users: team.list(req.adminId), baseUrl: config.PUBLIC_BASE_URL, emailEnabled: email.enabled });
   });
+
+  // "Trimite / Retrimite invitația": a fresh invitation link by email, while the person has
+  // never signed in (409 afterwards). 503 while email is disabled.
+  router.post('/api/team/:id/invite', asyncRoute(async (req, res) => {
+    const member = target(req, res);
+    if (!member) return;
+    if (member.lastLoginAt) return res.status(409).json({ code: 'alreadySignedIn', error: req.t('errors.alreadySignedIn') });
+    try {
+      await invites.invite({ adminId: req.adminId, user: member, adminName: req.admin.name, invitedBy: req.user.name, baseUrl: baseUrl(req), lang: req.lang });
+    } catch (err) {
+      return emailErrorResponse(req, res, err);
+    }
+    audit(req, 'sent an invitation to', member.id);
+    res.json({ ok: true, user: team.get(req.adminId, member.id), sentTo: member.email });
+  }));
+
+  // "Trimite link de resetare": a reset link by email (the temporary-password card stays as
+  // the other way).
+  router.post('/api/team/:id/reset-link', asyncRoute(async (req, res) => {
+    const member = target(req, res);
+    if (!member) return;
+    try {
+      await invites.reset({ adminId: req.adminId, user: member, adminName: req.admin.name, baseUrl: baseUrl(req), lang: req.lang });
+    } catch (err) {
+      return emailErrorResponse(req, res, err);
+    }
+    audit(req, 'sent a reset link to', member.id);
+    res.json({ ok: true, user: team.get(req.adminId, member.id), sentTo: member.email });
+  }));
 
   router.post('/api/team', asyncRoute(async (req, res) => {
     const body = req.body || {};
