@@ -1,6 +1,7 @@
 'use strict';
 
 const express = require('express');
+const asyncRoute = require('../lib/async-route');
 const { isValidTime } = require('../lib/dates');
 const { requireRole } = require('../lib/auth');
 const { MAX_BYTES, sniff, createLogoStore } = require('../lib/logo');
@@ -14,7 +15,7 @@ const { createBackupService } = require('../lib/backup');
 // Admin settings (owner only): the church logo shown by the projector and the default
 // chord notation.
 // GET /api/logo/:file serves it to the users of that admin and to its paired screens.
-function createSettingsRouter({ db, auth, config, logger, screensHub, live, storage }) {
+function createSettingsRouter({ db, auth, config, logger, screensHub, live, storage, email }) {
   const router = express.Router();
   const logos = createLogoStore(db, config.DATA_DIR);
   const screens = createScreenStore(db);
@@ -45,8 +46,23 @@ function createSettingsRouter({ db, auth, config, logger, screensHub, live, stor
       backgroundDefaults: backgrounds.defaults(req.adminId),
       backup: backups.lastBackup(req.adminId),
       storage: storage.usage(),
+      email: email.status(), // { enabled, from }
     });
   });
+
+  // "Trimite un email de test": to the owner's own address. 503 while email is disabled.
+  router.post('/api/settings/email/test', asyncRoute(async (req, res) => {
+    if (!email.enabled) return res.status(503).json({ code: 'emailDisabled', error: req.t('errors.emailDisabled') });
+    const message = email.templates.test(req.lang, { appName: config.APP_NAME, churchName: req.admin.name, email: req.user.email });
+    try {
+      await email.send(req.adminId, { ...message, to: req.user.email, kind: 'test', userId: req.user.id });
+    } catch (err) {
+      if (err.code === 'emailRateLimited') return res.status(429).json({ code: err.code, error: req.t('errors.emailRateLimited') });
+      if (err.code === 'emailFailed') return res.status(502).json({ code: err.code, error: req.t('errors.emailFailed') });
+      throw err;
+    }
+    res.json({ ok: true, to: req.user.email });
+  }));
 
   // The church default backgrounds per item type: { song?, verse?, announcement? }, each a
   // background from the media library or null (none).

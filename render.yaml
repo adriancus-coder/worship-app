@@ -19,3 +19,8 @@ services:
       # Set manually in the Render dashboard.
       - key: SETUP_TOKEN
         sync: false
+      # Outgoing email (docs/EMAIL.md). Leave both unset to run without email.
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false

@@ -1820,6 +1820,52 @@ test('projector handover: a leader\'s split -> together waits for the operator; 
   assert.strictEqual(code({ type: 'handover.accept' }, 'operator'), 'notLive');
 });
 
+testAsync('email (Resend): disabled without a key; templates RO / EN; one retry on 5xx; 20 an hour per admin; never a token in the log', async () => {
+  const { createEmail, EmailError, PER_ADMIN_PER_HOUR } = require('../lib/email');
+  const logs = [];
+  const logger = { info: (m) => logs.push(m), warn: (m) => logs.push(m), error: (m) => logs.push(m) };
+  const off = createEmail({ config: { RESEND_API_KEY: '', EMAIL_FROM: 'W <w@x.ro>' }, logger });
+  assert.deepStrictEqual([off.enabled, off.status()], [false, { enabled: false, from: null }]);
+  await assert.rejects(off.send(1, { to: 'a@x.ro', subject: 's', text: 't', html: '<p>t</p>' }), (e) => e instanceof EmailError && e.code === 'emailDisabled');
+  assert.strictEqual(createEmail({ config: { RESEND_API_KEY: 'k', EMAIL_FROM: '' }, logger }).enabled, false, 'EMAIL_FROM is needed too');
+  // templates
+  const vars = { appName: 'Worship', churchName: 'Maranata', invitedBy: 'Ana', url: 'https://w.example/invite/TOKEN123', expiresIn: '7 zile', email: 'ion@x.ro' };
+  const inv = off.templates.invite('ro', vars);
+  assert.ok(/Invitație/.test(inv.subject) && /Ana te-a adăugat/.test(inv.text) && inv.text.includes(vars.url) && inv.html.includes(vars.url) && inv.html.includes('Maranata'), inv.text);
+  const rst = off.templates.reset('en', vars);
+  assert.ok(/Password reset/.test(rst.subject) && /ignore this email/.test(rst.text) && rst.html.includes('href="https://w.example/invite/TOKEN123"'));
+  const tricky = off.templates.test('ro', { ...vars, churchName: '<b>x</b>' });
+  assert.ok(tricky.html.includes('&lt;b&gt;x&lt;/b&gt;') && !tricky.html.includes('<b>x</b>') && tricky.text.includes('<b>x</b>'), 'escaped in the HTML, plain in the text');
+  // sending: the request Resend gets; a 5xx is retried once, a 4xx is not; a network error too
+  const calls = [];
+  let responses = [];
+  const fetchMock = async (url, opts) => {
+    calls.push({ url, auth: opts.headers.Authorization, body: JSON.parse(opts.body) });
+    const next = responses.shift() || { status: 200, body: { id: 'em_1' } };
+    if (next.throw) throw new Error('ECONNRESET');
+    return new Response(JSON.stringify(next.body || {}), { status: next.status });
+  };
+  const on = createEmail({ config: { RESEND_API_KEY: 're_key', EMAIL_FROM: 'Worship <w@x.ro>', EMAIL_REPLY_TO: 'r@x.ro', EMAIL_API_URL: 'http://mock/emails' }, logger, fetch: fetchMock });
+  assert.deepStrictEqual(on.status(), { enabled: true, from: 'Worship <w@x.ro>' });
+  assert.strictEqual(await on.send(1, { ...inv, to: 'ion@x.ro', kind: 'invite', userId: 7 }), 'em_1');
+  assert.deepStrictEqual([calls.length, calls[0].url, calls[0].auth, calls[0].body.from, calls[0].body.to, calls[0].body.reply_to, calls[0].body.subject], [1, 'http://mock/emails', 'Bearer re_key', 'Worship <w@x.ro>', ['ion@x.ro'], 'r@x.ro', inv.subject]);
+  assert.ok(logs.some((m) => /Email "invite" sent to ion@x.ro \(user #7\) \(admin #1/.test(m)) && !logs.some((m) => m.includes('TOKEN123')), 'an audit line, never the link');
+  responses = [{ status: 502, body: {} }, { status: 200, body: { id: 'em_2' } }];
+  assert.strictEqual(await on.send(1, { ...inv, to: 'ion@x.ro', kind: 'invite' }), 'em_2');
+  assert.strictEqual(calls.length, 3, '5xx: retried once');
+  responses = [{ status: 422, body: { message: 'bad' } }];
+  await assert.rejects(on.send(1, { ...inv, to: 'ion@x.ro' }), (e) => e.code === 'emailFailed');
+  assert.strictEqual(calls.length, 4, '4xx: not retried');
+  responses = [{ throw: true }, { throw: true }];
+  await assert.rejects(on.send(1, { ...inv, to: 'ion@x.ro' }), (e) => e.code === 'emailFailed' && e.detail === 'ECONNRESET');
+  assert.strictEqual(calls.length, 6, 'network errors: two attempts');
+  // the hourly limit per admin (4 sends so far for admin 1: every send counts, failed ones too)
+  responses = [];
+  for (let i = 4; i < PER_ADMIN_PER_HOUR; i++) await on.send(1, { ...inv, to: 'ion@x.ro' });
+  await assert.rejects(on.send(1, { ...inv, to: 'ion@x.ro' }), (e) => e.code === 'emailRateLimited' && e.detail > 0);
+  assert.strictEqual(await on.send(2, { ...inv, to: 'x@y.ro' }), 'em_1', 'another admin is not affected');
+});
+
 testAsync('platform deletion: refused while active, the exact name, pending -> cancel, the purge removes every row and the folder, a final zip', async () => {
   const fs = require('fs');
   const os = require('os');

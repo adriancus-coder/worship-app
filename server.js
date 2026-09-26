@@ -33,6 +33,7 @@ const { createPwaRouter } = require('./routes/pwa');
 const { createLiveHub } = require('./socket/live');
 const { createScreensHub } = require('./socket/screens');
 const { createStorageGuard } = require('./lib/storage');
+const { createEmail } = require('./lib/email');
 const { createShutdown } = require('./lib/shutdown');
 
 const db = openDb(config.DATA_DIR);
@@ -50,6 +51,9 @@ const usage = storage.refresh();
 logger.info(`Storage: data ${usage.dataBytes} bytes, disk free ${usage.freeBytes} of ${usage.diskBytes} bytes (uploads keep ${config.DISK_MIN_FREE_PCT} % free)`);
 
 const auth = createAuth({ db, config });
+// Outgoing email (Resend); disabled without RESEND_API_KEY + EMAIL_FROM (lib/email.js).
+const email = createEmail({ config, logger });
+logger.info(email.enabled ? `Email: enabled, from ${config.EMAIL_FROM}` : 'Email: disabled (RESEND_API_KEY / EMAIL_FROM not set)');
 const SESSION_CLEANUP_MS = 60 * 60 * 1000;
 function cleanupSessions() {
   const removed = auth.deleteExpiredSessions();
@@ -105,7 +109,7 @@ app.use(createHomeRouter({ db, auth }));
 app.use(createTeamRouter({ db, auth, config, logger, live }));
 app.use(createPlatformRouter({ db, auth, config, logger, live, screensHub, storage }));
 app.use(createScreensRouter({ db, auth, logger, screensHub }));
-app.use(createSettingsRouter({ db, auth, config, logger, screensHub, live, storage }));
+app.use(createSettingsRouter({ db, auth, config, logger, screensHub, live, storage, email }));
 app.use(createMediaRouter({ db, auth, config, logger, live, storage }));
 app.use(createBackupRouter({ db, auth, config, logger, storage }));
 app.use(createPagesRouter({ db, auth, sendPage }));

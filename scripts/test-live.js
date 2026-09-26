@@ -1321,6 +1321,14 @@ async function main() {
     assert.strictEqual((await api('PUT', '/api/settings/service', leader, { weekday: 0, time: '10:00' })).status, 403);
   });
 
+  await step('email disabled (no key on this server): the status says so, the test email answers 503 emailDisabled', async () => {
+    const set = (await api('GET', '/api/settings', owner)).body;
+    assert.deepStrictEqual(set.email, { enabled: false, from: null });
+    const r = await api('POST', '/api/settings/email/test', owner);
+    assert.deepStrictEqual([r.status, r.body.code], [503, 'emailDisabled']);
+    assert.strictEqual((await api('POST', '/api/settings/email/test', leader)).status, 403, 'owner only');
+  });
+
   await step('view as: an owner sees the app as member / operator / leader (every guard follows), back restores all; a leader cannot', async () => {
     const viewAs = (cookie, role) => api('PUT', '/api/me/view-as', cookie, { role });
     const page = (url, cookie) => fetch(base() + url, { headers: { Cookie: cookie }, redirect: 'manual' }).then((r) => r.status);

@@ -39,6 +39,7 @@
     renderService(res.body.service);
     renderClock(res.body.clock);
     renderTimeFormat(res.body.timeFormat);
+    renderEmail(res.body.email);
     renderBackup(res.body.backup);
     renderStorage(res.body.storage);
     await renderBackgrounds(res.body.backgroundDefaults || {});
@@ -210,6 +211,27 @@
     if (clock) clockPanel.update({ clock, enabled: true });
   }
 
+  // Email: "activ (from)" / "dezactivat" with the test button (lib/email.js).
+  let emailInfo = null;
+  function renderEmail(info) {
+    emailInfo = info || emailInfo;
+    if (!emailInfo) return;
+    $('email-status').textContent = emailInfo.enabled ? t('settings.emailOn', { from: emailInfo.from }) : t('settings.emailOff');
+    $('email-hint').textContent = t(emailInfo.enabled ? 'settings.emailHintOn' : 'settings.emailHintOff');
+    $('email-test').hidden = !emailInfo.enabled;
+  }
+  $('email-test').addEventListener('click', async () => {
+    $('email-test').disabled = true;
+    const out = $('email-message');
+    try {
+      const res = await api('/api/settings/email/test', { method: 'POST' });
+      out.className = `message ${res.ok ? 'success' : 'error'}`;
+      out.textContent = res.ok ? t('settings.emailTestSent', { to: res.body.to }) : res.body.error || t('common.networkError');
+    } finally {
+      $('email-test').disabled = false;
+    }
+  });
+
   // 24 h / 12 h, for every clock (the projector's and the live pages').
   function renderTimeFormat(format) {
     for (const button of document.querySelectorAll('[data-time-format]')) {
@@ -291,6 +313,8 @@
     $('backup-message').textContent = '';
     $('clock-message').textContent = '';
     $('time-format-message').textContent = '';
+    $('email-message').textContent = '';
+    renderEmail(null);
     clockPanel.render();
     renderBackup(null);
     renderStorage(null);
