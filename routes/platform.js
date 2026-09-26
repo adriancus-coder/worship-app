@@ -5,7 +5,7 @@ const asyncRoute = require('../lib/async-route');
 const { hashPassword } = require('../lib/auth');
 const { temporaryPassword, validateName, validateEmail, validateRole, createTeamStore } = require('../lib/team');
 const { createScreenStore } = require('../lib/screens');
-const { validateAdminName, validateQuota, createPlatformStore } = require('../lib/platform');
+const { validateAdminName, validateQuota, createPlatformStore, createDeletionSweep } = require('../lib/platform');
 const { createRequestLimiter } = require('../lib/rate-limit');
 
 const CREATE_LIMIT = 10; // new churches per hour
@@ -13,12 +13,16 @@ const HOUR_MS = 60 * 60 * 1000;
 
 // The platform owner (lib/auth.js isPlatformOwner) manages the churches on this server:
 // list, create (with an owner and a temporary password shown once), deactivate /
-// reactivate, a new temporary password for a church's owner, the media quota. Every
-// action is logged. Everyone else gets 403.
+// reactivate, a new temporary password for a church's owner, the media quota, permanent
+// deletion in two steps (schedule 7 days ahead on a deactivated church, typing its name;
+// cancel while pending; a daily sweep purges, final backup first). Every action is logged.
+// Everyone else gets 403.
 function createPlatformRouter({ db, auth, config, logger, live, screensHub, storage }) {
   const router = express.Router();
   const store = createPlatformStore(db, { dataDir: config.DATA_DIR, defaultMediaMaxBytes: config.MEDIA_MAX_ADMIN_BYTES });
   const createLimiter = createRequestLimiter({ maxRequests: CREATE_LIMIT, windowMs: HOUR_MS });
+  const sweep = createDeletionSweep({ db, dataDir: config.DATA_DIR, config, logger, platformAdminId: () => auth.platformAdminId() });
+  sweep.start(); // at startup and every 24 h
   // A church's accounts and screens, scoped to it (the same stores as /api/team and
   // /api/screens); the platform owner never reads a church's content.
   const team = createTeamStore(db);
@@ -108,6 +112,38 @@ function createPlatformRouter({ db, auth, config, logger, live, screensHub, stor
     live.closeUser(owner.id);
     audit(req, `reset the password of owner user #${owner.id} of church #${admin.id}`);
     res.json({ admin: view(req, admin.id), owner: { name: owner.name, email: owner.email }, temporaryPassword: password });
+  }));
+
+  // --- permanent deletion ----------------------------------------------------------------
+
+  // Step one: { confirmName } must be the church's exact name; only a deactivated church.
+  router.post('/api/platform/admins/:id/delete', (req, res) => {
+    const admin = target(req, res);
+    if (!admin) return;
+    if (admin.id === auth.platformAdminId()) return res.status(403).json({ error: req.t('errors.platformSelf') });
+    const out = store.scheduleDelete(admin.id, (req.body || {}).confirmName);
+    if (out.error === 'active') return res.status(409).json({ error: req.t('errors.platformDeleteActive') });
+    if (out.error === 'name') return res.status(409).json({ error: req.t('errors.platformDeleteName') });
+    audit(req, `scheduled the deletion of church #${admin.id} "${admin.name}" for ${new Date(out.deleteAt).toISOString()}`);
+    res.json({ admin: view(req, admin.id) });
+  });
+
+  router.post('/api/platform/admins/:id/cancel-delete', (req, res) => {
+    const admin = target(req, res);
+    if (!admin) return;
+    if (!store.cancelDelete(admin.id)) return res.status(409).json({ error: req.t('errors.platformDeleteNotPending') });
+    audit(req, `cancelled the deletion of church #${admin.id}`);
+    res.json({ admin: view(req, admin.id) });
+  });
+
+  // Runs the sweep now (it purges only churches whose delete_at has passed). Outside
+  // production a test may pass { now } (ms) to act as if it were later.
+  router.post('/api/platform/deletions/sweep', asyncRoute(async (req, res) => {
+    const asked = (req.body || {}).now;
+    const now = !config.IS_PRODUCTION && Number.isInteger(asked) ? asked : Date.now();
+    const out = await sweep.run(now);
+    if (out.purged.length) audit(req, `ran the deletion sweep: purged ${out.purged.map((p) => `#${p.id}`).join(', ')}`);
+    res.json({ purged: out.purged.map((p) => p.id), failed: out.failed, backupsRemoved: out.backupsRemoved });
   }));
 
   // --- one church: detail, its team, its screens ---------------------------------------

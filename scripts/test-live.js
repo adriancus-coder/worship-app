@@ -1320,6 +1320,42 @@ async function main() {
     assert.strictEqual(list.length, 12);
   });
 
+  await step('platform: deleting a church - only deactivated, the exact name, pending -> cancel, the sweep purges (final zip), others 403', async () => {
+    const list = (await api('GET', '/api/platform/admins', owner)).body.admins;
+    const b0 = list.find((a) => a.name === 'B0');
+    const del = (id, body, cookie = owner) => api('POST', `/api/platform/admins/${id}/delete`, cookie, body);
+    assert.strictEqual((await del(b0.id, { confirmName: 'B0' }, leader)).status, 403, 'not the platform owner');
+    assert.strictEqual((await del(1, { confirmName: 'Biserica' })).status, 403, 'never the platform church');
+    assert.strictEqual((await del(b0.id, { confirmName: 'B0' })).status, 409, 'active: deactivate first');
+    assert.strictEqual((await api('POST', `/api/platform/admins/${b0.id}/deactivate`, owner)).status, 200);
+    assert.strictEqual((await del(b0.id, { confirmName: 'b0' })).status, 409, 'the exact name');
+    assert.strictEqual((await del(b0.id, {})).status, 409);
+    const t0 = Date.now();
+    let r = await del(b0.id, { confirmName: 'B0' });
+    assert.strictEqual(r.status, 200, JSON.stringify(r.body));
+    const week = 7 * 24 * 60 * 60 * 1000;
+    assert.ok(Math.abs(r.body.admin.deleteAt - (t0 + week)) < 5000, `deleteAt = now + 7 days (${r.body.admin.deleteAt})`);
+    assert.strictEqual((await api('GET', '/api/platform/admins', owner)).body.admins.find((a) => a.id === b0.id).deleteAt, r.body.admin.deleteAt, 'pending in the list');
+    r = await api('POST', `/api/platform/admins/${b0.id}/cancel-delete`, owner);
+    assert.deepStrictEqual([r.status, r.body.admin.deleteAt], [200, null]);
+    assert.strictEqual((await api('POST', `/api/platform/admins/${b0.id}/cancel-delete`, owner)).status, 409, 'nothing pending');
+    assert.strictEqual((await del(b0.id, { confirmName: 'B0' })).status, 200);
+    // the sweep: nothing due now; as if 8 days later (the test hook) the church is purged
+    r = await api('POST', '/api/platform/deletions/sweep', owner, {});
+    assert.deepStrictEqual([r.status, r.body.purged], [200, []]);
+    const later = t0 + 8 * 24 * 60 * 60 * 1000;
+    r = await api('POST', '/api/platform/deletions/sweep', owner, { now: later });
+    assert.deepStrictEqual([r.status, r.body.purged, r.body.failed], [200, [b0.id], []], JSON.stringify(r.body));
+    assert.strictEqual((await api('GET', `/api/platform/admins/${b0.id}`, owner)).status, 404, 'gone');
+    assert.strictEqual((await api('POST', '/api/auth/login', null, { email: 'o0@b.ro', password: PASSWORD })).status, 401);
+    const after = (await api('GET', '/api/platform/admins', owner)).body.admins;
+    assert.deepStrictEqual([after.length, after.some((a) => a.id === b0.id), after.some((a) => a.id === 2)], [list.length - 1, false, true], 'the other churches stay');
+    assert.strictEqual((await api('GET', '/api/platform/admins/2', owner)).status, 200);
+    const zip = path.join(dataDir, 'deleted', `${b0.id}-${new Date(later).toISOString().slice(0, 10)}.zip`);
+    assert.ok(fs.existsSync(zip) && fs.statSync(zip).size > 100, `the final backup ${zip}`);
+    assert.strictEqual((await api('POST', '/api/platform/deletions/sweep', leader, {})).status, 403);
+  });
+
   await step('platform: one church - detail (counts, never content), its team, its screens; others 403', async () => {
     const other2 = await login('alt@x.ro'); // church 2's owner
     const B = 2;

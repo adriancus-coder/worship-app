@@ -1718,6 +1718,91 @@ test('corner clock: settings, the three fields on every frame, hidden while a vi
   mem.close();
 });
 
+testAsync('platform deletion: refused while active, the exact name, pending -> cancel, the purge removes every row and the folder, a final zip', async () => {
+  const fs = require('fs');
+  const os = require('os');
+  const path = require('path');
+  const Database = require('better-sqlite3');
+  const { runMigrations } = require('../lib/db');
+  const { createPlatformStore, createDeletionSweep, DELETE_DELAY_MS, DELETED_KEEP_MS } = require('../lib/platform');
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'wa-purge-'));
+  const db = new Database(path.join(dataDir, 'worship.db'));
+  db.pragma('foreign_keys = ON');
+  runMigrations(db);
+  db.prepare("INSERT INTO admins (id, name, created_at) VALUES (1, 'Platforma', 0), (2, 'Biserica B', 0), (3, 'Biserica C', 0)").run();
+  // Rows of B and C in every kind of table.
+  const seed = (a) => {
+    db.prepare("INSERT INTO users (admin_id, email, name, password_hash, role, created_at) VALUES (?, ?, 'U', 'x', 'owner', 0)").run(a, `o${a}@x.ro`);
+    const userId = Number(db.prepare('SELECT id FROM users WHERE admin_id = ?').pluck().get(a));
+    db.prepare("INSERT INTO sessions (id, user_id, admin_id, created_at, expires_at) VALUES (?, ?, ?, 0, 9999999999999)").run(`s${a}`, userId, a);
+    db.prepare("INSERT INTO admin_settings (admin_id, key, value) VALUES (?, 'backup_last_at', '5')").run(a);
+    const songId = Number(db.prepare("INSERT INTO songs (admin_id, title, title_norm, created_at, updated_at) VALUES (?, 'S', 's', 0, 0)").run(a).lastInsertRowid);
+    db.prepare("INSERT INTO song_sections (song_id, admin_id, position, type, content, content_hash) VALUES (?, ?, 0, 'verse', 'x', 'h')").run(songId, a);
+    const eventId = Number(db.prepare("INSERT INTO events (admin_id, name, event_date, status, created_at, updated_at) VALUES (?, 'E', '2026-10-04', 'live', 0, 0)").run(a).lastInsertRowid);
+    db.prepare("INSERT INTO setlist_items (event_id, admin_id, position, type, song_id) VALUES (?, ?, 0, 'song', ?)").run(eventId, a, songId);
+    db.prepare('INSERT INTO live_state (event_id, admin_id, version, updated_at) VALUES (?, ?, 1, 0)').run(eventId, a);
+    db.prepare("INSERT INTO media (admin_id, kind, title, created_at) VALUES (?, 'url', 'M', 0)").run(a);
+    db.prepare("INSERT INTO screens (admin_id, name, token_hash, created_at) VALUES (?, 'Sc', ?, 0)").run(a, `t${a}`);
+    db.prepare("INSERT INTO screen_pairings (id, code, admin_id, created_at, expires_at) VALUES (?, ?, ?, 0, 9999999999999)").run(`p${a}`, `10000${a}`, a);
+    fs.mkdirSync(path.join(dataDir, 'uploads', `admin-${a}`, 'media'), { recursive: true });
+    fs.writeFileSync(path.join(dataDir, 'uploads', `admin-${a}`, 'media', 'f.bin'), Buffer.alloc(64, 1));
+  };
+  seed(2);
+  seed(3);
+  const store = createPlatformStore(db, { dataDir, defaultMediaMaxBytes: 1 });
+  const T0 = Date.UTC(2026, 8, 1, 10, 0, 0); // a real date: the zip carries a DOS date
+  const counts = (a) => Object.fromEntries(store.adminTables.map((name) => [name, db.prepare(`SELECT COUNT(*) FROM "${name}" WHERE admin_id = ?`).pluck().get(a)]));
+  const beforeC = counts(3);
+  assert.ok(Object.values(counts(2)).every((n) => n >= 1), `rows in every admin table: ${JSON.stringify(counts(2))}`);
+  // step one
+  assert.deepStrictEqual(store.scheduleDelete(2, 'Biserica B', T0), { error: 'active' }, 'refused while active');
+  store.deactivate(2);
+  assert.deepStrictEqual(store.scheduleDelete(2, 'biserica b', T0), { error: 'name' }, 'the exact name');
+  assert.deepStrictEqual(store.scheduleDelete(2, 'Biserica B', T0), { deleteAt: T0 + DELETE_DELAY_MS });
+  assert.strictEqual(store.list(1).find((a) => a.id === 2).deleteAt, T0 + DELETE_DELAY_MS, 'pending in the list');
+  assert.strictEqual(store.cancelDelete(2), true);
+  assert.strictEqual(store.cancelDelete(2), false, 'nothing pending any more');
+  assert.strictEqual(store.list(1).find((a) => a.id === 2).deleteAt, null);
+  store.scheduleDelete(2, 'Biserica B', T0);
+  store.reactivate(2);
+  assert.strictEqual(store.get(2).delete_at, null, 'reactivating drops the schedule');
+  store.deactivate(2);
+  store.scheduleDelete(2, 'Biserica B', T0);
+  assert.deepStrictEqual(store.dueForDeletion(T0 + DELETE_DELAY_MS - 1), [], 'not yet');
+  assert.deepStrictEqual(store.dueForDeletion(T0 + DELETE_DELAY_MS).map((d) => d.id), [2]);
+  // the sweep: a final backup, then the purge; C untouched; the platform church never
+  const logs = [];
+  const logger = { info: (m) => logs.push(m), error: (m, e) => logs.push(`${m} ${e && e.message}`), warn: () => {} };
+  const sweep = createDeletionSweep({ db, dataDir, config: { APP_NAME: 'x', VERSION: '0' }, logger, platformAdminId: () => 1 });
+  const early = await sweep.run(T0 + DELETE_DELAY_MS - 1);
+  assert.deepStrictEqual(early.purged, [], 'nothing due yet');
+  const now = T0 + DELETE_DELAY_MS;
+  const out = await sweep.run(now);
+  assert.deepStrictEqual([out.purged.map((p) => p.id), out.failed], [[2], []], JSON.stringify(out));
+  assert.ok(Object.values(counts(2)).every((n) => n === 0), `0 rows per table: ${JSON.stringify(counts(2))}`);
+  assert.strictEqual(db.prepare('SELECT COUNT(*) FROM admins WHERE id = 2').pluck().get(), 0);
+  assert.ok(!fs.existsSync(path.join(dataDir, 'uploads', 'admin-2')), 'the upload folder is gone');
+  assert.deepStrictEqual(counts(3), beforeC, 'the other church is untouched');
+  assert.ok(fs.existsSync(path.join(dataDir, 'uploads', 'admin-3', 'media', 'f.bin')));
+  const zip = path.join(dataDir, 'deleted', `2-${new Date(now).toISOString().slice(0, 10)}.zip`);
+  assert.ok(fs.existsSync(zip), 'the final backup zip');
+  assert.strictEqual(fs.readFileSync(zip).readUInt32LE(0), 0x04034b50, 'a zip');
+  assert.ok(fs.readFileSync(zip).includes(Buffer.from('uploads/admin-2/media/f.bin')), 'the upload is inside');
+  assert.ok(logs.some((m) => /purged church #2 "Biserica B"/.test(m)), 'an audit line');
+  assert.deepStrictEqual((await sweep.run(now)).purged, [], 'idempotent');
+  // the platform's own church is never purged, even when marked
+  db.prepare('UPDATE admins SET active = 0, delete_at = 1 WHERE id = 1').run();
+  assert.deepStrictEqual((await sweep.run(now)).purged, []);
+  assert.strictEqual(db.prepare('SELECT COUNT(*) FROM admins WHERE id = 1').pluck().get(), 1);
+  // final backups are kept 30 days
+  const old = new Date(now - DELETED_KEEP_MS - 1000);
+  fs.utimesSync(zip, old, old);
+  assert.strictEqual((await sweep.run(now)).backupsRemoved, 1);
+  assert.ok(!fs.existsSync(zip));
+  db.close();
+  fs.rmSync(dataDir, { recursive: true, force: true });
+});
+
 test('backup temp sweep: leftover .backup-* folders older than 1 h go at startup, fresh ones stay', () => {
   const fs = require('fs');
   const os = require('os');
