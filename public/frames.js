@@ -101,8 +101,11 @@
     if (source !== 'content') return { kind: 'black', ...base }; // translation: stage 8
     // The projector follows the worship position until an operator takes it over (stage 6).
     const pos = state.projector.follows === 'operator'
-      ? { itemId: state.projector.itemId, step: state.projector.step }
+      ? { itemId: state.projector.itemId, step: state.projector.step, ended: state.projector.ended }
       : state.worship;
+    // "■ Sfârșit": the item on the projector is ended -> the logo (black without one) until
+    // the next move, whatever the source says.
+    if (pos.ended) return logoUrl ? { kind: 'logo', logoUrl, ...base } : { kind: 'black', ...base };
     const item = (event && event.items || []).find((it) => it.id === pos.itemId);
     const content = contentFrame(item, pos.step, item && songs ? songs.get(item.id) : null);
     const background = content.kind === 'black' ? null : backgroundFor(state, item, backgrounds);

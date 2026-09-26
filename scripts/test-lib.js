@@ -1615,6 +1615,31 @@ test('nextServiceDate: the next usual service day; today only until 2 h after it
   assert.deepStrictEqual([nowTimeIn('UTC', instant), nowTimeIn('Europe/Oslo', instant), nowTimeIn('America/New_York', instant)], ['10:30', '12:30', '06:30']);
 });
 
+test('"■ Sfârșit": moves after an ended item; the frame while ended', () => {
+  const { movePosition } = require('../public/positions.js');
+  const lay = [{ id: 1, steps: 4 }, { id: 2, steps: 1 }, { id: 3, steps: 2 }];
+  const ended = (itemId, step) => ({ itemId, step, ended: true });
+  assert.deepStrictEqual(movePosition(lay, ended(1, 1), 'next'), { itemId: 2, step: 0 }, 'next: the next item');
+  assert.deepStrictEqual(movePosition(lay, ended(1, 1), 'prev'), { itemId: 1, step: 3 }, 'prev: the last step of the ended item');
+  assert.deepStrictEqual(movePosition(lay, ended(3, 1), 'next'), { itemId: 3, step: 1 }, 'the last item: stays');
+  assert.deepStrictEqual(movePosition(lay, ended(2, 0), 'goto', 1, 2), { itemId: 1, step: 2 });
+  assert.deepStrictEqual(movePosition(lay, { itemId: 1, step: 1 }, 'next'), { itemId: 1, step: 2 }, 'not ended: step by step');
+  const { projectorFrame } = require('../lib/projector');
+  const snap = (worship, projector = {}) => ({
+    status: 'live', version: 3, eventId: 9, video: null,
+    worship, projector: { follows: 'worship', itemId: null, step: 0, ended: false, source: 'content', ...projector },
+  });
+  const event = { items: [{ id: 2, type: 'verse', reference: 'Ps 1', body: 'x' }] };
+  assert.strictEqual(projectorFrame(snap({ itemId: 2, step: 0, ended: false }), event, new Map()).kind, 'verse');
+  assert.strictEqual(projectorFrame(snap({ itemId: 2, step: 0, ended: true }), event, new Map()).kind, 'black');
+  const withLogo = projectorFrame(snap({ itemId: 2, step: 0, ended: true }), event, new Map(), { logoUrl: '/api/logo/x.png' });
+  assert.deepStrictEqual([withLogo.kind, withLogo.logoUrl], ['logo', '/api/logo/x.png']);
+  // split: the projector's own flag counts, not the team's
+  const split = { follows: 'operator', itemId: 2, step: 0 };
+  assert.strictEqual(projectorFrame(snap({ itemId: 2, step: 0, ended: true }, split), event, new Map()).kind, 'verse');
+  assert.strictEqual(projectorFrame(snap({ itemId: 2, step: 0, ended: false }, { ...split, ended: true }), event, new Map()).kind, 'black');
+});
+
 (async () => {
   for (const [name, fn] of asyncTests) {
     try {

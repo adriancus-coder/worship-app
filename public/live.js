@@ -446,7 +446,7 @@
   // (the server version is unchanged) this page's position is sent to the server; otherwise
   // the server wins.
 
-  const { layoutOf, nextPosition: stepNext, prevPosition: stepPrev, nextItemPosition, gotoPosition, samePosition } = window.POSITIONS;
+  const { layoutOf, movePosition, samePosition } = window.POSITIONS;
   const emergency = { active: false, reconnected: false, base: null, dirty: false, channel: null, adminId: null };
 
   function openChannel(adminId) {
@@ -507,21 +507,25 @@
     const layout = layoutOf(state.cached.items);
     let worship = snap.worship;
     let source = snap.projector.source;
-    if (type === 'worship.next') worship = stepNext(layout, worship);
-    else if (type === 'worship.prev') worship = stepPrev(layout, worship);
-    else if (type === 'worship.goto') worship = gotoPosition(layout, extra.itemId, extra.step) || worship;
-    else if (type === 'worship.endItem') {
-      const next = nextItemPosition(layout, worship);
-      if (next) worship = next;
-      else source = state.cached.logo ? 'logo' : 'black';
-    }
-    else if (type === 'projector.source' && window.FRAMES.LEADER_SOURCES.includes(extra.source)) source = extra.source;
+    // The same rules as the server (lib/live.js): "■ Sfârșit" ends the item in place; the
+    // move after it clears the flag and puts the content back.
+    const moves = { 'worship.next': 'next', 'worship.prev': 'prev', 'worship.goto': 'goto' };
+    if (moves[type]) {
+      const target = movePosition(layout, worship, moves[type], extra.itemId, extra.step);
+      const stays = !target || (samePosition(target, worship) && (!worship.ended || type === 'worship.next'));
+      if (!stays) {
+        if (worship.ended) source = 'content';
+        worship = { itemId: target.itemId, step: target.step, ended: false };
+      }
+    } else if (type === 'worship.endItem') {
+      if (worship.itemId !== null && !worship.ended) worship = { ...worship, ended: true };
+    } else if (type === 'projector.source' && window.FRAMES.LEADER_SOURCES.includes(extra.source)) source = extra.source;
     else {
       showMessage(t('live.emergency.unavailable'), true);
       return { ok: false, code: 'offline' };
     }
     showMessage('');
-    if (samePosition(worship, snap.worship) && source === snap.projector.source) return { ok: true, local: true };
+    if (samePosition(worship, snap.worship) && Boolean(worship.ended) === Boolean(snap.worship.ended) && source === snap.projector.source) return { ok: true, local: true };
     state.snap = { ...snap, worship, projector: { ...snap.projector, source } };
     emergency.dirty = true;
     render();
@@ -548,9 +552,10 @@
     if (server.version === base.version && server.status === 'live') {
       // Nobody moved meanwhile: this page's position goes to the server.
       pushed = true;
-      if (!samePosition(local.worship, server.worship)) {
+      if (!samePosition(local.worship, server.worship) || (server.worship.ended && !local.worship.ended)) {
         pushed = (await send('worship.goto', { itemId: local.worship.itemId, step: local.worship.step })).ok;
       }
+      if (pushed && local.worship.ended && !server.worship.ended) pushed = (await send('worship.endItem')).ok;
       if (pushed && local.projector.source !== server.projector.source) {
         pushed = (await send('projector.source', { source: local.projector.source })).ok;
       }

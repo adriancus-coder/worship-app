@@ -549,7 +549,7 @@ async function main() {
     op.socket.close();
   });
 
-  await step('end of item: the next item, first step; after the last the projector clears and the position stays', async () => {
+  await step('"■ Sfârșit": the item ends in place; next / prev / goto after it; split; last item', async () => {
     const op = await joined(operator, ev.id);
     const opSend = async (cmd) => {
       const reply = await emit(op.socket, 'live:command', { eventId: ev.id, ...cmd });
@@ -557,43 +557,70 @@ async function main() {
       version = reply.version;
       return reply;
     };
+    const at = (snap) => [snap.worship.itemId, snap.worship.step, snap.worship.ended, snap.projector.source];
+    const frame = async () => (await frameWhere(screen, (f) => f.version === version)).kind;
     assert.strictEqual((await emit(mem.socket, 'live:command', { eventId: ev.id, type: 'worship.endItem' })).code, 'forbidden');
+    // mid-song: the position stays, the screen clears (no logo here: black)
     await send(lead.socket, { type: 'worship.goto', itemId: i1, step: 2 });
     let reply = await send(lead.socket, { type: 'worship.endItem', expectedVersion: version });
     let snap = await memberAt(reply.version);
-    assert.deepStrictEqual([snap.worship.itemId, snap.worship.step, snap.projector.source], [i2, 0, 'content']);
-    await opSend({ type: 'worship.endItem' });
+    assert.deepStrictEqual(at(snap), [i1, 2, true, 'content'], 'stays on the item, flagged');
+    assert.strictEqual(await frame(), 'black');
+    const ended = version;
+    reply = await send(lead.socket, { type: 'worship.endItem' });
+    assert.deepStrictEqual([reply.ok, reply.version], [true, ended], 'again: nothing changes');
+    // next after the end: the next item's first step, content back
+    await opSend({ type: 'worship.next' });
     snap = await memberAt(version);
-    assert.deepStrictEqual([snap.worship.itemId, snap.worship.step], [i3, 0], 'together: the console moves the one position');
-    // the last item: black (this admin has no logo), the team still sees where the service is
-    reply = await send(lead.socket, { type: 'worship.endItem' });
-    snap = await memberAt(reply.version);
-    assert.deepStrictEqual([snap.worship.itemId, snap.worship.step, snap.projector.source], [i3, 0, 'black']);
-    assert.strictEqual((await frameWhere(screen, (f) => f.version === version)).kind, 'black');
-    const cleared = version;
-    reply = await send(lead.socket, { type: 'worship.endItem' });
-    assert.deepStrictEqual([reply.ok, reply.version], [true, cleared], 'again: nothing changes');
-    await send(lead.socket, { type: 'projector.source', source: 'content' });
+    assert.deepStrictEqual(at(snap), [i2, 0, false, 'content']);
+    assert.strictEqual(await frame(), 'verse');
+    // prev after the end: back into the ended song, at its last step
+    await send(lead.socket, { type: 'worship.goto', itemId: i1, step: 2 });
+    await opSend({ type: 'worship.endItem' });
+    await send(lead.socket, { type: 'worship.prev' });
+    snap = await memberAt(version);
+    assert.deepStrictEqual(at(snap), [i1, 5, false, 'content'], 'the last step of the ended song');
+    assert.strictEqual(await frame(), 'lyrics');
+    // a black screen before the end: the next move after it brings the content back
+    await send(lead.socket, { type: 'projector.source', source: 'black' });
+    await send(lead.socket, { type: 'worship.endItem' });
+    await send(lead.socket, { type: 'worship.next' });
+    snap = await memberAt(version);
+    assert.deepStrictEqual(at(snap), [i2, 0, false, 'content']);
+    // goto clears the flag, even to the same place
+    await send(lead.socket, { type: 'worship.endItem' });
+    await send(lead.socket, { type: 'worship.goto', itemId: i2, step: 0 });
+    assert.strictEqual((await memberAt(version)).worship.ended, false);
+    // the last item: no special case - the position stays, the screen clears; next keeps it
+    await send(lead.socket, { type: 'worship.goto', itemId: i3, step: 1 });
+    await send(lead.socket, { type: 'worship.endItem' });
+    snap = await memberAt(version);
+    assert.deepStrictEqual(at(snap), [i3, 1, true, 'content']);
+    assert.strictEqual(await frame(), 'black');
+    const last = version;
+    reply = await send(lead.socket, { type: 'worship.next' });
+    assert.deepStrictEqual([reply.ok, reply.version], [true, last], 'next on the ended last item: nothing');
     assert.strictEqual((await send(lead.socket, { type: 'worship.endItem', target: 'projector' })).code, 'notSplitMode');
     assert.strictEqual((await send(lead.socket, { type: 'worship.endItem', target: 'team' })).code, 'badCommand');
-    // split: the console's end moves only the projector, the leader's only the team
+    // split: the console ends only the projector's item, the leader only the team's
     await send(lead.socket, { type: 'worship.goto', itemId: i1, step: 1 });
     await opSend({ type: 'live.mode', mode: 'split' });
     await opSend({ type: 'worship.endItem', target: 'projector' });
     snap = await memberAt(version);
-    assert.deepStrictEqual([snap.projector.itemId, snap.projector.step, snap.worship.itemId, snap.worship.step], [i2, 0, i1, 1]);
+    assert.deepStrictEqual([snap.projector.itemId, snap.projector.step, snap.projector.ended, snap.worship.ended], [i1, 1, true, false], 'projector only');
+    assert.strictEqual(await frame(), 'black');
     await send(lead.socket, { type: 'worship.endItem' });
     snap = await memberAt(version);
-    assert.deepStrictEqual([snap.worship.itemId, snap.worship.step, snap.projector.itemId], [i2, 0, i2]);
-    await opSend({ type: 'worship.endItem', target: 'projector' });
-    await opSend({ type: 'worship.endItem', target: 'projector' });
+    assert.deepStrictEqual([snap.worship.ended, snap.projector.ended], [true, true], 'team only (the projector already was)');
+    await opSend({ type: 'projector.next' });
     snap = await memberAt(version);
-    assert.deepStrictEqual([snap.projector.itemId, snap.projector.source, snap.worship.itemId], [i3, 'black', i2], 'the projector ends, the team stays');
-    await send(lead.socket, { type: 'worship.goto', itemId: i3, step: 0 });
+    assert.deepStrictEqual([snap.projector.itemId, snap.projector.step, snap.projector.ended, snap.worship.ended], [i2, 0, false, true], 'the projector moves on, the team stays ended');
+    assert.strictEqual(await frame(), 'verse');
+    await send(lead.socket, { type: 'projector.source', source: 'logo' });
+    await send(lead.socket, { type: 'worship.next' });
+    snap = await memberAt(version);
+    assert.deepStrictEqual([snap.worship.itemId, snap.worship.ended, snap.projector.source], [i2, false, 'logo'], 'split: the team move leaves the projector source alone');
     await send(lead.socket, { type: 'projector.source', source: 'content' });
-    const before = version;
-    reply = await send(lead.socket, { type: 'worship.endItem' });
-    assert.deepStrictEqual([reply.ok, reply.version], [true, before], 'split: the team list ending leaves the projector alone');
     await send(lead.socket, { type: 'live.mode', mode: 'together' });
     await send(lead.socket, { type: 'worship.goto', itemId: i1, step: 0 });
     await memberAt(version);
@@ -844,6 +871,8 @@ async function main() {
     assert.strictEqual(r.ok, true, JSON.stringify(r));
     r = await send(lead.socket, { type: 'team.mode', mode: 'free' });
     assert.strictEqual(r.ok, true);
+    r = await send(lead.socket, { type: 'worship.endItem' }); // "Sfârșit" survives the restart
+    assert.strictEqual(r.ok, true);
     await memberAt(version);
     const auto = connect(member, { reconnection: true, reconnectionDelay: 100, reconnectionDelayMax: 300 });
     await next(auto, 'connect');
@@ -873,7 +902,7 @@ async function main() {
     const restored = next(auto, 'live:state', () => true, 8000);
     await startServer();
     const s = await restored;
-    assert.deepStrictEqual([s.version, s.status, s.worship.itemId, s.worship.step, s.mode, s.teamMode], [version, 'live', i3, 0, 'split', 'free']);
+    assert.deepStrictEqual([s.version, s.status, s.worship.itemId, s.worship.step, s.worship.ended, s.mode, s.teamMode], [version, 'live', i3, 0, true, 'split', 'free']);
   });
 
   await step('logout closes that session\'s sockets', async () => {

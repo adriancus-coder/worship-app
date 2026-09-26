@@ -71,6 +71,19 @@
     return i + 1 < layout.length ? { itemId: layout[i + 1].id, step: 0 } : null;
   }
 
+  // A move of a position: dir 'next' | 'prev' | 'goto' (with itemId, step). After "■ Sfârșit"
+  // (pos.ended): next -> the next item's first step (stays on the last item), prev -> the
+  // ended item's last step (to go back in); goto anywhere. null: an invalid goto.
+  function movePosition(layout, pos, dir, itemId, step) {
+    if (dir === 'goto') return gotoPosition(layout, itemId, step);
+    if (pos.ended && dir === 'next') return nextItemPosition(layout, pos) || { itemId: pos.itemId, step: pos.step };
+    if (pos.ended && dir === 'prev') {
+      const item = layout.find((it) => it.id === pos.itemId);
+      if (item) return { itemId: item.id, step: item.steps - 1 };
+    }
+    return dir === 'next' ? nextPosition(layout, pos) : prevPosition(layout, pos);
+  }
+
   // A valid position in the layout, or null.
   function gotoPosition(layout, itemId, step) {
     const item = layout.find((it) => it.id === itemId);
@@ -98,7 +111,7 @@
     return { itemId: newLayout[newLayout.length - 1].id, step: 0 };
   }
 
-  const POSITIONS = { NO_POSITION, layoutOf, firstPosition, samePosition, nextPosition, prevPosition, nextItemPosition, gotoPosition, clampPosition };
+  const POSITIONS = { NO_POSITION, layoutOf, firstPosition, samePosition, nextPosition, prevPosition, nextItemPosition, movePosition, gotoPosition, clampPosition };
 
   if (typeof module === 'object' && module.exports) module.exports = POSITIONS;
   else root.POSITIONS = POSITIONS;

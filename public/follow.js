@@ -185,6 +185,18 @@
       el('h1', { text: itemTitle(item) }),
       item.type === 'song' && item.displayKey ? el('p', { class: 'slide-key' }, el('span', { class: 'key-badge', text: t('rehearse.key', { key: window.NOTATION.chord(item.displayKey) }) })) : null);
 
+    // "■ Sfârșit" on the live position (followed, not while scrolling on one's own): the item
+    // is over; what comes next.
+    if (pos === state.snap.worship && pos.ended) {
+      const after = state.items[index + 1];
+      slide.replaceChildren(head,
+        el('p', { class: 'live-note item-ended', text: t(item.type === 'song' ? 'follow.songEnded' : 'follow.itemEnded') }),
+        el('p', { class: 'up-next' },
+          el('span', { class: 'ro-label', text: t('live.upNext') }),
+          el('strong', { text: after ? itemTitle(after) : t('follow.lastItem') })));
+      return;
+    }
+
     if (item.type !== 'song' || !item.songId) {
       const body = [];
       if (item.type === 'song') body.push(el('p', { class: 'muted', text: t('setlist.songDeletedHint') }));

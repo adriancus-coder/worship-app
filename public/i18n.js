@@ -664,6 +664,8 @@
         pageTitle: 'Urmărește: {name} — {appName}',
         position: 'Elementul {n} din {total}',
         lastItem: 'Nimic — este ultimul element',
+        songEnded: 'Sfârșitul cântării',
+        itemEnded: 'Sfârșitul elementului',
         wakeHint: 'Browserul acesta nu poate ține ecranul aprins. Dezactivează blocarea automată a ecranului cât timp urmărești.',
         wakeHintClose: 'Am înțeles',
         offline: {
@@ -1749,6 +1751,8 @@
         pageTitle: 'Follow: {name} — {appName}',
         position: 'Item {n} of {total}',
         lastItem: 'Nothing — this is the last item',
+        songEnded: 'End of the song',
+        itemEnded: 'End of the item',
         wakeHint: 'This browser cannot keep the screen on. Turn off auto-lock while you follow.',
         wakeHintClose: 'Got it',
         offline: {
