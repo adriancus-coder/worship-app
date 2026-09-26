@@ -124,5 +124,50 @@
     return cameFromHome() ? `${url}${url.includes('?') ? '&' : '?'}from=home` : url;
   }
 
-  window.PAGE = { api, el, canEdit, canEditEvents, EVENT_ROLES, setTitle, formatDate, dateBlock, setupTabs, backLink, keepFrom };
+  // The event page a sub-page (rehearsal, live, console, follow, a song) returns to.
+  function eventBack(eventId) {
+    return { href: keepFrom(`/events/${eventId}`), text: window.I18N.t('nav.backEvent') };
+  }
+
+  // Back links and the browser's Back must agree: when the page we came from (a link
+  // followed, not a history step) is exactly the link's target, the link steps back in
+  // history instead of adding a new entry, so Back afterwards never returns here (no loop,
+  // no double step). The trail is the last page left in this tab (sessionStorage).
+  const TRAIL_KEY = 'wa_nav_last';
+  const here = () => window.location.pathname + window.location.search;
+  let previous = null;
+  let arrivedByLink = false;
+  function readTrail(persisted) {
+    try {
+      previous = window.sessionStorage.getItem(TRAIL_KEY);
+    } catch (err) {
+      previous = null;
+    }
+    const nav = window.performance && performance.getEntriesByType ? performance.getEntriesByType('navigation')[0] : null;
+    arrivedByLink = !persisted && (!nav || nav.type === 'navigate');
+  }
+  readTrail(false);
+  window.addEventListener('pageshow', (event) => { if (event.persisted) readTrail(true); });
+  window.addEventListener('pagehide', () => {
+    try {
+      window.sessionStorage.setItem(TRAIL_KEY, here());
+    } catch (err) {
+      // no storage: back links are plain links
+    }
+  });
+
+  function linkBack(anchor) {
+    if (!anchor || anchor.dataset.linkBack) return;
+    anchor.dataset.linkBack = '1';
+    anchor.addEventListener('click', (event) => {
+      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      const target = new URL(anchor.href, window.location.href);
+      if (arrivedByLink && previous === target.pathname + target.search && window.history.length > 1) {
+        event.preventDefault();
+        window.history.back();
+      }
+    });
+  }
+
+  window.PAGE = { api, el, canEdit, canEditEvents, EVENT_ROLES, setTitle, formatDate, dateBlock, setupTabs, backLink, keepFrom, eventBack, linkBack };
 })();

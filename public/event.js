@@ -153,6 +153,7 @@
     const back = backLink();
     $('back-link').href = back.href;
     $('back-link').textContent = back.text;
+    window.PAGE.linkBack($('back-link'));
     renderActions();
     $('details-button').hidden = !state.editing;
     templateButton.hidden = !state.editing;
@@ -204,12 +205,12 @@
     const ev = state.event;
     const editor = canEdit(state.me);
     const role = state.me && state.me.user.role;
-    const livePage = `/events/${ev.id}/${role === 'operator' ? 'operator' : 'live'}`;
+    const livePage = keepFrom(`/events/${ev.id}/${role === 'operator' ? 'operator' : 'live'}`);
     const rehearse = { key: 'rehearse.link', icon: 'rehearse', href: keepFrom(`/events/${ev.id}/rehearse`) };
     const actions = [];
     if (!editor) {
       actions.push(ev.status === 'live'
-        ? { key: 'follow.link', icon: 'follow', href: `/events/${ev.id}/follow` }
+        ? { key: 'follow.link', icon: 'follow', href: keepFrom(`/events/${ev.id}/follow`) }
         : rehearse);
     } else {
       const edit = state.editing ? null : { key: 'setlist.edit', icon: 'edit', href: keepFrom(`/events/${ev.id}/edit`) };
@@ -584,7 +585,9 @@
       if (item.teamNote) parts.push(el('p', { class: 'team-note', text: item.teamNote }));
       if (item.referenceUrl) parts.push(el('p', null, el('a', { class: 'button secondary', href: item.referenceUrl, target: '_blank', rel: 'noopener noreferrer', text: t('options.listenReference') })));
     }
-    parts.push(el('p', null, el('a', { class: 'button secondary', href: `/songs/${item.songId}`, text: t('setlist.openSong') })), previewBlock(item, song));
+    // The song page returns here (this event, or its editor), keeping ?from.
+    const returnTo = keepFrom(`/events/${state.event.id}${state.editing ? '/edit' : ''}`);
+    parts.push(el('p', null, el('a', { class: 'button secondary', href: `/songs/${item.songId}?back=${encodeURIComponent(returnTo)}`, text: t('setlist.openSong') })), previewBlock(item, song));
     return parts;
   }
 

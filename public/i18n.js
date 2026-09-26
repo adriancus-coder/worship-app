@@ -150,6 +150,7 @@
         events: 'Evenimente',
         backHome: '← Acasă',
         backEvents: '← Evenimente',
+        backEvent: '← Înapoi la eveniment',
       },
       home: {
         pageTitle: 'Acum — {appName}',
@@ -1153,6 +1154,7 @@
         events: 'Events',
         backHome: '← Home',
         backEvents: '← Events',
+        backEvent: '← Back to the event',
       },
       home: {
         pageTitle: 'Now — {appName}',

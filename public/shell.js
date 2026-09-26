@@ -82,8 +82,10 @@
   // --- full-screen work pages: "← Ieși" only --------------------------------------------
 
   if (mode === 'exit') {
-    // /events/12/live -> /events/12
-    const exit = el('a', { class: 'shell-exit', href: body.dataset.shellExit || window.location.pathname.replace(/\/[^/]+\/?$/, '') || '/app' });
+    // /events/12/live -> /events/12 (keeping ?from=home, so the event page still returns home)
+    const from = new URLSearchParams(window.location.search).get('from') === 'home' ? '?from=home' : '';
+    const exit = el('a', { class: 'shell-exit', href: body.dataset.shellExit || `${window.location.pathname.replace(/\/[^/]+\/?$/, '') || '/app'}${from}` });
+    if (window.PAGE && window.PAGE.linkBack) window.PAGE.linkBack(exit);
     const render = () => { exit.textContent = t('shell.exit'); };
     render();
     document.addEventListener('i18n:change', render);

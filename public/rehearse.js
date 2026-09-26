@@ -202,9 +202,11 @@
   function renderChrome() {
     const ev = state.event;
     setTitle('rehearse.pageTitle', { name: ev.name });
-    const back = window.PAGE.backLink();
+    // Back to this event's page (which itself returns to Acasă or Evenimente).
+    const back = window.PAGE.eventBack(ev.id);
     $('back-link').textContent = back.text;
     $('back-link').href = back.href;
+    window.PAGE.linkBack($('back-link'));
   }
 
   document.addEventListener('notation:change', () => {

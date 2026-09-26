@@ -10,6 +10,21 @@
   const editLink = document.getElementById('edit-song');
   const TEXT_ONLY_KEY = 'wa_text_only';
 
+  // Opened from an event (?back=/events/12, /events/12/edit, optionally ?from=home): the back
+  // link returns there; only those paths are accepted (never another site or page).
+  const backParam = new URLSearchParams(window.location.search).get('back');
+  const backToEvent = /^\/events\/\d+(\/edit)?(\?from=home)?$/.test(backParam || '') ? backParam : null;
+  const backLinkEl = document.getElementById('song-back');
+  function renderBack() {
+    if (!backToEvent) return;
+    backLinkEl.removeAttribute('data-i18n');
+    backLinkEl.href = backToEvent;
+    backLinkEl.textContent = t('nav.backEvent');
+  }
+  renderBack();
+  window.PAGE.linkBack(backLinkEl);
+  document.addEventListener('i18n:change', renderBack);
+
   let song = null;
   let canSetKey = false;
   let textOnly = false;

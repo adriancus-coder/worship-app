@@ -33,10 +33,10 @@
   function actions(event, live) {
     const role = state.me.user.role;
     // The live page of this role: the console for the operator.
-    const livePage = `/events/${event.id}/${role === 'operator' ? 'operator' : 'live'}`;
+    const livePage = `/events/${event.id}/${role === 'operator' ? 'operator' : 'live'}?from=home`;
     if (live) {
       if (EDITOR_ROLES.includes(role)) return [{ text: t('home.enterLive'), href: livePage, icon: 'play' }];
-      return [{ text: t('home.follow'), href: `/events/${event.id}/follow`, icon: 'follow' }];
+      return [{ text: t('home.follow'), href: `/events/${event.id}/follow?from=home`, icon: 'follow' }];
     }
     if (EDITOR_ROLES.includes(role)) {
       const list = [{ text: t('home.prepare'), href: eventUrl(event, '/edit'), icon: 'edit' }];
