@@ -275,11 +275,10 @@
       window.SONG_RENDER.sectionsView([song.sections[sectionIndex]], { headingLevel: 4, labels: [labels[sectionIndex]] })));
   }
 
-  // "■ Sfârșit" (worship.endItem, key E): ends the item on screen in place; "✓ Terminat" until
-  // the next move. The team's position (in split mode the projector is not this page's).
-  const clearSource = () => (projector.logoUrl ? 'logo' : 'black');
+  // "■ Sfârșit" (worship.endItem, key E): ends the item on screen in place (black); "✓ Terminat"
+  // until the next move. The team's position (in split mode the projector is not this page's).
   function renderEndItem(item) {
-    window.LIVE.renderEndButton($('end-item-button'), { ended: Boolean(state.snap.worship.ended), hasItem: Boolean(item), clear: clearSource() });
+    window.LIVE.renderEndButton($('end-item-button'), { ended: Boolean(state.snap.worship.ended), hasItem: Boolean(item) });
   }
 
   function renderInfo() {
@@ -422,7 +421,6 @@
       if (reply.logoUrl !== projector.logoUrl) {
         projector.logoUrl = reply.logoUrl || null;
         if (state.event) cacheEvent();
-        render(); // the end button: logo or black
       }
     });
   }

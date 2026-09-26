@@ -1,8 +1,8 @@
 'use strict';
 
 // "■ Sfârșit" (worship.endItem, key E) on the leader page and the console: always there
-// while an item is on screen; it ends the item in place (the screen shows the logo, or
-// black without one; the position stays) and becomes "✓ Terminat" until the next move;
+// while an item is on screen; it ends the item in place (the screen goes black, logo or
+// not; the position stays; L still shows the logo) and becomes "✓ Terminat" until the next move;
 // "Următoarea" then reads "Următoarea: <next item> →". Next -> the next item's first step,
 // prev -> the ended song's last step, content back. The last item is no special case. In
 // split mode the console clears only the projector, the leader only the team. The team page
@@ -42,7 +42,7 @@ module.exports = {
 
     for (const withLogo of [false, true]) {
       if (withLogo) await app.api(app.cookies.owner, 'PUT', '/api/settings/logo', fs.readFileSync(path.join(FIXTURES, 'logo.png')), { 'Content-Type': 'image/png' });
-      const clear = withLogo ? 'LOGO' : 'BLACK';
+      const clear = 'BLACK'; // always, logo or not
       for (const [lang, width] of [['ro', 375], ['en', 1024], ['ro', 1440]]) {
         if (!withLogo && width === 1440) continue;
         if (withLogo && width === 1024) continue;
@@ -77,9 +77,20 @@ module.exports = {
         check(nextText.includes('Luca 2:1-7'), `${tag} "Următoarea" names the next item: "${nextText}"`);
         const follow = await m.waitForFunction(() => /Sfârșitul cântării|End of the song/.test(document.getElementById('slide').innerText) && /Luca 2:1-7/.test(document.getElementById('slide').innerText), null, { timeout: 3000 }).then(() => true, () => false);
         check(follow, `${tag} team page: "Sfârșitul cântării · Urmează: Luca 2:1-7"`);
+        if (withLogo) {
+          await L.keyboard.press('l');
+          check(await screen() === 'LOGO', `${tag} L while ended: the explicit Logo source still shows the logo`);
+          await L.keyboard.press('l');
+          check(await screen() === 'BLACK', `${tag} L again: back to the ended item's black, not the lyrics`);
+        }
         await L.keyboard.press('ArrowRight');
         const s2 = await state();
         check(s2.team === 'verse.0' && /Cezar/.test(await screen()), `${tag} next -> the next item's first step, content back`, s2);
+        if (withLogo) {
+          await L.keyboard.press('l');
+          check(await screen() === 'LOGO', `${tag} L after the move: the logo is still available`);
+          await L.keyboard.press('l');
+        }
         check((await button(L, '#end-item-button')).text === END, `${tag} after the move: "■ ${END}" again`);
         await app.command({ type: 'worship.goto', itemId: G, step: 0 });
         await wait(300);

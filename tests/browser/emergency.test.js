@@ -71,7 +71,7 @@ module.exports = {
     await lp.click('[data-source=content]');
     await lp.click('#end-item-button');
     await lp.waitForTimeout(300);
-    check(await scr() === 'LOGO', 'offline: "■ Sfârșit" -> the cached logo, the position stays');
+    check(await scr() === 'BLACK', 'offline: "■ Sfârșit" -> black (logo or not), the position stays');
     await lp.click('#next-button');
     check(await until('Primul'), 'offline: next after it -> the next song, content back');
     await lp.click('#setlist > li:nth-child(4) > .live-item');

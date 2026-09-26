@@ -62,8 +62,9 @@ never implement a later stage early. Mockups: claude.ai design canvas
 - **"■ Sfârșit"** (`worship.endItem`, event roles, key E): the permanent third button of the
   Înapoi / Următoarea row, enabled whenever an item is on screen. It ends the current item
   in place: the position stays (the team still sees where the service is), an `ended` flag
-  is set on it and, while set, the projector shows the logo, or black without one, whatever
-  the source; it never moves by itself and the last item is no special case. The button
+  is set on it and, while set, the projector is black whatever the source (the logo only
+  through the explicit Logo source / key L); it never moves by itself and the last item is
+  no special case. The button
   then reads "✓ Terminat" (disabled) and "Următoarea" reads "Următoarea: <next item> →".
   After it, next goes to the next item's first step and prev back to the ended item's last
   step, both putting the content back; goto anywhere clears the flag. One flag per

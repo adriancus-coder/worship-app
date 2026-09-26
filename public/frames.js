@@ -103,9 +103,9 @@
     const pos = state.projector.follows === 'operator'
       ? { itemId: state.projector.itemId, step: state.projector.step, ended: state.projector.ended }
       : state.worship;
-    // "■ Sfârșit": the item on the projector is ended -> the logo (black without one) until
-    // the next move, whatever the source says.
-    if (pos.ended) return logoUrl ? { kind: 'logo', logoUrl, ...base } : { kind: 'black', ...base };
+    // "■ Sfârșit": the item on the projector is ended -> black instead of its content until
+    // the next move (the explicit Logo / black sources above still apply).
+    if (pos.ended) return { kind: 'black', ...base };
     const item = (event && event.items || []).find((it) => it.id === pos.itemId);
     const content = contentFrame(item, pos.step, item && songs ? songs.get(item.id) : null);
     const background = content.kind === 'black' ? null : backgroundFor(state, item, backgrounds);

@@ -1633,7 +1633,9 @@ test('"■ Sfârșit": moves after an ended item; the frame while ended', () => 
   assert.strictEqual(projectorFrame(snap({ itemId: 2, step: 0, ended: false }), event, new Map()).kind, 'verse');
   assert.strictEqual(projectorFrame(snap({ itemId: 2, step: 0, ended: true }), event, new Map()).kind, 'black');
   const withLogo = projectorFrame(snap({ itemId: 2, step: 0, ended: true }), event, new Map(), { logoUrl: '/api/logo/x.png' });
-  assert.deepStrictEqual([withLogo.kind, withLogo.logoUrl], ['logo', '/api/logo/x.png']);
+  assert.strictEqual(withLogo.kind, 'black', 'always black, even with a logo');
+  const logoSource = projectorFrame(snap({ itemId: 2, step: 0, ended: true }, { source: 'logo' }), event, new Map(), { logoUrl: '/api/logo/x.png' });
+  assert.strictEqual(logoSource.kind, 'logo', 'the explicit Logo source (key L) still shows the logo while ended');
   // split: the projector's own flag counts, not the team's
   const split = { follows: 'operator', itemId: 2, step: 0 };
   assert.strictEqual(projectorFrame(snap({ itemId: 2, step: 0, ended: true }, split), event, new Map()).kind, 'verse');

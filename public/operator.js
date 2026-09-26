@@ -257,7 +257,7 @@
     $('op-next').textContent = after ? t('live.next', { label: after.itemId === pos.itemId ? stepsOf(item)[after.step].label : itemTitle(list.find((it) => it.id === after.itemId)) }) : t('live.nextEnd');
     // "■ Sfârșit": ends the item on the projector (the one position together); "✓ Terminat"
     // until the next move.
-    window.LIVE.renderEndButton($('op-end-item'), { ended: Boolean(pos.ended), hasItem: enabled && Boolean(item), clear: state.logoUrl ? 'logo' : 'black' });
+    window.LIVE.renderEndButton($('op-end-item'), { ended: Boolean(pos.ended), hasItem: enabled && Boolean(item) });
     const synced = live() && pos.itemId === worship.itemId && pos.step === worship.step;
     $('op-sync').hidden = !split();
     $('op-sync').disabled = !split() || synced;

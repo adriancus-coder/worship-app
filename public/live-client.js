@@ -209,14 +209,14 @@
   }
 
   // The permanent "■ Sfârșit" button (worship.endItem, key E), the same on the leader page and
-  // the console: it ends the item on screen in place (the projector shows the logo, or black);
-  // after it, "✓ Terminat" (disabled) until the next move. ended: the position this page
-  // drives is ended; hasItem: an item is on screen; clear: 'logo' | 'black' (what it shows).
-  function renderEndButton(button, { ended, hasItem, clear }) {
+  // the console: it ends the item on screen in place (the projector goes black); after it,
+  // "✓ Terminat" (disabled) until the next move. ended: the position this page drives is
+  // ended; hasItem: an item is on screen.
+  function renderEndButton(button, { ended, hasItem }) {
     const { el } = window.PAGE;
     const { t } = window.I18N;
     button.replaceChildren(el('span', { class: 'end-item-label', 'data-icon': ended ? 'check' : 'stop', text: t(ended ? 'live.endItem.done' : 'live.endItem.end') }));
-    button.setAttribute('aria-label', t(ended ? 'live.endItem.doneLabel' : (clear === 'logo' ? 'live.endItem.endLogo' : 'live.endItem.endBlack')));
+    button.setAttribute('aria-label', t(ended ? 'live.endItem.doneLabel' : 'live.endItem.endLabel'));
     button.title = button.getAttribute('aria-label');
     button.disabled = !hasItem || ended;
   }

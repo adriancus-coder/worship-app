@@ -560,7 +560,7 @@ async function main() {
     const at = (snap) => [snap.worship.itemId, snap.worship.step, snap.worship.ended, snap.projector.source];
     const frame = async () => (await frameWhere(screen, (f) => f.version === version)).kind;
     assert.strictEqual((await emit(mem.socket, 'live:command', { eventId: ev.id, type: 'worship.endItem' })).code, 'forbidden');
-    // mid-song: the position stays, the screen clears (no logo here: black)
+    // mid-song: the position stays, the screen goes black (always black, logo or not)
     await send(lead.socket, { type: 'worship.goto', itemId: i1, step: 2 });
     let reply = await send(lead.socket, { type: 'worship.endItem', expectedVersion: version });
     let snap = await memberAt(reply.version);

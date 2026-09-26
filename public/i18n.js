@@ -735,8 +735,7 @@
         endItem: {
           end: 'Sfârșit',
           done: 'Terminat',
-          endLogo: 'Sfârșit: încheie elementul de pe ecran; ecranul trece pe logo, poziția rămâne (tasta E)',
-          endBlack: 'Sfârșit: încheie elementul de pe ecran; ecranul se golește, poziția rămâne (tasta E)',
+          endLabel: 'Sfârșit: încheie elementul de pe ecran; ecranul devine negru, poziția rămâne (tasta E)',
           doneLabel: 'Terminat: elementul s-a încheiat; „Următoarea” merge mai departe',
         },
         setlistHeading: 'Program',
@@ -1856,8 +1855,7 @@
         endItem: {
           end: 'End',
           done: 'Ended',
-          endLogo: 'End: ends the item on screen; the screen shows the logo, the position stays (key E)',
-          endBlack: 'End: ends the item on screen; the screen clears, the position stays (key E)',
+          endLabel: 'End: ends the item on screen; the screen goes black, the position stays (key E)',
           doneLabel: 'Ended: the item is over; “Next” moves on',
         },
         setlistHeading: 'Setlist',
