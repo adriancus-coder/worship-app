@@ -9,7 +9,7 @@
 // arrangement: code, label and first line, ↑ / ↓ / ✕, "Resetează la implicit", the key
 // −/+ "A · original G · +2"), with "Cum va curge" (the whole song in that order, repeats
 // included) under it. Below 900 px the three are tabs. Nothing changes until "Aplică".
-// "+ Adaugă" puts the section after the chosen row of "Ordinea" (the last one by default).
+// "+ Adaugă" appends the section to the order; ↑ / ↓ move it.
 //
 //   ARRANGE_SHEET.open({ title, song: { sections, song_key }, codes, defaultCodes,
 //     transpose, readOnly, onApply({ codes, transpose, isDefault }) })
@@ -108,7 +108,6 @@
     const state = {
       codes: codes.slice(),
       transpose: clampTranspose(transpose),
-      selected: codes.length - 1, // "+ Adaugă" inserts after this row
       tab: readOnly ? 'flow' : 'order',
       textOnly: readTextOnly(),
     };
@@ -164,9 +163,10 @@
         : t('options.keyOriginalOnly', { key: original });
     }
 
+    // Sections headed by code + label ("C · Refren").
     function sectionsBlock(sections, indexes, headingLevel) {
       return window.SONG_RENDER.sectionsView(indexes.map((i) => sections[i]), {
-        textOnly: state.textOnly, headingLevel, labels: indexes.map((i) => labels[i]),
+        textOnly: state.textOnly, headingLevel, labels: indexes.map((i) => `${canonical[i]} · ${labels[i]}`),
       });
     }
 
@@ -177,24 +177,26 @@
       }, t('song.textOnly'));
     }
 
+    // Every section: a head (code + label, "+ Adaugă" appends it), then its lyrics / chords.
     function renderSong(sections) {
       const views = sectionsBlock(sections, sections.map((s, i) => i), 4);
       panels.song.replaceChildren(
         el('div', { class: 'arrange-panel-head' },
           el('h3', { id: 'arrange-song-h', text: t('arrange.song') }),
           el('div', { class: 'arrange-tools' }, window.NOTATION.createSwitch(), textOnlyToggle())),
-        el('ol', { class: 'arrange-sections' }, views.map((view, i) => el('li', null,
-          view,
-          el('button', {
-            type: 'button', class: 'secondary arrange-add', 'data-icon': 'plus', 'data-code': canonical[i],
-            'aria-label': t('arrange.addLabel', { label: labels[i], after: state.codes[state.selected] ? labelOf(state.codes[state.selected]) : t('arrange.atStart') }),
-            onclick: () => {
-              state.codes = insert(state.codes, canonical[i], state.codes.length ? state.selected : null);
-              state.selected = Math.min(state.selected + 1, state.codes.length - 1);
-              if (state.codes.length === 1) state.selected = 0;
-              render();
-            },
-          }, t('arrange.add'))))));
+        el('ol', { class: 'arrange-sections' }, views.map((view, i) => {
+          const heading = view.querySelector('.section-label');
+          heading.remove();
+          return el('li', null,
+            el('div', { class: 'arrange-section-head' },
+              heading,
+              el('button', {
+                type: 'button', class: 'secondary arrange-add', 'data-icon': 'plus', 'data-code': canonical[i],
+                'aria-label': t('arrange.addLabel', { label: `${canonical[i]} · ${labels[i]}` }),
+                onclick: () => { state.codes = insert(state.codes, canonical[i]); render(); },
+              }, t('arrange.add'))),
+            view);
+        })));
     }
 
     function renderOrder() {
@@ -205,21 +207,13 @@
           type: 'button', class: 'secondary icon-button', disabled, 'aria-label': t(labelKey, { label: labelOf(code), n: i + 1 }), onclick,
         }, el('span', { 'aria-hidden': 'true', text: symbol }));
         return el('li', { class: 'arrange-row' },
-          el('button', {
-            type: 'button', class: 'arrange-pick', 'aria-pressed': String(i === state.selected), title: line || null,
-            'aria-label': t('arrange.rowLabel', { n: i + 1, label: labelOf(code), line }),
-            onclick: () => { state.selected = i; render(); },
-          },
-          el('span', { class: 'step-head' }, el('span', { class: 'step-code', text: code }), el('span', { class: 'step-label', text: labelOf(code) })),
-          line ? el('span', { class: 'step-line', text: line }) : null),
+          el('div', { class: 'arrange-row-main', title: line || null },
+            el('span', { class: 'step-head' }, el('span', { class: 'step-code', text: code }), el('span', { class: 'step-label', text: labelOf(code) })),
+            line ? el('span', { class: 'step-line', text: line }) : null),
           el('span', { class: 'arrange-row-tools' },
-            tool('↑', 'arrange.upLabel', i === 0, () => { state.codes = move(state.codes, i, -1); state.selected = i - 1; render(); }),
-            tool('↓', 'arrange.downLabel', i === state.codes.length - 1, () => { state.codes = move(state.codes, i, 1); state.selected = i + 1; render(); }),
-            tool('✕', 'arrange.removeLabel', false, () => {
-              state.codes = remove(state.codes, i);
-              state.selected = Math.min(state.selected, state.codes.length - 1);
-              render();
-            })));
+            tool('↑', 'arrange.upLabel', i === 0, () => { state.codes = move(state.codes, i, -1); render(); }),
+            tool('↓', 'arrange.downLabel', i === state.codes.length - 1, () => { state.codes = move(state.codes, i, 1); render(); }),
+            tool('✕', 'arrange.removeLabel', false, () => { state.codes = remove(state.codes, i); render(); })));
       };
       const setTranspose = (value) => { state.transpose = clampTranspose(value); render(); };
       keyOut.textContent = keyText();
@@ -232,10 +226,10 @@
         state.codes.length
           ? el('ol', { class: 'arrange-list', 'aria-label': t('arrange.order') }, state.codes.map(row))
           : el('p', { class: 'muted', text: t('arrange.empty') }),
-        el('p', { class: 'hint arrange-hint', text: state.codes.length ? t('arrange.addHint', { label: labelOf(state.codes[state.selected]) }) : t('arrange.addHintEmpty') }),
+        el('p', { class: 'hint arrange-hint', text: t('arrange.addHint') }),
         el('button', {
           type: 'button', class: 'secondary', id: 'arrange-reset', disabled: sameCodes(state.codes, defaultCodes),
-          onclick: () => { state.codes = defaultCodes.slice(); state.selected = state.codes.length - 1; render(); },
+          onclick: () => { state.codes = defaultCodes.slice(); render(); },
         }, t('options.resetArrangement')));
     }
 

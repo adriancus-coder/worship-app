@@ -1321,6 +1321,12 @@ test('arrange sheet: insert after the chosen row, move, remove, reset, key, flow
   assert.deepStrictEqual(A.insert(def, 'B', -1), ['B', ...def]);
   assert.deepStrictEqual(A.insert(def, 'V1', null), [...def, 'V1']);
   assert.deepStrictEqual(A.insert([], 'C', null), ['C']);
+  // "+ Adaugă" in the sheet appends; building an order from nothing
+  assert.deepStrictEqual(['V1', 'C', 'V2', 'B'].reduce((codes, code) => A.insert(codes, code), []), ['V1', 'C', 'V2', 'B']);
+  // reset: back to the default (a copy, equal to it)
+  const edited = A.remove(A.move(A.insert(def, 'C', 2), 5, -1), 1);
+  assert.strictEqual(A.sameCodes(edited, def), false);
+  assert.strictEqual(A.sameCodes(def.slice(), def), true);
   // ↑ / ↓ / ✕; out of range changes nothing; the input is never modified
   assert.deepStrictEqual(A.move(def, 4, -1), ['V1', 'C', 'V2', 'B', 'C', 'C']);
   assert.deepStrictEqual(A.move(def, 0, -1), def);
