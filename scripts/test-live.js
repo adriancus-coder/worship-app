@@ -943,6 +943,51 @@ async function main() {
     assert.strictEqual((await api('POST', '/api/me/password', first, { current: 'parola-mariei-1', password: 'parola-mariei-2' })).status, 200);
   });
 
+  await step('backup: the owner downloads a .zip of their church only; others 403', async () => {
+    for (const cookie of [leader, member, operator]) assert.strictEqual((await api('GET', '/api/backup', cookie)).status, 403);
+    assert.strictEqual((await fetch(`${base()}/api/backup`)).status, 401);
+    const res = await fetch(`${base()}/api/backup`, { headers: { Cookie: owner } });
+    assert.strictEqual(res.status, 200);
+    assert.strictEqual(res.headers.get('content-type'), 'application/zip');
+    assert.match(res.headers.get('content-disposition'), /attachment; filename="worship-backup-\d{4}-\d{2}-\d{2}\.zip"/);
+    const zip = Buffer.from(await res.arrayBuffer());
+    assert.strictEqual(zip.length, Number(res.headers.get('content-length')));
+    // stored entries: walk the local headers
+    const entries = new Map();
+    for (let at = 0; zip.readUInt32LE(at) === 0x04034b50;) {
+      const size = zip.readUInt32LE(at + 18);
+      const nameLen = zip.readUInt16LE(at + 26);
+      const name = zip.toString('utf8', at + 30, at + 30 + nameLen);
+      entries.set(name, zip.subarray(at + 30 + nameLen, at + 30 + nameLen + size));
+      at += 30 + nameLen + size;
+    }
+    const meta = JSON.parse(entries.get('meta.json'));
+    assert.strictEqual(meta.adminId, 1);
+    assert.ok(/^\d{3}_/.test(meta.schemaVersion), meta.schemaVersion);
+    const uploads = [...entries.keys()].filter((n) => n.startsWith('uploads/'));
+    assert.ok(uploads.length > 0 && uploads.every((n) => n.startsWith('uploads/admin-1/') && !n.split('/').pop().startsWith('.')), uploads.join(','));
+    assert.strictEqual(meta.counts.files, uploads.length);
+    const copyFile = path.join(dataDir, 'backup-check.db');
+    fs.writeFileSync(copyFile, entries.get('worship.db'));
+    const copy = new Database(copyFile, { readonly: true });
+    try {
+      assert.deepStrictEqual(copy.prepare('SELECT id FROM admins').pluck().all(), [1], 'only this church');
+      assert.strictEqual(copy.prepare('SELECT COUNT(*) FROM users WHERE admin_id <> 1').pluck().get(), 0, 'no other admin users / password hashes');
+      assert.strictEqual(copy.prepare('SELECT COUNT(*) FROM sessions').pluck().get(), 0, 'no sessions');
+      assert.strictEqual(copy.prepare('SELECT COUNT(*) FROM songs').pluck().get(), meta.counts.songs);
+      assert.strictEqual(copy.prepare('SELECT COUNT(*) FROM events').pluck().get(), meta.counts.events);
+      assert.strictEqual(copy.pragma('integrity_check', { simple: true }), 'ok');
+      assert.ok(!zip.includes(Buffer.from('alt@x.ro')), 'the other admin never appears, not even in free pages');
+    } finally {
+      copy.close();
+      fs.rmSync(copyFile, { force: true });
+    }
+    assert.ok(!fs.readdirSync(dataDir).some((n) => n.startsWith('.backup-')), 'temp files removed');
+    const info = (await api('GET', '/api/settings', owner)).body.backup;
+    assert.strictEqual(info.lastBytes, zip.length);
+    assert.ok(Date.now() - info.lastAt < 60000);
+  });
+
   await step('end -> finished for the whole room; commands then refused', async () => {
     const l = await joined(leader, ev.id);
     const m = await joined(member, ev.id);

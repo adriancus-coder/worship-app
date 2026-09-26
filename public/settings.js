@@ -36,8 +36,37 @@
     renderLogo(res.body.logo);
     renderNotation(res.body.chordNotationDefault);
     renderThemeDefault(res.body.themeDefault);
+    renderBackup(res.body.backup);
     await renderBackgrounds(res.body.backgroundDefaults || {});
   }
+
+  // --- backup: the last download and the button (GET /api/backup streams the .zip) ---
+
+  let backupInfo = null;
+  const sizeText = (bytes) => (bytes >= 1024 * 1024 ? `${(bytes / (1024 * 1024)).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`);
+
+  function renderBackup(info) {
+    backupInfo = info || backupInfo;
+    const last = backupInfo && backupInfo.lastAt;
+    $('backup-last').textContent = last
+      ? t('settings.backupLast', {
+        date: new Date(last).toLocaleString(window.I18N.lang === 'ro' ? 'ro-RO' : 'en-GB', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+        size: sizeText(backupInfo.lastBytes || 0),
+      })
+      : t('settings.backupNever');
+  }
+
+  // The browser downloads it; the date and size shown here follow once the server has it.
+  $('backup-download').addEventListener('click', () => {
+    $('backup-message').className = 'message';
+    $('backup-message').textContent = t('settings.backupStarted');
+    const refresh = async () => {
+      const res = await api('/api/settings').catch(() => null);
+      if (res && res.ok) renderBackup(res.body.backup);
+    };
+    setTimeout(refresh, 4000);
+    setTimeout(refresh, 15000);
+  });
 
   // --- backgrounds: the church defaults and each background's readability ---
 
@@ -179,6 +208,8 @@
     message('');
     $('notation-message').textContent = '';
     bgMessage('bg-defaults-message', '');
+    $('backup-message').textContent = '';
+    renderBackup(null);
     renderBackgrounds(bg.defaults).catch(() => {});
   });
 

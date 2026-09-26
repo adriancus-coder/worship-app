@@ -25,6 +25,7 @@ const createPagesRouter = require('./routes/pages');
 const { createScreensRouter } = require('./routes/screens');
 const createSettingsRouter = require('./routes/settings');
 const createMediaRouter = require('./routes/media');
+const createBackupRouter = require('./routes/backup');
 const { createHomeRouter } = require('./routes/home');
 const { createTeamRouter } = require('./routes/team');
 const { createPwaRouter } = require('./routes/pwa');
@@ -95,6 +96,7 @@ app.use(createTeamRouter({ db, auth, config, logger, live }));
 app.use(createScreensRouter({ db, auth, logger, screensHub }));
 app.use(createSettingsRouter({ db, auth, config, logger, screensHub, live }));
 app.use(createMediaRouter({ db, auth, config, logger, live }));
+app.use(createBackupRouter({ db, auth, config, logger }));
 app.use(createPagesRouter({ db, auth, sendPage }));
 
 app.use('/api', (req, res) => {

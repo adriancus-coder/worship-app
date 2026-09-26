@@ -7,6 +7,7 @@ const { createScreenStore } = require('../lib/screens');
 const { NOTATIONS, THEME_DEFAULTS, createAdminSettings } = require('../lib/admin-settings');
 const { parseChoice, createBackgroundStore } = require('../lib/backgrounds');
 const { createMediaSigner } = require('../lib/media');
+const { createBackupService } = require('../lib/backup');
 
 // Admin settings (owner only): the church logo shown by the projector and the default
 // chord notation.
@@ -17,6 +18,7 @@ function createSettingsRouter({ db, auth, config, logger, screensHub, live }) {
   const screens = createScreenStore(db);
   const settings = createAdminSettings(db);
   const backgrounds = createBackgroundStore(db, createMediaSigner(config.DATA_DIR));
+  const backups = createBackupService({ db, dataDir: config.DATA_DIR, config });
   const ownerOnly = requireRole('owner');
   const rawBody = express.raw({ type: () => true, limit: MAX_BYTES });
 
@@ -36,6 +38,7 @@ function createSettingsRouter({ db, auth, config, logger, screensHub, live }) {
       chordNotationDefault: settings.chordNotationDefault(req.adminId),
       themeDefault: settings.themeDefault(req.adminId),
       backgroundDefaults: backgrounds.defaults(req.adminId),
+      backup: backups.lastBackup(req.adminId),
     });
   });
 
