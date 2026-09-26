@@ -9,7 +9,8 @@
   },
   "scripts": {
     "start": "node server.js",
-    "check": "node scripts/check-syntax.js && node scripts/check-i18n.js && node scripts/check-contrast.js && node scripts/test-lib.js && node scripts/test-live.js"
+    "check": "node scripts/check-syntax.js && node scripts/check-i18n.js && node scripts/check-contrast.js && node scripts/test-lib.js && node scripts/test-live.js",
+    "test:browser": "node tests/browser/run.js"
   },
   "dependencies": {
     "better-sqlite3": "^12.11.1",
@@ -22,6 +23,7 @@
     "socket.io": "^4.8.3"
   },
   "devDependencies": {
+    "playwright": "1.56.1",
     "socket.io-client": "^4.8.4"
   }
 }

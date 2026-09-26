@@ -36,3 +36,22 @@ jobs:
           test -f health.json || { echo "Server did not answer /api/health"; exit 1; }
           cat health.json
           node -e "const h = require('./health.json'); if (h.ok !== true) { console.error('health not ok'); process.exit(1); }"
+
+  # Browser smoke tests (tests/browser/): a separate job that does not fail the workflow
+  # until the tests have proven stable on CI.
+  browser:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - run: npx playwright install --with-deps chromium
+
+      - run: npm run test:browser
