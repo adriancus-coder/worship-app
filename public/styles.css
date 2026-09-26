@@ -12,6 +12,8 @@
   --accent-text: #e8a33d;     /* accent-coloured text and links on the background */
   --accent-soft: #3a2d18;     /* the current item's background */
   --focus: #e8a33d;
+  --scrollbar-thumb: #4a4653;
+  --scrollbar-thumb-hover: #6b6676;
   --success: #8fd19e;
   --warning: #f5c26b;
   --error: #ff8a7a;
@@ -62,6 +64,8 @@
   --accent-text: #8a5200;
   --accent-soft: #fbead0;
   --focus: #8a5200;
+  --scrollbar-thumb: #c9c1b4;
+  --scrollbar-thumb-hover: #a79e90;
   --success: #1f7a3a;
   --warning: #8a5a00;
   --error: #b42318;
@@ -1827,3 +1831,59 @@ button.arrange-big { width: 100%; min-height: 52px; margin-top: 10px; font-size:
 .storage-bar.high #storage-fill { background: var(--error); }
 #storage-reserve { position: absolute; inset: 0 0 0 auto; background: repeating-linear-gradient(135deg, var(--border), var(--border) 3px, transparent 3px, transparent 7px); }
 .storage-bar + .hint { margin-top: 8px; }
+
+/* --- List pages: the page stays put, the list pane scrolls (CLAUDE.md "UI rules") -------------
+   <body class="list-page"> and a <main> of: header parts (title, actions, search, tabs: they
+   stay), ONE .list-pane (public/list-pane.js makes it a focusable region when it scrolls) and
+   optional footers (a save bar). The body is exactly the visible viewport (dvh follows the
+   iOS toolbars) minus the app shell: the bottom tab bar on phones (--shell-bottom), the left
+   rail from 900 px (a padding, so nothing to subtract). If a screen is too short even for the
+   pane's minimum, the page scrolls as a fallback instead of cutting anything. */
+body.list-page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior-y: none;
+}
+body.list-page > main {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding-bottom: 12px;
+}
+body.list-page > main > * { flex: 0 0 auto; }
+body.list-page > main > [hidden] { display: none; }
+.list-pane {
+  --pane-min: 160px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: var(--pane-min);
+  overflow-y: auto;
+  overscroll-behavior: contain; /* a flick past the end never moves the page behind */
+  -webkit-overflow-scrolling: touch;
+  scroll-padding-top: 3rem; /* focused rows never hide under a sticky heading */
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+  border-radius: var(--radius);
+}
+body.list-page > main > .list-pane, body.list-page .list-pane.grow { flex: 1 1 auto; }
+.list-pane > * { flex: 0 0 auto; }
+.list-pane[hidden] { display: none; }
+.list-pane:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.list-pane::-webkit-scrollbar { width: 10px; }
+.list-pane::-webkit-scrollbar-track { background: transparent; }
+.list-pane::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 999px; border: 2px solid var(--pane-bg, var(--background)); }
+.list-pane::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }
+/* Sticky section headings inside a pane (with their result count). */
+/* --pane-bg: the colour behind the pane (a surface inside dialogs and panels). */
+.list-pane .pane-heading { position: sticky; top: 0; z-index: 2; background: var(--pane-bg, var(--background)); }
+dialog, .op-add { --pane-bg: var(--surface); }
+/* Empty and loading states fill the pane instead of collapsing it. */
+.list-pane .pane-state:not([hidden]):not(:empty) { flex: 1 0 auto; display: flex; align-items: center; justify-content: center; min-height: 6rem; margin: 0; text-align: center; }
+.list-pane .pane-section:has(> .pane-state:not([hidden]):not(:empty)) { flex: 1 0 auto; display: flex; flex-direction: column; }

@@ -68,6 +68,13 @@ Actions and selection must never look alike (styles in `public/styles.css`, "UI 
   such as "Doar text" keeps its own border). The selected option gets the accent fill + a
   check mark + bold; the others are flat.
 - Never give an action `aria-pressed`, and never style a selection option as a button.
+- **Long lists scroll in their own pane, not the page.** On any page whose main content is
+  a long list, the page itself does not scroll: the header (title, actions, search field,
+  tabs, section headings) stays fixed and only the list pane scrolls, with its own
+  scrollbar (`body.list-page` + one `.list-pane`, `public/list-pane.js`; section headings
+  in the pane are sticky, empty / loading states fill it). On phones this keeps the search
+  field and the bottom tab bar always reachable. Pages that are not lists (song, rehearsal,
+  follow, settings, help) scroll normally.
 - **Colours only through the tokens** in `public/styles.css` `:root` (dark) and
   `[data-theme="light"]`; never a literal colour elsewhere (CSS, inline, JS). New text /
   background pairs go into `scripts/check-contrast.js` (WCAG AA in both themes).
