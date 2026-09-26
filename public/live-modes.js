@@ -171,21 +171,43 @@
     };
   }
 
-  function toast(box, { t }) {
+  // onProposal(action, proposal): 'setlist' | 'projector' | 'decline' for a song proposal toast
+  // ("X propune: <title>"), which stays until answered or closed (never over the step grid:
+  // the toast box sits top right).
+  function toast(box, { t, el, onProposal }) {
     let timer = null;
     box.classList.add('info-toast');
     box.setAttribute('role', 'status');
     box.setAttribute('aria-live', 'polite');
     box.hidden = true;
+    const hide = () => { box.hidden = true; box.classList.remove('proposal-toast'); box.replaceChildren(); };
     return {
       show(notice) {
-        if (!notice || notice.type !== 'itemAdded') return;
+        if (!notice) return;
+        if (notice.type === 'proposal' && el && onProposal) {
+          const p = notice.proposal || {};
+          const action = (label, icon, value, primary) => el('button', { type: 'button', class: primary ? '' : 'secondary', 'data-icon': icon, 'data-proposal-action': value, text: label, onclick: () => { hide(); onProposal(value, p); } });
+          box.replaceChildren(
+            el('p', { class: 'proposal-toast-text' }, el('strong', { text: t('proposals.toast', { name: notice.by || t('live.modes.someone'), title: p.songTitle || '' }) }), p.note ? el('span', { class: 'muted', text: ` · ${p.note}` }) : null),
+            el('div', { class: 'proposal-toast-actions' },
+              action(t('proposals.addSetlist'), 'plus', 'setlist', true),
+              action(t('proposals.addProjector'), 'projector', 'projector', false),
+              action(t('proposals.decline'), 'close', 'decline', false)),
+            el('button', { type: 'button', class: 'secondary proposal-toast-close', 'aria-label': t('shell.close'), onclick: hide }, el('span', { 'aria-hidden': 'true', text: '✕' })));
+          box.classList.add('proposal-toast');
+          box.hidden = false;
+          clearTimeout(timer);
+          return;
+        }
+        if (notice.type !== 'itemAdded') return;
+        box.classList.remove('proposal-toast');
         const key = notice.target === 'projector' ? 'live.modes.itemAddedProjector' : 'live.modes.itemAdded';
         box.textContent = t(key, { name: notice.by || t('live.modes.someone'), title: notice.title || '' });
         box.hidden = false;
         clearTimeout(timer);
-        timer = setTimeout(() => { box.hidden = true; }, TOAST_MS);
+        timer = setTimeout(hide, TOAST_MS);
       },
+      hide,
     };
   }
 

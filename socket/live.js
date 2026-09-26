@@ -345,6 +345,25 @@ function createLiveHub({ db, auth, logger, screensHub, hooks = {} }) {
     }
   }
 
+  // An addition from a route (a song proposal accepted): the same 'operator.addItem' command
+  // the console sends, broadcast + notice. -> { ok, itemId } or { ok: false, code }
+  function addItem(adminId, eventId, { target, position, item }, { role, userId, userName }) {
+    try {
+      const result = store.command(adminId, eventId, { type: 'operator.addItem', target, position, item }, undefined, role, { userId });
+      if (io && result.changed) broadcast(adminId, eventId);
+      if (io && result.notice) notice(adminId, eventId, { ...result.notice, by: userName, byUserId: userId }, null);
+      return { ok: true, itemId: result.itemId || null };
+    } catch (err) {
+      if (!(err instanceof LiveError)) throw err;
+      return { ok: false, code: err.code };
+    }
+  }
+
+  // A notice to every event-role page in the room (a song proposal while live).
+  function noticeAll(adminId, eventId, payload) {
+    if (io) notice(adminId, eventId, payload, null);
+  }
+
   // "Încheie" from Acasă (routes/events.js): ends the live event without a live page open.
   function endEvent(adminId, eventId, { role, userId }) {
     try {
@@ -425,7 +444,7 @@ function createLiveHub({ db, auth, logger, screensHub, hooks = {} }) {
   }
   const backgroundsChanged = settingsChanged;
 
-  return { attach, closeSession, closeUser, closeAdmin, startEvent, endEvent, roomName, setlistBefore, setlistChanged, songBefore, songChanged, eventChanged, backgroundsChanged, settingsChanged };
+  return { attach, closeSession, closeUser, closeAdmin, startEvent, endEvent, addItem, noticeAll, roomName, setlistBefore, setlistChanged, songBefore, songChanged, eventChanged, backgroundsChanged, settingsChanged };
 }
 
 module.exports = { createLiveHub, roomName };

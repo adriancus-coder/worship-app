@@ -330,7 +330,17 @@
   const backgroundButton = window.BG_PICKER.liveButton($('bg-live'), { send });
   // The corner clock (clock.set: show / corner / size; key K toggles it).
   const clockPanel = window.CLOCK_PANEL.create($('clock-panel'), { t, el, onChange: (patch) => send('clock.set', patch) });
-  const toast = window.LIVE_MODES.toast($('info-toast'), { t });
+  // A song proposal while live: the toast's actions decide it through the API (routes/proposals.js).
+  const toast = window.LIVE_MODES.toast($('info-toast'), {
+    t, el,
+    onProposal: async (action, p) => {
+      const url = `/api/events/${eventId}/proposals/${p.id}/${action === 'decline' ? 'decline' : 'add'}`;
+      const body = action === 'decline' ? {} : { target: action, position: 'afterCurrent' };
+      const res = await api(url, { method: 'POST', body }).catch(() => ({ ok: false, body: {} }));
+      if (!res.ok) showMessage(res.body.error || t('common.networkError'), true);
+      document.dispatchEvent(new CustomEvent('proposals:changed'));
+    },
+  });
 
   function watchProjector(socket) {
     socket.emit('projector:watch', {}, (reply) => {

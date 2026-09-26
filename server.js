@@ -35,6 +35,7 @@ const { createPushRouter } = require('./routes/push');
 const { createPush } = require('./lib/push');
 const { createNotifications } = require('./lib/notifications');
 const { createNotificationsRouter } = require('./routes/notifications');
+const { createProposalsRouter } = require('./routes/proposals');
 const { createPlatformRouter } = require('./routes/platform');
 const { createPwaRouter } = require('./routes/pwa');
 const { createLiveHub } = require('./socket/live');
@@ -156,6 +157,7 @@ assignmentHooks.onSent = async ({ req, event, rows }) => {
   return result;
 };
 app.use(createNotificationsRouter({ auth, config, notifications }));
+app.use(createProposalsRouter({ db, auth, logger, live, notifications }));
 setInterval(() => notifications.tick().catch((err) => logger.error('reminder tick failed', err)), 60 * 1000).unref();
 app.use(createPlatformRouter({ db, auth, config, logger, live, screensHub, storage, email, invites }));
 app.use(createInvitesRouter({ db, auth, config, logger, live, email, invites }));

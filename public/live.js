@@ -449,7 +449,17 @@
 
   // Together / separate and the team mode; the info toast for additions from the console.
   const modes = window.LIVE_MODES.controls($('mode-controls'), { send, t, el });
-  const toast = window.LIVE_MODES.toast($('info-toast'), { t });
+  // A song proposal while live: the toast's actions decide it through the API (routes/proposals.js).
+  const toast = window.LIVE_MODES.toast($('info-toast'), {
+    t, el,
+    onProposal: async (action, p) => {
+      const url = `/api/events/${eventId}/proposals/${p.id}/${action === 'decline' ? 'decline' : 'add'}`;
+      const body = action === 'decline' ? {} : { target: action, position: 'afterCurrent' };
+      const res = await api(url, { method: 'POST', body }).catch(() => ({ ok: false, body: {} }));
+      if (!res.ok) showMessage(res.body.error || t('common.networkError'), true);
+      document.dispatchEvent(new CustomEvent('proposals:changed'));
+    },
+  });
 
   // --- emergency mode ---------------------------------------------------------------
   // Without the server for more than 5 s the leader keeps moving the projector: positions and

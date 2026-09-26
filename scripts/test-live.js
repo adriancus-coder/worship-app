@@ -1616,6 +1616,66 @@ async function main() {
     for (const id of [evN.id, evT.id]) await api('DELETE', `/api/events/${id}`, owner);
   });
 
+  await step('song proposals: members propose (limits), event roles decide; add -> the item appears (end / projector-only while live); notifications; finished -> 409', async () => {
+    const evP = (await api('POST', '/api/events', owner, { name: 'Propuneri', eventDate: '2026-12-13', startTime: '10:00' })).body.event;
+    await api('PUT', `/api/events/${evP.id}/items`, owner, { items: [{ type: 'song', songId: s1.id }] });
+    const songs = [];
+    for (let i = 0; i < 7; i++) songs.push((await api('POST', '/api/songs', owner, { title: `Propusă ${i}`, sections: [{ type: 'verse', content: 'x' }] })).body.song.id);
+    const p1 = await api('POST', `/api/events/${evP.id}/proposals`, member, { songId: songs[0], note: 'Merge la final' });
+    assert.deepStrictEqual([p1.status, p1.body.proposal.status, p1.body.proposal.note, p1.body.proposal.proposerName, p1.body.openCount, p1.body.canDecide], [201, 'open', 'Merge la final', undefined, 1, false]);
+    assert.deepStrictEqual((await api('POST', `/api/events/${evP.id}/proposals`, operator, { songId: songs[0] })).status, 409, 'the same song again: one open proposal');
+    for (let i = 1; i < 5; i++) assert.strictEqual((await api('POST', `/api/events/${evP.id}/proposals`, member, { songId: songs[i] })).status, 201);
+    const sixth = await api('POST', `/api/events/${evP.id}/proposals`, member, { songId: songs[5] });
+    assert.deepStrictEqual([sixth.status, sixth.body.code], [429, 'proposalLimit'], 'the sixth open proposal of a member');
+    assert.strictEqual((await api('POST', `/api/events/${evP.id}/proposals`, member, { songId: 99999 })).status, 400);
+    // reading: members their own, without names; event roles everything with names
+    const asMember = (await api('GET', `/api/events/${evP.id}/proposals`, member)).body;
+    assert.deepStrictEqual([asMember.proposals.length, asMember.proposals[0].proposerName, asMember.canDecide], [5, undefined, false]);
+    const asLeader = (await api('GET', `/api/events/${evP.id}/proposals`, leader)).body;
+    assert.deepStrictEqual([asLeader.proposals.length, asLeader.proposals.some((p) => p.proposerName === 'Membru'), asLeader.canDecide, asLeader.openCount], [5, true, true, 5]);
+    assert.ok((await api('GET', '/api/notifications', leader)).body.notifications.some((n) => n.kind === 'proposal' && /Membru propune: Propusă 0/.test(n.title)), 'the event roles are notified');
+    assert.ok((await api('GET', '/api/notifications', operator)).body.notifications.some((n) => n.kind === 'proposal'));
+    // deciding: event roles only; add at the end of a planned event
+    assert.strictEqual((await api('POST', `/api/events/${evP.id}/proposals/${p1.body.proposal.id}/add`, member, { target: 'setlist' })).status, 403, 'a member cannot decide');
+    assert.strictEqual((await api('POST', `/api/events/${evP.id}/proposals/${p1.body.proposal.id}/add`, leader, { target: 'projector' })).status, 400, 'projector only while live');
+    const added = await api('POST', `/api/events/${evP.id}/proposals/${p1.body.proposal.id}/add`, leader, { target: 'setlist', position: 'end' });
+    assert.deepStrictEqual([added.status, added.body.proposal.status, added.body.proposal.addedTarget, added.body.openCount], [200, 'added', 'setlist', 4]);
+    const items = (await api('GET', `/api/events/${evP.id}`, member)).body.items;
+    assert.deepStrictEqual([items.length, items[1].songId, items[1].id === added.body.proposal.addedItemId], [2, songs[0], true], 'the song is the last item, visible to the team');
+    assert.strictEqual((await api('POST', `/api/events/${evP.id}/proposals/${p1.body.proposal.id}/decline`, leader, {})).status, 409, 'decided once');
+    assert.ok((await api('GET', '/api/notifications', member)).body.notifications.some((n) => n.kind === 'proposal_decided' && /Propusă 0/.test(n.title) && /adăugată în program/.test(n.body)), 'the proposer hears it was added');
+    // decline with a note: the proposer sees it
+    const p2 = asLeader.proposals.find((p) => p.songId === songs[1]);
+    const declined = await api('POST', `/api/events/${evP.id}/proposals/${p2.id}/decline`, operator, { note: 'Duminica viitoare' });
+    assert.deepStrictEqual([declined.status, declined.body.proposal.status, declined.body.proposal.decisionNote], [200, 'declined', 'Duminica viitoare']);
+    assert.strictEqual((await api('GET', `/api/events/${evP.id}/proposals`, member)).body.proposals.find((p) => p.id === p2.id).decisionNote, 'Duminica viitoare');
+    assert.ok((await api('GET', '/api/notifications', member)).body.notifications.some((n) => n.kind === 'proposal_decided' && /Nu a fost adăugată\. · Duminica viitoare/.test(n.body)));
+    // live: the toast notice reaches the event roles' pages; "Doar pe proiector" -> a projector-only item the team never sees
+    assert.strictEqual((await api('POST', `/api/events/${evP.id}/start`, owner, {})).status, 200);
+    const leadP = await joined(leader, evP.id);
+    const memberP = await joined(member, evP.id);
+    const noticeP = next(leadP.socket, 'live:notice', (n) => n.type === 'proposal');
+    let memberNotice = false;
+    memberP.socket.on('live:notice', () => { memberNotice = true; });
+    const p3 = await api('POST', `/api/events/${evP.id}/proposals`, member, { songId: songs[6], note: 'Acum' });
+    const toast = await noticeP;
+    assert.deepStrictEqual([toast.proposal.id, toast.proposal.songTitle, toast.by, toast.eventId], [p3.body.proposal.id, 'Propusă 6', 'Membru', evP.id], 'the toast payload');
+    const projected = await api('POST', `/api/events/${evP.id}/proposals/${p3.body.proposal.id}/add`, leader, { target: 'projector', position: 'afterCurrent' });
+    assert.deepStrictEqual([projected.status, projected.body.proposal.addedTarget], [200, 'projector']);
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    assert.ok(!(await api('GET', `/api/events/${evP.id}`, member)).body.items.some((it) => it.songId === songs[6]), 'members never see the projector-only item');
+    assert.ok((await api('GET', `/api/events/${evP.id}`, leader)).body.items.length >= 2);
+    assert.strictEqual(memberNotice, false, 'team phones get no proposal toast');
+    leadP.socket.close();
+    memberP.socket.close();
+    // finished: no more proposals
+    await api('POST', `/api/events/${evP.id}/end`, owner, {});
+    const closed = await api('POST', `/api/events/${evP.id}/proposals`, member, { songId: songs[5] });
+    assert.deepStrictEqual([closed.status, closed.body.code], [409, 'eventFinished']);
+    await api('DELETE', `/api/events/${evP.id}`, owner);
+    for (const id of songs) await api('DELETE', `/api/songs/${id}`, owner);
+  });
+
   await step('view as: an owner sees the app as member / operator / leader (every guard follows), back restores all; a leader cannot', async () => {
     const viewAs = (cookie, role) => api('PUT', '/api/me/view-as', cookie, { role });
     const page = (url, cookie) => fetch(base() + url, { headers: { Cookie: cookie }, redirect: 'manual' }).then((r) => r.status);

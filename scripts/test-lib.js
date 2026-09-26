@@ -1900,6 +1900,7 @@ testAsync('platform deletion: refused while active, the exact name, pending -> c
     db.prepare("INSERT INTO push_subscriptions (admin_id, user_id, endpoint, p256dh, auth, created_at) VALUES (?, ?, ?, 'p', 'a', 0)").run(a, userId, `https://push.test/${a}`);
     db.prepare("INSERT INTO notifications (admin_id, user_id, kind, title, event_id, created_at) VALUES (?, ?, 'assigned', 'T', ?, 0)").run(a, userId, eventId);
     db.prepare("INSERT INTO notification_prefs (user_id, admin_id, kind, enabled) VALUES (?, ?, 'reminder', 0)").run(userId, a);
+    db.prepare("INSERT INTO song_proposals (admin_id, event_id, song_id, proposed_by, created_at) VALUES (?, ?, ?, ?, 0)").run(a, eventId, songId, userId);
     fs.mkdirSync(path.join(dataDir, 'uploads', `admin-${a}`, 'media'), { recursive: true });
     fs.writeFileSync(path.join(dataDir, 'uploads', `admin-${a}`, 'media', 'f.bin'), Buffer.alloc(64, 1));
   };
@@ -2358,5 +2359,45 @@ testAsync('notifications (migration 033): rows in the person\'s language + push 
   assert.strictEqual(N.markRead(1, 3, 'all'), 4);
   assert.strictEqual(N.unread(1, 3), 0);
   assert.strictEqual(N.markRead(1, 4, [N.list(1, 3)[0].id]), 0, 'not theirs');
+  mem.close();
+});
+
+test('song proposals (migration 034): one open per song, five open per member, settle once, members see their own', () => {
+  const Database = require('better-sqlite3');
+  const { runMigrations } = require('../lib/db');
+  const { createProposalStore, MAX_OPEN_PER_MEMBER } = require('../lib/proposals');
+  const mem = new Database(':memory:');
+  mem.pragma('foreign_keys = ON');
+  runMigrations(mem);
+  mem.prepare("INSERT INTO admins (id, name, created_at) VALUES (1, 'A', 0), (2, 'B', 0)").run();
+  mem.prepare("INSERT INTO users (id, admin_id, email, name, password_hash, role, created_at) VALUES (1, 1, 'l@x.ro', 'Lider', 'x', 'leader', 0), (2, 1, 'm@x.ro', 'Maria', 'x', 'member', 0), (3, 1, 'p@x.ro', 'Petru', 'x', 'member', 0)").run();
+  mem.prepare("INSERT INTO events (id, admin_id, name, event_date, status, created_at, updated_at) VALUES (1, 1, 'E', '2026-10-04', 'planned', 0, 0)").run();
+  const song = mem.prepare("INSERT INTO songs (admin_id, title, title_norm, created_at, updated_at) VALUES (1, ?, ?, 0, 0)");
+  const ids = [];
+  for (let i = 0; i < 7; i++) ids.push(Number(song.run(`Cântarea ${i}`, `cantarea ${i}`).lastInsertRowid));
+  const other = Number(mem.prepare("INSERT INTO songs (admin_id, title, title_norm, created_at, updated_at) VALUES (2, 'X', 'x', 0, 0)").run().lastInsertRowid);
+  const P = createProposalStore(mem);
+  assert.strictEqual(MAX_OPEN_PER_MEMBER, 5);
+  const first = P.create(1, 1, ids[0], 2, '  Ar merge la final  ');
+  assert.deepStrictEqual([first.proposal.status, first.proposal.note, first.proposal.songTitle, first.proposal.proposerName], ['open', 'Ar merge la final', 'Cântarea 0', 'Maria']);
+  assert.deepStrictEqual(P.create(1, 1, ids[0], 3, ''), { error: 'proposalExists' }, 'another member, the same song: one open per song');
+  assert.deepStrictEqual(P.create(1, 1, other, 2, ''), { error: 'songInvalid' }, 'another admin\'s song');
+  assert.deepStrictEqual(P.create(1, 1, 999, 2, ''), { error: 'songInvalid' });
+  for (let i = 1; i < 5; i++) assert.ok(P.create(1, 1, ids[i], 2, '').proposal, `proposal ${i + 1}`);
+  assert.deepStrictEqual(P.create(1, 1, ids[5], 2, ''), { error: 'proposalLimit' }, 'the sixth open one');
+  assert.ok(P.create(1, 1, ids[5], 3, '').proposal, 'another member is not limited by Maria\'s');
+  assert.strictEqual(P.openCount(1, 1), 6);
+  assert.deepStrictEqual([P.list(1, 1).length, P.list(1, 1, { forUser: 2 }).length, P.list(1, 1, { forUser: 3 }).length], [6, 5, 1]);
+  // settle: added (where it landed), then never again; declined with a note
+  const added = P.settle(1, 1, first.proposal.id, { status: 'added', decidedBy: 1, target: 'setlist', itemId: 42 });
+  assert.deepStrictEqual([added.status, added.addedTarget, added.addedItemId, added.deciderName], ['added', 'setlist', 42, 'Lider']);
+  assert.strictEqual(P.settle(1, 1, first.proposal.id, { status: 'declined', decidedBy: 1 }), null, 'decided once');
+  assert.strictEqual(P.settle(1, 1, first.proposal.id, { status: 'open', decidedBy: 1 }), null);
+  const second = P.list(1, 1, { forUser: 2 }).find((p) => p.status === 'open');
+  const declined = P.settle(1, 1, second.id, { status: 'declined', decidedBy: 1, note: 'O cântăm duminica viitoare' });
+  assert.deepStrictEqual([declined.status, declined.decisionNote], ['declined', 'O cântăm duminica viitoare']);
+  assert.strictEqual(P.openCount(1, 1), 4);
+  assert.ok(P.create(1, 1, ids[0], 3, '').proposal, 'the song can be proposed again once the first was decided');
+  assert.strictEqual(P.list(1, 1)[0].status, 'open', 'open ones first');
   mem.close();
 });
