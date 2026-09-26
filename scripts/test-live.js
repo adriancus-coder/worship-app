@@ -2,7 +2,7 @@
 
 // Live mode against a real server (fresh temp DATA_DIR, random port) with socket.io-client:
 // handshake auth, room visibility, ordered versions for every client, roles, stale
-// versions, setlist clamping, reconnects and a server restart. No external network.
+// versions, setlist clamping, reconnects and a clean server restart. No external network.
 
 const assert = require('assert');
 const fs = require('fs');
@@ -52,12 +52,33 @@ async function startServer() {
   throw new Error('server did not start');
 }
 
+// SIGTERM: the server stops cleanly (lib/shutdown.js). -> { code, ms }
 function stopServer() {
   return new Promise((resolve) => {
-    if (!server || server.exitCode !== null) return resolve();
-    server.once('exit', resolve);
-    server.kill();
+    if (!server || server.exitCode !== null) return resolve({ code: server ? server.exitCode : null, ms: 0 });
+    const started = Date.now();
+    server.once('exit', (code) => resolve({ code, ms: Date.now() - started }));
+    server.kill('SIGTERM');
   });
+}
+
+// An upload that has sent its first chunk and keeps the rest back: { sent, response }.
+function slowUpload(cookie) {
+  const http = require('http');
+  let sent;
+  const started = new Promise((r) => { sent = r; });
+  const response = new Promise((resolve, reject) => {
+    const req = http.request(`${base()}/api/media/upload?as=video&title=Lent`, {
+      method: 'POST', headers: { Cookie: cookie, 'Content-Type': 'video/mp4', 'Content-Length': String(1024 * 1024) },
+    }, (res) => {
+      let text = '';
+      res.on('data', (c) => { text += c; });
+      res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(text || '{}') }));
+    });
+    req.on('error', reject);
+    req.write(Buffer.alloc(64 * 1024), () => sent());
+  });
+  return { sent: started, response };
 }
 
 const base = () => `http://127.0.0.1:${port}`;
@@ -831,7 +852,26 @@ async function main() {
     auto.on('connect', () => auto.emit('live:join', { eventId: ev.id }));
     auto.emit('live:join', { eventId: ev.id });
     await next(auto, 'live:state');
-    await stopServer();
+    // a clean stop: live pages are told first, an upload in progress gets a 503
+    const told = next(auto, 'live:restart', () => true, 5000);
+    const upload = slowUpload(owner);
+    await upload.sent;
+    const stopped = await stopServer();
+    await told;
+    assert.strictEqual(stopped.code, 0, 'exit 0');
+    assert.ok(stopped.ms < 10000, `shutdown took ${stopped.ms} ms`);
+    const answered = await upload.response;
+    assert.deepStrictEqual([answered.status, answered.body.code], [503, 'restarting']);
+    assert.ok(answered.body.error);
+    // the database is consistent: checkpointed (no WAL left), intact, the live state saved
+    const file = path.join(dataDir, 'worship.db');
+    const wal = `${file}-wal`;
+    assert.ok(!fs.existsSync(wal) || fs.statSync(wal).size === 0, 'WAL checkpointed');
+    const check = new Database(file, { readonly: true });
+    assert.strictEqual(check.pragma('integrity_check', { simple: true }), 'ok');
+    assert.strictEqual(check.prepare('SELECT version FROM live_state WHERE event_id = ?').pluck().get(ev.id), version);
+    check.close();
+    assert.deepStrictEqual(fs.readdirSync(path.join(dataDir, 'uploads', 'admin-1', 'media')).filter((f) => f.startsWith('.upload-')), [], 'no temp upload left');
     const restored = next(auto, 'live:state', () => true, 8000);
     await startServer();
     const s = await restored;

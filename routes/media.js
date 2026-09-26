@@ -116,7 +116,7 @@ function createMediaRouter({ db, auth, config, logger, live, storage }) {
     const out = fs.createWriteStream(temp, { flags: 'wx' });
     let size = 0;
     let failed = false;
-    const fail = (status, error) => {
+    const fail = (status, error, code = null) => {
       if (failed) return;
       failed = true;
       req.unpipe(out);
@@ -124,7 +124,7 @@ function createMediaRouter({ db, auth, config, logger, live, storage }) {
       fs.rm(temp, { force: true }, () => {});
       if (!res.headersSent) {
         res.set('Connection', 'close');
-        res.status(status).json({ error });
+        res.status(status).json(code ? { code, error } : { error });
       }
       req.resume(); // drain whatever is still coming
     };
@@ -133,6 +133,7 @@ function createMediaRouter({ db, auth, config, logger, live, storage }) {
       if (size > limit) fail(...tooLarge(size));
     });
     req.on('aborted', () => fail(400, req.t('errors.badRequest')));
+    req.once('wa:shutdown', ({ code, error }) => fail(503, error, code)); // the server is stopping (lib/shutdown.js)
     out.on('error', (err) => {
       if (failed) return; // a write still queued after the upload was stopped
       logger.error('media upload write failed', err);

@@ -32,6 +32,7 @@ const { createPwaRouter } = require('./routes/pwa');
 const { createLiveHub } = require('./socket/live');
 const { createScreensHub } = require('./socket/screens');
 const { createStorageGuard } = require('./lib/storage');
+const { createShutdown } = require('./lib/shutdown');
 
 const db = openDb(config.DATA_DIR);
 const applied = runMigrations(db);
@@ -76,6 +77,8 @@ app.use(helmet({
   },
   strictTransportSecurity: config.IS_PRODUCTION,
 }));
+// A clean stop (SIGTERM / SIGINT): 503 for anything arriving meanwhile (lib/shutdown.js).
+app.use((req, res, next) => shutdown.middleware(req, res, next));
 app.use(compression());
 app.use(createI18nMiddleware());
 const jsonBody = express.json({ limit: '100kb' });
@@ -125,6 +128,8 @@ const server = http.createServer(app);
 const io = new SocketServer(server);
 live.attach(io);
 screensHub.attach(io);
+const shutdown = createShutdown({ server, io, db, logger, t });
+shutdown.listen();
 
 server.listen(config.PORT, () => {
   logger.info(`${config.APP_NAME} v${config.VERSION} listening on port ${config.PORT} (${config.NODE_ENV})`);

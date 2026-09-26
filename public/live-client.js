@@ -138,6 +138,9 @@
     socket.on('live:gone', (payload) => {
       if (payload && payload.eventId === eventId && onGone) onGone();
     });
+    // The server is stopping (a deploy or restart): show "Se reconectează…" now, not after
+    // the connection times out; socket.io reconnects with its usual backoff.
+    socket.on('live:restart', () => setConnection('reconnecting'));
     socket.on('connect_error', (err) => {
       // The session is gone (logged out elsewhere, expired): back to the login page.
       if (err && err.message === 'unauthenticated') window.location.replace('/login');

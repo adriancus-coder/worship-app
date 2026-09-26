@@ -119,7 +119,8 @@
       } else if (xhr.status === 401) {
         window.location.replace('/login');
       } else {
-        message(ids.message, body.error || t('common.networkError'), 'error');
+        // 503: the server is restarting (it answers uploads in progress before it stops).
+        message(ids.message, body.error || t(xhr.status === 503 ? 'errors.restarting' : 'common.networkError'), 'error');
       }
     });
     xhr.open('POST', `/api/media/upload?as=${as}&title=${encodeURIComponent(title)}`);
