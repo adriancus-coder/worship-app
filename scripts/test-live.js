@@ -438,6 +438,7 @@ async function main() {
     await send(lead.socket, { type: 'video.play' });
     frame = await frameWhere(screen, (f) => f.version === version);
     assert.deepStrictEqual([frame.kind, frame.video.state], ['video', 'playing']);
+    assert.strictEqual(frame.clock.show, false, 'no clock over a playing video');
     // The screen reports progress; the leader's projector watchers get it.
     const watchers = connect(leader);
     await next(watchers, 'connect');
@@ -460,6 +461,7 @@ async function main() {
     screen.emit('screen:video-status', { state: 'ended', position: 60, duration: 60 });
     frame = await frameWhere(screen, (f) => f.video && f.video.state === 'ended');
     assert.strictEqual(frame.kind, 'black', 'the end of a video goes to black, never back to lyrics');
+    assert.strictEqual(frame.clock.show, true, 'the clock is back once the video ended');
     const snap = await memberAt(frame.version);
     assert.deepStrictEqual([snap.projector.source, snap.video.state], ['black', 'ended']);
     version = snap.version;
@@ -479,6 +481,39 @@ async function main() {
     await send(lead.socket, { type: 'projector.source', source: 'content' });
     await frameWhere(screen, (f) => f.version === version);
     watchers.close();
+  });
+
+  await step('corner clock: defaults on every frame, clock.set versioned and broadcast, hidden while a video plays; member refused', async () => {
+    let frame = await frameWhere(screen, (f) => f.version === version);
+    assert.deepStrictEqual(frame.clock, { show: true, position: 'bottom-right', scale: 1.8, timeZone: 'Europe/Oslo' }, 'the defaults, with the church timezone');
+    assert.strictEqual((await frameWhere(otherScreen, () => true)).clock.show, true, 'the idle screen has the clock too');
+    const refused = await emit(mem.socket, 'live:command', { eventId: ev.id, type: 'projector.source', source: 'content' });
+    assert.strictEqual(refused.code, 'forbidden');
+    assert.strictEqual((await emit(mem.socket, 'live:command', { eventId: ev.id, type: 'clock.set', show: false })).code, 'forbidden');
+    assert.strictEqual((await send(lead.socket, { type: 'clock.set' })).code, 'badCommand');
+    const reply = await send(lead.socket, { type: 'clock.set', show: false, expectedVersion: version });
+    assert.strictEqual(reply.ok, true, JSON.stringify(reply));
+    let snap = await memberAt(version);
+    assert.strictEqual(snap.clock.show, false, 'broadcast in the snapshots');
+    assert.strictEqual((await frameWhere(screen, (f) => f.version === version)).clock.show, false, 'and on the frame');
+    await send(ownerSocket, { type: 'clock.set', position: 'top-left', scale: 1.0 });
+    frame = await frameWhere(screen, (f) => f.version === version);
+    assert.deepStrictEqual([frame.clock.position, frame.clock.scale, frame.clock.show], ['top-left', 1, false]);
+    await send(lead.socket, { type: 'clock.set', show: true, scale: 9 });
+    frame = await frameWhere(screen, (f) => f.version === version);
+    assert.deepStrictEqual([frame.clock.show, frame.clock.scale], [true, 1.8], 'clamped');
+    // the church defaults (owner only): the idle screen follows them, a new start takes them
+    assert.strictEqual((await api('PUT', '/api/settings/clock', leader, { position: 'top-right' })).status, 403);
+    assert.strictEqual((await api('PUT', '/api/settings/clock', owner, { position: 'centre' })).status, 400);
+    const set = await api('PUT', '/api/settings/clock', other, { position: 'top-right', scale: 1.1 });
+    assert.deepStrictEqual([set.status, set.body.clock], [200, { show: true, position: 'top-right', scale: 1.1 }]);
+    const idle = await frameWhere(otherScreen, (f) => f.clock && f.clock.position === 'top-right');
+    assert.deepStrictEqual([idle.kind, idle.clock.scale], ['idle', 1.1], 'the idle screen shows the new defaults at once');
+    assert.strictEqual((await api('GET', '/api/settings', other)).body.clock.scale, 1.1);
+    snap = await memberAt(version);
+    assert.deepStrictEqual([snap.clock.position, snap.clock.scale], ['top-left', 1.8], 'the running event of admin 1 keeps its own');
+    await send(lead.socket, { type: 'clock.set', position: 'bottom-right' });
+    await frameWhere(screen, (f) => f.version === version);
   });
 
   await step('together: leader and operator move ONE position, applied in order with versions', async () => {
@@ -779,7 +814,7 @@ async function main() {
     // The browser build of public/frames.js (no require), as the live page loads it.
     const sandbox = { window: {} };
     vm.createContext(sandbox);
-    for (const file of ['chords.js', 'frames.js']) {
+    for (const file of ['chords.js', 'clock.js', 'frames.js']) {
       vm.runInContext(fs.readFileSync(path.join(ROOT, 'public', file), 'utf8'), sandbox, { filename: file });
     }
     const { projectorFrame } = sandbox.window.FRAMES;

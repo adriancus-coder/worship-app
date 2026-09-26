@@ -24,11 +24,11 @@ module.exports = {
       const box = o.querySelector('.projector-text');
       const r = box ? box.getBoundingClientRect() : null;
       return {
-        text: o.innerText.replace(/\n+/g, ' / '),
+        text: o.querySelector('.projector-stage').innerText.replace(/\n+/g, ' / '),
         fits: r ? (r.left >= innerWidth * 0.05 - 1 && r.right <= innerWidth * 0.95 + 1 && r.top >= innerHeight * 0.05 - 1
           && r.bottom <= innerHeight * 0.95 + 1 && box.scrollHeight <= box.clientHeight + 1) : null,
         overflow: document.documentElement.scrollWidth > innerWidth || document.documentElement.scrollHeight > innerHeight,
-        chords: /\[|\b(Em|Bm|G\/B)\b/.test(o.innerText),
+        chords: /\[|\b(Em|Bm|G\/B)\b/.test(o.querySelector('.projector-stage').innerText),
       };
     });
     const lp = await signIn('leader', { width: 1280 });
@@ -37,7 +37,7 @@ module.exports = {
     const moveTo = async (label, action, pattern) => {
       const t0 = Date.now();
       await action();
-      const ok = await sp.waitForFunction((re) => new RegExp(re).test(document.getElementById('output').innerText), pattern, { timeout: 3000 }).then(() => true, () => false);
+      const ok = await sp.waitForFunction((re) => new RegExp(re).test(document.querySelector('#output .projector-stage').innerText), pattern, { timeout: 3000 }).then(() => true, () => false);
       const o = await out();
       check(ok && Date.now() - t0 < 1500, `${label} -> screen "${o.text.slice(0, 40)}" in ${Date.now() - t0} ms`);
       check(!o.chords, `${label}: lyrics only, no chords`);
@@ -57,10 +57,10 @@ module.exports = {
     await sp.waitForTimeout(2600);
     check(await sp.evaluate(() => document.body.classList.contains('cursor-hidden')), 'the cursor hides after 2 s without moving');
     await lp.keyboard.press('b');
-    const black = await sp.waitForFunction(() => document.getElementById('output').innerText === '', null, { timeout: 3000 }).then(() => true, () => false);
+    const black = await sp.waitForFunction(() => document.querySelector('#output .projector-stage').innerText === '', null, { timeout: 3000 }).then(() => true, () => false);
     check(black, 'B on the leader page: the screen goes black');
     await lp.keyboard.press('b');
-    await sp.waitForFunction(() => /Primul/.test(document.getElementById('output').innerText));
+    await sp.waitForFunction(() => /Primul/.test(document.querySelector('#output .projector-stage').innerText));
 
     // A clean server restart: the screen keeps its frame, then reconnects.
     const before = (await out()).text;

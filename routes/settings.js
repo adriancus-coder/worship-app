@@ -6,6 +6,7 @@ const { requireRole } = require('../lib/auth');
 const { MAX_BYTES, sniff, createLogoStore } = require('../lib/logo');
 const { createScreenStore } = require('../lib/screens');
 const { NOTATIONS, THEME_DEFAULTS, createAdminSettings } = require('../lib/admin-settings');
+const { parsePatch: parseClockPatch } = require('../lib/clock');
 const { parseChoice, createBackgroundStore } = require('../lib/backgrounds');
 const { createMediaSigner } = require('../lib/media');
 const { createBackupService } = require('../lib/backup');
@@ -39,6 +40,7 @@ function createSettingsRouter({ db, auth, config, logger, screensHub, live, stor
       chordNotationDefault: settings.chordNotationDefault(req.adminId),
       themeDefault: settings.themeDefault(req.adminId),
       service: settings.service(req.adminId),
+      clock: settings.clock(req.adminId),
       backgroundDefaults: backgrounds.defaults(req.adminId),
       backup: backups.lastBackup(req.adminId),
       storage: storage.usage(),
@@ -80,6 +82,15 @@ function createSettingsRouter({ db, auth, config, logger, screensHub, live, stor
     settings.set(req.adminId, 'service_weekday', String(weekday));
     settings.set(req.adminId, 'service_time', time);
     res.json({ service: settings.service(req.adminId) });
+  });
+
+  // The corner clock a new event starts with, and the idle screen's: { show?, position?, scale? }.
+  router.put('/api/settings/clock', (req, res) => {
+    const patch = parseClockPatch(req.body);
+    if (!patch) return res.status(400).json({ error: req.t('errors.clockInvalid') });
+    const clock = settings.setClock(req.adminId, patch);
+    screensHub.update(req.adminId); // the idle screen shows the defaults
+    res.json({ clock });
   });
 
   // The church default chord notation, for users without their own preference.

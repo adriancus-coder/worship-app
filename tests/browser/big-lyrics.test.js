@@ -20,7 +20,7 @@ module.exports = {
     await sp.waitForFunction(() => /\d{3} \d{3}/.test(document.getElementById('pairing-code').textContent));
     await app.api(app.cookies.owner, 'POST', '/api/screens/claim', { code: (await sp.textContent('#pairing-code')).replace(' ', ''), name: 'Proiector' });
     await sp.waitForSelector('#output:not([hidden])', { timeout: 6000 });
-    const screen = async () => { await wait(300); return sp.evaluate(() => document.getElementById('output').innerText.trim().replace(/\s+/g, ' ') || 'BLACK'); };
+    const screen = async () => { await wait(300); return sp.evaluate(() => document.querySelector('#output .projector-stage').innerText.trim().replace(/\s+/g, ' ') || 'BLACK'); };
     const m = await signIn('member', { width: 375 });
     await m.goto(`${app.url}/events/${E}/follow`);
     await m.waitForSelector('#follow:not([hidden])');

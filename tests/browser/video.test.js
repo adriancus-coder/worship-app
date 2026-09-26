@@ -36,11 +36,11 @@ module.exports = {
     await lp.goto(`${app.url}/events/${E}/live`);
     await lp.waitForSelector('#live:not([hidden])');
     await lp.click('#start-button');
-    await sp.waitForFunction(() => /Ne ridici/.test(document.getElementById('output').innerText));
+    await sp.waitForFunction(() => /Ne ridici/.test(document.querySelector('#output .projector-stage').innerText));
     const screen = () => sp.evaluate(() => {
       const v = document.querySelector('#video-layer video');
       const f = document.querySelector('#video-layer iframe');
-      return { text: document.getElementById('output').innerText, visible: document.getElementById('video-layer').classList.contains('visible'),
+      return { text: document.querySelector('#output .projector-stage').innerText, visible: document.getElementById('video-layer').classList.contains('visible'),
         video: v ? { paused: v.paused, t: v.currentTime, volume: v.volume, src: v.src.slice(0, 5) } : null, iframe: f ? f.src : null };
     });
     const status = () => lp.textContent('#video-status-text');
@@ -53,6 +53,7 @@ module.exports = {
     await lp.click('#video-toggle');
     const playing = await sp.waitForFunction(() => { const v = document.querySelector('#video-layer video'); return v && !v.paused && v.currentTime > 0.2; }, null, { timeout: 5000 }).then(() => true, () => false);
     check(playing && Date.now() - t0 < 1500, `play: the screen plays within ${Date.now() - t0} ms`);
+    check(await sp.$eval('#output .display-clock', (c) => c.hidden), 'the corner clock is hidden while the video plays');
     check(await lp.waitForFunction(() => /Rulează/.test(document.getElementById('video-status-text').textContent), null, { timeout: 4000 }).then(() => true, () => false), 'the leader panel shows it playing', await status());
     await lp.click('#video-toggle');
     await lp.waitForTimeout(600);

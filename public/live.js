@@ -374,6 +374,8 @@
   const videoPanel = window.VIDEO_PANEL.create($('video-panel'), { send, api, t, el });
   const projector = { screens: 0, logoUrl: null, frame: null };
   const backgroundButton = window.BG_PICKER.liveButton($('bg-live'), { send });
+  // The corner clock (clock.set: show / corner / size; key K toggles it).
+  const clockPanel = window.CLOCK_PANEL.create($('clock-panel'), { t, el, onChange: (patch) => send('clock.set', patch) });
 
   function renderProjector() {
     const snap = state.snap;
@@ -388,6 +390,7 @@
       : t('live.projector.screens', { n: projector.screens });
     modes.update(snap);
     backgroundButton.update(snap);
+    clockPanel.update({ clock: snap && snap.clock, enabled: live && !emergency.active });
     // Separate: where the projector is, and "Sari acolo" (the team goes there).
     const split = live && snap.mode === 'split';
     $('cross').hidden = !split;
@@ -497,6 +500,7 @@
     emergency.base = state.snap;
     emergency.dirty = false;
     renderEmergency();
+    renderProjector(); // the clock controls wait for the server
     showMessage('');
   }
 
@@ -612,6 +616,8 @@
       toggleSource('black'); // black <-> content
     } else if (event.key === 'l' || event.key === 'L') {
       toggleSource('logo'); // logo <-> content
+    } else if (event.key === 'k' || event.key === 'K') {
+      clockPanel.toggle(); // the corner clock on / off
     }
   });
 
@@ -626,6 +632,7 @@
     renderProjector();
     videoPanel.render();
     modes.render();
+    clockPanel.render();
     // Section labels come from the server in the page language: reload.
     const key = state.loadedKey;
     state.loadedKey = null;

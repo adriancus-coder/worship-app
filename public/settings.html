@@ -48,6 +48,13 @@
       <p id="service-message" class="message" role="status" aria-live="polite"></p>
     </section>
 
+    <section class="settings-section" aria-labelledby="clock-heading">
+      <h2 id="clock-heading" data-i18n="settings.clockHeading"></h2>
+      <p class="hint" data-i18n="settings.clockHint"></p>
+      <div id="clock-panel" class="clock-settings"></div>
+      <p id="clock-message" class="message" role="status" aria-live="polite"></p>
+    </section>
+
     <section class="settings-section" aria-labelledby="bg-heading">
       <h2 id="bg-heading" data-i18n="background.settingsHeading"></h2>
       <p class="hint" data-i18n="background.settingsHint"></p>
@@ -115,7 +122,9 @@
   <script src="/i18n.js"></script>
   <script src="/page.js"></script>
   <script src="/shell.js"></script>
+  <script src="/clock.js"></script>
   <script src="/projector-render.js"></script>
+  <script src="/clock-panel.js"></script>
   <script src="/background-picker.js"></script>
   <script src="/settings.js"></script>
 </body>

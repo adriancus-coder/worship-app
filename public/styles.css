@@ -1043,6 +1043,30 @@ button.live-item:disabled { opacity: 1; cursor: default; }
 .projector-body { font-weight: 500; }
 .projector-title { font-weight: 800; }
 .projector-logo { max-width: 60%; max-height: 60%; object-fit: contain; }
+/* The corner clock (public/clock.js), as in Sanctuary Voice: --clock-base is clamp(1.1rem,
+   2vw, 1.7rem) on a full screen (set by projector-render.js, scaled down in a preview),
+   --clock-scale the size chosen in the panel (0.7 - 1.8), --clock-ratio scales the offsets. */
+.display-clock {
+  position: absolute;
+  z-index: 2;
+  margin: 0;
+  pointer-events: none;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: calc(var(--clock-base, 1.7rem) * var(--clock-scale, 1));
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+  color: var(--projector-text);
+  opacity: 0.92;
+  text-shadow: 0 0.04em 0.16em var(--projector-text-shadow-strong), 0 0 0.4em var(--projector-text-shadow);
+  white-space: nowrap;
+}
+.display-clock[hidden] { display: none; }
+.display-clock.top-left { top: calc(20px * var(--clock-ratio, 1)); left: calc(24px * var(--clock-ratio, 1)); }
+.display-clock.top-right { top: calc(20px * var(--clock-ratio, 1)); right: calc(24px * var(--clock-ratio, 1)); }
+.display-clock.bottom-left { bottom: calc(20px * var(--clock-ratio, 1)); left: calc(24px * var(--clock-ratio, 1)); }
+.display-clock.bottom-right { bottom: calc(20px * var(--clock-ratio, 1)); right: calc(24px * var(--clock-ratio, 1)); }
 
 /* --- the /screen page ------------------------------------------------------------------------- */
 
@@ -1084,6 +1108,17 @@ body.screen-body.cursor-hidden, body.screen-body.cursor-hidden * { cursor: none;
 .source-buttons button:disabled { opacity: 0.45; cursor: not-allowed; }
 .notation-choice { display: flex; flex-wrap: wrap; gap: 8px; }
 .notation-choice button { min-width: 120px; }
+/* The corner clock: "Ceas" toggle (its own border) + the four corners; the size below. */
+.clock-panel { display: flex; flex-direction: column; gap: 8px; }
+.clock-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.clock-toggle { min-height: var(--touch); padding: 8px 14px; }
+.clock-corners { display: inline-flex; }
+.clock-corners > button { min-width: var(--touch); min-height: var(--touch); padding: 6px 10px; font-size: 1.1rem; line-height: 1; }
+.clock-size label { display: flex; justify-content: space-between; gap: 8px; margin: 0 0 2px; font-size: 0.9rem; color: var(--text-muted); font-weight: 600; }
+.clock-size-value { font-variant-numeric: tabular-nums; color: var(--text); }
+.clock-size input[type="range"] { display: block; width: 100%; min-height: var(--touch); margin: 0; accent-color: var(--accent-fill); }
+.clock-size input[type="range"]:disabled { opacity: 0.45; }
+.clock-settings { max-width: 480px; }
 
 /* --- chord notation switch ("C · Do") ------------------------------------------------------ */
 

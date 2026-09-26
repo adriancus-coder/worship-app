@@ -56,10 +56,15 @@ function createScreensHub({ db, logger, config }) {
     return file ? `/api/logo/${file}` : null;
   }
 
+  // The church default clock, for the idle screen (a live event carries its own).
+  function clockDefaults(adminId) {
+    return { ...settings.clock(adminId), timeZone: settings.timezone(adminId) };
+  }
+
   // The frame the admin's screens should show now.
   function frameFor(adminId) {
     const eventId = live.liveEventId(adminId);
-    if (!eventId) return projectorFrame(null, null, null, { logoUrl: logoUrl(adminId) });
+    if (!eventId) return projectorFrame(null, null, null, { logoUrl: logoUrl(adminId), clock: clockDefaults(adminId) });
     const state = live.snapshot(adminId, eventId);
     const found = events.get(adminId, eventId, { scope: 'all' }); // the operator's items too
     const songs = new Map();

@@ -16,7 +16,7 @@ const COMMANDS = ['event.start', 'event.end', 'worship.next', 'worship.prev', 'w
   'live.mode', 'team.mode', 'background.set',
   'projector.next', 'projector.prev', 'projector.goto', 'projector.syncToWorship', 'projector.source',
   'video.prepare', 'video.play', 'video.pause', 'video.restart', 'video.stop', 'video.volume',
-  'operator.addItem'];
+  'clock.set', 'operator.addItem'];
 // Roles that may send commands at all; the store decides the rest (lib/live.js permission).
 const COMMAND_ROLES = EVENT_ROLES;
 

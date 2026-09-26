@@ -43,15 +43,15 @@ module.exports = {
     await lp.goto(`${app.url}/events/${E}/live`);
     await lp.waitForSelector('#live:not([hidden])');
     await lp.click('#start-button');
-    await sp.waitForFunction(() => /Ne ridici/.test(document.getElementById('output').innerText));
+    await sp.waitForFunction(() => /Ne ridici/.test(document.querySelector('#output .projector-stage').innerText));
     let cached = false;
     for (let i = 0; i < 50 && !cached; i++) {
       cached = await lp.evaluate((id) => window.EVENT_CACHE.load(id).then((r) => Boolean(r && r.songs && r.songs.length === 3 && r.logo)), E);
       if (!cached) await lp.waitForTimeout(100);
     }
     check(cached, 'the event (songs, logo) is cached on the leader device');
-    const scr = () => sp.evaluate(() => { const o = document.getElementById('output'); return o.innerText.trim().split('\n')[0] || (o.querySelector('img') ? 'LOGO' : 'BLACK'); });
-    const until = (re) => sp.waitForFunction((re) => new RegExp(re).test(document.getElementById('output').innerText), re, { timeout: 3000 }).then(() => true, () => false);
+    const scr = () => sp.evaluate(() => { const o = document.getElementById('output'); return o.querySelector('.projector-stage').innerText.trim().split('\n')[0] || (o.querySelector('img') ? 'LOGO' : 'BLACK'); });
+    const until = (re) => sp.waitForFunction((re) => new RegExp(re).test(document.querySelector('#output .projector-stage').innerText), re, { timeout: 3000 }).then(() => true, () => false);
 
     // 1. the server stops: emergency after ~5 s, the projector still moves
     await app.stop();
@@ -92,7 +92,7 @@ module.exports = {
     check(moved.ok, 'another leader moves to "Șase rânduri" meanwhile');
     await cut(false);
     await lp.waitForFunction(() => /Reconectat/.test(document.getElementById('live-message').textContent) && document.getElementById('emergency-banner').hidden, null, { timeout: 20000 });
-    check(await sp.waitForFunction(() => /Primul/.test(document.getElementById('output').innerText), null, { timeout: 20000 }).then(() => true, () => false), 'reconnected: the server position wins on the projector');
+    check(await sp.waitForFunction(() => /Primul/.test(document.querySelector('#output .projector-stage').innerText), null, { timeout: 20000 }).then(() => true, () => false), 'reconnected: the server position wins on the projector');
 
     // 4. the member follow page offline: manual navigation
     const mctx = await browser.newContext({ viewport: { width: 375, height: 800 } });

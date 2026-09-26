@@ -37,6 +37,7 @@
     renderNotation(res.body.chordNotationDefault);
     renderThemeDefault(res.body.themeDefault);
     renderService(res.body.service);
+    renderClock(res.body.clock);
     renderBackup(res.body.backup);
     renderStorage(res.body.storage);
     await renderBackgrounds(res.body.backgroundDefaults || {});
@@ -191,6 +192,23 @@
   $('service-time').addEventListener('change', saveService);
   document.addEventListener('i18n:change', () => renderService());
 
+  // The corner clock a new event starts with (public/clock-panel.js, the live pages' controls).
+  let clock = null;
+  const clockPanel = window.CLOCK_PANEL.create($('clock-panel'), {
+    t, el, prefix: 'clock-default',
+    onChange: async (patch) => {
+      const res = await api('/api/settings/clock', { method: 'PUT', body: patch });
+      const out = $('clock-message');
+      out.className = `message ${res.ok ? 'success' : 'error'}`;
+      out.textContent = res.ok ? t('settings.clockSaved') : res.body.error || t('common.networkError');
+      if (res.ok) renderClock(res.body.clock);
+    },
+  });
+  function renderClock(value) {
+    if (value) clock = value;
+    if (clock) clockPanel.update({ clock, enabled: true });
+  }
+
   function renderThemeDefault(theme) {
     for (const button of document.querySelectorAll('[data-theme-default]')) {
       button.setAttribute('aria-pressed', String(button.dataset.themeDefault === theme));
@@ -254,6 +272,8 @@
     $('notation-message').textContent = '';
     bgMessage('bg-defaults-message', '');
     $('backup-message').textContent = '';
+    $('clock-message').textContent = '';
+    clockPanel.render();
     renderBackup(null);
     renderStorage(null);
     renderBackgrounds(bg.defaults).catch(() => {});

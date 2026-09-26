@@ -15,6 +15,11 @@
 // that layer; another background cross-fades (300 ms, none with reduced motion). Loaded
 // backgrounds are kept (by media id) so they still show offline; one that cannot load
 // leaves the screen black behind the text. frame.nextBackground is loaded ahead.
+//
+// The corner clock (frame.clock, public/clock.js) is its own layer over the text: HH:MM in
+// the church timezone, in the corner and at the size the frame says, ticking locally at
+// every minute (no server traffic). Sized as in Sanctuary Voice on a full screen; a preview
+// scales it with its width against a 1920 px screen, so it shows the same picture.
 
 (function () {
   const MIN_FONT = 0.025; // of the container height
@@ -24,6 +29,8 @@
   const BG_LOAD_MS = 15000; // a background not loaded by then shows as black
   const BG_KEEP = 6; // loaded backgrounds kept for reuse / offline
   const BLUR_REFERENCE_WIDTH = 1920; // blur is given in px of a 1920-wide screen
+  const CLOCK_REFERENCE_WIDTH = 1920; // previews size the clock as on a 1920-wide screen
+  const CLOCK_REM = 16;
   const reducedMotion = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
 
   // videoPlaceholder: the small preview shows "▶ title" for a video frame (the screen itself
@@ -34,12 +41,59 @@
     backdrop.className = 'projector-backdrop';
     const stage = document.createElement('div');
     stage.className = 'projector-stage';
-    container.replaceChildren(backdrop, stage);
+    const clockNode = document.createElement('div');
+    clockNode.className = 'display-clock';
+    clockNode.setAttribute('aria-hidden', 'true');
+    clockNode.hidden = true;
+    container.replaceChildren(backdrop, stage, clockNode);
     let current = null;
     let token = 0;
     const loaded = new Map(); // media id -> { node, ready: Promise<boolean> }
     let shown = null; // { id, layer, bg } on the backdrop
     let bgToken = 0;
+    let clock = null; // the frame's clock settings while shown
+    let clockTimer = null;
+
+    // --- the corner clock ---
+
+    function tick() {
+      clearTimeout(clockTimer);
+      clockTimer = null;
+      if (!clock) return;
+      const now = new Date();
+      const text = window.CLOCK.formatTime(now, clock.timeZone);
+      if (clockNode.textContent !== text) clockNode.textContent = text;
+      // The next minute boundary (a little after, so the minute has surely changed).
+      clockTimer = setTimeout(tick, 60000 - (now.getSeconds() * 1000 + now.getMilliseconds()) + 50);
+    }
+
+    // The base size: clamp(1.1rem, 2vw, 1.7rem) on a full-screen container (Sanctuary Voice);
+    // a preview scales that of a 1920-wide screen with its own width. Offsets scale the same.
+    function sizeClock() {
+      const width = container.clientWidth;
+      if (!width) return;
+      const full = width >= window.innerWidth - 2;
+      const ratio = full ? 1 : width / CLOCK_REFERENCE_WIDTH;
+      const base = full ? Math.min(1.7 * CLOCK_REM, Math.max(1.1 * CLOCK_REM, 0.02 * window.innerWidth)) : 1.7 * CLOCK_REM;
+      container.style.setProperty('--clock-base', `${(base * ratio).toFixed(2)}px`);
+      container.style.setProperty('--clock-ratio', ratio.toFixed(4));
+    }
+
+    function applyClock(next) {
+      const visible = Boolean(next && next.show);
+      clock = visible ? next : null;
+      clockNode.hidden = !visible;
+      if (!visible) {
+        clearTimeout(clockTimer);
+        clockTimer = null;
+        return;
+      }
+      clockNode.className = `display-clock ${next.position}`;
+      container.style.setProperty('--clock-scale', String(next.scale));
+      sizeClock();
+      tick();
+    }
+    document.addEventListener('visibilitychange', () => { if (clock && document.visibilityState === 'visible') tick(); });
 
     function el(tag, className, text) {
       const node = document.createElement(tag);
@@ -235,14 +289,15 @@
       return null; // black, idle without a logo, a video on the screen's own layer, unknown
     }
 
-    // The same picture: the version, a prepared video (its own layer) and the background (its
-    // own layer) do not count, except for the preview's video placeholder.
-    const picture = (f) => JSON.stringify({ ...f, version: 0, background: undefined, nextBackground: undefined,
+    // The same picture: the version, a prepared video (its own layer), the background and the
+    // clock (their own layers) do not count, except for the preview's video placeholder.
+    const picture = (f) => JSON.stringify({ ...f, version: 0, background: undefined, nextBackground: undefined, clock: undefined,
       video: f.kind === 'video' && videoPlaceholder ? f.video : undefined });
     const sameFrame = (a, b) => a && b && picture(a) === picture(b);
 
     async function show(frame) {
       if (!frame) return;
+      applyClock(frame.clock || null);
       setBackground(frame.background || null, frame.kind === 'black');
       if (frame.nextBackground) load(frame.nextBackground);
       if (sameFrame(frame, current)) {
@@ -270,6 +325,7 @@
     function resized() {
       fit();
       if (shown) style(shown.layer, shown.bg);
+      if (clock) sizeClock();
     }
     if ('ResizeObserver' in window) new ResizeObserver(resized).observe(container);
     else window.addEventListener('resize', resized);

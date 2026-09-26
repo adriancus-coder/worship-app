@@ -286,6 +286,7 @@
     arrangedNote();
     renderSources();
     backgroundButton.update(state.snap);
+    clockPanel.update({ clock: state.snap.clock, enabled: live() });
     addSearch.render(); // its actions follow live()
     videoPanel.setSetlist(items());
     videoPanel.update(state.snap);
@@ -320,6 +321,8 @@
   window.PROJECTOR_WINDOW.setup({ button: $('open-projector'), hint: $('projector-permission'), message: $('projector-message'), api, t });
   const modes = window.LIVE_MODES.controls($('mode-controls'), { send, t, el });
   const backgroundButton = window.BG_PICKER.liveButton($('bg-live'), { send });
+  // The corner clock (clock.set: show / corner / size; key K toggles it).
+  const clockPanel = window.CLOCK_PANEL.create($('clock-panel'), { t, el, onChange: (patch) => send('clock.set', patch) });
   const toast = window.LIVE_MODES.toast($('info-toast'), { t });
 
   function watchProjector(socket) {
@@ -374,6 +377,7 @@
       f: () => big.open(),
       b: () => toggleSource('black'),
       l: () => toggleSource('logo'),
+      k: () => clockPanel.toggle(),
       w: () => { if (split()) send('projector.syncToWorship'); },
     };
     const action = keys[event.key.length === 1 ? event.key.toLowerCase() : event.key];
@@ -414,6 +418,7 @@
     renderConnection(state.client.connection);
     render();
     videoPanel.render();
+    clockPanel.render();
     // Section labels come from the server in the connection's language: reconnect.
     state.client.socket.disconnect().connect();
   });

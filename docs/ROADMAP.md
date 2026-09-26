@@ -110,6 +110,13 @@ never implement a later stage early. Mockups: claude.ai design canvas
   display via the Window Management API (Chrome/Edge, one-time permission); fallback =
   drag + F11. Opened from a logged-in page it pairs automatically.
 - A PC with no operator pairs with a 6-digit code entered in the admin.
+- **Corner clock** (`public/clock.js`, migration 022), as in Sanctuary Voice: HH:MM in the
+  church timezone in one corner of every frame (content, verse, announcement, logo, black,
+  idle), never while a video plays. Part of the live state (`clock.set { show, position,
+  scale }`, event roles, versioned and broadcast; key K toggles it): shown or not, the
+  corner, the size 70–180 % (default 180 %, bottom right). A new event starts from the church
+  defaults (Settings → "Ceasul pe proiector"), which the idle screen shows too. The screens
+  and the previews tick it themselves (no server traffic per minute).
 - **Emergency mode:** the leader's live page and the projector window on the same PC keep
   working without internet (BroadcastChannel + locally cached event and songs): the main
   position and Black / Logo only (mode switches and additions wait for the server). The

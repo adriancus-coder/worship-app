@@ -812,20 +812,20 @@ test('projector frames: sources, items, no chords, idle', () => {
   const state = (itemId, step, source = 'content') => ({ version: 7, eventId: 3, status: 'live',
     worship: { itemId, step }, projector: { follows: 'worship', itemId: null, step: 0, source } });
   const frame = (itemId, step, source, logoUrl) => projectorFrame(state(itemId, step, source), { items }, new Map([[1, song]]), { logoUrl });
-  assert.deepStrictEqual(frame(1, 0), { kind: 'lyrics', lines: ['Ne ridici din noaptea grea', 'Tu ești lumina mea'], version: 7, eventId: 3, background: null });
+  assert.deepStrictEqual(frame(1, 0), { kind: 'lyrics', lines: ['Ne ridici din noaptea grea', 'Tu ești lumina mea'], version: 7, eventId: 3, background: null, clock: null });
   assert.deepStrictEqual(frame(1, 1).lines, ['Sfânt, sfânt']);
   assert.ok(!/\[[A-G]/.test(frame(1, 2).lines.join('\n')), 'no chords reach the projector');
-  assert.deepStrictEqual(frame(2, 0), { kind: 'verse', reference: 'Psalmul 23:1', text: 'Domnul este Păstorul meu.', version: 7, eventId: 3, background: null });
-  assert.deepStrictEqual(frame(3, 0), { kind: 'announcement', title: 'Agapă', body: 'După serviciu', version: 7, eventId: 3, background: null });
+  assert.deepStrictEqual(frame(2, 0), { kind: 'verse', reference: 'Psalmul 23:1', text: 'Domnul este Păstorul meu.', version: 7, eventId: 3, background: null, clock: null });
+  assert.deepStrictEqual(frame(3, 0), { kind: 'announcement', title: 'Agapă', body: 'După serviciu', version: 7, eventId: 3, background: null, clock: null });
   assert.strictEqual(frame(4, 0).title, 'Predica');
   assert.deepStrictEqual([frame(5, 0).kind, frame(5, 0).title], ['title', 'Rugăciune']);
   assert.strictEqual(frame(6, 0).kind, 'black', 'video: black until stage 5b');
   assert.deepStrictEqual([frame(7, 0).kind, frame(7, 0).title], ['title', 'Cântare ștearsă']);
-  assert.deepStrictEqual(frame(1, 0, 'black'), { kind: 'black', version: 7, eventId: 3, background: null });
-  assert.deepStrictEqual(frame(1, 0, 'logo', '/api/logo/x.png'), { kind: 'logo', logoUrl: '/api/logo/x.png', version: 7, eventId: 3, background: null });
+  assert.deepStrictEqual(frame(1, 0, 'black'), { kind: 'black', version: 7, eventId: 3, background: null, clock: null });
+  assert.deepStrictEqual(frame(1, 0, 'logo', '/api/logo/x.png'), { kind: 'logo', logoUrl: '/api/logo/x.png', version: 7, eventId: 3, background: null, clock: null });
   assert.strictEqual(frame(1, 0, 'logo').logoUrl, null);
   assert.strictEqual(frame(99, 0).kind, 'black', 'no item at the position');
-  assert.deepStrictEqual(projectorFrame(null, null, null, { logoUrl: '/api/logo/x.png' }), { kind: 'idle', logoUrl: '/api/logo/x.png', version: 0, eventId: null, background: null });
+  assert.deepStrictEqual(projectorFrame(null, null, null, { logoUrl: '/api/logo/x.png' }), { kind: 'idle', logoUrl: '/api/logo/x.png', version: 0, eventId: null, background: null, clock: null });
   assert.strictEqual(projectorFrame({ ...state(1, 0), status: 'finished' }, { items }, new Map()).kind, 'idle');
 });
 
@@ -954,7 +954,7 @@ test('projector frames: a prepared video rides along, plays only on the video so
     projector: { follows: 'worship', itemId: null, step: 0, source },
     video: { state: videoState, seq: 5, volume: 0.8, position: 0 } });
   const f = (source, videoState, m = media) => projectorFrame(st(source, videoState), { items }, new Map(), { videoMedia: m });
-  assert.deepStrictEqual(f('content', 'prepared'), { kind: 'verse', reference: 'Ps 1', text: 'Ferice', version: 3, eventId: 2, background: null,
+  assert.deepStrictEqual(f('content', 'prepared'), { kind: 'verse', reference: 'Ps 1', text: 'Ferice', version: 3, eventId: 2, background: null, clock: null,
     video: { state: 'prepared', seq: 5, volume: 0.8, position: 0, media } });
   assert.strictEqual(f('video', 'playing').kind, 'video');
   assert.strictEqual(f('video', 'paused').kind, 'video');
@@ -1640,6 +1640,76 @@ test('"■ Sfârșit": moves after an ended item; the frame while ended', () => 
   const split = { follows: 'operator', itemId: 2, step: 0 };
   assert.strictEqual(projectorFrame(snap({ itemId: 2, step: 0, ended: true }, split), event, new Map()).kind, 'verse');
   assert.strictEqual(projectorFrame(snap({ itemId: 2, step: 0, ended: false }, { ...split, ended: true }), event, new Map()).kind, 'black');
+});
+
+test('corner clock: settings, the three fields on every frame, hidden while a video plays', () => {
+  const CLOCK = require('../lib/clock');
+  const { projectorFrame, clockFrame } = require('../lib/projector');
+  assert.deepStrictEqual(CLOCK.DEFAULTS, { show: true, position: 'bottom-right', scale: 1.8 });
+  assert.deepStrictEqual([CLOCK.clampScale(0.2), CLOCK.clampScale(5), CLOCK.clampScale(1.24), CLOCK.clampScale('x')], [0.7, 1.8, 1.2, 1.8]);
+  assert.deepStrictEqual(CLOCK.normalize({ show: 0, position: 'middle', scale: 9 }), { show: false, position: 'bottom-right', scale: 1.8 });
+  assert.deepStrictEqual(CLOCK.parsePatch({ show: 'yes', position: 'top-left', scale: 0.5, other: 1 }), { position: 'top-left', scale: 0.7 });
+  assert.strictEqual(CLOCK.parsePatch({ show: 'yes' }), null, 'nothing usable');
+  assert.deepStrictEqual([CLOCK.formatTime(new Date('2026-09-27T10:05:00Z'), 'Europe/Oslo'), CLOCK.formatTime(new Date('2026-09-27T23:05:00Z'), 'UTC')], ['12:05', '23:05'], '24 h, HH:MM');
+  assert.strictEqual(CLOCK.formatTime(new Date('2026-09-27T10:05:00Z'), 'Not/AZone').length, 5, 'an unknown timezone falls back');
+  // frames: the clock of the live state on every kind, false on a video frame; idle: the defaults given
+  const items = [{ id: 1, type: 'verse', reference: 'Ps 1', body: 'Ferice' }, { id: 2, type: 'announcement', title: 'A', body: 'b' }];
+  const media = { type: 'upload', src: '/x.mp4', mime: 'video/mp4', title: 'Clip' };
+  const clock = { show: true, position: 'top-left', scale: 1.2, timeZone: 'Europe/Oslo' };
+  const st = (source, itemId = 1, videoState = 'none', c = clock) => ({ version: 3, eventId: 2, status: 'live', worship: { itemId, step: 0 },
+    projector: { follows: 'worship', itemId: null, step: 0, source }, video: { state: videoState, seq: 1, volume: 1, position: 0 }, clock: c });
+  const f = (source, itemId, videoState) => projectorFrame(st(source, itemId, videoState), { items }, new Map(), { videoMedia: media, logoUrl: '/api/logo/x.png' });
+  const expected = { show: true, position: 'top-left', scale: 1.2, timeZone: 'Europe/Oslo' };
+  assert.deepStrictEqual(f('content', 1).clock, expected, 'verse');
+  assert.deepStrictEqual(f('content', 2).clock, expected, 'announcement');
+  assert.deepStrictEqual(f('logo').clock, expected, 'logo');
+  assert.deepStrictEqual(f('black').clock, expected, 'black');
+  assert.deepStrictEqual(f('content', 99).clock, expected, 'no item: black, the clock stays');
+  assert.deepStrictEqual([f('video', 1, 'playing').kind, f('video', 1, 'playing').clock], ['video', { ...expected, show: false }], 'never over a playing video');
+  assert.deepStrictEqual([f('video', 1, 'paused').kind, f('video', 1, 'paused').clock.show], ['video', false]);
+  assert.deepStrictEqual([f('video', 1, 'prepared').kind, f('video', 1, 'prepared').clock.show], ['black', true], 'nothing plays: the clock is back');
+  assert.strictEqual(f('content', 1, 'prepared').clock.show, true, 'a prepared video does not hide it');
+  assert.strictEqual(projectorFrame(st('content', 1, 'none', { ...clock, show: false }), { items }, new Map()).clock.show, false, 'hidden by the operator');
+  const idle = projectorFrame(null, null, null, { logoUrl: null, clock: { show: true, position: 'bottom-left', scale: 0.7, timeZone: 'UTC' } });
+  assert.deepStrictEqual([idle.kind, idle.clock], ['idle', { show: true, position: 'bottom-left', scale: 0.7, timeZone: 'UTC' }], 'idle: the church defaults');
+  assert.deepStrictEqual(clockFrame({ show: true, position: 'nowhere', scale: 3 }, 'lyrics'), { show: true, position: 'bottom-right', scale: 1.8, timeZone: null }, 'normalised');
+  // the store: a new event starts from the church defaults; clock.set changes the running one
+  const { mem, live, eventId } = liveFixture();
+  const settings = require('../lib/admin-settings').createAdminSettings(mem);
+  assert.deepStrictEqual(settings.clock(1), { show: true, position: 'bottom-right', scale: 1.8 }, 'the defaults');
+  assert.deepStrictEqual(settings.setClock(1, { position: 'top-right', scale: 0.55 }), { show: true, position: 'top-right', scale: 0.7 }, 'clamped');
+  const cmd = (c, role = 'leader') => live.command(1, eventId, c, undefined, role);
+  const code = (c, role) => { try { cmd(c, role); return 'ok'; } catch (err) { return err.code; } };
+  const snap = () => live.snapshot(1, eventId);
+  assert.deepStrictEqual(snap().clock, { show: true, position: 'top-right', scale: 0.7, timeZone: 'Europe/Oslo' }, 'not yet live: what it would start with');
+  assert.strictEqual(code({ type: 'clock.set', show: false }), 'notLive');
+  cmd({ type: 'event.start' }, 'operator');
+  assert.deepStrictEqual(snap().clock, { show: true, position: 'top-right', scale: 0.7, timeZone: 'Europe/Oslo' }, 'started from the church defaults');
+  let v = snap().version;
+  assert.strictEqual(code({ type: 'clock.set', show: false }, 'member'), 'forbidden');
+  assert.strictEqual(code({ type: 'clock.set' }), 'badCommand', 'nothing to change');
+  assert.strictEqual(code({ type: 'clock.set', position: 'centre' }), 'badCommand');
+  cmd({ type: 'clock.set', show: false }, 'operator');
+  assert.deepStrictEqual([snap().version, snap().clock.show], [v + 1, false], 'versioned');
+  cmd({ type: 'clock.set', show: false });
+  assert.strictEqual(snap().version, v + 1, 'unchanged: no-op');
+  cmd({ type: 'clock.set', show: true, position: 'bottom-left', scale: 4 }, 'owner');
+  assert.deepStrictEqual(snap().clock, { show: true, position: 'bottom-left', scale: 1.8, timeZone: 'Europe/Oslo' }, 'all three at once, the scale clamped');
+  assert.strictEqual(mem.prepare('SELECT show_clock || clock_position || clock_scale FROM live_state WHERE event_id = ?').pluck().get(eventId), '1bottom-left1.8', 'persisted');
+  cmd({ type: 'worship.next' });
+  assert.strictEqual(snap().clock.position, 'bottom-left', 'other commands leave it alone');
+  // the church defaults changed meanwhile: the running event keeps its own; the next start takes them
+  settings.setClock(1, { show: false });
+  assert.strictEqual(snap().clock.show, true);
+  cmd({ type: 'event.end' });
+  const again = require('../lib/events').createEventStore(mem).create(1, 1, { name: 'E2', eventDate: '2026-10-11', startTime: null, notes: null });
+  live.command(1, again, { type: 'event.start' }, undefined, 'leader');
+  assert.deepStrictEqual(live.snapshot(1, again).clock, { show: false, position: 'top-right', scale: 0.7, timeZone: 'Europe/Oslo' });
+  v = live.snapshot(1, again).version;
+  const frame = projectorFrame(live.snapshot(1, again), { items: [] }, new Map());
+  assert.deepStrictEqual([frame.kind, frame.clock.show, frame.clock.position], ['black', false, 'top-right'], 'the frame carries the state clock');
+  assert.throws(() => mem.prepare("UPDATE live_state SET clock_position = 'centre'").run(), /CHECK/);
+  mem.close();
 });
 
 test('backup temp sweep: leftover .backup-* folders older than 1 h go at startup, fresh ones stay', () => {

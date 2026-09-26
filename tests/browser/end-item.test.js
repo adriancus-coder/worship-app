@@ -37,7 +37,7 @@ module.exports = {
     await sp.waitForFunction(() => /\d{3} \d{3}/.test(document.getElementById('pairing-code').textContent));
     await app.api(app.cookies.owner, 'POST', '/api/screens/claim', { code: (await sp.textContent('#pairing-code')).replace(' ', ''), name: 'Proiector' });
     await sp.waitForSelector('#output:not([hidden])', { timeout: 6000 });
-    const screen = async () => { await wait(300); return sp.evaluate(() => { const o = document.getElementById('output'); return o.innerText.trim().replace(/\s+/g, ' ') || (o.querySelector('.projector-logo') ? 'LOGO' : 'BLACK'); }); };
+    const screen = async () => { await wait(300); return sp.evaluate(() => { const o = document.getElementById('output'); return o.querySelector('.projector-stage').innerText.trim().replace(/\s+/g, ' ') || (o.querySelector('.projector-logo') ? 'LOGO' : 'BLACK'); }); };
     check((await app.command({ type: 'event.start' })).ok, 'the event is live');
 
     for (const withLogo of [false, true]) {

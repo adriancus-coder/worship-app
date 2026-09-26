@@ -23,9 +23,15 @@
 // idle frames never have one. Resolution: the live override (state.backgroundOverride: a
 // media id, 'none' or null), else the item's background resolved by the server over the
 // item, the song and the church default (backgrounds.items), else none (lib/backgrounds.js).
+// And the corner clock (public/clock.js), on every kind of frame:
+//   clock: { show, position, scale, timeZone } | null
+// from the live state (state.clock) or, idle, the church defaults (the `clock` option);
+// `show` is false on a video frame (never over a video). The screens tick it themselves.
 
 (function (root) {
-  const { stripChords } = typeof module === 'object' && module.exports ? require('./chords.js') : root.CHORDS;
+  const shared = typeof module === 'object' && module.exports;
+  const { stripChords } = shared ? require('./chords.js') : root.CHORDS;
+  const { normalize: normalizeClock } = shared ? require('./clock.js') : root.CLOCK;
 
   const SOURCES = ['content', 'logo', 'black', 'video', 'translation'];
   // Sources the leader can pick (video is picked through the video commands; translation later).
@@ -81,23 +87,36 @@
     return item ? pick((backgrounds.items || {})[item.id]) : null;
   }
 
+  // The clock part of a frame: settings + timezone, hidden while a video plays.
+  function clockFrame(clock, kind) {
+    if (!clock) return null;
+    const c = normalizeClock(clock);
+    return { show: c.show && kind !== 'video', position: c.position, scale: c.scale, timeZone: clock.timeZone || null };
+  }
+
   // state: live snapshot of the admin's live event, or null when none is live.
   // event: { items } of that event. songs: Map itemId -> song ready to render
   // ({ sections (transposed), arrangement: [{ sectionId }] }), at least for the current item.
   // videoMedia: how the prepared video is played ({ type, src | id, name, title }), resolved by
   // the caller (it needs the media library); null when nothing is prepared.
   // backgrounds: the event's resolved backgrounds (lib/backgrounds.js forEvent), or null.
-  function projectorFrame(state, event, songs, { logoUrl = null, videoMedia = null, backgrounds = null } = {}) {
-    if (!state || state.status !== 'live') return { kind: 'idle', logoUrl, version: state ? state.version : 0, eventId: null, background: null };
+  // clock: the church default clock (+ timeZone) for the idle screen; live frames use state.clock.
+  function projectorFrame(state, event, songs, { logoUrl = null, videoMedia = null, backgrounds = null, clock = null } = {}) {
+    if (!state || state.status !== 'live') {
+      return { kind: 'idle', logoUrl, version: state ? state.version : 0, eventId: null, background: null, clock: clockFrame(clock, 'idle') };
+    }
     const v = state.video;
     const video = v && v.state !== 'none' && videoMedia
       ? { state: v.state, seq: v.seq, volume: v.volume, position: v.position, media: videoMedia }
       : null;
-    const base = { version: state.version, eventId: state.eventId, ...(video ? { video } : {}), background: null };
+    const base = { version: state.version, eventId: state.eventId, ...(video ? { video } : {}), background: null, clock: clockFrame(state.clock || null, 'other') };
     const source = state.projector.source;
     if (source === 'black') return { kind: 'black', ...base };
     if (source === 'logo') return { kind: 'logo', logoUrl, ...base };
-    if (source === 'video') return { kind: video && (v.state === 'playing' || v.state === 'paused') ? 'video' : 'black', ...base };
+    if (source === 'video') {
+      const kind = video && (v.state === 'playing' || v.state === 'paused') ? 'video' : 'black';
+      return { kind, ...base, clock: clockFrame(state.clock || null, kind) };
+    }
     if (source !== 'content') return { kind: 'black', ...base }; // translation: stage 8
     // The projector follows the worship position until an operator takes it over (stage 6).
     const pos = state.projector.follows === 'operator'
@@ -116,7 +135,7 @@
     return { ...content, ...base, background, ...preload };
   }
 
-  const FRAMES = { SOURCES, LEADER_SOURCES, projectorFrame, backgroundFor, lyricLines };
+  const FRAMES = { SOURCES, LEADER_SOURCES, projectorFrame, backgroundFor, lyricLines, clockFrame };
 
   if (typeof module === 'object' && module.exports) module.exports = FRAMES;
   else root.FRAMES = FRAMES;
