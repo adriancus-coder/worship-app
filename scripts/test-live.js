@@ -1321,6 +1321,46 @@ async function main() {
     assert.strictEqual((await api('PUT', '/api/settings/service', leader, { weekday: 0, time: '10:00' })).status, 403);
   });
 
+  await step('view as: an owner sees the app as member / operator / leader (every guard follows), back restores all; a leader cannot', async () => {
+    const viewAs = (cookie, role) => api('PUT', '/api/me/view-as', cookie, { role });
+    const page = (url, cookie) => fetch(base() + url, { headers: { Cookie: cookie }, redirect: 'manual' }).then((r) => r.status);
+    assert.strictEqual((await viewAs(leader, 'member')).status, 403, 'only an owner');
+    assert.strictEqual((await viewAs(owner, 'owner')).status, 400, 'not a view-as role');
+    assert.strictEqual((await viewAs(owner, 'member')).status, 200);
+    let me = (await api('GET', '/api/auth/me', owner)).body;
+    assert.deepStrictEqual([me.user.role, me.user.realRole, me.user.viewAs, me.platformOwner], ['member', 'owner', 'member', false], 'the effective role is member');
+    assert.strictEqual((await api('POST', '/api/events', owner, { name: 'X', eventDate: '2026-10-10' })).status, 403, 'member: no event writes');
+    assert.strictEqual((await api('GET', '/api/events?when=templates', owner)).status, 403, 'member: no templates');
+    assert.strictEqual((await api('GET', '/api/team', owner)).status, 403, 'member: no team');
+    assert.strictEqual((await api('GET', '/api/platform/admins', owner)).status, 403, 'platform routes refuse while viewing as');
+    assert.strictEqual(await page(`/events/${ev.id}/edit`, owner), 302, 'member: the editor page redirects');
+    assert.strictEqual(await page('/settings', owner), 302);
+    const asMember = await joined(owner, ev.id);
+    assert.strictEqual((await emit(asMember.socket, 'live:command', { eventId: ev.id, type: 'worship.next' })).code, 'forbidden', 'sockets follow the effective role');
+    assert.strictEqual(asMember.state.items, undefined, 'a member snapshot: no operator items');
+    asMember.socket.close();
+    // operator: the console and the projector; leader: no projector
+    assert.strictEqual((await viewAs(owner, 'operator')).status, 200);
+    assert.strictEqual(await page(`/events/${ev.id}/operator`, owner), 200, 'operator: the console opens');
+    assert.strictEqual((await api('POST', '/api/screens/auto-claim', owner, { name: 'Ca operator' })).status, 201, 'operator: opens the projector');
+    assert.strictEqual((await api('GET', '/api/platform/admins', owner)).status, 403);
+    assert.strictEqual((await viewAs(owner, 'leader')).status, 200);
+    assert.strictEqual((await api('POST', '/api/screens/auto-claim', owner, { name: 'Ca lider' })).status, 403, 'leader: no projector');
+    assert.strictEqual(await page('/screens', owner), 302);
+    assert.strictEqual(await page(`/events/${ev.id}/live`, owner), 200);
+    // back: everything restored
+    assert.strictEqual((await viewAs(owner, null)).status, 200);
+    me = (await api('GET', '/api/auth/me', owner)).body;
+    assert.deepStrictEqual([me.user.role, me.user.viewAs, me.platformOwner], ['owner', null, true]);
+    assert.strictEqual((await api('GET', '/api/team', owner)).status, 200);
+    assert.strictEqual((await api('GET', '/api/platform/admins', owner)).status, 200);
+    // a password change clears it
+    await viewAs(owner, 'member');
+    assert.strictEqual((await api('POST', '/api/me/password', owner, { current: PASSWORD, password: `${PASSWORD}-x` })).status, 200);
+    assert.strictEqual((await api('GET', '/api/auth/me', owner)).body.user.viewAs, null, 'cleared by the password change');
+    assert.strictEqual((await api('POST', '/api/me/password', owner, { current: `${PASSWORD}-x`, password: PASSWORD })).status, 200);
+  });
+
   await step('platform: its owner creates and manages churches; everyone else 403', async () => {
     const other2 = await login('alt@x.ro'); // admin 2's owner: an ordinary church
     for (const cookie of [other2, leader, member]) assert.strictEqual((await api('GET', '/api/platform/admins', cookie)).status, 403);
