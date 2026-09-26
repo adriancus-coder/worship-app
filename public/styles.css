@@ -1603,6 +1603,7 @@ button, .button { gap: 0.5em; }
 [data-icon="key"] { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 10a4 4 0 1 0-3.5 4L9 16v2H7v2H4v-3l6-6'/%3E%3C/svg%3E"); }
 [data-icon="undo"] { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 14l-5-5 5-5M4 9h10a6 6 0 0 1 0 12h-3'/%3E%3C/svg%3E"); }
 [data-icon="close"] { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 6l12 12M18 6L6 18'/%3E%3C/svg%3E"); }
+[data-icon="expand"] { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 4h6v6M20 4l-7 7M10 20H4v-6M4 20l7-7'/%3E%3C/svg%3E"); }
 [data-icon="next"] { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 6l6 6-6 6'/%3E%3C/svg%3E"); }
 
 /* Secondary action */
@@ -2054,3 +2055,39 @@ dialog.song-pick-dialog .song-pick > .ss-results { flex: 1 1 0; height: 0; --pan
 #team-own { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 0 0 10px; }
 #team-own[hidden] { display: none; }
 .church-page [role="tabpanel"][hidden] { display: none; }
+
+/* "⤢ Versuri mari" (public/big-lyrics.js): a full-screen dialog for whoever leads. */
+.big-open-row { margin: 10px 0 0; }
+.big-open { min-height: var(--touch); }
+dialog.big-lyrics { position: fixed; inset: 0; width: 100vw; height: 100dvh; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; border-radius: 0; color: var(--text); background: var(--background); }
+dialog.big-lyrics[open] { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto auto auto; overflow: hidden; }
+dialog.big-lyrics::backdrop { background: var(--background); }
+.big-top { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 8px 12px 4px; }
+.big-label { flex: 1 1 auto; min-width: 0; margin: 0; font-weight: 700; color: var(--accent-text); text-transform: uppercase; letter-spacing: 0.04em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.big-tools { display: flex; gap: 6px; flex: none; }
+.big-tool { min-width: var(--touch); min-height: var(--touch); padding: 6px 10px; font-weight: 700; white-space: nowrap; }
+.big-tool[aria-pressed] { font-size: 0.875rem; }
+.big-body { display: flex; align-items: center; justify-content: center; min-width: 0; min-height: 0; padding: 8px 16px; overflow: hidden; touch-action: pan-y; }
+dialog.big-lyrics.scrolls .big-body { align-items: flex-start; overflow-y: auto; }
+.big-text { max-width: 100%; text-align: center; line-height: 1.25; }
+.big-text .song-section { margin: 0; }
+.big-text .section-note { display: none; }
+.big-text .chord-sheet, .big-text .lyrics, .big-lines { font-size: 1em; overflow-x: visible; padding-bottom: 0; }
+.big-text .chord-line, .big-text .lyric-line { white-space: pre; }
+.big-text .lyrics { margin: 0; white-space: pre-line; }
+.big-lines { margin: 0; }
+.big-ended { color: var(--text-muted); }
+.big-next { margin: 0; padding: 4px 16px; text-align: center; font-size: 0.9375rem; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.big-status { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 0; padding: 2px 16px; font-size: 0.8125rem; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.big-dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--border); }
+.big-dot[data-state="connected"] { background: var(--success); }
+.big-dot[data-state="reconnecting"], .big-dot[data-state="connecting"] { background: var(--accent-fill); }
+.big-dot[data-state="offline"] { background: var(--error); }
+.big-nav { display: flex; gap: 8px; padding: 8px 12px calc(8px + env(safe-area-inset-bottom)); border-top: 1px solid var(--border); }
+.big-nav > button { flex: 1 1 0; min-height: 56px; font-size: 1.0625rem; overflow-wrap: anywhere; }
+.big-nav > button:last-child { flex-grow: 1.4; }
+.big-nav > button:disabled { opacity: 0.35; }
+@media (max-width: 599px) {
+  .big-nav { flex-wrap: wrap; }
+  .big-nav > button:last-child { order: 3; flex: 1 0 100%; }
+}

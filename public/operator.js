@@ -239,7 +239,8 @@
         'aria-label': entry.firstLine ? `${label}: ${entry.firstLine}` : label,
         title: entry.firstLine || null,
         disabled: !enabled,
-        onclick: () => goto(item, step),
+        // The step on the projector opens the big lyrics; any other moves there.
+        onclick: () => (here && !pos.ended ? big.open() : goto(item, step)),
       },
       el('span', { class: 'step-head' },
         el('span', { class: 'step-code', text: entry.code }),
@@ -249,6 +250,7 @@
         here ? el('span', { class: 'marker projector', text: t('operator.onProjector') }) : null,
         worshipHere ? el('span', { class: 'marker worship', text: t('operator.worshipHere') }) : null) : null));
     }));
+    $('op-big-open').hidden = !enabled || !item;
     const list = items();
     const index = list.findIndex((it) => it.id === pos.itemId);
     const after = item ? nextPos(pos) : null;
@@ -288,7 +290,18 @@
     videoPanel.setSetlist(items());
     videoPanel.update(state.snap);
     videoPanel.setLocked(!live());
+    big.update(state.snap, items());
   }
+
+  // "⤢ Versuri mari" (public/big-lyrics.js): the position this console drives, its commands.
+  const big = window.BIG_LYRICS.create({
+    api, eventId,
+    position: () => (live() ? projectorPos() : null),
+    commands: { prev: () => move('prev'), next: () => move('next'), end: endItem, toggleBlack: () => toggleSource('black') },
+    connection: () => (state.client ? state.client.connection : 'connecting'),
+    drivesProjector: split,
+  });
+  $('op-big-open').addEventListener('click', () => big.open());
 
   function gone() {
     $('console').hidden = true;
@@ -358,6 +371,7 @@
       ' ': () => move('next'),
       ArrowLeft: () => move('prev'),
       e: () => { if (!$('op-end-item').disabled) endItem(); },
+      f: () => big.open(),
       b: () => toggleSource('black'),
       l: () => toggleSource('logo'),
       w: () => { if (split()) send('projector.syncToWorship'); },

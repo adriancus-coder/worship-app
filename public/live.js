@@ -254,7 +254,8 @@
           'aria-current': isCurrent ? 'step' : null,
           'aria-label': entry.firstLine ? `${label}: ${entry.firstLine}` : label,
           title: entry.firstLine || null,
-          onclick: () => send('worship.goto', { itemId: item.id, step }),
+          // The current step opens the big lyrics; any other moves there.
+          onclick: () => (isCurrent && !pos.ended ? big.open() : send('worship.goto', { itemId: item.id, step })),
         },
         el('span', { class: 'step-head' },
           el('span', { class: 'step-code', text: entry.code }),
@@ -262,7 +263,8 @@
         entry.firstLine ? el('span', { class: 'step-line', text: entry.firstLine }) : null,
         isCurrent ? el('span', { class: 'step-badges' }, el('span', { class: 'live-badge', text: t('live.liveBadge') })) : null));
       }));
-    box.replaceChildren(head, steps);
+    box.replaceChildren(head, steps, el('p', { class: 'big-open-row' },
+      el('button', { type: 'button', class: 'secondary big-open', id: 'big-open', 'data-icon': 'expand', 'aria-keyshortcuts': 'F', text: t('big.open'), onclick: () => big.open() })));
 
     const version = snap.version;
     const song = await loadSong(item);
@@ -317,7 +319,16 @@
     renderInfo();
     renderCurrent();
     arrangedNote();
+    big.update(state.snap, state.items);
   }
+
+  // "⤢ Versuri mari" (public/big-lyrics.js): the team's position, the page's own commands.
+  const big = window.BIG_LYRICS.create({
+    api, eventId,
+    position: () => (state.snap && state.snap.status === 'live' ? state.snap.worship : null),
+    commands: { prev: () => send('worship.prev'), next: () => send('worship.next'), end: () => send('worship.endItem'), toggleBlack: () => toggleSource('black') },
+    connection: () => (state.client ? state.client.connection : 'connecting'),
+  });
 
   // --- arranging a song during live (public/arrange-sheet.js): saved at once ------------
 
@@ -587,6 +598,8 @@
       send('worship.prev');
     } else if (event.key === 'e' || event.key === 'E') {
       if (!$('end-item-button').disabled) send('worship.endItem'); // end of the item
+    } else if (event.key === 'f' || event.key === 'F') {
+      big.open(); // full-screen lyrics
     } else if (event.key === 'b' || event.key === 'B') {
       toggleSource('black'); // black <-> content
     } else if (event.key === 'l' || event.key === 'L') {

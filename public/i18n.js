@@ -338,6 +338,13 @@
           revokeYes: 'Revocă',
         },
       },
+      big: {
+        title: 'Versuri mari',
+        open: 'Versuri mari',
+        close: 'Închide versurile mari (F sau Escape)',
+        smaller: 'Text mai mic',
+        larger: 'Text mai mare',
+      },
       changePassword: {
         pageTitle: 'Schimbă parola — {appName}',
         heading: 'Schimbă parola',
@@ -684,7 +691,7 @@
         worshipHere: 'ECHIPA E AICI',
         stepsLabel: 'Secțiunile elementului de pe proiector',
         syncWorship: 'Sari la echipă (W)',
-        keysHint: 'Taste: ← → secțiuni, Spațiu înainte, E sfârșitul elementului, B negru, L logo, W la echipă (în modul Separat).',
+        keysHint: 'Taste: ← → secțiuni, Spațiu înainte, E sfârșitul elementului, F versuri mari, B negru, L logo, W la echipă (în modul Separat).',
         video: 'Video',
         addHeading: 'Adaugă în timpul slujbei',
         addHint: 'Doar pe proiector: echipa nu o vede. În setlist: apare la toți, după elementul curent.',
@@ -731,7 +738,7 @@
         prev: '← Înapoi',
         next: 'Următoarea: {label} →',
         nextEnd: 'Sfârșitul programului',
-        keyHint: 'Taste: ← înapoi, → sau Spațiu înainte, E sfârșitul elementului.',
+        keyHint: 'Taste: ← înapoi, → sau Spațiu înainte, E sfârșitul elementului, F versuri mari.',
         endItem: {
           end: 'Sfârșit',
           done: 'Terminat',
@@ -1458,6 +1465,13 @@
           revokeYes: 'Revoke',
         },
       },
+      big: {
+        title: 'Big lyrics',
+        open: 'Big lyrics',
+        close: 'Close the big lyrics (F or Escape)',
+        smaller: 'Smaller text',
+        larger: 'Larger text',
+      },
       changePassword: {
         pageTitle: 'Change password — {appName}',
         heading: 'Change password',
@@ -1804,7 +1818,7 @@
         worshipHere: 'THE TEAM IS HERE',
         stepsLabel: 'Sections of the item on the projector',
         syncWorship: 'Jump to the team (W)',
-        keysHint: 'Keys: ← → sections, Space next, E end of the item, B black, L logo, W to the team (in Separate mode).',
+        keysHint: 'Keys: ← → sections, Space next, E end of the item, F big lyrics, B black, L logo, W to the team (in Separate mode).',
         video: 'Video',
         addHeading: 'Add during the service',
         addHint: 'Projector only: the team does not see it. In the setlist: everyone sees it, after the current item.',
@@ -1851,7 +1865,7 @@
         prev: '← Back',
         next: 'Next: {label} →',
         nextEnd: 'End of the setlist',
-        keyHint: 'Keys: ← back, → or Space forward, E end of the item.',
+        keyHint: 'Keys: ← back, → or Space forward, E end of the item, F big lyrics.',
         endItem: {
           end: 'End',
           done: 'Ended',

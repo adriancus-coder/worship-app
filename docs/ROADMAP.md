@@ -75,6 +75,16 @@ never implement a later stage early. Mockups: claude.ai design canvas
   (`target: 'projector'`); a team move in split mode leaves the projector alone. Team phones
   show "Sfârșitul cântării · Urmează: …" (free mode and rehearsal unaffected). Versioned,
   broadcast and persisted like every command (migration 021).
+- **"⤢ Versuri mari"** (`public/big-lyrics.js`, the leader page and the console): tapping
+  the current step, the button next to the step grid or key F opens a full-screen lyrics
+  view for whoever leads: the current section large (auto-fitted like the projector, the
+  chords above the lines in the reader's notation, "Doar text" honoured), the section label
+  on top, the next section's first line small at the bottom, a slim status line
+  (connection · mode · in split mode where the other one is). Its bottom bar sends the
+  SAME live commands as the page (Înapoi · Următoarea · "■ Sfârșit": projector and team
+  follow per mode); swipe left / right = next / prev; keys ← → Space E B as on the page;
+  A− / A+ saved; ✕ / Escape / F return to the page at the same position; the view follows
+  live updates from other devices. Wake lock while open. Members keep the follow page.
 - **Additions during live** (operator console; any event role): the sender chooses where
   the item goes, no approval:
   - "Doar pe proiector" — a projector-only item right after what the projector shows.
