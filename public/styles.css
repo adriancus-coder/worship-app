@@ -404,7 +404,7 @@ dialog .message:empty { display: none; }
 }
 
 .tabs [role="tab"] {
-  flex: 1 1 0;
+  flex: 1 0 auto; /* never narrower than its label: the row wraps instead (UI rules) */
   color: var(--text-muted);
   background: transparent;
   border-radius: var(--radius) var(--radius) 0 0;
@@ -1936,10 +1936,18 @@ button[role="tab"][aria-selected="true"]::before {
 }
 label.button.file-button { flex-direction: row; }
 
+/* Options that do not fit the container wrap into rows (chips): an option is never narrower
+   than its label, so nothing overlaps or clips; every option is at least 44 px high. */
+:is(.lang-switch, .notation-switch, .mode-switch, .source-buttons, .video-tabs, .tabs, .notation-choice, .choice-group) > button {
+  flex: 1 0 auto;
+  max-width: 100%;
+  min-height: var(--touch);
+}
+
 /* --- Theme: the "Mai mult" row and the stage hint ------------------------------------- */
 .shell-setting-stack { flex-direction: column; align-items: stretch; gap: 8px; padding-top: 8px; padding-bottom: 8px; }
 .shell-setting-stack .choice-group { display: flex; }
-.shell-setting-stack .choice-group > button { flex: 1 1 0; min-width: 0; padding: 8px 6px; }
+.shell-setting-stack .choice-group > button { flex: 1 0 auto; padding: 8px 10px; }
 .stage-hint { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 0 0 12px; padding: 8px 8px 8px 14px; background: var(--surface); border: 1px solid var(--accent-fill); border-radius: var(--radius); }
 .stage-hint[hidden] { display: none; }
 .stage-hint p { flex: 1 1 12rem; min-width: 0; margin: 0; font-weight: 600; overflow-wrap: anywhere; }
@@ -2332,7 +2340,7 @@ dialog.song-pick-dialog .song-pick > .ss-results { flex: 1 1 0; height: 0; --pan
 .quick-fields textarea { width: 100%; min-height: var(--touch); resize: vertical; }
 .quick-source { display: flex; flex-direction: column; gap: 8px; }
 .quick-source .field-label { font-weight: 600; }
-.quick-source .choice-group button { flex: 1 1 auto; }
+.quick-source .choice-group button { flex: 1 0 auto; }
 .quick-picker { display: block; margin: 0; }
 .quick-source .hint { margin: 0; }
 .quick-details .message:empty { display: none; }
