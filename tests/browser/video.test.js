@@ -33,7 +33,7 @@ module.exports = {
     const csp = [];
     sp.on('console', (m) => { if (/Content Security Policy/i.test(m.text())) csp.push(m.text().slice(0, 120)); });
     const lp = await signIn('leader', { width: 1280, height: 900 });
-    await lp.goto(`${app.url}/events/${E}/live`);
+    await lp.goto(`${app.url}/events/${E}/live?view=full`); // the leader lands in the big lyrics otherwise
     await lp.waitForSelector('#live:not([hidden])');
     await lp.click('#start-button');
     await sp.waitForFunction(() => /Ne ridici/.test(document.querySelector('#output .projector-stage').innerText));

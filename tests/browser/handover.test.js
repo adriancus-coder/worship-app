@@ -18,7 +18,7 @@ module.exports = {
     check((await app.command({ type: 'event.start' })).ok, 'the event is live');
     const mode = async () => (await app.state()).mode;
     const lp = await signIn('leader', { width: 1024 });
-    await lp.goto(`${app.url}/events/${E}/live`);
+    await lp.goto(`${app.url}/events/${E}/live?view=full`); // the leader lands in the big lyrics otherwise
     await lp.waitForSelector('#live:not([hidden])');
     const op = await signIn('operator', { width: 1440 });
     await op.goto(`${app.url}/events/${E}/operator`);
@@ -116,7 +116,7 @@ module.exports = {
     // English
     await app.command({ type: 'live.mode', mode: 'split' });
     const en = await signIn('leader', { width: 1024, lang: 'en' });
-    await en.goto(`${app.url}/events/${E}/live`);
+    await en.goto(`${app.url}/events/${E}/live?view=full`); // the leader lands in the big lyrics otherwise
     await en.waitForSelector('#live:not([hidden])');
     const opEn = await signIn('operator', { width: 1024, lang: 'en' });
     await opEn.goto(`${app.url}/events/${E}/operator`);

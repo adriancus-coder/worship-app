@@ -28,7 +28,7 @@ module.exports = {
       await m.goto(`${app.url}/events/${app.seed.eventId}/follow`);
       await m.waitForSelector('#follow:not([hidden])');
       const follow = () => m.evaluate(() => (document.querySelector('#slide .up-next') || {}).textContent || '');
-      await p.goto(`${app.url}/events/${app.seed.eventId}/live`);
+      await p.goto(`${app.url}/events/${app.seed.eventId}/live${role === 'leader' ? '?view=full' : ''}`); // a leader lands in the lyrics otherwise
       await p.waitForSelector('#live:not([hidden])');
       const stepRow = () => p.textContent('#next-button');
 

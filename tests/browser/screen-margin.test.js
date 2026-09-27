@@ -58,7 +58,7 @@ module.exports = {
     check((await measure(sp2)).margin === '8', 'the second screen follows the church value too');
     // the previews: the dashed guide at the margin
     const l = await signIn('leader', { width: 1180 });
-    await l.goto(`${app.url}/events/${E}/live`);
+    await l.goto(`${app.url}/events/${E}/live?view=full`); // the leader lands in the big lyrics otherwise
     await l.waitForSelector('#live:not([hidden])');
     await l.waitForFunction(() => document.getElementById('projector-preview').dataset.safeMargin === '8', null, { timeout: 5000 });
     const guide = await l.evaluate(() => {

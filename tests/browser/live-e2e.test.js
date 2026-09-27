@@ -19,7 +19,7 @@ module.exports = {
     await mp.waitForSelector('#follow:not([hidden])');
     await mp.waitForFunction(() => document.getElementById('connection-text').textContent === 'Conectat');
     check(await mp.locator('#prev-button, #next-button, #start-button, #end-button, .step, .live-item').count() === 0, 'member follow page: no command controls');
-    await lp.goto(`${app.url}/events/${E}/live`);
+    await lp.goto(`${app.url}/events/${E}/live?view=full`); // the leader lands in the big lyrics otherwise
     await lp.waitForSelector('#live:not([hidden])');
     await lp.waitForFunction(() => /2/.test(document.getElementById('presence').textContent), null, { timeout: 5000 });
     check(true, 'leader sees the member online');

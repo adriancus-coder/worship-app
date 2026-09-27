@@ -33,9 +33,8 @@ module.exports = {
       await app.command({ type: 'projector.source', source: 'content' });
       await app.command({ type: 'worship.goto', itemId: items[0], step: 0 });
       const p = await signIn(role, { width, lang });
-      await p.goto(`${app.url}/events/${E}/live${role === 'leader' ? '?view=lyrics' : ''}`);
+      await p.goto(`${app.url}/events/${E}/live${role === 'leader' ? '?view=full' : ''}`); // a leader lands in the lyrics otherwise
       await p.waitForSelector('#live:not([hidden])');
-      if (await p.evaluate(() => Boolean(document.querySelector('dialog.big-lyrics[open]')))) await p.keyboard.press('Escape');
       await p.waitForSelector('.step[aria-current=step]');
       const together = await layout(p);
       check(together.panel && !together.cross && !together.hint, `${tag} together: the projector panel is there`, together);

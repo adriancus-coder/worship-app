@@ -16,8 +16,14 @@
   const $ = (id) => document.getElementById(id);
   const eventId = Number(window.location.pathname.split('/')[2]);
 
+  // ?view=lyrics opens the big lyrics at once; ?view=full is the full page (the leader's
+  // "Pagina Live completă"). For a leader (real or "Vezi ca") every entry lands in the big
+  // lyrics, and closing them returns to the event page (public/big-lyrics.js onClose), unless
+  // the leader asked for the full page.
+  const view = new URLSearchParams(window.location.search).get('view');
   const state = { event: null, items: [], loadedKey: null, loading: null, songs: new Map(), snap: null, seq: 0, client: null, queue: Promise.resolve(), cached: null,
-    openLyrics: new URLSearchParams(window.location.search).get('view') === 'lyrics' };
+    openLyrics: view === 'lyrics', view, leader: false, pageMode: view === 'full' };
+  const eventPage = () => `/events/${eventId}${new URLSearchParams(window.location.search).get('from') === 'home' ? '?from=home' : ''}`;
 
   // --- data -------------------------------------------------------------------------
 
@@ -322,6 +328,14 @@
     commands: { prev: () => send('worship.prev'), next: () => send('worship.next'), end: () => send('worship.endItem'), toggleBlack: () => toggleSource('black') },
     connection: () => (state.client ? state.client.connection : 'connecting'),
     extraStatus: () => modes.statusText(), // the handover request / answer
+    // The leader's way out is the event page; "Pagina completă" reveals this page instead.
+    // (Once the leader asked for the full page, ?view=full or "Pagina completă", the view
+    // closes onto that page; "← Ieși" there returns to the event.)
+    onClose: () => {
+      if (state.leader && !state.pageMode) window.location.assign(eventPage());
+    },
+    fullPage: () => { state.pageMode = true; big.close(); },
+    showFullPage: () => state.leader,
   });
 
   // --- arranging a song during live (public/arrange-sheet.js): saved at once ------------
@@ -452,6 +466,8 @@
       $('projector-permission').hidden = true;
     }
     if (me) modes.setMe(me.user); // the handover flow depends on who this page is
+    state.leader = Boolean(me && me.user.role === 'leader');
+    if (state.leader && state.view !== 'full') state.openLyrics = true;
   });
 
   // Together / separate and the team mode; the info toast for additions from the console.
@@ -689,7 +705,8 @@
         // While the event is live the "new version" toast waits (public/pwa.js).
         document.documentElement.toggleAttribute('data-pwa-hold', snap.status === 'live');
         if (!emergency.active) window.EVENT_CACHE.save({ eventId, snap });
-        syncSetlist(snap).then(() => {
+        // The role is known before the page shows: a leader never sees the full page flash.
+        Promise.all([syncSetlist(snap), window.SHELL.me]).then(() => {
           if (state.seq !== seq || !state.event) return;
           $('status').hidden = true;
           $('live').hidden = false;
@@ -698,7 +715,7 @@
           videoPanel.setSetlist(state.items);
           videoPanel.update(state.snap); // with the presence that may have arrived meanwhile
           // ?view=lyrics (the leader's entry point): the big lyrics open over the page at once.
-          if (state.openLyrics) {
+          if (state.openLyrics && snap.status === 'live') { // a planned event shows the page until it starts
             state.openLyrics = false;
             big.open();
           }

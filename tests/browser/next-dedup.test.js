@@ -41,7 +41,7 @@ module.exports = {
       check(summary[1] === 'Aleluia, aleluia', `${tag} editor summary: the chorus row shows the real first line`, summary);
       // live: the step buttons and the next line
       await app.command({ eventId, type: 'worship.goto', itemId, step: 0 });
-      await p.goto(`${app.url}/events/${eventId}/live`);
+      await p.goto(`${app.url}/events/${eventId}/live?view=full`); // a leader lands in the lyrics otherwise
       await p.waitForSelector('#live:not([hidden])');
       await p.waitForSelector('.step[aria-current=step]');
       const steps = await p.$$eval('.step .step-line', (l) => l.map((x) => x.textContent));

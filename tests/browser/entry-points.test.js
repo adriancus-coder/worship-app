@@ -87,13 +87,37 @@ module.exports = {
     check(back.worship.step === before.worship.step && back.worship.itemId === before.worship.itemId, 'leader: "Înapoi" moves back');
     const al = await layoutAudit(l, 'dialog.big-lyrics');
     check(!al.overflow && !al.small.length, 'leader 375: big lyrics, targets >= 44 px', al);
+    // the leader's ✕ goes back to the EVENT page (Acasă when they came from there), never to the full page
     await l.click('dialog.big-lyrics .big-close');
-    await wait(200);
-    check(!(await l.locator('dialog.big-lyrics[open]').count()) && !(await l.isHidden('#live')), 'leader: ✕ reveals the normal live page underneath');
-    await l.goto(`${app.url}/events/${E}`);
+    await l.waitForURL(`**/events/${E}?from=home`, { timeout: 5000 });
+    check(new URL(l.url()).pathname === `/events/${E}`, 'leader: ✕ returns to the event page (from home: ?from=home kept)');
     await l.waitForSelector('#event-actions a');
     const lrow = await eventRow(l);
-    check(/^\*Versuri mari\|.*\/live\?view=lyrics/.test(lrow[0]) && lrow.some((x) => /Repetiție/.test(x)), 'leader live: the event page\'s primary is "Versuri mari", rehearsal stays', lrow);
+    check(/^\*Versuri mari\|.*\/live\?view=lyrics/.test(lrow[0]) && lrow.some((x) => /Repetiție/.test(x)) && lrow.some((x) => /^Pagina Live completă\|.*\/live\?view=full/.test(x)), 'leader live: the event page\'s primary is "Versuri mari", rehearsal stays, "Pagina Live completă" secondary', lrow);
+    // "Versuri mari" from the event page -> big lyrics; "✕ Ieși" -> the event page
+    await l.click('#event-actions a:has-text("Versuri mari")');
+    await l.waitForSelector('dialog.big-lyrics[open]', { timeout: 6000 });
+    check(await l.evaluate(() => document.querySelector('dialog.big-lyrics .big-full') && !document.querySelector('dialog.big-lyrics .big-full').hidden), 'leader: a small "Pagina completă" tool inside the view');
+    await l.click('dialog.big-lyrics .big-exit');
+    await l.waitForFunction((path) => location.pathname === path, `/events/${E}`, { timeout: 5000 });
+    await l.waitForSelector('#event-actions a');
+    check(new URL(l.url()).pathname === `/events/${E}`, 'leader: "✕ Ieși" -> the event page');
+    // a direct /live also lands in the big lyrics; "Pagina completă" reveals the full page; ← Ieși -> event page
+    await l.goto(`${app.url}/events/${E}/live`);
+    await l.waitForSelector('dialog.big-lyrics[open]', { timeout: 6000 });
+    check(true, 'leader: a direct /live opens the big lyrics at once');
+    await l.click('dialog.big-lyrics .big-full');
+    await wait(300);
+    check(!(await l.locator('dialog.big-lyrics[open]').count()) && !(await l.isHidden('#live')) && new URL(l.url()).pathname === `/events/${E}/live`, 'leader: "Pagina completă" reveals the full live page');
+    await l.goto(`${app.url}/events/${E}`);
+    await l.waitForSelector('#event-actions a');
+    await l.click('#event-actions a:has-text("Pagina Live completă")');
+    await l.waitForSelector('#live:not([hidden])');
+    await wait(300);
+    check(!(await l.locator('dialog.big-lyrics[open]').count()), 'leader: "Pagina Live completă" -> the full page, no big lyrics');
+    await l.click('.shell-exit');
+    await l.waitForFunction((path) => location.pathname === path, `/events/${E}`, { timeout: 5000 });
+    check(new URL(l.url()).pathname === `/events/${E}`, 'leader: "← Ieși" from the full page -> the event page');
 
     // --- operator and member unchanged -----------------------------------------------------------
     const op = pages.operator;

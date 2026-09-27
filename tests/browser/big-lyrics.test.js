@@ -43,7 +43,7 @@ module.exports = {
       await wait(300);
       const p = await signIn(role, { width, lang });
       await p.evaluate(() => { try { localStorage.removeItem('wa_big_scale'); localStorage.setItem('wa_text_only', '0'); } catch (e) {} });
-      await p.goto(`${app.url}/events/${E}/${sub}`);
+      await p.goto(`${app.url}/events/${E}/${sub}${role === 'leader' ? '?view=full' : ''}`); // a leader lands in the lyrics otherwise
       await p.waitForSelector(sub === 'live' ? '#live:not([hidden])' : '#console:not([hidden])');
       await p.waitForSelector(`${stepSel}[aria-current=step]`);
       // open from the current step

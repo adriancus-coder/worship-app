@@ -48,10 +48,10 @@ module.exports = {
       for (const [role, sub] of [['leader', 'live'], ['operator', 'operator'], ['member', 'follow']]) {
         const p = await signIn(role, { width });
         await p.goto(`${app.url}/events/${E}`); await p.waitForSelector('#event-actions a');
-        await p.goto(`${app.url}/events/${E}/${sub}`); await settle(p);
+        await p.goto(`${app.url}/events/${E}/${sub}${role === 'leader' && sub === 'live' ? '?view=full' : ''}`); await settle(p); // a leader lands in the lyrics otherwise
         await p.click('.shell-exit'); await p.waitForURL(`**/events/${E}`); await settle(p);
         check(path(p) === `/events/${E}`, `${tag} ${sub}: "← Ieși" -> the event`, path(p));
-        await p.goto(`${app.url}/events/${E}/${sub}`); await settle(p);
+        await p.goto(`${app.url}/events/${E}/${sub}${role === 'leader' && sub === 'live' ? '?view=full' : ''}`); await settle(p);
         await p.goBack(); await settle(p);
         check(path(p) === `/events/${E}`, `${tag} ${sub}: browser Back -> the event`, path(p));
         await p.context().close();

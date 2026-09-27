@@ -54,7 +54,7 @@ module.exports = {
         await m.goto(`${app.url}/events/${E}/follow`);
         await m.waitForSelector('#follow:not([hidden])');
         const L = await signIn('leader', { width, lang });
-        await L.goto(`${app.url}/events/${E}/live`);
+        await L.goto(`${app.url}/events/${E}/live?view=full`); // the leader lands in the big lyrics otherwise
         await L.waitForSelector('#end-item-button:not([hidden])');
         await L.click('#next-button'); // mid-song: G.1
         await wait(300);

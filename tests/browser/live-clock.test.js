@@ -27,7 +27,7 @@ module.exports = {
     }, root);
 
     const lp = await signIn('leader', { width: 1024 });
-    await lp.goto(`${app.url}/events/${E}/live`);
+    await lp.goto(`${app.url}/events/${E}/live?view=full`); // the leader lands in the big lyrics otherwise
     await lp.waitForSelector('#live:not([hidden])');
     await lp.waitForSelector('#live-clock .live-elapsed:not([hidden])');
     let c = await read(lp, '#live-clock');
@@ -73,7 +73,7 @@ module.exports = {
     await op.context().close();
     // English
     const en = await signIn('leader', { width: 1024, lang: 'en' });
-    await en.goto(`${app.url}/events/${E}/live`);
+    await en.goto(`${app.url}/events/${E}/live?view=full`); // the leader lands in the big lyrics otherwise
     await en.waitForSelector('#live-clock .live-elapsed:not([hidden])');
     c = await read(en, '#live-clock');
     check(/^Live for \d\d:\d\d$/.test(c.elapsed), `EN: "${c.elapsed}"`);

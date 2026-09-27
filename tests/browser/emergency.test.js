@@ -40,7 +40,7 @@ module.exports = {
     await sp.waitForFunction(() => /\d{3} \d{3}/.test(document.getElementById('pairing-code').textContent));
     await app.api(app.cookies.owner, 'POST', '/api/screens/claim', { code: (await sp.textContent('#pairing-code')).replace(' ', ''), name: 'Proiector sală' });
     await sp.waitForSelector('#output:not([hidden])', { timeout: 6000 });
-    await lp.goto(`${app.url}/events/${E}/live`);
+    await lp.goto(`${app.url}/events/${E}/live?view=full`); // the leader lands in the big lyrics otherwise
     await lp.waitForSelector('#live:not([hidden])');
     await lp.click('#start-button');
     await sp.waitForFunction(() => /Ne ridici/.test(document.querySelector('#output .projector-stage').innerText));

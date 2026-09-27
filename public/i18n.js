@@ -239,7 +239,7 @@
         },
         roleHelp: {
           presenter: 'Pregătește evenimentele și derulează cântările pentru echipă; ajunge pe pagina Live. Biblioteca, evenimentele, media și live-ul. Ecranele proiectorului le deschide operatorul; în modul Separat preia proiectorul doar cu acordul lui.',
-          leader: 'Conduce muzical de pe scenă; aceleași drepturi ca prezentatorul, ajunge direct în versurile mari. Programează echipa la fiecare eveniment (pozițiile, „Trimite programarea”, indisponibilitățile) și primește răspunsurile „Nu pot”. Repetiția (versuri și acorduri) îi este la îndemână.',
+          leader: 'Conduce muzical de pe scenă; aceleași drepturi ca prezentatorul. Orice intrare la un eveniment (Acasă, pagina evenimentului, linkul Live) deschide direct versurile mari; ✕ / „Ieși” duce înapoi la pagina evenimentului, iar „Pagina Live completă” (pe pagina evenimentului sau „Pagina completă” din versuri) arată pagina Live întreagă. Programează echipa la fiecare eveniment (pozițiile, „Trimite programarea”, indisponibilitățile) și primește răspunsurile „Nu pot”. Repetiția (versuri și acorduri) îi este la îndemână.',
           operator: 'Biblioteca, evenimentele, media și live-ul, plus ecranele proiectorului (împerechere, „Deschide ecranul proiectorului”) și cântări noi scrise în timpul slujbei. La un eveniment ajunge în consola operator, unde acceptă sau refuză cererea liderului de a prelua proiectorul. Repetiția (versuri și acorduri pentru muzicieni) nu îi apare.',
           member: 'Vede programul, versurile și acordurile și urmărește live pe telefon. Răspunde „Vin” / „Nu pot” când e programat și își notează perioadele indisponibile în profil.',
         },
@@ -407,6 +407,8 @@
         open: 'Versuri mari',
         close: 'Închide versurile mari (F sau Escape)',
         exit: 'Ieși',
+        fullPage: 'Pagina completă',
+        fullPageLabel: 'Arată pagina Live completă (versurile mari se închid)',
         memberFollow: 'Urmărești live',
         memberFree: 'Navigare liberă',
         memberAway: 'Locul tău · live merge mai departe',
@@ -1095,6 +1097,7 @@
       },
       live: {
         link: 'Live',
+        fullPage: 'Pagina Live completă',
         pageTitle: 'Live: {name} — {appName}',
         start: 'Pornește evenimentul',
         end: 'Încheie evenimentul',
@@ -1793,7 +1796,7 @@
         },
         roleHelp: {
           presenter: 'Prepares the events and runs the songs for the team; an event opens on the Live page. Library, events, media and live. The projector screens are the operator’s; in Separate mode the presenter takes the projector only with their consent.',
-          leader: 'Leads the music from the stage; the same rights as the presenter, an event opens straight in the big lyrics. Schedules the team for every event (positions, “Send the schedule”, unavailability) and receives the “I can’t” answers. The rehearsal view (lyrics and chords) is at hand.',
+          leader: 'Leads the music from the stage; the same rights as the presenter. Every way into an event (Home, the event page, the Live link) opens the big lyrics directly; ✕ / “Exit” goes back to the event page, and “Full Live page” (on the event page, or “Full page” inside the lyrics) shows the whole Live page. Schedules the team for every event (positions, “Send the schedule”, unavailability) and receives the “I can’t” answers. The rehearsal view (lyrics and chords) is at hand.',
           operator: 'Library, events, media and live, plus the projector screens (pairing, “Open the projector screen”) and new songs written during the service. An event opens in the operator console, where they accept or refuse the leader’s request to take the projector. The rehearsal view (lyrics and chords for the musicians) is not shown to them.',
           member: 'Sees the setlist, lyrics and chords and follows live on the phone. Answers “I’m in” / “I can’t” when scheduled and notes unavailable periods in the profile.',
         },
@@ -1961,6 +1964,8 @@
         open: 'Big lyrics',
         close: 'Close the big lyrics (F or Escape)',
         exit: 'Exit',
+        fullPage: 'Full page',
+        fullPageLabel: 'Show the full Live page (the big lyrics close)',
         memberFollow: 'Following live',
         memberFree: 'Free navigation',
         memberAway: 'Your own place · live goes on',
@@ -2649,6 +2654,7 @@
       },
       live: {
         link: 'Live',
+        fullPage: 'Full Live page',
         pageTitle: 'Live: {name} — {appName}',
         start: 'Start the event',
         end: 'End the event',

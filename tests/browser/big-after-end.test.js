@@ -34,9 +34,8 @@ module.exports = {
       await app.command({ type: 'worship.goto', itemId: G, step: 1 });
       const p = await signIn('leader', { width, lang });
       await p.evaluate(() => { try { localStorage.setItem('wa_text_only', '0'); } catch (e) {} });
-      await p.goto(`${app.url}/events/${E}/live`);
+      await p.goto(`${app.url}/events/${E}/live?view=full`); // a leader lands in the lyrics otherwise
       await p.waitForSelector('#live:not([hidden])');
-      if (await p.evaluate(() => Boolean(document.querySelector('dialog.big-lyrics[open]')))) await p.keyboard.press('Escape');
       await p.waitForSelector('.step[aria-current=step]');
       await p.click('.step[aria-current=step]');
       await p.waitForSelector('dialog.big-lyrics[open]');

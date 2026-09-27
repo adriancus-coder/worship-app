@@ -32,7 +32,7 @@ module.exports = {
       };
     });
     const lp = await signIn('leader', { width: 1280 });
-    await lp.goto(`${app.url}/events/${E}/live`);
+    await lp.goto(`${app.url}/events/${E}/live?view=full`); // the leader lands in the big lyrics otherwise
     await lp.waitForSelector('#live:not([hidden])');
     const moveTo = async (label, action, pattern) => {
       const t0 = Date.now();

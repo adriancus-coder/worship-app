@@ -24,7 +24,7 @@ module.exports = {
       return { topOpacity: getComputedStyle(top).opacity, topHeight: Math.round(top.getBoundingClientRect().height), exitH: Math.round(r.height), exitW: Math.round(r.width), exitFirst: first === exit, exitText: exit.textContent.trim(), hasClose: Boolean(d.querySelector('.big-close').getClientRects().length) };
     });
     for (const [lang, width, role, url, opener] of [
-      ['ro', 375, 'leader', '/live', '.step[aria-current=step]'], ['en', 1180, 'operator', '/operator', '.op-step[aria-current=step]'],
+      ['ro', 375, 'leader', '/live?view=full', '.step[aria-current=step]'], ['en', 1180, 'operator', '/operator', '.op-step[aria-current=step]'],
       ['ro', 375, 'member', '/follow', '#big-open'], ['en', 1180, 'member', '/follow', '#big-open'], ['ro', 1180, 'member', '/rehearse', '#big-open'],
     ]) {
       const tag = `[${lang} ${width} ${role}${url}]`;

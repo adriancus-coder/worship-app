@@ -56,7 +56,9 @@
 
   // extraStatus() -> text added to the status line (the handover request / answer), refreshed
   // every second while the view is open.
-  function create({ api, eventId, position, commands, connection, drivesProjector = () => false, extraStatus = () => '', member = null, standalone = false, loadSong: pageLoadSong = null }) {
+  // onClose(): after the view closed (the leader goes back to the event page); fullPage() with
+  // showFullPage() -> true adds a small "Pagina completă" tool (the leader's way to the page).
+  function create({ api, eventId, position, commands, connection, drivesProjector = () => false, extraStatus = () => '', member = null, standalone = false, loadSong: pageLoadSong = null, onClose = null, fullPage = null, showFullPage = () => false }) {
     const { el } = window.PAGE;
     const { t } = window.I18N;
     const state = { snap: null, items: [], scale: Number(stored(SCALE_KEY, '1')) || 1, textOnly: stored(TEXT_ONLY_KEY, '0') === '1', songs: new Map(), setlistKey: null, renderId: 0 };
@@ -96,6 +98,7 @@
       parts.textOnly = el('button', { type: 'button', class: 'secondary big-tool', 'aria-pressed': 'false', onclick: () => setTextOnly(!state.textOnly) });
       parts.smaller = el('button', { type: 'button', class: 'secondary big-tool', text: 'A−', onclick: () => setScale(-SCALE.step) });
       parts.larger = el('button', { type: 'button', class: 'secondary big-tool', text: 'A+', onclick: () => setScale(SCALE.step) });
+      parts.full = fullPage ? el('button', { type: 'button', class: 'secondary big-tool big-full', 'data-icon': 'more', hidden: true, onclick: () => fullPage() }) : null;
       parts.close = el('button', { type: 'button', class: 'secondary big-tool big-close', 'data-icon': 'close', onclick: close });
       // "✕ Ieși" first in the bottom bar too: a way out on every device, no hidden gesture.
       parts.exit = el('button', { type: 'button', class: 'secondary big-exit', 'data-icon': 'close', onclick: close });
@@ -105,12 +108,12 @@
       parts.nextButton = el('button', { type: 'button', class: member ? 'secondary' : null, onclick: () => commands.next() });
       parts.nav = el('div', { class: `big-nav${member ? ' big-nav-member' : ''}`, role: 'group', 'aria-label': t(member ? 'follow.navLabel' : 'live.navLabel') }, parts.exit, parts.prev, parts.end, parts.backLive, parts.nextButton);
       dialog = el('dialog', { class: `big-lyrics${member ? ' big-lyrics-member' : ''}`, 'aria-label': t('big.title') },
-        el('div', { class: 'big-top' }, parts.label, el('span', { class: 'big-tools' }, parts.textOnly, parts.smaller, parts.larger, parts.close)),
+        el('div', { class: 'big-top' }, parts.label, el('span', { class: 'big-tools' }, parts.textOnly, parts.smaller, parts.larger, parts.full, parts.close)),
         parts.body,
         parts.next,
         standalone ? null : parts.status,
         parts.nav);
-      dialog.addEventListener('close', () => { releaseWake(); clearInterval(extraTimer); extraTimer = null; });
+      dialog.addEventListener('close', () => { releaseWake(); clearInterval(extraTimer); extraTimer = null; if (onClose) onClose(); });
       dialog.addEventListener('cancel', (event) => { event.preventDefault(); close(); }); // Escape
       dialog.addEventListener('keydown', onKey);
       // A horizontal swipe on the text: next / prev.
@@ -285,6 +288,11 @@
       parts.textOnly.setAttribute('aria-pressed', String(state.textOnly));
       parts.close.setAttribute('aria-label', t('big.close'));
       parts.exit.textContent = t('big.exit');
+      if (parts.full) {
+        parts.full.hidden = !showFullPage();
+        parts.full.textContent = t('big.fullPage');
+        parts.full.setAttribute('aria-label', t('big.fullPageLabel'));
+      }
       parts.smaller.setAttribute('aria-label', t('big.smaller'));
       parts.larger.setAttribute('aria-label', t('big.larger'));
       parts.smaller.disabled = state.scale <= SCALE.min + 1e-9;

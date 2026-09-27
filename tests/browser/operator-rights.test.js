@@ -94,7 +94,7 @@ module.exports = {
     check(await m2.waitForSelector('#rehearse:not([hidden]), main h1', { timeout: 5000 }).then(() => true, () => false) && /rehearse/.test(new URL(m2.url()).pathname), 'member: the rehearsal page still opens');
     await m2.context().close();
     // The projector window and the Ecrane page are the operator's: the leader keeps the preview
-    await l.goto(`${app.url}/events/${E}/live`);
+    await l.goto(`${app.url}/events/${E}/live?view=full`); // the leader lands in the big lyrics otherwise
     await l.waitForSelector('#live:not([hidden])');
     await l.waitForTimeout(500);
     check(await l.isHidden('#open-projector') && await l.isHidden('#projector-permission'), 'leader: no "Deschide ecranul proiectorului"');

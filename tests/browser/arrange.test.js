@@ -56,7 +56,7 @@ module.exports = {
     const mp = await signIn('member', { width: 375 });
     await mp.goto(`${app.url}/events/${E}/follow`);
     await mp.waitForSelector('#follow:not([hidden])');
-    await lp.goto(`${app.url}/events/${E}/live`);
+    await lp.goto(`${app.url}/events/${E}/live?view=full`); // the leader lands in the big lyrics otherwise
     await lp.waitForSelector('#setlist .item-arrange');
     await lp.click('#setlist .item-arrange >> nth=0');
     await lp.waitForSelector('dialog.arrange-sheet[open]');

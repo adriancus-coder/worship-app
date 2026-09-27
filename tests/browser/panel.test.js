@@ -18,7 +18,7 @@ module.exports = {
     await app.api(app.cookies.owner, 'POST', '/api/screens/claim', { code: (await sp.textContent('#pairing-code')).replace(' ', ''), name: 'Proiector sală' });
     await sp.waitForSelector('#output:not([hidden])', { timeout: 6000 });
     const lp = await signIn('leader', { width: 1280 });
-    await lp.goto(`${app.url}/events/${E}/live`);
+    await lp.goto(`${app.url}/events/${E}/live?view=full`); // the leader lands in the big lyrics otherwise
     await lp.waitForSelector('#live:not([hidden])');
     check(await lp.waitForFunction(() => /Un ecran/.test(document.getElementById('projector-screens').textContent), null, { timeout: 5000 }).then(() => true, () => false), '"Un ecran conectat"');
     const pressed = () => lp.$$eval('[data-source][aria-pressed=true]', (l) => l.map((x) => x.dataset.source).join(','));

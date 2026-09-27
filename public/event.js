@@ -221,6 +221,8 @@
       const soon = state.today && [state.today, dayAfter(state.today)].includes(ev.eventDate);
       if (!ev.isTemplate && ev.status === 'live') {
         actions.push({ key: entry.key, icon: 'play', href: livePage }, rehearse, edit);
+        // The leader lands in the big lyrics; the full live page stays a secondary way in.
+        if (role === 'leader') actions.push({ key: 'live.fullPage', icon: 'follow', href: keepFrom(`/events/${ev.id}/live?view=full`) });
       } else {
         // Before the start, by role (the same order as the home card): the owner starts first
         // (today / tomorrow), the leader rehearses first, presenter and operator prepare first.
