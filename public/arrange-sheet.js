@@ -287,29 +287,34 @@
     return { dialog };
   }
 
-  // --- the song's key, easy to find and change (the sheet and the song page) -------------
+  // --- the song's key, easy to find and change (the sheet, the song page, the event editor) ---
 
   // One row: "<label>: Sol · Schimbă" with the key large in the reader's notation, or, with
   // no key, "Tonul nu e setat · Setează" in the accent colour. canSet (the editor roles):
-  // Schimbă / Setează opens an inline picker (values stay letters); saving sends only the
-  // key (PUT /api/songs/:id { song_key }: sections and their hashes untouched), then
-  // onSaved(song). Without canSet the row is read-only (the team sees the key, no button).
-  function keyBox(song, canSet, onSaved, { label = 'song.keyLabel', id = null } = {}) {
+  // Schimbă / Setează opens an inline picker "<label>: [selector] · Setează" (values stay
+  // letters; Setează saves, Anulează closes it); saving sends only the key (PUT
+  // /api/songs/:id { song_key }: sections and their hashes untouched), then onSaved(song).
+  // open: the picker is shown from the start and cannot be closed (the event editor's
+  // panel for a song without a key). Without canSet the row is read-only.
+  function keyBox(song, canSet, onSaved, { label = 'song.keyLabel', id = null, open = false } = {}) {
     const { el, api } = window.PAGE;
     const { t } = window.I18N;
     const box = el('div', { class: 'song-key-box', id, role: 'group', 'aria-label': t(label) });
     const message = el('p', { class: 'message', role: 'status' });
 
-    async function save(select) {
+    async function save(select, button) {
+      if (!select.value && !song.song_key) return; // nothing chosen yet
       select.disabled = true;
+      button.disabled = true;
       const res = await api(`/api/songs/${song.id}`, { method: 'PUT', body: { song_key: select.value } }).catch(() => null);
       if (res && res.ok) {
         song.song_key = res.body.song.song_key;
-        show(false);
+        show(open);
         if (onSaved) onSaved(res.body.song);
         return;
       }
       select.disabled = false;
+      button.disabled = false;
       message.className = 'message error';
       message.textContent = (res && res.body && res.body.error) || t('common.networkError');
     }
@@ -317,27 +322,34 @@
     function show(picking) {
       const has = Boolean(song.song_key);
       box.classList.toggle('song-key-unset', !has);
+      box.classList.toggle('song-key-picking', Boolean(canSet && picking));
       message.className = 'message';
       message.textContent = '';
-      // "Ton: Sol" / "Original: Sol"; without a key just "Tonul nu e setat" (no label).
-      const parts = has
-        ? [el('span', { class: 'song-key-label', text: `${t(label)}:` }), el('strong', { class: 'song-key-value', text: window.NOTATION.chord(song.song_key) })]
-        : [el('span', { class: 'song-key-unset-text', text: t('song.keyUnset') })];
-      if (canSet && !picking) {
-        parts.push(el('span', { class: 'song-key-dot', 'aria-hidden': 'true', text: '·' }),
-          el('button', { type: 'button', class: 'song-key-change', 'data-icon': 'edit', text: t(has ? 'song.keyChange' : 'song.keySet'), onclick: () => { show(true); box.querySelector('select').focus(); } }));
-      } else if (canSet) {
-        const select = el('select', { class: 'key-pick', 'aria-label': t('arrange.keyPick'), onchange: () => save(select) },
+      const parts = [];
+      if (canSet && picking) {
+        // "<label>: [selector] · Setează" (+ Anulează when it can be closed again)
+        const select = el('select', { class: 'key-pick', 'aria-label': t('arrange.keyPick') },
           el('option', { value: '', text: t('arrange.keyPick') }),
           SECTIONS.SONG_KEYS.map((key) => el('option', { value: key, text: window.NOTATION.chord(key) })));
         select.value = song.song_key || '';
-        parts.push(el('span', { class: 'song-key-picker' }, select,
-          el('button', { type: 'button', class: 'secondary song-key-cancel', text: t('arrange.cancel'), onclick: () => { show(false); box.querySelector('.song-key-change').focus(); } })));
+        const saveButton = el('button', { type: 'button', class: 'song-key-change song-key-save', 'data-icon': 'check', text: t('song.keySet'), onclick: () => save(select, saveButton) });
+        parts.push(el('span', { class: 'song-key-label', text: `${t(label)}:` }),
+          el('span', { class: 'song-key-picker' }, select, el('span', { class: 'song-key-dot', 'aria-hidden': 'true', text: '·' }), saveButton,
+            open ? null : el('button', { type: 'button', class: 'secondary song-key-cancel', text: t('arrange.cancel'), onclick: () => { show(false); box.querySelector('.song-key-change').focus(); } })));
+      } else {
+        // "Ton: Sol" / "Original: Sol"; without a key just "Tonul nu e setat" (no label).
+        parts.push(...(has
+          ? [el('span', { class: 'song-key-label', text: `${t(label)}:` }), el('strong', { class: 'song-key-value', text: window.NOTATION.chord(song.song_key) })]
+          : [el('span', { class: 'song-key-unset-text', text: t('song.keyUnset') })]));
+        if (canSet) {
+          parts.push(el('span', { class: 'song-key-dot', 'aria-hidden': 'true', text: '·' }),
+            el('button', { type: 'button', class: 'song-key-change', 'data-icon': 'edit', text: t(has ? 'song.keyChange' : 'song.keySet'), onclick: () => { show(true); box.querySelector('select').focus(); } }));
+        }
       }
       box.replaceChildren(...parts, message);
     }
 
-    show(false);
+    show(open);
     return box;
   }
 

@@ -36,7 +36,8 @@ module.exports = {
       await l.click('#song-key-box .song-key-change');
       await l.waitForSelector('#song-key-box select.key-pick');
       await l.selectOption('#song-key-box select.key-pick', 'A');
-      await l.waitForFunction((k) => new RegExp(k).test(document.querySelector('#song-key-box .song-key-value').textContent), notation.A);
+      await l.click('#song-key-box .song-key-save');
+      await l.waitForFunction((k) => new RegExp(k).test((document.querySelector('#song-key-box .song-key-value') || {}).textContent || ''), notation.A);
       const after = await song(songs.G);
       check(after.song_key === 'A' && hashes(after) === hashes(before) && after.sections.length === before.sections.length, `${tag} saved from the song page: key A, sections and content hashes unchanged`);
       const a1 = await layoutAudit(l, '#song');
@@ -76,6 +77,7 @@ module.exports = {
       const mid = await song(songs.G);
       await l.click('#arrange-original-key .song-key-change');
       await l.selectOption('#arrange-original-key select.key-pick', 'G');
+      await l.click('#arrange-original-key .song-key-save');
       await l.waitForFunction((k) => new RegExp(`Original:\\s*${k}`).test(document.getElementById('arrange-original-key').textContent), notation.G);
       const back = await song(songs.G);
       check(back.song_key === 'G' && hashes(back) === hashes(mid), `${tag} saved from the arrange sheet: key G, sections untouched`);
@@ -107,8 +109,9 @@ module.exports = {
     await op.waitForSelector('#song-key-box .song-key-change');
     await op.click('#song-key-box .song-key-change');
     await op.selectOption('#song-key-box select.key-pick', 'E');
+    await op.click('#song-key-box .song-key-save');
     const E = await op.evaluate(() => window.NOTATION.chord('E'));
-    await op.waitForFunction((k) => document.querySelector('#song-key-box .song-key-value').textContent === k, E);
+    await op.waitForFunction((k) => (document.querySelector('#song-key-box .song-key-value') || {}).textContent === k, E);
     check((await song(songs.SIX)).song_key === 'E', 'operator: changes the key from the song page');
     const m = await signIn('member', { width: 375 });
     await m.goto(`${app.url}/songs/${songs.SIX}`);

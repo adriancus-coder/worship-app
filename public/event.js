@@ -598,13 +598,37 @@
         el('span', { class: 'ro-label', text: t('options.keyLabel') }),
         el('p', { class: 'key-display', text: display }));
     }
+    // The library song's original key, set from here (public/arrange-sheet.js keyBox, the
+    // key-only PUT: sections untouched). No key yet: "Tonul original: [selector] · Setează"
+    // replaces "Fără transpunere"; with a key: "Original: Sol · Schimbă" above the −/+ row.
+    const keySaved = (saved) => {
+      state.songCache.set(item.songId, saved);
+      item.song = { ...(item.song || {}), key: saved.song_key };
+      optionChangedNoDirty(item);
+    };
+    const original = window.ARRANGE_SHEET.keyBox(song, true, keySaved, song.song_key
+      ? { label: 'arrange.keyOriginalLabel', id: 'opt-original-key' }
+      : { label: 'options.keyOriginalLabel', id: 'opt-original-key', open: true });
     return el('div', { class: 'option-block', role: 'group', 'aria-labelledby': 'opt-key-label' },
       el('span', { class: 'ro-label', id: 'opt-key-label', text: t('options.keyLabel') }),
-      el('div', { class: 'key-row' },
+      original,
+      !song.song_key && !transpose ? null : el('div', { class: 'key-row' },
         el('button', { type: 'button', class: 'secondary icon-button', id: 'opt-key-down', 'aria-label': t('options.keyDown'), disabled: transpose <= -11, onclick: () => setTranspose(transpose - 1) }, el('span', { 'aria-hidden': 'true', text: '−' })),
         el('output', { class: 'key-display', id: 'opt-key-display', 'aria-live': 'polite', text: display }),
         el('button', { type: 'button', class: 'secondary icon-button', id: 'opt-key-up', 'aria-label': t('options.keyUp'), disabled: transpose >= 11, onclick: () => setTranspose(transpose + 1) }, el('span', { 'aria-hidden': 'true', text: '+' }))),
-      el('button', { type: 'button', class: 'secondary', id: 'opt-key-reset', disabled: transpose === 0, onclick: () => setTranspose(0), text: t('options.keyReset') }));
+      !song.song_key && !transpose ? null : el('button', { type: 'button', class: 'secondary', id: 'opt-key-reset', disabled: transpose === 0, onclick: () => setTranspose(0), text: t('options.keyReset') }));
+  }
+
+  // The library song changed (its key), not the event: re-render the row and the detail,
+  // keeping focus, without marking the editor dirty.
+  function optionChangedNoDirty(item) {
+    const focusedId = document.activeElement && document.activeElement.id;
+    const row = itemsList.children[state.selected];
+    const sub = row && row.querySelector('.item-sub');
+    if (sub) sub.textContent = itemSubline(item);
+    renderDetail();
+    const again = focusedId && $(focusedId);
+    if (again && !again.disabled) again.focus();
   }
 
   // The arrange sheet (public/arrange-sheet.js): Aplică sets the key and the order here and

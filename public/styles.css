@@ -2094,6 +2094,8 @@ button.song-key-change:hover { text-decoration: underline; }
 .song-key-box .message:empty { display: none; }
 .song-key-row { margin: 4px 0 8px; }
 .arrange-order .song-key-box { margin-bottom: 8px; }
+.option-block .song-key-box { margin: 2px 0 8px; }
+.song-key-picker .song-key-dot { color: var(--text-muted); }
 
 /* Song editor: the "Detalii" card (title, author, key) at the top. */
 .editor-details { display: flex; flex-direction: column; gap: 12px; margin: 0 0 16px; padding: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
