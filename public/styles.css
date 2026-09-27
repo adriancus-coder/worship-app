@@ -1101,7 +1101,11 @@ button.live-item:disabled { opacity: 1; cursor: default; }
 .projector-bg-layer { overflow: hidden; }
 .projector-bg-media { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
 .projector-dim { background: var(--projector-dim); }
-.projector-line { min-height: 1.22em; }
+.projector-line { min-height: 1.22em; white-space: nowrap; } /* a stored line never wraps on its own: the auto-fit splits it into rows */
+.projector-line.fit-wrapped, .big-line.fit-wrapped { white-space: normal; }
+.fit-row { display: block; white-space: nowrap; }
+.fit-probe { position: absolute; visibility: hidden; white-space: nowrap; pointer-events: none; }
+.big-text-lines .big-line { white-space: nowrap; }
 .projector-reference { font-size: 0.62em; font-weight: 700; opacity: 0.85; margin-bottom: 0.45em; letter-spacing: 0.02em; }
 .projector-heading { font-weight: 800; margin-bottom: 0.35em; }
 .projector-body { font-weight: 500; }

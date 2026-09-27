@@ -34,6 +34,7 @@
   const { stripChords } = shared ? require('./chords.js') : root.CHORDS;
   const { normalize: normalizeClock } = shared ? require('./clock.js') : root.CLOCK;
   const DEFAULT_SAFE_MARGIN = 5; // % of each edge (lib/admin-settings.js safe_margin)
+  const DEFAULT_FIT_MIN = 60; // lyrics auto-fit: % of the maximum size below which lines may wrap
 
   const SOURCES = ['content', 'logo', 'black', 'video', 'translation'];
   // Sources the leader can pick (video is picked through the video commands; translation later).
@@ -107,16 +108,18 @@
   // backgrounds: the event's resolved backgrounds (lib/backgrounds.js forEvent), or null.
   // clock: the church default clock (+ timeZone) for the idle screen; live frames use state.clock.
   // safeMargin: % of each edge kept free of text, logo and clock (0-12; overscan), on every frame.
-  function projectorFrame(state, event, songs, { logoUrl = null, videoMedia = null, backgrounds = null, clock = null, safeMargin = DEFAULT_SAFE_MARGIN } = {}) {
+  // fitMin: the lyrics auto-fit minimum (% of the maximum size, 30-100; LYRICS_FIT_MIN_PCT).
+  function projectorFrame(state, event, songs, { logoUrl = null, videoMedia = null, backgrounds = null, clock = null, safeMargin = DEFAULT_SAFE_MARGIN, fitMin = DEFAULT_FIT_MIN } = {}) {
     const margin = Number.isInteger(safeMargin) && safeMargin >= 0 && safeMargin <= 12 ? safeMargin : DEFAULT_SAFE_MARGIN;
+    const fit = Number.isInteger(fitMin) && fitMin >= 30 && fitMin <= 100 ? fitMin : DEFAULT_FIT_MIN;
     if (!state || state.status !== 'live') {
-      return { kind: 'idle', logoUrl, version: state ? state.version : 0, eventId: null, background: null, clock: clockFrame(clock, 'idle'), safeMargin: margin };
+      return { kind: 'idle', logoUrl, version: state ? state.version : 0, eventId: null, background: null, clock: clockFrame(clock, 'idle'), safeMargin: margin, fitMin: fit };
     }
     const v = state.video;
     const video = v && v.state !== 'none' && videoMedia
       ? { state: v.state, seq: v.seq, volume: v.volume, position: v.position, media: videoMedia }
       : null;
-    const base = { version: state.version, eventId: state.eventId, ...(video ? { video } : {}), background: null, clock: clockFrame(state.clock || null, 'other'), safeMargin: margin };
+    const base = { version: state.version, eventId: state.eventId, ...(video ? { video } : {}), background: null, clock: clockFrame(state.clock || null, 'other'), safeMargin: margin, fitMin: fit };
     const source = state.projector.source;
     if (source === 'black') return { kind: 'black', ...base };
     if (source === 'logo') return { kind: 'logo', logoUrl, ...base };
@@ -142,7 +145,7 @@
     return { ...content, ...base, clock: clockFrame(state.clock || null, content.kind), background, ...preload };
   }
 
-  const FRAMES = { SOURCES, LEADER_SOURCES, DEFAULT_SAFE_MARGIN, projectorFrame, backgroundFor, lyricLines, clockFrame };
+  const FRAMES = { SOURCES, LEADER_SOURCES, DEFAULT_SAFE_MARGIN, DEFAULT_FIT_MIN, projectorFrame, backgroundFor, lyricLines, clockFrame };
 
   if (typeof module === 'object' && module.exports) module.exports = FRAMES;
   else root.FRAMES = FRAMES;

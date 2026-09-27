@@ -814,20 +814,20 @@ test('projector frames: sources, items, no chords, idle', () => {
   const state = (itemId, step, source = 'content') => ({ version: 7, eventId: 3, status: 'live',
     worship: { itemId, step }, projector: { follows: 'worship', itemId: null, step: 0, source } });
   const frame = (itemId, step, source, logoUrl) => projectorFrame(state(itemId, step, source), { items }, new Map([[1, song]]), { logoUrl });
-  assert.deepStrictEqual(frame(1, 0), { kind: 'lyrics', lines: ['Ne ridici din noaptea grea', 'Tu ești lumina mea'], version: 7, eventId: 3, background: null, clock: null, safeMargin: 5 });
+  assert.deepStrictEqual(frame(1, 0), { kind: 'lyrics', lines: ['Ne ridici din noaptea grea', 'Tu ești lumina mea'], version: 7, eventId: 3, background: null, clock: null, safeMargin: 5, fitMin: 60 });
   assert.deepStrictEqual(frame(1, 1).lines, ['Sfânt, sfânt']);
   assert.ok(!/\[[A-G]/.test(frame(1, 2).lines.join('\n')), 'no chords reach the projector');
-  assert.deepStrictEqual(frame(2, 0), { kind: 'verse', reference: 'Psalmul 23:1', text: 'Domnul este Păstorul meu.', version: 7, eventId: 3, background: null, clock: null, safeMargin: 5 });
-  assert.deepStrictEqual(frame(3, 0), { kind: 'announcement', title: 'Agapă', body: 'După serviciu', version: 7, eventId: 3, background: null, clock: null, safeMargin: 5 });
+  assert.deepStrictEqual(frame(2, 0), { kind: 'verse', reference: 'Psalmul 23:1', text: 'Domnul este Păstorul meu.', version: 7, eventId: 3, background: null, clock: null, safeMargin: 5, fitMin: 60 });
+  assert.deepStrictEqual(frame(3, 0), { kind: 'announcement', title: 'Agapă', body: 'După serviciu', version: 7, eventId: 3, background: null, clock: null, safeMargin: 5, fitMin: 60 });
   assert.strictEqual(frame(4, 0).title, 'Predica');
   assert.deepStrictEqual([frame(5, 0).kind, frame(5, 0).title], ['title', 'Rugăciune']);
   assert.strictEqual(frame(6, 0).kind, 'black', 'video: black until stage 5b');
   assert.deepStrictEqual([frame(7, 0).kind, frame(7, 0).title], ['title', 'Cântare ștearsă']);
-  assert.deepStrictEqual(frame(1, 0, 'black'), { kind: 'black', version: 7, eventId: 3, background: null, clock: null, safeMargin: 5 });
-  assert.deepStrictEqual(frame(1, 0, 'logo', '/api/logo/x.png'), { kind: 'logo', logoUrl: '/api/logo/x.png', version: 7, eventId: 3, background: null, clock: null, safeMargin: 5 });
+  assert.deepStrictEqual(frame(1, 0, 'black'), { kind: 'black', version: 7, eventId: 3, background: null, clock: null, safeMargin: 5, fitMin: 60 });
+  assert.deepStrictEqual(frame(1, 0, 'logo', '/api/logo/x.png'), { kind: 'logo', logoUrl: '/api/logo/x.png', version: 7, eventId: 3, background: null, clock: null, safeMargin: 5, fitMin: 60 });
   assert.strictEqual(frame(1, 0, 'logo').logoUrl, null);
   assert.strictEqual(frame(99, 0).kind, 'black', 'no item at the position');
-  assert.deepStrictEqual(projectorFrame(null, null, null, { logoUrl: '/api/logo/x.png' }), { kind: 'idle', logoUrl: '/api/logo/x.png', version: 0, eventId: null, background: null, clock: null, safeMargin: 5 });
+  assert.deepStrictEqual(projectorFrame(null, null, null, { logoUrl: '/api/logo/x.png' }), { kind: 'idle', logoUrl: '/api/logo/x.png', version: 0, eventId: null, background: null, clock: null, safeMargin: 5, fitMin: 60 });
   assert.strictEqual(projectorFrame({ ...state(1, 0), status: 'finished' }, { items }, new Map()).kind, 'idle');
 });
 
@@ -956,7 +956,7 @@ test('projector frames: a prepared video rides along, plays only on the video so
     projector: { follows: 'worship', itemId: null, step: 0, source },
     video: { state: videoState, seq: 5, volume: 0.8, position: 0 } });
   const f = (source, videoState, m = media) => projectorFrame(st(source, videoState), { items }, new Map(), { videoMedia: m });
-  assert.deepStrictEqual(f('content', 'prepared'), { kind: 'verse', reference: 'Ps 1', text: 'Ferice', version: 3, eventId: 2, background: null, clock: null, safeMargin: 5,
+  assert.deepStrictEqual(f('content', 'prepared'), { kind: 'verse', reference: 'Ps 1', text: 'Ferice', version: 3, eventId: 2, background: null, clock: null, safeMargin: 5, fitMin: 60,
     video: { state: 'prepared', seq: 5, volume: 0.8, position: 0, media } });
   assert.strictEqual(f('video', 'playing').kind, 'video');
   assert.strictEqual(f('video', 'paused').kind, 'video');
@@ -1521,6 +1521,53 @@ testAsync('pexels: disabled without a key; items, the HD file, the 10 minute cac
   assert.strictEqual(await px.search(1, { query: 'one more', kind: 'photos' }).then(() => 'ok', (e) => e.code), 'rate_limited', 'the 61st search of the hour (church 1)');
   assert.strictEqual(await px.search(2, { query: 'other church', kind: 'photos' }).then(() => 'ok', (e) => e.code), 'ok', 'another church is not limited');
   assert.strictEqual((await px.search(1, { query: 'sky', kind: 'photos' })).cached, true, 'cached queries still answer');
+});
+
+test('lyrics-fit: no wrap first, then balanced rows with no tail under 3 words, the song\'s own breaks kept', () => {
+  const F = require('../lib/lyrics-fit');
+  assert.deepStrictEqual(F.splitBalanced('a b c d e f g', 2), ['a b c d', 'e f g']);
+  assert.deepStrictEqual(F.splitBalanced('a b c d e f g h i j k', 3), ['a b c d', 'e f g h', 'i j k']);
+  assert.strictEqual(F.splitBalanced('a b c d e', 2), null, 'five words: a row would have 2');
+  assert.deepStrictEqual(F.splitBalanced('a b c d e', 2, 2), ['a b c', 'd e'], 'the last-resort rule');
+  assert.deepStrictEqual([F.maxChunks(5), F.maxChunks(6), F.maxChunks(14)], [1, 2, 4]);
+  // a stand-in for text widths: 0.5 em per character (the long Romanian line below is ~90 chars)
+  const measure = (text, size) => text.length * size * 0.5;
+  const rowHeight = (size) => size * 1.22;
+  const long = 'Și dacă toate cerurile s-ar deschide deodată peste noi cu slava Ta cea mare și nesfârșită';
+  const base = { measure, rowHeight, minSize: 27, maxSize: 130, maxW: 1728, maxH: 972 }; // 1920x1080, 5 % margins
+  // (a) short lines: the largest size with no wrapping, every line kept as it is
+  const short = F.layout({ ...base, lines: ['Ne ridici din noaptea grea', 'Tu ești lumina mea'] });
+  assert.deepStrictEqual([short.wrapped, short.rows, short.size], [false, [['Ne ridici din noaptea grea'], ['Tu ești lumina mea']], 130]);
+  // (a) a long line that only fits unwrapped at a size above 60 % of the maximum: no wrapping
+  const okNoWrap = F.layout({ ...base, lines: ['O linie de patruzeci de litere aici!'] });
+  assert.deepStrictEqual([okNoWrap.wrapped, okNoWrap.rows.length, Math.round(okNoWrap.size)], [false, 1, 96], '1728 / (36 * 0.5) = 96 px >= 78');
+  // (b) the ~90-character line would need 38 px unwrapped (< 78): balanced rows, no short tail
+  const wrapped = F.layout({ ...base, lines: [long, 'Amin'] });
+  assert.strictEqual(wrapped.wrapped, true);
+  assert.deepStrictEqual(wrapped.rows[1], ['Amin'], 'the second stored line stays its own line');
+  const rows = wrapped.rows[0];
+  assert.ok(rows.length >= 2 && rows.every((r) => r.split(' ').length >= 3), `balanced rows of >= 3 words: ${JSON.stringify(rows)}`);
+  assert.strictEqual(rows.join(' '), long, 'every word, in order, nothing joined with the next line');
+  assert.ok(rows.every((r) => measure(r, wrapped.size) <= 1728) && (rows.length + 1) * rowHeight(wrapped.size) <= 972, 'the rows fit the box');
+  assert.ok(wrapped.size > 38, `larger than the unwrapped size (${wrapped.size.toFixed(1)} px)`);
+  // (b) a row that would end with 2 words is not allowed: 7 words -> 4 + 3, never 5 + 2
+  const seven = F.layout({ ...base, maxW: 300, lines: ['unu doi trei patru cinci șase șapte'] });
+  assert.ok(seven.rows[0].every((r) => r.split(' ').length >= 3), JSON.stringify(seven.rows[0]));
+  // (c) the height limit shrinks the size instead of dropping rows; 4:3 and 720p boxes
+  for (const [w, h] of [[1280, 720], [1024, 768]]) {
+    const box = { ...base, maxW: w * 0.9, maxH: h * 0.9, minSize: h * 0.025, maxSize: h * 0.12 };
+    const out = F.layout({ ...box, lines: [long, long, long] });
+    const total = out.rows.reduce((n, r) => n + r.length, 0);
+    assert.ok(total * rowHeight(out.size) <= h * 0.9 + 0.01 && out.rows.flat().every((r) => measure(r, out.size) <= w * 0.9), `${w}x${h}: fits`);
+    assert.ok(out.rows.every((line) => line.length === 1 || line.every((r) => r.split(' ').length >= 3)), `${w}x${h}: no short tails`);
+  }
+  // a five-word line too wide even at the minimum: the last resort keeps whole words (2 per row)
+  const tiny = F.layout({ ...base, maxW: 200, minSize: 20, maxSize: 130, lines: ['aaaaaaaaaaaa bbbbbbbbbbbb cccccccccccc dddddddddddd eeeeeeeeeeee'] });
+  assert.ok(tiny.rows[0].length >= 2 && tiny.rows[0].join(' ').split(' ').length === 5, JSON.stringify(tiny.rows[0]));
+  // the frame carries the config minimum (LYRICS_FIT_MIN_PCT), validated
+  const { projectorFrame } = require('../lib/projector');
+  assert.strictEqual(projectorFrame(null, null, null, { fitMin: 75 }).fitMin, 75);
+  assert.strictEqual(projectorFrame(null, null, null, { fitMin: 5 }).fitMin, 60, 'out of range: the default');
 });
 
 test('media: image magic bytes; file names and kinds', () => {

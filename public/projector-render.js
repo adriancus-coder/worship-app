@@ -27,6 +27,7 @@
 (function () {
   const MIN_FONT = 0.025; // of the container height
   const MAX_FONT = 0.12;
+  const LINE_HEIGHT = 1.22; // .projector-text line-height (styles.css)
   const FADE_MS = 150;
   const BG_FADE_MS = 300;
   const BG_LOAD_MS = 15000; // a background not loaded by then shows as black
@@ -72,6 +73,7 @@
       sizeMargin();
     }
     container.dataset.safeMargin = String(margin);
+    let fitMin = 60; // frame.fitMin (LYRICS_FIT_MIN_PCT)
     let current = null;
     let token = 0;
     const loaded = new Map(); // media id -> { node, ready: Promise<boolean> }
@@ -134,7 +136,9 @@
       return block;
     }
 
-    // The largest font size at which the text box fits inside the safe area.
+    // The text box inside the safe area (public/lyrics-fit.js): the largest size at which
+    // no line wraps; below fitMin % of the maximum, balanced wrapping with no short tails;
+    // the song's own line breaks always kept. A box without lines (a title) just shrinks.
     function fit() {
       const box = stage.firstElementChild;
       if (!box || !box.classList.contains('projector-text')) return;
@@ -143,8 +147,14 @@
       if (!height || !width) return;
       const maxW = width * (1 - 2 * margin / 100);
       const maxH = height * (1 - 2 * margin / 100);
-      let lo = Math.max(6, height * MIN_FONT);
-      let hi = Math.max(lo, height * MAX_FONT);
+      const minSize = Math.max(6, height * MIN_FONT);
+      const maxSize = Math.max(minSize, height * MAX_FONT);
+      if (box.querySelector('.projector-line')) {
+        window.LYRICS_FIT.fitBox(box, { lineSelector: '.projector-line', maxW, maxH, minSize, maxSize, minPct: fitMin, lineHeight: LINE_HEIGHT });
+        return;
+      }
+      let lo = minSize;
+      let hi = maxSize;
       box.style.fontSize = `${hi}px`;
       if (box.scrollWidth <= maxW && box.scrollHeight <= maxH) return;
       for (let i = 0; i < 18 && hi - lo > 0.5; i++) {
@@ -352,6 +362,7 @@
     async function show(frame) {
       if (!frame) return;
       applyMargin(frame.safeMargin);
+      if (Number.isInteger(frame.fitMin) && frame.fitMin >= 30 && frame.fitMin <= 100 && frame.fitMin !== fitMin) { fitMin = frame.fitMin; if (current && sameFrame(frame, current)) fit(); }
       applyClock(frame.clock || null);
       setBackground(frame.background || null, frame.kind === 'black');
       if (frame.nextBackground) load(frame.nextBackground);

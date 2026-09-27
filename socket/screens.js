@@ -67,7 +67,8 @@ function createScreensHub({ db, logger, config }) {
   function frameFor(adminId) {
     const eventId = live.liveEventId(adminId);
     const safeMargin = settings.safeMargin(adminId);
-    if (!eventId) return projectorFrame(null, null, null, { logoUrl: logoUrl(adminId), clock: clockDefaults(adminId), safeMargin });
+    const fitMin = config.LYRICS_FIT_MIN_PCT;
+    if (!eventId) return projectorFrame(null, null, null, { logoUrl: logoUrl(adminId), clock: clockDefaults(adminId), safeMargin, fitMin });
     const state = live.snapshot(adminId, eventId);
     const found = events.get(adminId, eventId, { scope: 'all' }); // the operator's items too
     const songs = new Map();
@@ -80,6 +81,7 @@ function createScreensHub({ db, logger, config }) {
     }
     return projectorFrame(state, found, songs, {
       safeMargin,
+      fitMin,
       logoUrl: logoUrl(adminId),
       videoMedia: videoMedia(adminId, state.video, found ? found.items : []),
       backgrounds: backgrounds.forEvent(adminId, eventId, state.backgroundOverride),

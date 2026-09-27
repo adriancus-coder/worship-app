@@ -217,6 +217,8 @@
     }
 
     // The largest font size at which the text fits the body, then the user's A−/A+ factor.
+    // Text-only lyrics follow the projector's rule (public/lyrics-fit.js): no wrapping while
+    // the size stays above 60 % of the maximum, else balanced rows with no short tails.
     function fit() {
       const box = parts.text;
       const cs = getComputedStyle(parts.body);
@@ -225,6 +227,12 @@
       if (!(height > 0) || !(width > 0)) return;
       let lo = Math.max(8, height * MIN_FONT);
       let hi = Math.max(lo, height * MAX_FONT);
+      if (box.querySelector('.big-line') && window.LYRICS_FIT) {
+        const plan = window.LYRICS_FIT.fitBox(box, { lineSelector: '.big-line', maxW: width, maxH: height, minSize: lo, maxSize: hi, lineHeight: 1.25 });
+        box.style.fontSize = `${Math.max(8, plan.size * state.scale)}px`;
+        dialog.classList.toggle('scrolls', box.scrollHeight > height + 1);
+        return;
+      }
       // The chord sheet scrolls on its own (overflow-x: auto), so its overflow is measured too.
       const widest = () => Math.max(box.scrollWidth, ...[...box.querySelectorAll('.chord-sheet')].map((sheet) => sheet.scrollWidth));
       const fits = () => widest() <= width && box.scrollHeight <= height;
@@ -358,6 +366,13 @@
           const view = window.SONG_RENDER.sectionsView([song.sections[sectionIndex]], { textOnly: state.textOnly, headingLevel: 3 });
           const section = view[0];
           section.querySelector('.section-label').remove(); // the label is on top already
+          // "Doar text": one node per stored line, so the auto-fit can balance wrapped lines
+          // (with chords the columns must stay aligned: those lines never wrap).
+          const lyrics = section.querySelector('.lyrics');
+          if (lyrics) {
+            const block = el('div', { class: 'big-lines big-text-lines' }, lyrics.textContent.split('\n').map((line) => el('div', { class: 'big-line', text: line || ' ' })));
+            lyrics.replaceWith(block);
+          }
           parts.text.replaceChildren(section);
         }
       }
