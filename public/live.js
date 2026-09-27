@@ -385,8 +385,12 @@
     modes.update(snap);
     backgroundButton.update(snap);
     clockPanel.update({ clock: snap && snap.clock, enabled: live && !emergency.active });
-    // Separate: where the projector is, and "Sari acolo" (the team goes there).
+    // Separate: the operator owns the projector. The whole panel goes (preview, sources,
+    // background, clock, video, screens); only "Proiectorul e la … · Sari acolo" and the
+    // switches stay, and the step grid takes the width. B / L / K do nothing here then.
     const split = live && snap.mode === 'split';
+    document.body.classList.toggle('split-mode', split);
+    $('split-keys-hint').hidden = !split;
     $('cross').hidden = !split;
     if (split) {
       const at = { itemId: snap.projector.itemId, step: snap.projector.step };
@@ -408,7 +412,10 @@
     if (snap && snap.mode === 'split') send('worship.goto', { itemId: snap.projector.itemId, step: snap.projector.step });
   });
 
+  const isSplit = () => Boolean(state.snap) && state.snap.status === 'live' && state.snap.mode === 'split';
+
   function toggleSource(source) {
+    if (isSplit()) return; // the operator owns the projector
     const currentSource = state.snap && state.snap.projector.source;
     send('projector.source', { source: currentSource === source ? 'content' : source });
   }
@@ -627,7 +634,7 @@
     } else if (event.key === 'l' || event.key === 'L') {
       toggleSource('logo'); // logo <-> content
     } else if (event.key === 'k' || event.key === 'K') {
-      clockPanel.toggle(); // the corner clock on / off
+      if (!isSplit()) clockPanel.toggle(); // the corner clock on / off
     }
   });
 

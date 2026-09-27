@@ -975,6 +975,16 @@ button.live-item:disabled { opacity: 1; cursor: default; }
 .upcoming .ro-label { margin-bottom: 2px; }
 .arr-strip li.current { color: var(--on-accent); background: var(--accent-fill); border-color: var(--accent-fill); }
 .live-info .arr-strip { margin-bottom: 12px; }
+/* Separate mode on the leader page: no projector panel; the info column moves under the steps
+   and the step grid takes the width (5 columns from 1180 px). */
+.split-keys-hint { margin: 0 0 12px; }
+.live-body.split-mode .projector-panel { display: none; }
+@media (min-width: 900px) {
+  .live-body.split-mode .live-grid { grid-template-columns: minmax(220px, 1fr) minmax(0, 3.2fr); grid-template-areas: "setlist current" "setlist info"; }
+}
+@media (min-width: 1180px) {
+  .live-body.split-mode .step-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+}
 .live-info > div > * + * { margin-top: 12px; }
 
 /* Tablet landscape and wider: setlist left, current song in the middle, info right. */
