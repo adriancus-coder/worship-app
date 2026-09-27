@@ -81,7 +81,7 @@ module.exports = {
     await wait(300);
     const after = await app.state(E);
     check(after.version > before.version && (after.worship.step !== before.worship.step || after.worship.itemId !== before.worship.itemId), 'leader: "Următoarea" in the big lyrics moves the team (and the projector, together mode)', { before: before.worship, after: after.worship });
-    await l.click('dialog.big-lyrics .big-nav button:first-child');
+    await l.click('dialog.big-lyrics .big-nav button[data-icon="undo"]'); // ← Înapoi ("✕ Ieși" comes first now)
     await wait(300);
     const back = await app.state(E);
     check(back.worship.step === before.worship.step && back.worship.itemId === before.worship.itemId, 'leader: "Înapoi" moves back');

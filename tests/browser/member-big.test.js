@@ -21,8 +21,8 @@ module.exports = {
       return {
         label: d.querySelector('.big-label').textContent, text: d.querySelector('.big-text').innerText.replace(/\s+/g, ' ').trim(),
         next: d.querySelector('.big-next').textContent, font: parseFloat(getComputedStyle(d.querySelector('.big-text')).fontSize),
-        chords: d.querySelectorAll('.big-text .chord-line').length, nav: !d.querySelector('.big-nav').hidden,
-        buttons: [...d.querySelectorAll('.big-nav > button')].filter((b) => !b.hidden).map((b) => b.textContent.trim()),
+        chords: d.querySelectorAll('.big-text .chord-line').length, nav: !d.querySelector('.big-nav').classList.contains('big-nav-exit-only'),
+        buttons: [...d.querySelectorAll('.big-nav > button:not(.big-exit)')].filter((b) => !b.hidden && b.getClientRects().length).map((b) => b.textContent.trim()),
         end: d.querySelectorAll('.end-item').length, status: (d.querySelector('.big-status') || {}).textContent || '',
       };
     });

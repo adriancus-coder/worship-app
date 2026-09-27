@@ -7,7 +7,9 @@
 // The bottom bar sends the SAME live commands as the page (prev / next / "■ Sfârșit"): the
 // projector and the team follow per mode; the view follows live updates too (if the other
 // person moves, this moves). Swipe left / right = next / prev; keys ← → Space E B as on the
-// page, F / Escape / ✕ close. A− / A+ scale the fitted size (saved). Wake lock while open.
+// page, F / Escape / ✕ close; the bottom bar starts with "✕ Ieși" and the top bar (Doar text ·
+// A− · A+ · ✕) never fades: a way out is always visible. A− / A+ scale the fitted size
+// (saved). Wake lock while open.
 //
 //   const big = BIG_LYRICS.create({ api, eventId, position, commands, connection, drivesProjector })
 //     position()          -> { itemId, step, ended } this page drives (null: nothing)
@@ -95,11 +97,13 @@
       parts.smaller = el('button', { type: 'button', class: 'secondary big-tool', text: 'A−', onclick: () => setScale(-SCALE.step) });
       parts.larger = el('button', { type: 'button', class: 'secondary big-tool', text: 'A+', onclick: () => setScale(SCALE.step) });
       parts.close = el('button', { type: 'button', class: 'secondary big-tool big-close', 'data-icon': 'close', onclick: close });
+      // "✕ Ieși" first in the bottom bar too: a way out on every device, no hidden gesture.
+      parts.exit = el('button', { type: 'button', class: 'secondary big-exit', 'data-icon': 'close', onclick: close });
       parts.prev = el('button', { type: 'button', class: 'secondary', 'data-icon': 'undo', onclick: () => commands.prev() });
       parts.end = member ? null : el('button', { type: 'button', class: 'secondary end-item', 'aria-keyshortcuts': 'E', onclick: () => commands.end() });
       parts.backLive = member ? el('button', { type: 'button', class: 'secondary big-back-live', 'data-icon': 'jump', onclick: () => member.backToLive() }) : null;
       parts.nextButton = el('button', { type: 'button', class: member ? 'secondary' : null, onclick: () => commands.next() });
-      parts.nav = el('div', { class: `big-nav${member ? ' big-nav-member' : ''}`, role: 'group', 'aria-label': t(member ? 'follow.navLabel' : 'live.navLabel') }, parts.prev, parts.end, parts.backLive, parts.nextButton);
+      parts.nav = el('div', { class: `big-nav${member ? ' big-nav-member' : ''}`, role: 'group', 'aria-label': t(member ? 'follow.navLabel' : 'live.navLabel') }, parts.exit, parts.prev, parts.end, parts.backLive, parts.nextButton);
       dialog = el('dialog', { class: `big-lyrics${member ? ' big-lyrics-member' : ''}`, 'aria-label': t('big.title') },
         el('div', { class: 'big-top' }, parts.label, el('span', { class: 'big-tools' }, parts.textOnly, parts.smaller, parts.larger, parts.close)),
         parts.body,
@@ -162,7 +166,7 @@
       dialog.showModal();
       render();
       keepScreenOn();
-      (parts.nav.hidden ? parts.close : parts.nextButton).focus();
+      (parts.nextButton.hidden || parts.nextButton.disabled ? parts.exit : parts.nextButton).focus();
       clearInterval(extraTimer);
       if (!standalone) extraTimer = setInterval(renderExtra, 1000);
     }
@@ -280,6 +284,7 @@
       parts.textOnly.textContent = t('song.textOnly');
       parts.textOnly.setAttribute('aria-pressed', String(state.textOnly));
       parts.close.setAttribute('aria-label', t('big.close'));
+      parts.exit.textContent = t('big.exit');
       parts.smaller.setAttribute('aria-label', t('big.smaller'));
       parts.larger.setAttribute('aria-label', t('big.larger'));
       parts.smaller.disabled = state.scale <= SCALE.min + 1e-9;
@@ -294,7 +299,8 @@
       // The team's bar: own navigation only in free mode or while detached; "Revino la live".
       if (member) {
         const nav = member.nav();
-        parts.nav.hidden = !nav.show;
+        parts.nav.classList.toggle('big-nav-exit-only', !nav.show);
+        parts.prev.hidden = parts.nextButton.hidden = !nav.show;
         parts.backLive.hidden = !nav.away;
         parts.backLive.textContent = t('follow.back');
         parts.prev.disabled = !nav.canPrev;
