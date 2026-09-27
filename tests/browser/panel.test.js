@@ -58,6 +58,10 @@ module.exports = {
       return { text: c.textContent, corner: c.className.replace('display-clock ', ''), scale: c.parentElement.style.getPropertyValue('--clock-scale'),
         right: box.right - r.right < box.width / 3, bottom: box.bottom - r.bottom < box.height / 3, font: parseFloat(getComputedStyle(c).fontSize) };
     }, root);
+    // no clock over a song section: the clock checks run on the verse item
+    await app.command({ type: 'worship.goto', itemId: app.seed.items[1], step: 0 });
+    await sp.waitForFunction(() => /Cezar/.test(document.querySelector('#output .projector-stage').innerText));
+    await lp.waitForTimeout(300);
     let sc = await clockOn(sp, '#output');
     let pc = await clockOn(lp, '#projector-preview');
     check(sc && /^\d\d:\d\d$/.test(sc.text) && sc.corner === 'bottom-right' && sc.scale === '1.8' && sc.right && sc.bottom, 'the screen shows HH:MM at the bottom right, 180 %', sc);
@@ -86,6 +90,13 @@ module.exports = {
     await lp.dispatchEvent('#clock-scale', 'change');
     await sp.waitForFunction(() => document.getElementById('output').style.getPropertyValue('--clock-scale') === '1.8', null, { timeout: 1000 }).catch(() => {});
     check(Math.abs((await clockOn(sp, '#output')).font - big) < 1, '180 %: back to the big clock');
+    // a song section: the clock leaves the screen and the preview; the verse brings it back
+    await app.command({ type: 'worship.goto', itemId: app.seed.items[0], step: 0 });
+    const gone = await sp.waitForFunction(() => /Ne ridici/.test(document.querySelector('#output .projector-stage').innerText) && document.querySelector('#output .display-clock').hidden, null, { timeout: 3000 }).then(() => true, () => false);
+    await lp.waitForTimeout(300);
+    check(gone && !(await clockOn(lp, '#projector-preview')) && await lp.getAttribute('.clock-toggle', 'aria-pressed') === 'true', 'a song section: no clock over the lyrics (screen and preview), the "Ceas" setting stays on');
+    await app.command({ type: 'worship.goto', itemId: app.seed.items[1], step: 0 });
+    check(await sp.waitForFunction(() => /Cezar/.test(document.querySelector('#output .projector-stage').innerText) && !document.querySelector('#output .display-clock').hidden, null, { timeout: 3000 }).then(() => true, () => false), 'the verse: the clock is back');
     // "Deschide proiectorul" is the operator's (and the owner's): hidden for the leader,
     // who still sees the count of screens the operator opens.
     check(await lp.isHidden('#open-projector'), 'leader: no "Deschide proiectorul" button');

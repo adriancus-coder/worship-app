@@ -82,7 +82,9 @@ module.exports = {
     check(/^on the current item for /.test(c.elapsed), `EN tap: "${c.elapsed}"`);
     await en.click('#live-clock .live-elapsed');
     await en.context().close();
-    // 12 h: every clock, the projector's too; back to 24 h
+    // 12 h: every clock, the projector's too; back to 24 h (on the verse: no clock over lyrics)
+    await app.command({ type: 'worship.goto', itemId: items[1], step: 0 });
+    await sp.waitForFunction(() => !document.querySelector('#output .display-clock').hidden, null, { timeout: 3000 }).catch(() => {});
     await app.api(app.cookies.owner, 'PUT', '/api/settings/time-format', { format: '12' });
     const twelve = await lp.waitForFunction(() => /^\d{1,2}:\d\d [AP]M$/.test(document.querySelector('#live-clock .live-time').textContent), null, { timeout: 3000 }).then(() => true, () => false);
     const screen12 = await sp.waitForFunction(() => /^\d{1,2}:\d\d [AP]M$/.test(document.querySelector('#output .display-clock').textContent), null, { timeout: 3000 }).then(() => true, () => false);

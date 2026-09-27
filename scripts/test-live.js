@@ -568,8 +568,11 @@ async function main() {
     watchers.close();
   });
 
-  await step('corner clock: defaults on every frame, clock.set versioned and broadcast, hidden while a video plays; member refused', async () => {
+  await step('corner clock: defaults on every frame, clock.set versioned and broadcast, hidden while a video plays or a song section shows; member refused', async () => {
     let frame = await frameWhere(screen, (f) => f.version === version);
+    assert.deepStrictEqual([frame.kind, frame.clock.show], ['lyrics', false], 'no clock over a song section');
+    await send(lead.socket, { type: 'worship.goto', itemId: i2, step: 0 }); // the verse: the clock is back
+    frame = await frameWhere(screen, (f) => f.version === version);
     assert.deepStrictEqual(frame.clock, { show: true, position: 'bottom-right', scale: 1.8, timeZone: 'Europe/Oslo', format: '24' }, 'the defaults, with the church timezone and time format');
     assert.strictEqual((await frameWhere(otherScreen, () => true)).clock.show, true, 'the idle screen has the clock too');
     const refused = await emit(mem.socket, 'live:command', { eventId: ev.id, type: 'projector.source', source: 'content' });

@@ -38,6 +38,9 @@ module.exports = {
         guide: Boolean(o.querySelector('.projector-safe-guide:not([hidden])')) };
     });
     await sp.waitForFunction(() => /Ne ridici/.test(document.querySelector('#output .projector-stage').innerText));
+    // the clock is measured on the verse: it never shows over a song section
+    await app.command({ type: 'worship.goto', itemId: app.seed.items[1], step: 0 });
+    await sp.waitForFunction(() => /Cezar/.test(document.querySelector('#output .projector-stage').innerText));
     const m5 = await measure(sp);
     check(m5.margin === '5' && Math.round(m5.safeX) === 96 && Math.round(m5.safeY) === 54 && m5.left >= 96 - 1 && m5.right <= 1920 - 96 + 1 && !m5.guide, '5 % default on 1920x1080: text inside 96 / 54 px, no guide on the screen', m5);
     check(m5.clockTop !== null && Math.round(m5.clockTop) === 54 + 20 && Math.round(m5.clockLeft) === 96 + 24, 'the clock offset = margin + 20 / 24 px', m5);

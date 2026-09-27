@@ -23,7 +23,8 @@
 // idle frames never have one. Resolution: the live override (state.backgroundOverride: a
 // media id, 'none' or null), else the item's background resolved by the server over the
 // item, the song and the church default (backgrounds.items), else none (lib/backgrounds.js).
-// And the corner clock (public/clock.js), on every kind of frame:
+// And the corner clock (public/clock.js), on every kind of frame (show: false on video and
+// lyrics frames):
 //   clock: { show, position, scale, timeZone, format } | null
 // from the live state (state.clock) or, idle, the church defaults (the `clock` option);
 // `show` is false on a video frame (never over a video). The screens tick it themselves.
@@ -88,11 +89,14 @@
     return item ? pick((backgrounds.items || {})[item.id]) : null;
   }
 
-  // The clock part of a frame: settings + timezone, hidden while a video plays.
+  // The clock part of a frame: settings + timezone, hidden while a video plays and while a
+  // song section (lyrics) is on the projector; black, logo, idle, verses, announcements and
+  // titles keep it. The settings themselves (toggle / position / size) are untouched.
+  const CLOCK_HIDDEN_KINDS = ['video', 'lyrics'];
   function clockFrame(clock, kind) {
     if (!clock) return null;
     const c = normalizeClock(clock);
-    return { show: c.show && kind !== 'video', position: c.position, scale: c.scale, timeZone: clock.timeZone || null, format: clock.format === '12' ? '12' : '24' };
+    return { show: c.show && !CLOCK_HIDDEN_KINDS.includes(kind), position: c.position, scale: c.scale, timeZone: clock.timeZone || null, format: clock.format === '12' ? '12' : '24' };
   }
 
   // state: live snapshot of the admin's live event, or null when none is live.
@@ -135,7 +139,7 @@
     const items = (event && event.items) || [];
     const next = item ? backgroundFor(state, items[items.indexOf(item) + 1], backgrounds) : null;
     const preload = next && (!background || next.id !== background.id) ? { nextBackground: next } : {};
-    return { ...content, ...base, background, ...preload };
+    return { ...content, ...base, clock: clockFrame(state.clock || null, content.kind), background, ...preload };
   }
 
   const FRAMES = { SOURCES, LEADER_SOURCES, DEFAULT_SAFE_MARGIN, projectorFrame, backgroundFor, lyricLines, clockFrame };

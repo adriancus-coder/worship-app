@@ -1795,7 +1795,7 @@ test('"■ Sfârșit": moves after an ended item; the frame while ended', () => 
   assert.strictEqual(projectorFrame(snap({ itemId: 2, step: 0, ended: false }, { ...split, ended: true }), event, new Map()).kind, 'black');
 });
 
-test('corner clock: settings, the three fields on every frame, hidden while a video plays', () => {
+test('corner clock: settings, the three fields on every frame, hidden while a video plays or a song section shows', () => {
   const CLOCK = require('../lib/clock');
   const { projectorFrame, clockFrame } = require('../lib/projector');
   assert.deepStrictEqual(CLOCK.DEFAULTS, { show: true, position: 'bottom-right', scale: 1.8 });
@@ -1824,11 +1824,25 @@ test('corner clock: settings, the three fields on every frame, hidden while a vi
   assert.deepStrictEqual([f('video', 1, 'paused').kind, f('video', 1, 'paused').clock.show], ['video', false]);
   assert.deepStrictEqual([f('video', 1, 'prepared').kind, f('video', 1, 'prepared').clock.show], ['black', true], 'nothing plays: the clock is back');
   assert.strictEqual(f('content', 1, 'prepared').clock.show, true, 'a prepared video does not hide it');
+  // a song section on the projector: no clock over the lyrics; a song title (no song / no
+  // section), a verse and an announcement keep it; the settings ride along unchanged
+  const song = { sections: [{ id: 11, content: '[A]Ne ridici\nTu ești' }], arrangement: [{ sectionId: 11 }] };
+  const withSong = [...items, { id: 3, type: 'song', songId: 5, title: 'Cântare' }, { id: 4, type: 'song', songId: null, title: 'Ștearsă' }];
+  const g = (itemId, songs = new Map([[3, song]])) => projectorFrame(st('content', itemId), { items: withSong }, songs, { logoUrl: '/api/logo/x.png' });
+  assert.deepStrictEqual([g(3).kind, g(3).clock], ['lyrics', { ...expected, show: false }], 'lyrics: the clock is hidden, position / scale kept');
+  assert.deepStrictEqual([g(4).kind, g(4).clock.show], ['title', true], 'a song title keeps the clock');
+  assert.deepStrictEqual([g(3, new Map()).kind, g(3, new Map()).clock.show], ['title', true], 'a song not loaded yet: its title, the clock stays');
+  assert.strictEqual(g(1).clock.show, true, 'a verse keeps it');
+  assert.strictEqual(projectorFrame(st('black', 3), { items: withSong }, new Map([[3, song]])).clock.show, true, 'black over the same song: back');
+  assert.strictEqual(projectorFrame(st('logo', 3), { items: withSong }, new Map([[3, song]])).clock.show, true, 'logo: back');
+  const ended = { ...st('content', 3), worship: { itemId: 3, step: 0, ended: true } };
+  assert.deepStrictEqual([projectorFrame(ended, { items: withSong }, new Map([[3, song]])).kind, projectorFrame(ended, { items: withSong }, new Map([[3, song]])).clock.show], ['black', true], 'after Sfârșit (black): the clock is back');
   assert.strictEqual(projectorFrame(st('content', 1, 'none', { ...clock, show: false }), { items }, new Map()).clock.show, false, 'hidden by the operator');
   const idle = projectorFrame(null, null, null, { logoUrl: null, clock: { show: true, position: 'bottom-left', scale: 0.7, timeZone: 'UTC' } });
   assert.deepStrictEqual([idle.kind, idle.clock], ['idle', { show: true, position: 'bottom-left', scale: 0.7, timeZone: 'UTC', format: '24' }], 'idle: the church defaults');
   assert.strictEqual(projectorFrame(null, null, null, { clock: { ...CLOCK.DEFAULTS, format: '12' } }).clock.format, '12', 'the 12 h format rides along');
-  assert.deepStrictEqual(clockFrame({ show: true, position: 'nowhere', scale: 3 }, 'lyrics'), { show: true, position: 'bottom-right', scale: 1.8, timeZone: null, format: '24' }, 'normalised');
+  assert.deepStrictEqual(clockFrame({ show: true, position: 'nowhere', scale: 3 }, 'verse'), { show: true, position: 'bottom-right', scale: 1.8, timeZone: null, format: '24' }, 'normalised');
+  assert.strictEqual(clockFrame({ show: true }, 'lyrics').show, false, 'lyrics: hidden');
   // the store: a new event starts from the church defaults; clock.set changes the running one
   const { mem, live, eventId } = liveFixture();
   const settings = require('../lib/admin-settings').createAdminSettings(mem);
