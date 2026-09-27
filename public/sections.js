@@ -87,17 +87,70 @@
     return sectionCodes(sections);
   }
 
+  // --- section-name labels left in the lyrics ("Refren:" as the first line) -------------
+
+  // Section names as they appear in imported / pasted lyrics (RO and EN), and the type each
+  // names. A leading "Refren:" / "Strofa 2" / "Chorus /:" line says what the section type
+  // already says.
+  const LABEL_TYPES = {
+    refren: 'chorus', chorus: 'chorus', cor: 'chorus',
+    strofa: 'verse', 'strofă': 'verse', vers: 'verse', verse: 'verse',
+    'pre-refren': 'pre_chorus', prerefren: 'pre_chorus', 'pre refren': 'pre_chorus', 'pre-chorus': 'pre_chorus', prechorus: 'pre_chorus', 'pre chorus': 'pre_chorus',
+    punte: 'bridge', bridge: 'bridge',
+    intro: 'intro',
+    final: 'outro', outro: 'outro', coda: 'outro',
+    tag: 'tag',
+    'secțiune': 'other', sectiune: 'other', section: 'other',
+  };
+  const LABEL_WORDS = Object.keys(LABEL_TYPES).sort((a, b) => b.length - a.length).map((w) => w.replace(/[-\s]/g, '[-\\s]?'));
+  // "/: Refren 2 :/", "Chorus:", "Strofa 1 /:" -> [whole, word, number, rest]
+  const LABEL_RE = new RegExp(`^[\\s/:]*(${LABEL_WORDS.join('|')})\\.?\\s*(\\d{0,2})\\s*(?:[:/]+\\s*)?(.*)$`, 'i');
+
+  // { type, rest } when the line starts with a section name (rest: what follows the label,
+  // '' for a label-only line); null otherwise. A name followed by more words with no ":" /
+  // "/:" between ("Intro duce lumina") is lyrics, not a label.
+  function leadingLabel(line) {
+    const m = LABEL_RE.exec(String(line || '').trim());
+    if (!m) return null;
+    const rest = m[3].trim();
+    const separated = /[:/]\s*[^\s]*$/.test(m[0].slice(0, m[0].length - m[3].length)) || rest === '';
+    if (!separated) return null;
+    return { type: LABEL_TYPES[m[1].toLowerCase().replace(/\s+/g, ' ')] || 'other', rest };
+  }
+
+  // Drops a label-only first line ("Refren:", "Strofa 2") when it names `type`: the resurse
+  // import and the editor's paste conversion. Everything else stays as it is; a section that
+  // is only the label keeps it.
+  function stripLeadingLabel(content, type) {
+    const lines = String(content || '').split('\n');
+    const first = lines.findIndex((line) => line.trim());
+    if (first < 0) return content;
+    const label = leadingLabel(lines[first]);
+    if (!label || label.rest || label.type !== type) return content;
+    if (!lines.slice(first + 1).some((line) => line.trim())) return content;
+    return lines.slice(first + 1).join('\n').replace(/^\n+/, '');
+  }
+
   // The first lyric line of a section: chords stripped, spaces collapsed, empty lines
-  // skipped. The one helper for the live step buttons, the arrange sheet and the event
-  // editor's order summary.
+  // skipped, a leading section-name label ("Refren:", "Chorus /:") left out so "Urmează:
+  // Refren" never reads "Refren. Refren:". The one helper for the live step buttons, the
+  // arrange sheet and the event editor's order summary (the projector shows the lyrics as
+  // stored).
   function firstLyricLine(content) {
     const chords = typeof module === 'object' && module.exports ? require('./chords.js') : root.CHORDS;
-    return chords.stripChords(content || '').split('\n').map((line) => line.replace(/\s+/g, ' ').trim()).find(Boolean) || '';
+    const lines = chords.stripChords(content || '').split('\n').map((line) => line.replace(/\s+/g, ' ').trim()).filter(Boolean);
+    if (!lines.length) return '';
+    const label = leadingLabel(lines[0]);
+    if (!label) return lines[0];
+    if (label.rest) return label.rest;
+    return lines[1] || lines[0]; // a section that is only the label keeps it
   }
 
   const SECTIONS = {
     SECTION_TYPES,
     firstLyricLine,
+    leadingLabel,
+    stripLeadingLabel,
     SONG_KEYS,
     TYPE_CODES,
     sectionLabels,

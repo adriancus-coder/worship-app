@@ -255,6 +255,7 @@ const OPENSONG_MIXED = '<song><title>Fără marcaje</title><author></author><key
   + 'Primul rând fără marcaj\r\n'
   + '[P]\r\n.F\r\n Pre-refren | cu bară\r\n'
   + '[B1]\r\n Punte\r\n'
+  + '[C]\r\nRefren:\r\n.C\r\n Aleluia\r\n'
   + '[I]\r\n.G   D\r\n'
   + '[O]\r\n Final\r\n'
   + '[T]\r\n Tag\r\n'
@@ -300,6 +301,7 @@ test('OpenSong: text before the first marker, CRLF, "|" inside lines, all marker
     ['verse', null, 'Primul rând fără marcaj'],
     ['pre_chorus', null, '[F]Pre-refren cu bară'],
     ['bridge', null, 'Punte'],
+    ['chorus', null, '[C]Aleluia'], // the leftover "Refren:" line is dropped
     ['intro', null, '[G]    [D]'],
     ['outro', null, 'Final'],
     ['tag', null, 'Tag'],
@@ -1349,6 +1351,22 @@ test('arrange sheet: insert after the chosen row, move, remove, reset, key, flow
   // one helper everywhere: the step buttons (server), the sheet and the editor summary
   assert.strictEqual(A.firstLine('[G]  Doi   spații\n'), require('../lib/sections').firstLyricLine('[G]  Doi   spații\n'));
   assert.strictEqual(require('../lib/sections').firstLyricLine('\n[C]Sfânt, [G/B]sfânt'), 'Sfânt, sfânt');
+  // a section-name label left in the lyrics is not the first line ("Urmează: Refren. Refren:")
+  const S = require('../lib/sections');
+  assert.strictEqual(S.firstLyricLine('Refren:\n[F]Aleluia, [C]aleluia'), 'Aleluia, aleluia');
+  assert.strictEqual(S.firstLyricLine('Refren: [F]Aleluia'), 'Aleluia');
+  assert.strictEqual(S.firstLyricLine('/: Refren :/\nAleluia'), 'Aleluia');
+  assert.strictEqual(S.firstLyricLine('Chorus /:\nHallelujah'), 'Hallelujah');
+  assert.strictEqual(S.firstLyricLine('Strofa 2\nA doua strofă'), 'A doua strofă');
+  assert.strictEqual(S.firstLyricLine('Pre-refren:\nVino'), 'Vino');
+  assert.strictEqual(S.firstLyricLine('Intro duce lumina\nMai departe'), 'Intro duce lumina', 'a name followed by words is lyrics');
+  assert.strictEqual(S.firstLyricLine('Punte'), 'Punte', 'a section that is only the label keeps it');
+  // stripLeadingLabel: only a label-only first line that names the section type
+  assert.strictEqual(S.stripLeadingLabel('Refren:\n[F]Aleluia', 'chorus'), '[F]Aleluia');
+  assert.strictEqual(S.stripLeadingLabel('Refren:\n[F]Aleluia', 'verse'), 'Refren:\n[F]Aleluia', 'another type: kept');
+  assert.strictEqual(S.stripLeadingLabel('Refren: [F]Aleluia', 'chorus'), 'Refren: [F]Aleluia', 'label with lyrics on the line: kept');
+  assert.strictEqual(S.stripLeadingLabel('Punte', 'bridge'), 'Punte', 'the whole section: kept');
+  assert.strictEqual(S.stripLeadingLabel('Verse 1\n\nText', 'verse'), 'Text');
   // transposed sections: +2 moves G to A, the lyrics stay
   const up = A.transposed(song, 2);
   assert.strictEqual(up[0].content, '[A]Ne ridici din [E]noaptea grea\n[F#m]Tu ești lumina mea');

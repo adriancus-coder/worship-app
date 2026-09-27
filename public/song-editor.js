@@ -122,9 +122,10 @@
           id: `${id}-content`, class: 'mono', rows: rowsFor(section.content), spellcheck: 'false', autocapitalize: 'sentences',
           'aria-describedby': `${id}-content-hint`, value: section.content,
           oninput: (event) => { section.content = event.target.value; changed(); },
-          // Pasted "chord line above lyric line" text becomes inline ChordPro.
+          // Pasted "chord line above lyric line" text becomes inline ChordPro; a label-only
+          // first line ("Refren:") that the section type already says is dropped.
           onblur: (event) => {
-            const converted = chordsOverLyricsToInline(event.target.value);
+            const converted = window.SECTIONS.stripLeadingLabel(chordsOverLyricsToInline(event.target.value), section.type);
             if (converted !== event.target.value) {
               event.target.value = converted;
               section.content = converted;
