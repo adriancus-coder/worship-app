@@ -1249,7 +1249,17 @@
   // "+ Cântare": the shared search (public/song-search.js). A library song: "Adaugă"; a song
   // from resursecrestine.ro: "Previzualizare" and "Importă și adaugă" (a song already in the
   // library is added as it is, never imported twice).
+  // The dialog stays open after "Adaugă" (several songs in a row): the added song's row says
+  // "✓ Adăugată", the header counts ("3 adăugate"), the field is cleared and focused, the
+  // Program list behind updates live. Închide / ✕ / Escape close it.
   const songDialog = $('song-dialog');
+  const picked = { ids: new Set(), count: 0, last: -1 };
+
+  function renderPickedCount() {
+    const box = $('song-dialog-count');
+    box.textContent = picked.count ? t(picked.count === 1 ? 'setlist.pickAddedCountOne' : 'setlist.pickAddedCount', { n: picked.count }) : '';
+    box.hidden = !picked.count;
+  }
 
   function addSong(song) {
     state.items.push({
@@ -1257,11 +1267,14 @@
       durationMin: null, song: { id: song.id, title: song.title, key: song.song_key, sectionCount: song.section_count }, songDeleted: false,
       transpose: 0, arrangementIsDefault: true, arrangementCodes: null, arrangementWarnings: [], teamNote: '', referenceUrl: '',
     });
-    songDialog.close();
+    picked.ids.add(song.id);
+    picked.count += 1;
+    picked.last = state.items.length - 1;
+    renderPickedCount();
     changed();
     renderItems();
     renderDetail();
-    focusItem(state.items.length - 1, null);
+    songSearch.clear();
   }
 
   const songSearch = window.SONG_SEARCH.create($('song-search'), {
@@ -1271,29 +1284,37 @@
     songHint: (song) => lastSungText(song.lastSung),
     onLoaded: (body) => { if (body.today) state.today = body.today; },
     localActions: (song) => [{
-      label: t('setlist.pickAdd'), icon: 'plus', primary: true,
+      label: t('setlist.pickAdd'), icon: 'plus', primary: true, done: picked.ids.has(song.id) ? t('setlist.pickAdded') : null,
       ariaLabel: t('setlist.pickAddLabel', { title: song.title }), run: addSong,
     }],
     onlineActions: (item) => [{
-      label: t('setlist.pickImportAdd'), icon: 'import',
+      label: t('setlist.pickImportAdd'), icon: 'import', doneLabel: t('setlist.pickAdded'),
       ariaLabel: t('setlist.pickAddLabel', { title: item.title }),
       run: async (songId) => {
         const res = await api(`/api/songs/${songId}`);
         if (!res.ok) return { error: res.body.error || t('common.networkError') };
         const song = res.body.song;
         addSong({ id: song.id, title: song.title, song_key: song.song_key, section_count: song.sections.length });
-        return { done: t('online.importedShort') };
+        return { done: t('setlist.pickAdded') };
       },
     }],
   });
   songSearch.setOnline(true); // the editor is for the event roles, who may import
 
   for (const close of [$('song-dialog-close'), $('song-dialog-x')]) close.addEventListener('click', () => songDialog.close());
+  // Closed: the last added song is the selected one.
+  songDialog.addEventListener('close', () => {
+    if (picked.last >= 0 && picked.last < state.items.length) focusItem(picked.last, null);
+  });
 
   $('add-bar').addEventListener('click', (event) => {
     const button = event.target.closest('[data-add]');
     if (!button) return;
     if (button.dataset.add === 'song') {
+      picked.ids.clear();
+      picked.count = 0;
+      picked.last = -1;
+      renderPickedCount();
       songSearch.reset();
       songDialog.showModal();
       songSearch.focus();

@@ -122,11 +122,15 @@
     <!-- "+ Cântare": the shared song search (public/song-search.js) in pick mode. -->
     <dialog id="song-dialog" aria-labelledby="song-dialog-heading" class="wide-dialog song-pick-dialog">
       <div class="song-pick-head">
-        <h2 id="song-dialog-heading" data-i18n="setlist.pickSongHeading"></h2>
+        <div class="song-pick-title">
+          <h2 id="song-dialog-heading" data-i18n="setlist.pickSongHeading"></h2>
+          <span class="pill pill-planned song-pick-count" id="song-dialog-count" role="status" aria-live="polite" hidden></span>
+        </div>
         <button type="button" class="shell-close preview-close-x" id="song-dialog-x" data-i18n-aria-label="setlist.pickClose">✕</button>
       </div>
+      <p class="hint song-pick-hint" data-i18n="setlist.pickManyHint"></p>
       <div id="song-search" class="song-pick"></div>
-      <div class="form-actions">
+      <div class="form-actions song-pick-foot">
         <button type="button" class="secondary" id="song-dialog-close" data-i18n="setlist.pickClose"></button>
       </div>
     </dialog>

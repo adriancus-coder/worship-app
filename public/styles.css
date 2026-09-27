@@ -2002,6 +2002,11 @@ button.bg-field { justify-content: flex-start; gap: 10px; min-height: var(--touc
 .song-pick-dialog { width: min(720px, calc(100vw - 24px)); }
 .song-pick-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .song-pick-head h2 { margin: 0; }
+.song-pick-title { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.song-pick-hint { margin: 4px 0 0; }
+.song-pick-foot { margin-top: 8px; }
+.song-pick-foot > button { flex: 1 1 100%; width: 100%; }
+.result-actions button.result-done { color: var(--accent-text); border-color: var(--accent-text); }
 .song-pick .results-section { margin-top: 12px; }
 
 /* In narrow panels the actions wrap under the title and share the row. */

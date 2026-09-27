@@ -23,7 +23,9 @@
 //       createAction(query): with no library result, "Creează „<query>” ca cântare nouă".
 //     search.setOnline(allowed)  // resursecrestine.ro for this user
 //     search.setMe(me)           // library mode: texts for editors vs the team
-//     search.reload(), search.reset(), search.focus(), search.message(text, tone)
+//     search.reload(), search.reset(), search.clear(), search.focus()
+//     an action with `done` (a label) renders as a disabled "✓ <done>" button; an online
+//     action with `doneLabel` does the same once it ran on that row.
 
 (function () {
   const { api, el, canEdit } = window.PAGE;
@@ -144,12 +146,15 @@
         meta && !song.song_key ? ' · ' : '', meta);
     }
 
+    // action.done: the row already got this action ("✓ Adăugată"): the button stays, disabled,
+    // with that label (the editor adds several songs in a row).
     function actionButton(action, index, busyKey, disabled, onRun) {
       const busy = local.busy === busyKey || online.busy === busyKey;
+      const done = Boolean(action.done);
       return el('button', {
-        type: 'button', class: action.primary ? null : 'secondary', 'data-icon': action.icon || null,
-        disabled: disabled || busy, 'aria-label': action.ariaLabel || null, onclick: onRun,
-      }, busy ? el('span', { class: 'spinner', 'aria-hidden': 'true' }) : null, action.label);
+        type: 'button', class: `${action.primary && !done ? '' : 'secondary'}${done ? ' result-done' : ''}`.trim() || null, 'data-icon': done ? 'check' : (action.icon || null),
+        disabled: disabled || busy || done, 'aria-label': done ? null : (action.ariaLabel || null), onclick: onRun,
+      }, busy ? el('span', { class: 'spinner', 'aria-hidden': 'true' }) : null, done ? action.done : action.label);
     }
 
     function localRow(song) {
@@ -272,7 +277,8 @@
       const row = online.rows.get(item.id);
       const busy = Boolean(online.busy);
       if (mode === 'pick') {
-        const actions = options.onlineActions ? options.onlineActions(item) : [];
+        // a row whose action ran ("done"): its buttons show the done label, disabled
+        const actions = (options.onlineActions ? options.onlineActions(item) : []).map((a) => (row && row.kind === 'done' && a.doneLabel ? { ...a, done: a.doneLabel } : a));
         return [
           el('button', {
             type: 'button', class: 'secondary', disabled: busy, 'data-icon': 'follow',
@@ -637,6 +643,18 @@
         load();
       },
       focus() { input.focus(); },
+      // An empty field again, the library listed (the online results go), focus in the field:
+      // the editor after "Adaugă", ready for the next song.
+      clear() {
+        input.value = '';
+        local.message = null;
+        Object.assign(online, { shown: false, query: '', results: null, rows: new Map(), status: null, error: null });
+        renderOnline();
+        load();
+        const pane = $('results');
+        if (pane) pane.scrollTop = 0;
+        input.focus();
+      },
     };
   }
 
