@@ -33,7 +33,7 @@ module.exports = {
         role: document.querySelector('.shell-who-role').textContent,
         pages: [...document.querySelectorAll('#shell-panel li:not([hidden]) .shell-row[data-page]')].map((a) => a.dataset.page),
       }));
-      check(panel.open && panel.pages.includes('team') && panel.pages.includes('settings'), `[${width}] owner "Mai mult": team and settings listed`, panel);
+      check(panel.open && !panel.pages.includes('team') && !panel.pages.includes('positions') && panel.pages.includes('settings'), `[${width}] owner "Mai mult": settings listed, Echipa / Poziții moved to the main nav`, panel);
       await p.keyboard.press('Escape');
       const closed = await p.waitForFunction(() => document.getElementById('shell-panel').hidden && document.activeElement.classList.contains('shell-more'), null, { timeout: 2000 }).then(() => true, () => false);
       check(closed, `[${width}] Escape closes the panel, focus back on "Mai mult"`);

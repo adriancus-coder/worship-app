@@ -22,6 +22,16 @@ function createTeamRouter({ db, auth, config, logger, live, email, invites }) {
   const withPositions = (adminId, users) => { const by = positions.byUser(adminId); return users.map((u) => ({ ...u, positionIds: by.get(u.id) || [] })); };
   const baseUrl = (req) => config.PUBLIC_BASE_URL || `${req.protocol}://${req.get('host')}`;
 
+  // The directory (every role): active people with name, role, positions and their own
+  // upcoming unavailability. Never an email or a phone.
+  router.get('/api/team/directory', auth.requireUser, (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    const busy = unavailability.byUser(req.adminId, todayIn(settings.timezone(req.adminId)));
+    const users = withPositions(req.adminId, team.list(req.adminId)).filter((u) => u.active)
+      .map((u) => ({ id: u.id, name: u.name, role: u.role, positionIds: u.positionIds, unavailability: busy.get(u.id) || [], me: u.id === req.user.id }));
+    res.json({ users, positions: positions.list(req.adminId) });
+  });
+
   router.use('/api/team', auth.requireUser, requireRole('owner'), (req, res, next) => {
     res.set('Cache-Control', 'no-store');
     next();

@@ -233,7 +233,7 @@ never implement a later stage early. Mockups: claude.ai design canvas
   assign; presenter and operator view):
   - *Positions* (`positions`, migration 029): what a church uses — seeded Voce, Chitară,
     Pian/Clape, Bas, Tobe, Operator, Prezentator; owner / leader add, rename, reorder,
-    deactivate (Setări → "Poziții în echipă", /positions). Each person's usual positions
+    deactivate (Echipa → Poziții). Each person's usual positions
     (`users_positions`) come from Echipa (owner) or "Mai mult → Profilul meu" (name, phone
     optional, positions); they are the picker's first suggestions.
   - *Assignments* (`event_assignments`, migration 030): one row per event, person and

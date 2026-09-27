@@ -1279,7 +1279,10 @@ body.has-shell { --shell-bottom: calc(64px + env(safe-area-inset-bottom)); paddi
 .shell-item:hover { color: var(--text); }
 .shell-item[aria-current="page"], .shell-item.current { color: var(--accent-text); }
 .shell-item:focus-visible { outline: 3px solid var(--focus); outline-offset: -3px; }
-.shell-label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.shell-label { max-width: 100%; white-space: nowrap; } /* never truncated: the label shrinks on narrow phones instead */
+/* Narrow phones: 11 px labels and items sized by their label (a long "Evenimente" takes a
+   little more than "Acasă"), so nothing is ever truncated. */
+@media (max-width: 400px) { .shell-item { font-size: 0.6875rem; letter-spacing: -0.02em; padding: 6px 2px; } .shell-list li { flex: 1 1 auto; } }
 .shell-icon { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .shell-icon-more { stroke-width: 3.5; }
 
@@ -1723,6 +1726,15 @@ button.op-step:disabled { opacity: 1; cursor: default; }
 .positions-add input { flex: 1 1 200px; min-height: var(--touch); }
 .team-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 6px !important; font-size: 0.875rem; }
 .team-actions { display: flex; flex-wrap: wrap; gap: 8px; flex: 1 1 100%; }
+/* Echipa: the owner's tabs and panels; the directory rows */
+.team-tabs { margin-bottom: 12px; }
+.team-panel { padding-top: 4px; } /* the Poziții / Indisponibilități panels scroll like the list (list panes) */
+.directory-list { margin-top: 0; }
+.team-panel-heading { margin: 0 0 8px; font-size: 1.0625rem; }
+.unavail-all { list-style: none; margin: 0 0 16px; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.unavail-all-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 8px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+.unavail-all-name { font-weight: 700; }
+.team-page .page-head #my-profile { flex: none; }
 .team-actions button { flex: 1 1 auto; min-height: var(--touch); }
 @media (min-width: 720px) { .team-actions { flex: 0 1 auto; } .team-actions button { flex: none; } }
 .role-pill { border-color: var(--border); color: var(--text); }

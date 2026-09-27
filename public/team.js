@@ -1,6 +1,9 @@
 'use strict';
 
-// The team (/team, owner only): the admin's accounts. Adding a person creates the account
+// Echipa (/team): the owner's accounts (Persoane), positions (Poziții) and everyone's
+// unavailability (Indisponibilități, read-only + own ranges); every other role gets a
+// read-only directory (name, role, positions, own unavailability; no emails / phones).
+// The owner's part: the admin's accounts. Adding a person creates the account
 // with a temporary password that is shown once, in a card with "Copiază" and a welcome
 // message ready to send; the person picks their own password at the first login.
 // Per person: rename / change role, reset the password (a new card), deactivate / reactivate.
@@ -264,10 +267,81 @@
     if (state.result) renderResult();
   });
 
+  // --- the owner's tabs: Persoane · Poziții · Indisponibilități ------------------------------
+
+  const TABS = ['people', 'positions', 'unavail'];
+  const tabButtons = [...document.querySelectorAll('#team-tabs [role="tab"]')];
+  function showTab(name) {
+    for (const tab of TABS) $(`${tab}-panel`).hidden = tab !== name;
+    const url = new URL(window.location.href);
+    if (name === 'people') url.searchParams.delete('tab'); else url.searchParams.set('tab', name);
+    window.history.replaceState(null, '', url);
+    if (name === 'unavail') renderUnavailAll();
+  }
+  window.PAGE.setupTabs(tabButtons, (index) => showTab(tabButtons[index].dataset.tab));
+
+  // Everyone's upcoming ranges (the owner's Indisponibilități tab), read-only.
+  function renderUnavailAll() {
+    const year = String(new Date().getFullYear());
+    const rows = state.users.filter((u) => (u.unavailability || []).length);
+    $('unavail-all-empty').hidden = rows.length > 0;
+    $('unavail-all').replaceChildren(...rows.map((u) => el('li', { class: 'unavail-all-row' },
+      el('span', { class: 'unavail-all-name', text: u.name }),
+      ...u.unavailability.map((r) => el('span', { class: 'pill unavail-pill', text: `${r.dateFrom === r.dateTo ? formatDate(r.dateFrom, year) : t('unavail.range', { from: formatDate(r.dateFrom, year), to: formatDate(r.dateTo, year) })}${r.note ? ` · ${r.note}` : ''}` })))));
+  }
+
+  // --- every other role: the read-only directory ------------------------------------------
+
+  async function loadDirectory() {
+    const res = await api('/api/team/directory');
+    if (!res.ok) {
+      $('status').removeAttribute('data-i18n');
+      $('status').textContent = res.body.error || t('common.networkError');
+      return;
+    }
+    state.users = res.body.users;
+    state.positions = res.body.positions || [];
+    $('status').hidden = true;
+    renderDirectory();
+  }
+
+  function renderDirectory() {
+    const year = String(new Date().getFullYear());
+    $('directory').replaceChildren(...state.users.map((user) => el('li', { class: 'team-row directory-row' },
+      el('div', { class: 'team-main' },
+        el('p', { class: 'team-name' }, el('span', { text: user.name }), user.me ? el('span', { class: 'muted', text: ` · ${t('team.you')}` }) : null),
+        el('p', { class: 'team-meta' }, el('span', { class: `pill role-pill role-${user.role}`, text: t(`team.roles.${user.role}`) })),
+        el('p', { class: 'team-positions' }, ...((user.positionIds || []).map(positionName).filter(Boolean).length
+          ? user.positionIds.map(positionName).filter(Boolean).map((name) => el('span', { class: 'pill position-pill', text: name }))
+          : [el('span', { class: 'muted', text: t('team.noPositions') })])),
+        (user.unavailability || []).length ? el('p', { class: 'team-unavail' }, ...user.unavailability.map((r) => el('span', { class: 'pill unavail-pill', text: t('team.unavailable', { when: r.dateFrom === r.dateTo ? formatDate(r.dateFrom, year) : t('unavail.range', { from: formatDate(r.dateFrom, year), to: formatDate(r.dateTo, year) }) }) }))) : null))));
+  }
+
   (async () => {
     const me = await window.SHELL.me;
     state.meId = me && me.user.id;
+    const owner = Boolean(me && me.user.role === 'owner');
+    $('add-person').hidden = !owner;
+    $('my-profile').hidden = owner;
+    $('team-tabs').hidden = !owner;
+    $('directory').hidden = owner;
+    $('team').hidden = !owner;
+    if (!owner) {
+      $('team-intro').dataset.i18n = 'team.directoryIntro';
+      $('team-intro').textContent = t('team.directoryIntro');
+      document.addEventListener('i18n:change', renderDirectory);
+      await loadDirectory();
+      return;
+    }
+    window.POSITIONS_EDITOR.mount($('positions-editor'));
     await load();
+    const asked = new URLSearchParams(window.location.search).get('tab');
+    if (TABS.includes(asked) && asked !== 'people') {
+      const index = tabButtons.findIndex((b) => b.dataset.tab === asked);
+      tabButtons.forEach((b, i) => { b.setAttribute('aria-selected', String(i === index)); b.tabIndex = i === index ? 0 : -1; });
+      showTab(asked);
+    }
+    document.addEventListener('i18n:change', () => { if (!$('unavail-panel').hidden) renderUnavailAll(); });
   })().catch(() => {
     $('status').textContent = t('common.networkError');
   });

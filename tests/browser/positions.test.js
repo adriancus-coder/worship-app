@@ -12,11 +12,11 @@ module.exports = {
   timeout: 180000,
   async run({ app, signIn, check }) {
     const names = (p) => p.evaluate(() => [...document.querySelectorAll('.position-row .position-name')].map((n) => n.textContent));
-    // the leader manages on /positions (RO 375)
-    const l = await signIn('leader', { width: 375, lang: 'ro' });
+    // the owner manages on Echipa -> Poziții (RO 375); /positions lands there
+    const l = await signIn('owner', { width: 375, lang: 'ro' });
     await l.goto(`${app.url}/positions`);
-    await l.waitForSelector('.position-row');
-    check((await names(l)).join(',') === 'Voce,Chitară,Pian/Clape,Bas,Tobe,Operator,Prezentator', 'seeded positions on /positions');
+    await l.waitForSelector('#positions-panel:not([hidden]) .position-row');
+    check(/\/team$/.test(new URL(l.url()).pathname) && (await names(l)).join(',') === 'Voce,Chitară,Pian/Clape,Bas,Tobe,Operator,Prezentator', 'seeded positions on Echipa -> Poziții (/positions redirects there)');
     await l.fill('.positions-add input', 'Vioară');
     await l.click('.positions-add button');
     await l.waitForSelector('.position-row:has-text("Vioară")');
@@ -32,12 +32,13 @@ module.exports = {
     check(await l.locator('.position-row.inactive .position-name').textContent() === 'Prezentator', 'renamed inline; "Prezentator" deactivated (kept, struck through)');
     const a = await layoutAudit(l, 'main');
     check(!a.overflow && !a.small.length, 'positions 375: no overflow, targets >= 44 px', a);
+    check(await l.evaluate(() => !document.querySelector('#directory') || document.getElementById('directory').hidden), 'owner: no directory list (the accounts list instead)');
     await l.context().close();
     // the operator: no menu row, /positions redirects
     const op = await signIn('operator', { width: 1024 });
     await op.goto(`${app.url}/positions`);
     await wait(300);
-    check(new URL(op.url()).pathname === '/app', 'operator: /positions redirects to Acasă');
+    check(new URL(op.url()).pathname === '/team' && await op.waitForSelector('#directory .directory-row', { timeout: 5000 }).then(() => true, () => false), 'operator: /positions redirects to Echipa (the directory, no editor)');
     await op.context().close();
     // a member: the profile (EN 1024)
     const m = await signIn('member', { width: 1024, lang: 'en' });
@@ -61,7 +62,7 @@ module.exports = {
     const am = await layoutAudit(m, 'main');
     check(!am.overflow && !am.small.length, 'profile 1024: targets >= 44 px', am);
     await m.context().close();
-    // the owner: chips on Echipa, edits them; Setări has the editor too
+    // the owner: chips on Echipa, edits them; the Poziții tab has the editor
     const o = await signIn('owner', { width: 1024, lang: 'ro' });
     await o.goto(`${app.url}/team`);
     await o.waitForSelector('#team .team-row');
@@ -75,8 +76,8 @@ module.exports = {
     await o.waitForFunction(() => !document.getElementById('edit-dialog').open);
     await wait(200);
     check((await row.locator('.position-pill').allTextContents()).includes('Bas'), 'the owner adds "Bas" from the person\'s dialog');
-    await o.goto(`${app.url}/settings`);
+    await o.goto(`${app.url}/team?tab=positions`);
     await o.waitForSelector('#positions-editor .position-row');
-    check((await names(o)).length === 8 && await o.locator('#positions-editor .positions-add').isVisible(), 'Setări → Poziții în echipă: the same editor');
+    check((await names(o)).length === 8 && await o.locator('#positions-editor .positions-add').isVisible(), 'Echipa → Poziții: the same editor (Setări has none any more)');
   },
 };

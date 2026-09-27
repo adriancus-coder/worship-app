@@ -126,8 +126,10 @@
   const list = el('ul', { class: 'shell-list' });
   nav.append(list);
 
+  // Acasă · Echipa · Evenimente · Bibliotecă (· Mai mult): five items on the phone bar too.
   const sections = [
     { id: 'home', href: '/app' },
+    { id: 'team', href: '/team' },
     { id: 'events', href: '/events' },
     { id: 'library', href: '/library' },
   ];
@@ -188,8 +190,6 @@
   const navLinks = [
     { id: 'media', href: '/media', key: 'shell.media', icon: 'media', roles: EDITOR_ROLES },
     { id: 'screens', href: '/screens', key: 'shell.screens', icon: 'screens', roles: ['owner', 'operator'] }, // lib/events.js SCREEN_ROLES
-    { id: 'team', href: '/team', key: 'shell.team', icon: 'team', roles: ['owner'] },
-    { id: 'positions', href: '/positions', key: 'shell.positions', icon: 'team', roles: ['owner', 'leader'] }, // routes/positions.js MANAGE_ROLES
     { id: 'settings', href: '/settings', key: 'shell.settings', icon: 'settings', roles: ['owner'] },
     // The platform owner only (the churches on this server).
     { id: 'platform', href: '/platform', key: 'shell.platform', icon: 'platform', roles: ['owner'], platform: true },

@@ -129,15 +129,14 @@ function createPagesRouter({ db, auth, sendPage }) {
     sendPage(req, res, 'notifications');
   });
 
-  // "Poziții în echipă": owner and leader (the owner also has it in Setări).
+  // "Poziții în echipă" moved into Echipa (the owner's Poziții tab).
   router.get('/positions', noStore, signedIn, (req, res) => {
-    if (!['owner', 'leader'].includes(req.session.user.role)) return res.redirect('/app');
-    sendPage(req, res, 'positions');
+    res.redirect(req.session.user.role === 'owner' ? '/team?tab=positions' : '/team');
   });
 
-  // The team (accounts, roles, temporary passwords): owner only.
+  // Echipa: the owner manages accounts, positions and sees everyone's unavailability; every
+  // other role gets a read-only directory (no emails / phones).
   router.get('/team', noStore, signedIn, (req, res) => {
-    if (req.session.user.role !== 'owner') return res.redirect('/app');
     sendPage(req, res, 'team');
   });
 

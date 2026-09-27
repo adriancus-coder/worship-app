@@ -195,8 +195,6 @@
   $('service-time').addEventListener('change', saveService);
   document.addEventListener('i18n:change', () => renderService());
 
-  // "Poziții în echipă" (public/positions-editor.js, shared with /positions for the leader).
-  window.POSITIONS_EDITOR.mount($('positions-editor'));
 
   // "Margine de siguranță proiector" (0-12 %): saved on change, every screen follows at once.
   function renderMargin(value) {

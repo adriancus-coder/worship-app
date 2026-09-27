@@ -1,7 +1,7 @@
 'use strict';
 
 // "Poziții în echipă": the positions a church uses (lib/positions.js), edited by the owner
-// (Setări) and the leader (/positions): add, rename inline, move up / down, deactivate /
+// (Echipa → Poziții): add, rename inline, move up / down, deactivate /
 // reactivate. Mounted with POSITIONS_EDITOR.mount(container); everything through
 // /api/positions.
 

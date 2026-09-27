@@ -39,7 +39,7 @@ module.exports = {
       const p = await signIn('owner', { width, lang });
       await p.goto(`${app.url}/app`);
       let m = await menuPages(p);
-      check(m.viewAs.join(',') === 'owner:true,presenter:false,leader:false,operator:false,member:false' && m.pages.includes('team') && m.pages.includes('platform'), `${tag} owner: the switch with Proprietar selected; Echipa and Platformă in the menu`, m);
+      check(m.viewAs.join(',') === 'owner:true,presenter:false,leader:false,operator:false,member:false' && m.pages.includes('settings') && m.pages.includes('platform'), `${tag} owner: the switch with Proprietar selected; Setări and Platformă in the menu (Echipa is in the main nav)`, m);
       check(await bar(p) === null, `${tag} owner: no bar`);
       // as member
       await p.click('#shell-panel [data-view-as="member"]');
@@ -86,7 +86,7 @@ module.exports = {
       await p.click('#view-as-bar .view-as-back');
       await p.waitForFunction(() => { const b = document.getElementById('view-as-bar'); return b && b.hidden && document.querySelector('#now .now-card'); }, null, { timeout: 8000 });
       m = await menuPages(p);
-      check(await bar(p) === null && m.pages.includes('team') && m.pages.includes('platform') && m.viewAs.includes('owner:true'), `${tag} "Revino la proprietar": bar gone, Echipa and Platformă back`, m);
+      check(await bar(p) === null && m.pages.includes('settings') && m.pages.includes('platform') && m.viewAs.includes('owner:true'), `${tag} "Revino la proprietar": bar gone, Setări and Platformă back`, m);
       await closeMenu(p);
       await p.context().close();
     }
