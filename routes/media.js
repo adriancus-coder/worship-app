@@ -9,6 +9,8 @@ const { parseReadability, createBackgroundStore } = require('../lib/backgrounds'
 const { createMediaQuota } = require('../lib/platform');
 
 const { EDITOR_ROLES } = require('../lib/events');
+const { MediaFetchError, fetchToTemp } = require('../lib/media-fetch');
+const asyncRoute = require('../lib/async-route');
 
 // Media library (videos and backgrounds for the projector), scoped to req.adminId.
 //   GET    /api/media                  list (owner, leader, operator), with the church's
@@ -26,7 +28,19 @@ const { EDITOR_ROLES } = require('../lib/events');
 //                                      the uploaded file with Range support (images: the
 //          projector version or the thumbnail), for that admin's users (session), its
 //          screens (X-Screen-Token) or a signed URL (screens).
-function createMediaRouter({ db, auth, config, logger, live, storage }) {
+// "cdn.example.org/sky.jpg" -> "sky" (the title of a background fetched from a link).
+function titleFromUrl(url) {
+  try {
+    const u = new URL(url);
+    const last = decodeURIComponent(u.pathname.split('/').filter(Boolean).pop() || '').replace(/\.[a-z0-9]+$/i, '').replace(/[-_]+/g, ' ').trim();
+    return last || u.hostname;
+  } catch (err) {
+    return 'Fundal';
+  }
+}
+
+// mediaFetch: tests hand in a stand-in for fetch (fixtures/mock-cdn.js sets global.fetch).
+function createMediaRouter({ db, auth, config, logger, live, storage, mediaFetch = (...args) => globalThis.fetch(...args) }) {
   const router = express.Router();
   const media = createMediaStore(db, config.DATA_DIR);
   const quota = createMediaQuota(db, config.MEDIA_MAX_ADMIN_BYTES); // per church (platform page)
@@ -175,6 +189,61 @@ function createMediaRouter({ db, auth, config, logger, live, storage }) {
     });
     req.pipe(out);
   });
+
+  // A background from a link (https image JPEG / PNG / WebP or video MP4 / WebM): fetched
+  // by the server (lib/media-fetch.js: 10 s, no private addresses, byte cap), then stored
+  // exactly like an upload (projector-size version for images), with source_url kept.
+  // The same size, quota and disk rules as an upload.
+  router.post('/api/media/from-url', canEdit, asyncRoute(async (req, res) => {
+    const body = req.body || {};
+    const url = typeof body.url === 'string' ? body.url.trim() : '';
+    if (!/^https:\/\//i.test(url)) return res.status(400).json({ error: req.t('errors.mediaFetchHttps') });
+    const maxFile = Math.max(config.MEDIA_MAX_LOOP_BYTES, config.MEDIA_MAX_IMAGE_BYTES);
+    const maxAdmin = quota(req.adminId);
+    const room = maxAdmin - media.usedBytes(req.adminId);
+    const diskRoom = storage.room();
+    if (room <= 0) return res.status(413).json({ error: req.t('errors.mediaQuotaExceeded', { max: mb(maxAdmin) }) });
+    if (diskRoom <= 0) return res.status(507).json({ error: req.t('errors.diskFull', { free: mb(Math.max(0, diskRoom)), pct: config.DISK_MIN_FREE_PCT }) });
+    const limit = Math.min(maxFile, room, diskRoom);
+    const tooLarge = () => (limit < maxFile
+      ? (room < diskRoom ? [413, req.t('errors.mediaQuotaExceeded', { max: mb(maxAdmin) })] : [507, req.t('errors.diskFull', { free: mb(Math.max(0, diskRoom)), pct: config.DISK_MIN_FREE_PCT })])
+      : [413, req.t('errors.backgroundTooLarge', { image: mb(config.MEDIA_MAX_IMAGE_BYTES), loop: mb(config.MEDIA_MAX_LOOP_BYTES) })]);
+    const temp = media.tempPath(req.adminId);
+    let got;
+    try {
+      got = await fetchToTemp(url, { temp, maxBytes: limit, fetchImpl: mediaFetch });
+    } catch (err) {
+      if (!(err instanceof MediaFetchError)) throw err;
+      logger.info(`Background from link refused (admin #${req.adminId}, ${err.code}): ${url.slice(0, 200)}`);
+      if (err.code === 'too_large') { const [status, error] = tooLarge(); return res.status(status).json({ error }); }
+      const host = (() => { try { return new URL(url).hostname; } catch (e) { return url.slice(0, 60); } })();
+      const codes = { bad_url: 'mediaFetchHttps', blocked_host: 'mediaFetchHttps', private_address: 'mediaFetchPrivate', timeout: 'mediaFetchTimeout', not_found: 'mediaFetchNotFound' };
+      return res.status(400).json({ error: req.t(`errors.${codes[err.code] || 'mediaFetchUnreachable'}`, { host }) });
+    }
+    const { size, head } = got;
+    const video = sniffVideo(head);
+    const image = sniffImage(head);
+    const drop = () => fs.rm(temp, { force: true }, () => {});
+    if (!video && !image) { drop(); return res.status(400).json({ error: req.t('errors.mediaFetchNotMedia') }); }
+    const title = validateTitle(typeof body.title === 'string' && body.title.trim() ? body.title : titleFromUrl(got.finalUrl), req.t);
+    if (title.error) { drop(); return res.status(400).json({ error: title.error }); }
+    const done = (item, mime) => {
+      logger.info(`Media #${item.id} (${item.kind}) fetched from ${item.sourceHost} by user #${req.user.id} (admin #${req.adminId}, ${mime}, ${size} bytes)`);
+      storage.refresh();
+      res.status(201).json({ media: item });
+    };
+    if (video) {
+      if (size > config.MEDIA_MAX_LOOP_BYTES) { drop(); return res.status(413).json({ error: req.t('errors.backgroundTooLarge', { image: mb(config.MEDIA_MAX_IMAGE_BYTES), loop: mb(config.MEDIA_MAX_LOOP_BYTES) }) }); }
+      return done(media.addUpload(req.adminId, req.user.id, { title: title.value, temp, mime: video, size, kind: 'loop', sourceUrl: got.finalUrl }), video);
+    }
+    if (size > config.MEDIA_MAX_IMAGE_BYTES) { drop(); return res.status(413).json({ error: req.t('errors.imageTooLarge', { max: mb(config.MEDIA_MAX_IMAGE_BYTES) }) }); }
+    try {
+      done(await media.addImage(req.adminId, req.user.id, { title: title.value, temp, mime: image, sourceUrl: got.finalUrl }), image);
+    } catch (err) {
+      logger.info(`Image from link refused (admin #${req.adminId}): ${err.message}`);
+      res.status(400).json({ error: req.t('errors.mediaFetchNotMedia') });
+    }
+  }));
 
   router.post('/api/media/url', canEdit, (req, res) => {
     const body = req.body || {};

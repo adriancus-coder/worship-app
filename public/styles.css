@@ -1728,6 +1728,13 @@ button.op-step:disabled { opacity: 1; cursor: default; }
 .team-actions { display: flex; flex-wrap: wrap; gap: 8px; flex: 1 1 100%; }
 /* Echipa: the owner's tabs and panels; the directory rows */
 .team-tabs { margin-bottom: 12px; }
+/* Media: "Din link" under the background upload; the "sursă: host" caption */
+.bg-url-form { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+.bg-url-heading { margin: 0 0 4px; font-size: 1rem; }
+.bg-url-form .input-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.bg-url-form .input-row input { flex: 1 1 14rem; min-width: 0; }
+.bg-url-form .input-row button { flex: 0 0 auto; }
+.media-source { font-size: 0.8125rem; }
 .team-panel { padding-top: 4px; } /* the Poziții / Indisponibilități panels scroll like the list (list panes) */
 .directory-list { margin-top: 0; }
 .team-panel-heading { margin: 0 0 8px; font-size: 1.0625rem; }

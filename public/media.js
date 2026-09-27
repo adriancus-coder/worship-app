@@ -51,7 +51,8 @@
       thumbOf(item),
       el('span', { class: 'screen-text' },
         el('span', { class: 'screen-name', text: item.title }),
-        el('span', { class: 'screen-meta', text: describe(item) })),
+        el('span', { class: 'screen-meta', text: describe(item) }),
+        item.sourceHost ? el('span', { class: 'screen-meta media-source', text: t('media.source', { host: item.sourceHost }) }) : null),
       el('span', { class: 'screen-tools' },
         el('button', { type: 'button', class: 'secondary', 'data-icon': 'edit', text: t('screens.rename'), 'aria-label': t('media.renameLabel', { title: item.title }), onclick: () => openRename(item) }),
         el('button', { type: 'button', class: 'secondary', 'data-icon': 'close', text: t('media.delete'), 'aria-label': t('media.deleteLabel', { title: item.title }), onclick: () => openDelete(item) })))));
@@ -135,6 +136,26 @@
       upload(file, as, { message: `${prefix}-message`, progress: `${prefix}-progress`, name: `${prefix}-name`, bar: `${prefix}-bar`, percent: `${prefix}-percent` });
     });
   }
+
+  // --- a background from a link ------------------------------------------------------
+
+  $('bg-url-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const button = $('bg-url-submit');
+    message('bg-url-message', t('media.bgUrlFetching'));
+    button.disabled = true;
+    try {
+      const res = await api('/api/media/from-url', { method: 'POST', body: { url: $('bg-url').value } });
+      if (!res.ok) return message('bg-url-message', res.body.error || t('common.networkError'), 'error');
+      message('bg-url-message', t('media.bgUrlAdded', { title: res.body.media.title, host: res.body.media.sourceHost || '' }), 'success');
+      $('bg-url').value = '';
+      await load();
+    } catch (err) {
+      message('bg-url-message', t('common.networkError'), 'error');
+    } finally {
+      button.disabled = false;
+    }
+  });
 
   // --- links ------------------------------------------------------------------------
 

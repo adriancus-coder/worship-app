@@ -1424,6 +1424,62 @@ test('storage guard: room keeps DISK_MIN_FREE_PCT free; usage of DATA_DIR; warni
   fs.rmSync(dir, { recursive: true, force: true });
 });
 
+testAsync('media-fetch: https only, no private addresses, redirects checked, byte cap, temp file', async () => {
+  const MF = require('../lib/media-fetch');
+  const os = require('os');
+  const fs = require('fs');
+  const path = require('path');
+  assert.strictEqual(MF.parseMediaUrl('https://cdn.example.org/a.jpg').hostname, 'cdn.example.org');
+  for (const bad of ['http://cdn.example.org/a.jpg', 'https://user:pw@cdn.example.org/a.jpg', 'https://cdn.example.org:8443/a.jpg', 'https://localhost/a.jpg', 'https://printer.local/a.jpg', 'ftp://x/a', '']) {
+    assert.strictEqual(MF.parseMediaUrl(bad), null, bad);
+  }
+  for (const ip of ['127.0.0.1', '10.1.2.3', '172.16.0.9', '172.31.255.1', '192.168.1.5', '169.254.1.1', '0.0.0.0', '100.64.0.1', '224.0.0.1', '::1', 'fc00::1', 'fd12::1', 'fe80::1', '::ffff:192.168.0.1', 'not-an-ip']) {
+    assert.strictEqual(MF.isPrivateAddress(ip), true, ip);
+  }
+  for (const ip of ['203.0.113.10', '8.8.8.8', '172.32.0.1', '2606:4700::1111', '::ffff:8.8.8.8']) assert.strictEqual(MF.isPrivateAddress(ip), false, ip);
+  const lookup = async (host) => ({ 'cdn.example.org': [{ address: '203.0.113.10' }], 'private.example.org': [{ address: '192.168.1.5' }], 'mixed.example.org': [{ address: '203.0.113.10' }, { address: '10.0.0.1' }] }[host] || (() => { throw Object.assign(new Error('ENOTFOUND'), { code: 'ENOTFOUND' }); })());
+  const body = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(3000, 1)]);
+  const hops = [];
+  const fetchImpl = async (url, opts) => {
+    hops.push(url);
+    assert.strictEqual(opts.redirect, 'manual');
+    const u = new URL(url);
+    const res = (status, b, headers = {}) => new Response(b, { status, headers });
+    if (u.pathname === '/r1') return res(302, '', { location: '/r2' });
+    if (u.pathname === '/r2') return res(301, '', { location: 'https://cdn.example.org/a.jpg' });
+    if (u.pathname === '/to-http') return res(302, '', { location: 'http://cdn.example.org/a.jpg' });
+    if (u.pathname === '/to-private') return res(302, '', { location: 'https://private.example.org/a.jpg' });
+    if (u.pathname === '/declared-big') return res(200, body, { 'content-length': String(100 * 1024 * 1024) });
+    if (u.pathname === '/stream-big') return res(200, Buffer.alloc(5000, 2));
+    if (u.pathname === '/missing') return res(404, '');
+    if (u.pathname === '/broken') return res(500, '');
+    if (u.pathname === '/empty') return res(200, '');
+    return res(200, body);
+  };
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wa-mf-'));
+  const temp = () => path.join(dir, `t-${Math.random().toString(16).slice(2)}`);
+  const code = async (url, maxBytes = 4096) => { try { await MF.fetchToTemp(url, { temp: temp(), maxBytes, fetchImpl, lookup }); } catch (err) { return err.code; } return 'ok'; };
+  const t1 = temp();
+  const got = await MF.fetchToTemp('https://cdn.example.org/r1', { temp: t1, maxBytes: 4096, fetchImpl, lookup });
+  assert.deepStrictEqual([got.size, got.finalUrl, fs.statSync(t1).size, got.head.subarray(0, 3)], [body.length, 'https://cdn.example.org/a.jpg', body.length, Buffer.from([0xff, 0xd8, 0xff])], 'two redirects followed, the body on disk, the head for the magic bytes');
+  assert.strictEqual(hops.length, 3);
+  assert.strictEqual(await code('http://cdn.example.org/a.jpg'), 'bad_url');
+  assert.strictEqual(await code('https://private.example.org/a.jpg'), 'private_address');
+  assert.strictEqual(await code('https://mixed.example.org/a.jpg'), 'private_address', 'one private address among the host\'s is enough to refuse');
+  assert.strictEqual(await code('https://nowhere.example.org/a.jpg'), 'unreachable');
+  assert.strictEqual(await code('https://cdn.example.org/to-http'), 'blocked_host', 'a redirect to http is refused');
+  assert.strictEqual(await code('https://cdn.example.org/to-private'), 'private_address', 'a redirect to a private host is refused');
+  assert.strictEqual(await code('https://cdn.example.org/declared-big'), 'too_large');
+  assert.strictEqual(await code('https://cdn.example.org/stream-big'), 'too_large', 'stopped while streaming');
+  assert.strictEqual(await code('https://cdn.example.org/missing'), 'not_found');
+  assert.strictEqual(await code('https://cdn.example.org/broken'), 'upstream_error');
+  assert.strictEqual(await code('https://cdn.example.org/empty'), 'upstream_error');
+  assert.strictEqual(fs.readdirSync(dir).length, 1, 'only the successful download left a file');
+  const slow = () => new Promise(() => {});
+  assert.strictEqual(await (async () => { try { await MF.fetchToTemp('https://cdn.example.org/a.jpg', { temp: temp(), maxBytes: 4096, fetchImpl: slow, lookup, timeoutMs: 50 }); } catch (err) { return err.code; } return 'ok'; })(), 'timeout');
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
 test('media: image magic bytes; file names and kinds', () => {
   const M = require('../lib/media');
   assert.strictEqual(M.sniffImage(Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 0, 0, 0, 0, 0, 0, 0])), 'image/jpeg');
