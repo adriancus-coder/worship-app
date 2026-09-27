@@ -2413,6 +2413,10 @@ dialog.big-lyrics.scrolls .big-body { align-items: flex-start; overflow-y: auto;
 .big-nav > button { flex: 1 1 0; min-height: 56px; font-size: 1.0625rem; overflow-wrap: anywhere; }
 .big-nav > button:last-child { flex-grow: 1.4; }
 .big-nav > button:disabled { opacity: 0.35; }
+/* The team's view: own navigation only (← Înapoi · Revino la live · Înainte →), no live commands. */
+.big-nav-member > button:last-child { flex-grow: 1; }
+.big-nav-member .big-back-live[hidden] { display: none; }
+.follow-section .song-section, .rehearse-slide .slide-sections .song-section { cursor: pointer; }
 @media (max-width: 599px) {
   .big-nav { flex-wrap: wrap; }
   .big-nav > button:last-child { order: 3; flex: 1 0 100%; }

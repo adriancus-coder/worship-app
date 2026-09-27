@@ -15,6 +15,9 @@
   const SCALE = { min: 0.8, max: 1.8, step: 0.1 };
 
   const state = { event: null, items: [], index: 0, songs: new Map(), textOnly: false, scale: 1 };
+  const POS = window.POSITIONS;
+  // The big lyrics' own place: one arrangement step of the current item.
+  const bigPos = { itemId: null, step: 0 };
 
   function stored(key) {
     try {
@@ -142,12 +145,14 @@
     if (!item) {
       textOnlyButton.hidden = true;
       $('whole-song').hidden = true;
+      $('big-open').hidden = true;
       slide.replaceChildren(el('p', { class: 'muted', text: t('rehearse.empty') }));
       return;
     }
     const isSong = item.type === 'song' && Boolean(item.songId);
     textOnlyButton.hidden = !isSong;
     $('whole-song').hidden = !isSong;
+    $('big-open').hidden = !isSong;
     textOnlyButton.setAttribute('aria-pressed', String(state.textOnly));
 
     if (isSong) {
@@ -174,6 +179,45 @@
     render(true);
   }
 
+  // --- "⤢ Versuri mari" (public/big-lyrics.js), members-style, own navigation --------------
+
+  // Inside the view ← / → and swipes step through the arrangement, item after item; the
+  // page follows the item, so ✕ returns at the same position.
+  function bigMove(delta) {
+    const layout = POS.layoutOf(state.items);
+    const to = delta > 0 ? POS.nextPosition(layout, bigPos) : POS.prevPosition(layout, bigPos);
+    if (POS.samePosition(to, bigPos)) return;
+    Object.assign(bigPos, to);
+    const index = state.items.findIndex((it) => it.id === to.itemId);
+    if (index >= 0 && index !== state.index) go(index);
+    big.update(null, state.items);
+  }
+
+  const big = window.BIG_LYRICS.create({
+    api, eventId, standalone: true, loadSong,
+    position: () => (bigPos.itemId ? bigPos : null),
+    commands: { prev: () => bigMove(-1), next: () => bigMove(1) },
+    member: {
+      nav: () => {
+        const layout = POS.layoutOf(state.items);
+        return { show: true, away: false, canPrev: !POS.samePosition(POS.prevPosition(layout, bigPos), bigPos), canNext: !POS.samePosition(POS.nextPosition(layout, bigPos), bigPos) };
+      },
+      backToLive: () => {},
+    },
+  });
+
+  function openBig() {
+    const item = state.items[state.index];
+    if (!item || item.type !== 'song' || !item.songId) return;
+    if (bigPos.itemId !== item.id) Object.assign(bigPos, { itemId: item.id, step: 0 });
+    big.update(null, state.items);
+    big.open();
+  }
+  $('big-open').addEventListener('click', openBig);
+  slide.addEventListener('click', (event) => {
+    if (event.target.closest('.slide-sections .song-section')) openBig();
+  });
+
   // --- controls ---------------------------------------------------------------------
 
   $('prev').addEventListener('click', () => go(state.index - 1));
@@ -181,8 +225,10 @@
 
   document.addEventListener('keydown', (event) => {
     if (event.target.closest('input, textarea, select') || event.altKey || event.ctrlKey || event.metaKey) return;
+    if (big.isOpen()) return;
     if (event.key === 'ArrowRight') go(state.index + 1);
     else if (event.key === 'ArrowLeft') go(state.index - 1);
+    else if (event.key.toLowerCase() === 'f') { event.preventDefault(); openBig(); }
   });
 
   textOnlyButton.addEventListener('click', () => {

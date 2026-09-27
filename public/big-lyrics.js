@@ -17,6 +17,16 @@
 //   big.open()            // from the current step, the button or key F
 //   big.update(snap, items)   // on every render: follows live; closed views ignore it
 //   big.isOpen()
+//
+// The team (the follow page) and the rehearsal page open the SAME view members-style:
+//   BIG_LYRICS.create({ ..., member: { nav, backToLive } })
+//     no live commands: in follow mode it just follows; commands.prev / next move only this
+//     person's place (swipe, ← →); nav() -> { show, away, canPrev, canNext } decides the bottom
+//     bar: "← Înapoi" / "Înainte →" when show (free mode, or detached), plus "Revino la live"
+//     when away; keys E / B / Space do nothing.
+//   standalone: true      the rehearsal page: no live snapshot, no status line; position()
+//                         is the page's own place and the view is always "live".
+//   loadSong(item)        the page's own song loader (its cache, offline too).
 
 (function () {
   const SCALE_KEY = 'wa_big_scale';
@@ -44,7 +54,7 @@
 
   // extraStatus() -> text added to the status line (the handover request / answer), refreshed
   // every second while the view is open.
-  function create({ api, eventId, position, commands, connection, drivesProjector = () => false, extraStatus = () => '' }) {
+  function create({ api, eventId, position, commands, connection, drivesProjector = () => false, extraStatus = () => '', member = null, standalone = false, loadSong: pageLoadSong = null }) {
     const { el } = window.PAGE;
     const { t } = window.I18N;
     const state = { snap: null, items: [], scale: Number(stored(SCALE_KEY, '1')) || 1, textOnly: stored(TEXT_ONLY_KEY, '0') === '1', songs: new Map(), setlistKey: null, renderId: 0 };
@@ -53,6 +63,7 @@
 
     // A song item ready to render (sections transposed, arrangement resolved), once each.
     function loadSong(item) {
+      if (pageLoadSong) return pageLoadSong(item); // the page's own cache (works offline too)
       if (!state.songs.has(item.id)) {
         state.songs.set(item.id, api(`/api/events/${eventId}/items/${item.id}/song`)
           .then((res) => (res.ok ? res.body.song : null)).catch(() => null));
@@ -85,14 +96,16 @@
       parts.larger = el('button', { type: 'button', class: 'secondary big-tool', text: 'A+', onclick: () => setScale(SCALE.step) });
       parts.close = el('button', { type: 'button', class: 'secondary big-tool big-close', 'data-icon': 'close', onclick: close });
       parts.prev = el('button', { type: 'button', class: 'secondary', 'data-icon': 'undo', onclick: () => commands.prev() });
-      parts.end = el('button', { type: 'button', class: 'secondary end-item', 'aria-keyshortcuts': 'E', onclick: () => commands.end() });
-      parts.nextButton = el('button', { type: 'button', onclick: () => commands.next() });
-      dialog = el('dialog', { class: 'big-lyrics', 'aria-label': t('big.title') },
+      parts.end = member ? null : el('button', { type: 'button', class: 'secondary end-item', 'aria-keyshortcuts': 'E', onclick: () => commands.end() });
+      parts.backLive = member ? el('button', { type: 'button', class: 'secondary big-back-live', 'data-icon': 'jump', onclick: () => member.backToLive() }) : null;
+      parts.nextButton = el('button', { type: 'button', class: member ? 'secondary' : null, onclick: () => commands.next() });
+      parts.nav = el('div', { class: `big-nav${member ? ' big-nav-member' : ''}`, role: 'group', 'aria-label': t(member ? 'follow.navLabel' : 'live.navLabel') }, parts.prev, parts.end, parts.backLive, parts.nextButton);
+      dialog = el('dialog', { class: `big-lyrics${member ? ' big-lyrics-member' : ''}`, 'aria-label': t('big.title') },
         el('div', { class: 'big-top' }, parts.label, el('span', { class: 'big-tools' }, parts.textOnly, parts.smaller, parts.larger, parts.close)),
         parts.body,
         parts.next,
-        parts.status,
-        el('div', { class: 'big-nav', role: 'group', 'aria-label': t('live.navLabel') }, parts.prev, parts.end, parts.nextButton));
+        standalone ? null : parts.status,
+        parts.nav);
       dialog.addEventListener('close', () => { releaseWake(); clearInterval(extraTimer); extraTimer = null; });
       dialog.addEventListener('cancel', (event) => { event.preventDefault(); close(); }); // Escape
       dialog.addEventListener('keydown', onKey);
@@ -117,12 +130,14 @@
     function onKey(event) {
       if (event.altKey || event.ctrlKey || event.metaKey) return;
       if (event.key === ' ' && event.target.closest('button')) return; // Space clicks the focused button
-      const keys = {
-        ArrowRight: commands.next, ' ': commands.next, ArrowLeft: commands.prev,
-        e: () => { if (!parts.end.disabled) commands.end(); },
-        b: commands.toggleBlack,
-        f: close,
-      };
+      const keys = member
+        ? { ArrowRight: commands.next, ArrowLeft: commands.prev, f: close }
+        : {
+          ArrowRight: commands.next, ' ': commands.next, ArrowLeft: commands.prev,
+          e: () => { if (!parts.end.disabled) commands.end(); },
+          b: commands.toggleBlack,
+          f: close,
+        };
       const action = keys[event.key.length === 1 ? event.key.toLowerCase() : event.key];
       if (!action) return;
       event.preventDefault();
@@ -147,9 +162,9 @@
       dialog.showModal();
       render();
       keepScreenOn();
-      parts.nextButton.focus();
+      (parts.nav.hidden ? parts.close : parts.nextButton).focus();
       clearInterval(extraTimer);
-      extraTimer = setInterval(renderExtra, 1000);
+      if (!standalone) extraTimer = setInterval(renderExtra, 1000);
     }
 
     function close() {
@@ -238,6 +253,12 @@
     function statusLine() {
       const snap = state.snap;
       const value = connection ? connection() : 'connected';
+      // The team: the connection and how this phone follows (follow / free / its own place).
+      if (member) {
+        const nav = member.nav();
+        const key = nav.away ? 'big.memberAway' : (snap.teamMode === 'free' ? 'big.memberFree' : 'big.memberFollow');
+        return { value, conn: t(`live.connection.${value}`), text: t(key) };
+      }
       const bits = [t(`live.modes.${snap.mode === 'split' ? 'split' : 'together'}`)];
       if (snap.mode === 'split') {
         const projector = drivesProjector();
@@ -250,9 +271,10 @@
     }
 
     async function render() {
-      if (!isOpen() || !state.snap) return;
+      if (!isOpen() || (!state.snap && !standalone)) return;
       const renderId = ++state.renderId;
       const snap = state.snap;
+      const isLive = standalone || snap.status === 'live';
       const pos = position();
       const item = pos && state.items.find((it) => it.id === pos.itemId);
       parts.textOnly.textContent = t('song.textOnly');
@@ -263,15 +285,28 @@
       parts.smaller.disabled = state.scale <= SCALE.min + 1e-9;
       parts.larger.disabled = state.scale >= SCALE.max - 1e-9;
       parts.prev.textContent = t('live.prev');
-      const { value, conn, text } = statusLine();
-      parts.statusText.replaceChildren(el('span', { class: 'big-dot', 'data-state': value, 'aria-hidden': 'true' }), `${conn} · ${text}`);
-      renderExtra();
-      parts.liveClock.update(snap, pos);
-      if (!item || snap.status !== 'live') {
+      if (!standalone) {
+        const { value, conn, text } = statusLine();
+        parts.statusText.replaceChildren(el('span', { class: 'big-dot', 'data-state': value, 'aria-hidden': 'true' }), `${conn} · ${text}`);
+        renderExtra();
+        parts.liveClock.update(snap, pos);
+      }
+      // The team's bar: own navigation only in free mode or while detached; "Revino la live".
+      if (member) {
+        const nav = member.nav();
+        parts.nav.hidden = !nav.show;
+        parts.backLive.hidden = !nav.away;
+        parts.backLive.textContent = t('follow.back');
+        parts.prev.disabled = !nav.canPrev;
+        parts.nextButton.disabled = !nav.canNext;
+        parts.nextButton.textContent = t('follow.offline.next');
+      }
+      if (!item || !isLive) {
         parts.label.textContent = '';
         parts.text.replaceChildren(el('p', { class: 'big-lines', text: t('setlist.empty') }));
         parts.next.textContent = '';
-        parts.prev.disabled = parts.end.disabled = parts.nextButton.disabled = true;
+        parts.prev.disabled = parts.nextButton.disabled = true;
+        if (parts.end) parts.end.disabled = true;
         return;
       }
       const index = state.items.indexOf(item);
@@ -283,10 +318,12 @@
       if (pos.ended) after = following ? { label: itemTitle(following), item: following } : null;
       else if (steps && pos.step + 1 < steps.length) after = { label: steps[pos.step + 1].label, item, step: pos.step + 1 };
       else after = following ? { label: itemTitle(following), item: following } : null;
-      parts.prev.disabled = index === 0 && pos.step === 0 && !pos.ended;
-      parts.nextButton.disabled = !after;
-      parts.nextButton.textContent = after ? t('live.next', { label: window.LIVE.nextText(state.items, pos).label }) : t('live.nextEnd');
-      window.LIVE.renderEndButton(parts.end, { ended: Boolean(pos.ended), hasItem: true });
+      if (!member) {
+        parts.prev.disabled = index === 0 && pos.step === 0 && !pos.ended;
+        parts.nextButton.disabled = !after;
+        parts.nextButton.textContent = after ? t('live.next', { label: window.LIVE.nextText(state.items, pos).label }) : t('live.nextEnd');
+        window.LIVE.renderEndButton(parts.end, { ended: Boolean(pos.ended), hasItem: true });
+      }
       parts.label.textContent = step ? `${itemTitle(item)} · ${step.label}` : itemTitle(item);
 
       if (pos.ended) {

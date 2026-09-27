@@ -148,6 +148,7 @@
     const status = snap.status;
     textOnlyButton.hidden = true;
     $('whole-song').hidden = true;
+    $('big-open').hidden = true;
     if (status !== 'live') {
       $('position').textContent = '';
       if (status === 'finished') {
@@ -194,6 +195,7 @@
     }
 
     textOnlyButton.hidden = false;
+    $('big-open').hidden = false;
     textOnlyButton.setAttribute('aria-pressed', String(state.textOnly));
     const song = await loadSong(item);
     if (renderId !== state.renderId) return; // a newer state arrived meanwhile
@@ -264,7 +266,41 @@
     renderNav();
     renderSlide();
     mountProposals();
+    big.update(state.snap, state.items);
   }
+
+  // "⤢ Versuri mari" (public/big-lyrics.js) members-style: the shown position, no live
+  // commands; ← / → and swipes move only this phone (as on the page); the bar shows in free
+  // mode or while detached, with "Revino la live".
+  const big = window.BIG_LYRICS.create({
+    api, eventId,
+    position: () => (live() ? shownPosition() : null),
+    commands: { prev: () => moveLocal(-1), next: () => moveLocal(1) },
+    connection: () => (client ? client.connection : 'connecting'),
+    loadSong,
+    member: {
+      nav: () => {
+        const layout = POS.layoutOf(state.items);
+        const pos = shownPosition();
+        return {
+          show: free() || Boolean(state.away) || Boolean(state.manual),
+          away: Boolean(state.away) && !free() && !state.manual,
+          canPrev: !POS.samePosition(POS.prevPosition(layout, pos), pos),
+          canNext: !POS.samePosition(POS.nextPosition(layout, pos), pos),
+        };
+      },
+      backToLive,
+    },
+  });
+  $('big-open').addEventListener('click', () => big.open());
+  // A tap on the current section, or key F, opens it too.
+  slide.addEventListener('click', (event) => {
+    if (event.target.closest('.follow-section') && !$('big-open').hidden) big.open();
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.altKey || event.ctrlKey || event.metaKey || event.target.closest('input, textarea, select') || big.isOpen()) return;
+    if (event.key.toLowerCase() === 'f' && !$('big-open').hidden) { event.preventDefault(); big.open(); }
+  });
 
   // "Propune o cântare" (public/proposals-ui.js): once the page has its event.
   let proposals = null;
