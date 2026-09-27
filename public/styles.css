@@ -2418,6 +2418,15 @@ dialog.big-lyrics.scrolls .big-body { align-items: flex-start; overflow-y: auto;
 .big-text .lyrics { margin: 0; white-space: pre-line; }
 .big-lines { margin: 0; }
 .big-ended { color: var(--text-muted); }
+/* After "Sfârșit": the pill, then the next item prepared (its section at ~70 % of the lyrics). */
+.big-after { display: flex; flex-direction: column; align-items: center; gap: 0.35em; }
+.big-done { margin: 0; font-size: 1rem; }
+.big-done-pill { display: inline-flex; align-items: center; gap: 4px; padding: 4px 12px; color: var(--on-accent); background: var(--accent-fill); }
+.big-after-title { margin: 0; font-size: 0.8em; line-height: 1.2; }
+.big-after-kicker { color: var(--text-muted); font-weight: 500; }
+.big-after-key { font-size: 0.6em; vertical-align: middle; }
+.big-after-section { font-size: 0.7em; }
+.big-after-section .section-label { font-size: 0.6em; margin-bottom: 0.2em; }
 /* The "next" line: ~1.6x the old size (A− / A+ scale it with the lyrics), one line, 44 px tall,
    clear of the notches. */
 .big-next { box-sizing: border-box; min-height: var(--touch); margin: 0; padding: 8px max(16px, env(safe-area-inset-right, 0px)) 8px max(16px, env(safe-area-inset-left, 0px)); text-align: center; font-size: 1.5rem; line-height: 1.2; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

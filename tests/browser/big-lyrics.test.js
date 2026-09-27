@@ -114,7 +114,7 @@ module.exports = {
       await wait(400);
       check(await at() === 'G.1 ended' && await screen() === 'BLACK', `${tag} E in the view: black, the position stays`);
       b = await big(p);
-      check(/Sfârșitul cântării|End of the song/.test(b.text) && /Luca 2:1-7/.test(b.next), `${tag} the view says the song ended, next is the verse`);
+      check(/Terminat|Ended/.test(b.text) && /Luca 2:1-7/.test(b.text) && /Luca 2:1-7/.test(b.next), `${tag} the view says "✓ Terminat" and prepares the next item (the verse)`, b);
       check(/Conectat|Connected/.test(b.status) && /Împreună|Together/.test(b.status), `${tag} the status line: connection · mode`, b.status);
       await p.keyboard.press('Escape');
       await wait(200);

@@ -333,7 +333,9 @@
       parts.label.textContent = step ? `${itemTitle(item)} · ${step.label}` : itemTitle(item);
 
       if (pos.ended) {
-        parts.text.replaceChildren(el('p', { class: 'big-lines big-ended', text: t(item.type === 'song' ? 'follow.songEnded' : 'follow.itemEnded') }));
+        // After "Sfârșit": a small "✓ Terminat" pill, then the NEXT item prepared, large.
+        parts.text.replaceChildren(await afterEndView(following, renderId));
+        if (renderId !== state.renderId) return;
       } else if (!steps) {
         const lines = String(item.body || '').split('\n');
         parts.text.replaceChildren(el('div', { class: 'big-lines' }, lines.map((line) => el('div', { class: 'lyric-line', text: line || ' ' }))));
@@ -355,6 +357,36 @@
       parts.next.textContent = window.LIVE.nextText(state.items, pos).text;
       scaleNext();
       fit();
+    }
+
+    // The item is over: "✓ Terminat", then what comes next ready to sing / read: a song's
+    // title, key (reader's notation) and first section at ~70 % of the lyrics size (chords per
+    // "Doar text"); a verse / announcement's reference or title and text; at the end of the
+    // programme "Sfârșitul programului". The projector and the phones keep their own texts.
+    async function afterEndView(next, renderId) {
+      const pill = el('p', { class: 'big-done' }, el('span', { class: 'pill big-done-pill', 'data-icon': 'check', text: t('live.endItem.done') }));
+      const box = el('div', { class: 'big-after' }, pill);
+      if (!next) {
+        box.append(el('p', { class: 'big-lines big-ended', text: t('live.nextEnd') }));
+        return box;
+      }
+      const head = el('p', { class: 'big-after-title' }, el('span', { class: 'big-after-kicker', text: t('live.upNext') }), ' ', el('strong', { text: itemTitle(next) }));
+      box.append(head);
+      if (next.type === 'song' && next.songId) {
+        if (next.displayKey && window.NOTATION) head.append(' ', el('span', { class: 'key-badge big-after-key', text: t('options.songKeyShort', { key: window.NOTATION.chord(next.displayKey) }) }));
+        const song = await loadSong(next);
+        if (renderId !== state.renderId) return box;
+        const entry = song && song.arrangement[0];
+        const sectionIndex = entry ? song.sections.findIndex((s) => s.id === entry.sectionId) : -1;
+        if (sectionIndex >= 0) {
+          const view = window.SONG_RENDER.sectionsView([song.sections[sectionIndex]], { textOnly: state.textOnly, headingLevel: 3 })[0];
+          box.append(el('div', { class: 'big-after-section' }, view));
+        }
+      } else {
+        const lines = String(next.body || '').split('\n').filter((line) => line.trim());
+        if (lines.length) box.append(el('div', { class: 'big-after-section big-lines' }, lines.map((line) => el('div', { class: 'lyric-line', text: line }))));
+      }
+      return box;
     }
 
     document.addEventListener('notation:change', () => { if (isOpen()) render(); });
