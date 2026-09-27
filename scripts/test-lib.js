@@ -1475,9 +1475,52 @@ testAsync('media-fetch: https only, no private addresses, redirects checked, byt
   assert.strictEqual(await code('https://cdn.example.org/broken'), 'upstream_error');
   assert.strictEqual(await code('https://cdn.example.org/empty'), 'upstream_error');
   assert.strictEqual(fs.readdirSync(dir).length, 1, 'only the successful download left a file');
-  const slow = () => new Promise(() => {});
+  // a server that never answers: fetch rejects when the timeout signal fires
+  const slow = (url, opts) => new Promise((resolve, reject) => opts.signal.addEventListener('abort', () => reject(Object.assign(new Error('aborted'), { name: 'TimeoutError' }))));
+  // (AbortSignal.timeout's timer is unref'd: a real fetch keeps a socket open, here a timer keeps the loop alive)
+  const keepAlive = setTimeout(() => {}, 1000);
   assert.strictEqual(await (async () => { try { await MF.fetchToTemp('https://cdn.example.org/a.jpg', { temp: temp(), maxBytes: 4096, fetchImpl: slow, lookup, timeoutMs: 50 }); } catch (err) { return err.code; } return 'ok'; })(), 'timeout');
+  clearTimeout(keepAlive);
   fs.rmSync(dir, { recursive: true, force: true });
+});
+
+testAsync('pexels: disabled without a key; items, the HD file, the 10 minute cache, 60 searches an hour', async () => {
+  const P = require('../lib/pexels');
+  const off = P.createPexels({ config: {}, logger: null });
+  assert.deepStrictEqual([off.enabled, off.status()], [false, { enabled: false }]);
+  assert.strictEqual(await off.search(1, { query: 'sky', kind: 'photos' }).then(() => 'ok', (e) => e.code), 'disabled');
+  const files = [{ quality: 'uhd', file_type: 'video/mp4', width: 3840, link: 'u' }, { quality: 'hd', file_type: 'video/mp4', width: 1920, link: 'h' }, { quality: 'sd', file_type: 'video/mp4', width: 960, link: 's' }, { quality: 'hd', file_type: 'video/webm', width: 1280, link: 'w' }];
+  assert.strictEqual(P.pickVideoFile(files).link, 'h', 'the largest MP4 at most 1920 wide');
+  assert.strictEqual(P.pickVideoFile(files.slice(0, 1)), null, 'a 4K-only video is left out');
+  const photo = P.photoItem({ id: 1, width: 4, height: 3, url: 'p', photographer: 'A', photographer_url: 'pa', alt: 'Sky', src: { large2x: 'L2', large: 'L', medium: 'M' } });
+  assert.deepStrictEqual([photo.id, photo.kind, photo.download, photo.thumb, photo.photographer], ['1', 'photos', 'L2', 'M', 'A']);
+  const calls = [];
+  const fetchImpl = async (url, opts) => {
+    calls.push(url);
+    assert.strictEqual(opts.headers.Authorization, 'k');
+    const u = new URL(url);
+    if (u.pathname === '/v1/search') return new Response(JSON.stringify({ photos: [{ id: 7, src: { large: 'L' }, photographer: 'B' }] }), { status: 200 });
+    if (u.pathname === '/videos/search') return new Response(JSON.stringify({ videos: [{ id: 9, duration: 3, image: 'i', user: { name: 'C' }, video_files: files }, { id: 10, image: 'i', video_files: files.slice(0, 1) }] }), { status: 200 });
+    if (u.pathname === '/v1/photos/8') return new Response(JSON.stringify({ id: 8, src: { large: 'L8' } }), { status: 200 });
+    return new Response('', { status: 404 });
+  };
+  const px = P.createPexels({ config: { PEXELS_API_KEY: 'k', PEXELS_API_URL: 'https://api.test/' }, logger: null, fetch: fetchImpl });
+  assert.strictEqual(px.enabled, true);
+  const first = await px.search(1, { query: '  Sky  ', kind: 'photos' });
+  assert.deepStrictEqual([first.cached, first.items.length, first.items[0].photographer], [false, 1, 'B']);
+  assert.ok(/query=Sky&per_page=24&orientation=landscape/.test(calls[0]), calls[0]);
+  const again = await px.search(1, { query: 'sky', kind: 'photos' });
+  assert.deepStrictEqual([again.cached, calls.length], [true, 1], 'the same query (case, spaces aside) is served from the cache');
+  const videos = await px.search(1, { query: 'sky', kind: 'videos' });
+  assert.deepStrictEqual([videos.items.length, videos.items[0].download, videos.items[0].duration], [1, 'h', 3], 'videos without a fitting file are left out');
+  assert.strictEqual((await px.item(1, { id: 7, kind: 'photos' })).download, 'L', 'an item seen in a search needs no lookup');
+  assert.strictEqual((await px.item(1, { id: 8, kind: 'photos' })).download, 'L8', 'else one lookup by id');
+  assert.strictEqual(await px.item(1, { id: 99, kind: 'photos' }).then(() => 'ok', (e) => e.code), 'not_found');
+  assert.strictEqual(await px.search(1, { query: 'a', kind: 'photos' }).then(() => 'ok', (e) => e.code), 'bad_query');
+  for (let i = 0; i < 58; i++) await px.search(1, { query: `q${i}`, kind: 'photos' });
+  assert.strictEqual(await px.search(1, { query: 'one more', kind: 'photos' }).then(() => 'ok', (e) => e.code), 'rate_limited', 'the 61st search of the hour (church 1)');
+  assert.strictEqual(await px.search(2, { query: 'other church', kind: 'photos' }).then(() => 'ok', (e) => e.code), 'ok', 'another church is not limited');
+  assert.strictEqual((await px.search(1, { query: 'sky', kind: 'photos' })).cached, true, 'cached queries still answer');
 });
 
 test('media: image magic bytes; file names and kinds', () => {

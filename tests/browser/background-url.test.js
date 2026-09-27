@@ -64,5 +64,13 @@ module.exports = {
       check(set.status === 200, `${tag} the fetched image can be a song's background`, set.body);
       for (const m of [sky, loop]) await app.api(owner, 'DELETE', `/api/media/${m.id}`);
     }
+    // without PEXELS_API_KEY: no Pexels tab, the API answers 503, Setări says dezactivat
+    const o = await signIn('owner', { width: 1024 });
+    await o.goto(`${app.url}/media`);
+    await o.waitForFunction(() => !/^(Se încarcă|Loading)/.test(document.getElementById('status').textContent));
+    check(await o.isHidden('#pexels-section') && (await app.api(owner, 'GET', '/api/media/pexels/search?q=sky')).status === 503, 'without a key: the Pexels tab is hidden, the API answers 503');
+    await o.goto(`${app.url}/settings`);
+    await o.waitForFunction(() => /\S/.test(document.getElementById('pexels-status').textContent));
+    check(/Pexels: dezactivat/.test(await o.textContent('#pexels-status')), 'Setări: "Pexels: dezactivat"');
   },
 };

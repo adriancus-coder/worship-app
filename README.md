@@ -15,6 +15,8 @@ Open `/setup` on first run to create the admin account and its owner, using the
 
 Email (invitations, password resets) is optional: set `RESEND_API_KEY` and `EMAIL_FROM`
 as described in `docs/EMAIL.md`; without them the app hands out temporary passwords.
+Backgrounds can be added by link or searched on Pexels (`PEXELS_API_KEY`, see
+`docs/BACKGROUNDS.md`); without a key the Pexels tab is hidden.
 
 ## Scripts
 

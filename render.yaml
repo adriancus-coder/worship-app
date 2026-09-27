@@ -31,3 +31,6 @@ services:
         sync: false
       - key: VAPID_SUBJECT
         sync: false
+      # Pexels backgrounds (docs/BACKGROUNDS.md). Unset: the tab is hidden.
+      - key: PEXELS_API_KEY
+        sync: false

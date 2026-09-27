@@ -10,6 +10,7 @@ const { createMediaQuota } = require('../lib/platform');
 
 const { EDITOR_ROLES } = require('../lib/events');
 const { MediaFetchError, fetchToTemp } = require('../lib/media-fetch');
+const { PexelsError } = require('../lib/pexels');
 const asyncRoute = require('../lib/async-route');
 
 // Media library (videos and backgrounds for the projector), scoped to req.adminId.
@@ -40,7 +41,8 @@ function titleFromUrl(url) {
 }
 
 // mediaFetch: tests hand in a stand-in for fetch (fixtures/mock-cdn.js sets global.fetch).
-function createMediaRouter({ db, auth, config, logger, live, storage, mediaFetch = (...args) => globalThis.fetch(...args) }) {
+// pexels: lib/pexels.js (null: the provider is off, /api/media/pexels/* answer 503).
+function createMediaRouter({ db, auth, config, logger, live, storage, pexels = null, mediaFetch = (...args) => globalThis.fetch(...args) }) {
   const router = express.Router();
   const media = createMediaStore(db, config.DATA_DIR);
   const quota = createMediaQuota(db, config.MEDIA_MAX_ADMIN_BYTES); // per church (platform page)
@@ -95,6 +97,7 @@ function createMediaRouter({ db, auth, config, logger, live, storage, mediaFetch
       maxLoopBytes: config.MEDIA_MAX_LOOP_BYTES,
       maxAdminBytes: quota(req.adminId),
       backgroundDefaults: backgrounds.defaults(req.adminId),
+      pexelsEnabled: Boolean(pexels && pexels.enabled), // the "Caută pe Pexels" tab
     });
   });
 
@@ -190,14 +193,11 @@ function createMediaRouter({ db, auth, config, logger, live, storage, mediaFetch
     req.pipe(out);
   });
 
-  // A background from a link (https image JPEG / PNG / WebP or video MP4 / WebM): fetched
-  // by the server (lib/media-fetch.js: 10 s, no private addresses, byte cap), then stored
-  // exactly like an upload (projector-size version for images), with source_url kept.
-  // The same size, quota and disk rules as an upload.
-  router.post('/api/media/from-url', canEdit, asyncRoute(async (req, res) => {
-    const body = req.body || {};
-    const url = typeof body.url === 'string' ? body.url.trim() : '';
-    if (!/^https:\/\//i.test(url)) return res.status(400).json({ error: req.t('errors.mediaFetchHttps') });
+  // A background fetched by the server from a link (Media → "Din link", Pexels): the same
+  // size, quota and disk rules as an upload; lib/media-fetch.js does the download (10 s, no
+  // private addresses, byte cap); then the magic bytes decide image / video and the file is
+  // stored exactly like an upload, with source_url (and a provider's attribution) kept.
+  async function fetchAndStore(req, res, { url, title: wantedTitle, attribution = null, what = 'Background from link' }) {
     const maxFile = Math.max(config.MEDIA_MAX_LOOP_BYTES, config.MEDIA_MAX_IMAGE_BYTES);
     const maxAdmin = quota(req.adminId);
     const room = maxAdmin - media.usedBytes(req.adminId);
@@ -214,9 +214,9 @@ function createMediaRouter({ db, auth, config, logger, live, storage, mediaFetch
       got = await fetchToTemp(url, { temp, maxBytes: limit, fetchImpl: mediaFetch });
     } catch (err) {
       if (!(err instanceof MediaFetchError)) throw err;
-      logger.info(`Background from link refused (admin #${req.adminId}, ${err.code}): ${url.slice(0, 200)}`);
+      logger.info(`${what} refused (admin #${req.adminId}, ${err.code}): ${String(url).slice(0, 200)}`);
       if (err.code === 'too_large') { const [status, error] = tooLarge(); return res.status(status).json({ error }); }
-      const host = (() => { try { return new URL(url).hostname; } catch (e) { return url.slice(0, 60); } })();
+      const host = (() => { try { return new URL(url).hostname; } catch (e) { return String(url).slice(0, 60); } })();
       const codes = { bad_url: 'mediaFetchHttps', blocked_host: 'mediaFetchHttps', private_address: 'mediaFetchPrivate', timeout: 'mediaFetchTimeout', not_found: 'mediaFetchNotFound' };
       return res.status(400).json({ error: req.t(`errors.${codes[err.code] || 'mediaFetchUnreachable'}`, { host }) });
     }
@@ -225,7 +225,7 @@ function createMediaRouter({ db, auth, config, logger, live, storage, mediaFetch
     const image = sniffImage(head);
     const drop = () => fs.rm(temp, { force: true }, () => {});
     if (!video && !image) { drop(); return res.status(400).json({ error: req.t('errors.mediaFetchNotMedia') }); }
-    const title = validateTitle(typeof body.title === 'string' && body.title.trim() ? body.title : titleFromUrl(got.finalUrl), req.t);
+    const title = validateTitle(typeof wantedTitle === 'string' && wantedTitle.trim() ? wantedTitle : titleFromUrl(got.finalUrl), req.t);
     if (title.error) { drop(); return res.status(400).json({ error: title.error }); }
     const done = (item, mime) => {
       logger.info(`Media #${item.id} (${item.kind}) fetched from ${item.sourceHost} by user #${req.user.id} (admin #${req.adminId}, ${mime}, ${size} bytes)`);
@@ -234,15 +234,62 @@ function createMediaRouter({ db, auth, config, logger, live, storage, mediaFetch
     };
     if (video) {
       if (size > config.MEDIA_MAX_LOOP_BYTES) { drop(); return res.status(413).json({ error: req.t('errors.backgroundTooLarge', { image: mb(config.MEDIA_MAX_IMAGE_BYTES), loop: mb(config.MEDIA_MAX_LOOP_BYTES) }) }); }
-      return done(media.addUpload(req.adminId, req.user.id, { title: title.value, temp, mime: video, size, kind: 'loop', sourceUrl: got.finalUrl }), video);
+      return done(media.addUpload(req.adminId, req.user.id, { title: title.value, temp, mime: video, size, kind: 'loop', sourceUrl: got.finalUrl, attribution }), video);
     }
     if (size > config.MEDIA_MAX_IMAGE_BYTES) { drop(); return res.status(413).json({ error: req.t('errors.imageTooLarge', { max: mb(config.MEDIA_MAX_IMAGE_BYTES) }) }); }
     try {
-      done(await media.addImage(req.adminId, req.user.id, { title: title.value, temp, mime: image, sourceUrl: got.finalUrl }), image);
+      done(await media.addImage(req.adminId, req.user.id, { title: title.value, temp, mime: image, sourceUrl: got.finalUrl, attribution }), image);
     } catch (err) {
       logger.info(`Image from link refused (admin #${req.adminId}): ${err.message}`);
       res.status(400).json({ error: req.t('errors.mediaFetchNotMedia') });
     }
+    return undefined;
+  }
+
+  // A background from a link (https image JPEG / PNG / WebP or video MP4 / WebM).
+  router.post('/api/media/from-url', canEdit, asyncRoute(async (req, res) => {
+    const body = req.body || {};
+    const url = typeof body.url === 'string' ? body.url.trim() : '';
+    if (!/^https:\/\//i.test(url)) return res.status(400).json({ error: req.t('errors.mediaFetchHttps') });
+    return fetchAndStore(req, res, { url, title: body.title });
+  }));
+
+  // Pexels (lib/pexels.js, docs/BACKGROUNDS.md): server-side search (cached, rate limited)
+  // and "Adaugă" (the projector-size photo or the SD / HD video, with attribution).
+  const pexelsError = (req, res, err) => {
+    if (!(err instanceof PexelsError)) throw err;
+    if (err.code === 'disabled') return res.status(503).json({ code: 'pexelsDisabled', error: req.t('errors.pexelsDisabled') });
+    if (err.code === 'rate_limited') { res.set('Retry-After', String(err.retryAfter)); return res.status(429).json({ error: req.t('errors.pexelsRateLimited') }); }
+    if (err.code === 'bad_query') return res.status(400).json({ error: req.t('errors.pexelsQueryTooShort') });
+    if (err.code === 'not_found') return res.status(404).json({ error: req.t('errors.pexelsNotFound') });
+    logger.warn(`Pexels ${err.code}: ${err.message}`);
+    return res.status(502).json({ error: req.t('errors.pexelsUnavailable') });
+  };
+
+  router.get('/api/media/pexels/search', canEdit, asyncRoute(async (req, res) => {
+    if (!pexels) return res.status(503).json({ code: 'pexelsDisabled', error: req.t('errors.pexelsDisabled') });
+    try {
+      const out = await pexels.search(req.adminId, { query: req.query.q, kind: req.query.kind });
+      res.json({ items: out.items, cached: out.cached, suggestions: pexels.SUGGESTIONS });
+    } catch (err) {
+      pexelsError(req, res, err);
+    }
+  }));
+
+  router.post('/api/media/pexels/add', canEdit, asyncRoute(async (req, res) => {
+    if (!pexels) return res.status(503).json({ code: 'pexelsDisabled', error: req.t('errors.pexelsDisabled') });
+    const body = req.body || {};
+    let item;
+    try {
+      item = await pexels.item(req.adminId, { id: body.id, kind: body.kind });
+    } catch (err) {
+      return pexelsError(req, res, err);
+    }
+    const title = item.alt || (item.kind === 'videos' ? `Pexels video ${item.id}` : `Pexels ${item.id}`);
+    return fetchAndStore(req, res, {
+      url: item.download, title: title.slice(0, 120), what: 'Pexels download',
+      attribution: { provider: 'pexels', photographer: item.photographer, photographerUrl: item.photographerUrl, url: item.pageUrl },
+    });
   }));
 
   router.post('/api/media/url', canEdit, (req, res) => {

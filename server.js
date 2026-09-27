@@ -63,6 +63,8 @@ logger.info(`Storage: data ${usage.dataBytes} bytes, disk free ${usage.freeBytes
 const auth = createAuth({ db, config });
 // Outgoing email (Resend); disabled without RESEND_API_KEY + EMAIL_FROM (lib/email.js).
 const email = createEmail({ config, logger });
+const { createPexels } = require('./lib/pexels');
+const pexels = createPexels({ config, logger });
 logger.info(email.enabled ? `Email: enabled, from ${config.EMAIL_FROM}` : 'Email: disabled (RESEND_API_KEY / EMAIL_FROM not set)');
 const invites = createInviteService({ db, config, logger, email }); // invitation / reset links
 const SESSION_CLEANUP_MS = 60 * 60 * 1000;
@@ -162,8 +164,8 @@ setInterval(() => notifications.tick().catch((err) => logger.error('reminder tic
 app.use(createPlatformRouter({ db, auth, config, logger, live, screensHub, storage, email, invites }));
 app.use(createInvitesRouter({ db, auth, config, logger, live, email, invites }));
 app.use(createScreensRouter({ db, auth, config, logger, screensHub }));
-app.use(createSettingsRouter({ db, auth, config, logger, screensHub, live, storage, email }));
-app.use(createMediaRouter({ db, auth, config, logger, live, storage }));
+app.use(createSettingsRouter({ db, auth, config, logger, screensHub, live, storage, email, pexels }));
+app.use(createMediaRouter({ db, auth, config, logger, live, storage, pexels }));
 app.use(createBackupRouter({ db, auth, config, logger, storage }));
 app.use(createPagesRouter({ db, auth, sendPage }));
 

@@ -41,6 +41,7 @@
     renderMargin(res.body.safeMargin);
     renderTimeFormat(res.body.timeFormat);
     renderEmail(res.body.email);
+    renderPexels(res.body.pexels);
     renderBackup(res.body.backup);
     renderStorage(res.body.storage);
     await renderBackgrounds(res.body.backgroundDefaults || {});
@@ -227,6 +228,15 @@
     if (clock) clockPanel.update({ clock, enabled: true });
   }
 
+  // Pexels: "activ" / "dezactivat" (lib/pexels.js, docs/BACKGROUNDS.md), like the email card.
+  let pexelsInfo = null;
+  function renderPexels(info) {
+    pexelsInfo = info || pexelsInfo;
+    if (!pexelsInfo) return;
+    $('pexels-status').textContent = t(pexelsInfo.enabled ? 'settings.pexelsOn' : 'settings.pexelsOff');
+    $('pexels-hint').textContent = t(pexelsInfo.enabled ? 'settings.pexelsHintOn' : 'settings.pexelsHintOff');
+  }
+
   // Email: "activ (from)" / "dezactivat" with the test button (lib/email.js).
   let emailInfo = null;
   function renderEmail(info) {
@@ -333,6 +343,7 @@
     $('time-format-message').textContent = '';
     $('email-message').textContent = '';
     renderEmail(null);
+    renderPexels(null);
     clockPanel.render();
     renderBackup(null);
     renderStorage(null);

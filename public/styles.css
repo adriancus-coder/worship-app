@@ -1735,6 +1735,18 @@ button.op-step:disabled { opacity: 1; cursor: default; }
 .bg-url-form .input-row input { flex: 1 1 14rem; min-width: 0; }
 .bg-url-form .input-row button { flex: 0 0 auto; }
 .media-source { font-size: 0.8125rem; }
+/* Media: "Caută pe Pexels" */
+.pexels-form .input-row { display: flex; gap: 8px; }
+.pexels-form .input-row input { flex: 1 1 10rem; min-width: 0; }
+.pexels-tools { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; }
+.pexels-suggestions { display: flex; flex-wrap: wrap; gap: 6px; }
+.pexels-chip { min-height: var(--touch); padding: 6px 12px; }
+.pexels-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.pexels-item { display: flex; flex-direction: column; gap: 6px; min-width: 0; padding: 8px; background: var(--background); border: 1px solid var(--border); border-radius: var(--radius); }
+.pexels-thumb { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 4px; background: var(--surface-2); }
+.pexels-by, .pexels-duration { font-size: 0.8125rem; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pexels-item button { min-height: var(--touch); margin-top: auto; }
+#pexels-status:empty { display: none; }
 .team-panel { padding-top: 4px; } /* the Poziții / Indisponibilități panels scroll like the list (list panes) */
 .directory-list { margin-top: 0; }
 .team-panel-heading { margin: 0 0 8px; font-size: 1.0625rem; }

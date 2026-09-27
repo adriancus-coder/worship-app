@@ -45,6 +45,10 @@
     $('upload-hint').textContent = t('media.uploadHint', { max: mb(data.maxFileBytes) });
     $('bg-hint').textContent = t('media.bgHint', { image: mb(data.maxImageBytes), loop: mb(data.maxLoopBytes) });
     for (const button of document.querySelectorAll('[data-filter]')) button.setAttribute('aria-pressed', String(button.dataset.filter === state.filter));
+    // "Caută pe Pexels": only when the server has a key (lib/pexels.js).
+    $('pexels-section').hidden = !data.pexelsEnabled;
+    if (data.pexelsEnabled && !pexels.suggestions.length) pexels.suggestions = ['sky', 'light', 'nature', 'abstract', 'worship'];
+    renderPexels();
     const shown = data.media.filter((item) => state.filter === 'all' || item.category === state.filter);
     setStatus(data.media.length ? (shown.length ? '' : t('media.emptyFilter')) : t('media.empty'));
     $('media-list').replaceChildren(...shown.map((item) => el('li', { class: 'screen-row media-row' },
@@ -52,7 +56,11 @@
       el('span', { class: 'screen-text' },
         el('span', { class: 'screen-name', text: item.title }),
         el('span', { class: 'screen-meta', text: describe(item) }),
-        item.sourceHost ? el('span', { class: 'screen-meta media-source', text: t('media.source', { host: item.sourceHost }) }) : null),
+        // a provider's file: "Foto: Name · Pexels" (a link to the page); else "sursă: host"
+        item.attribution && item.attribution.provider === 'pexels'
+          ? el('span', { class: 'screen-meta media-source' }, t('media.attribution', { name: item.attribution.photographer || 'Pexels' }), ' · ',
+            el('a', { href: item.attribution.url || 'https://www.pexels.com', target: '_blank', rel: 'noopener noreferrer', text: 'Pexels' }))
+          : (item.sourceHost ? el('span', { class: 'screen-meta media-source', text: t('media.source', { host: item.sourceHost }) }) : null)),
       el('span', { class: 'screen-tools' },
         el('button', { type: 'button', class: 'secondary', 'data-icon': 'edit', text: t('screens.rename'), 'aria-label': t('media.renameLabel', { title: item.title }), onclick: () => openRename(item) }),
         el('button', { type: 'button', class: 'secondary', 'data-icon': 'close', text: t('media.delete'), 'aria-label': t('media.deleteLabel', { title: item.title }), onclick: () => openDelete(item) })))));
@@ -156,6 +164,85 @@
       button.disabled = false;
     }
   });
+
+  // --- Pexels -----------------------------------------------------------------------------
+
+  const pexels = { kind: 'photos', items: [], query: '', busy: null, added: new Map(), suggestions: [] };
+
+  function renderPexels() {
+    const section = $('pexels-section');
+    if (section.hidden) return;
+    for (const button of document.querySelectorAll('#pexels-section [data-kind]')) button.setAttribute('aria-pressed', String(button.dataset.kind === pexels.kind));
+    $('pexels-suggestions').replaceChildren(...pexels.suggestions.map((word) => el('button', {
+      type: 'button', class: 'secondary pexels-chip', text: word, onclick: () => { $('pexels-q').value = word; searchPexels(); },
+    })));
+    $('pexels-grid').replaceChildren(...pexels.items.map((item) => {
+      const key = `${item.kind}:${item.id}`;
+      const added = pexels.added.get(key);
+      const busy = pexels.busy === key;
+      return el('li', { class: 'pexels-item' },
+        el('img', { class: 'pexels-thumb', src: item.thumb, alt: item.alt || '', loading: 'lazy' }),
+        el('span', { class: 'pexels-by', text: t('media.pexelsBy', { name: item.photographer || 'Pexels' }) }),
+        item.kind === 'videos' && item.duration ? el('span', { class: 'pexels-duration', text: t('media.pexelsDuration', { s: item.duration }) }) : null,
+        el('button', {
+          type: 'button', class: added ? 'secondary result-done' : 'secondary', 'data-icon': added ? 'check' : 'plus', disabled: added || busy,
+          'aria-label': t('media.pexelsAddLabel', { name: item.photographer || item.id }),
+          onclick: () => addPexels(item),
+        }, busy ? el('span', { class: 'spinner', 'aria-hidden': 'true' }) : null, added ? t('media.pexelsAdded') : t('media.pexelsAdd')));
+    }));
+  }
+
+  async function searchPexels() {
+    const q = $('pexels-q').value.trim();
+    if (q.length < 2) { message('pexels-message', t('errors.pexelsQueryTooShort'), 'error'); return; }
+    message('pexels-message', '');
+    $('pexels-status').textContent = t('media.pexelsSearching');
+    $('pexels-search').disabled = true;
+    try {
+      const res = await api(`/api/media/pexels/search?q=${encodeURIComponent(q)}&kind=${pexels.kind}`);
+      if (!res.ok) { $('pexels-status').textContent = ''; return message('pexels-message', res.body.error || t('common.networkError'), 'error'); }
+      pexels.items = res.body.items;
+      pexels.query = q;
+      if (res.body.suggestions) pexels.suggestions = res.body.suggestions;
+      $('pexels-status').textContent = pexels.items.length ? t('media.pexelsResults', { n: pexels.items.length, q }) : t('media.pexelsNoResults', { q });
+      renderPexels();
+    } catch (err) {
+      $('pexels-status').textContent = '';
+      message('pexels-message', t('common.networkError'), 'error');
+    } finally {
+      $('pexels-search').disabled = false;
+    }
+  }
+
+  async function addPexels(item) {
+    const key = `${item.kind}:${item.id}`;
+    pexels.busy = key;
+    message('pexels-message', t('media.pexelsAdding'));
+    renderPexels();
+    try {
+      const res = await api('/api/media/pexels/add', { method: 'POST', body: { id: item.id, kind: item.kind } });
+      if (!res.ok) return message('pexels-message', res.body.error || t('common.networkError'), 'error');
+      pexels.added.set(key, res.body.media.id);
+      message('pexels-message', t('media.pexelsStored', { title: res.body.media.title, name: item.photographer || 'Pexels' }), 'success');
+      await load();
+    } catch (err) {
+      message('pexels-message', t('common.networkError'), 'error');
+    } finally {
+      pexels.busy = null;
+      renderPexels();
+    }
+  }
+
+  $('pexels-form').addEventListener('submit', (event) => { event.preventDefault(); searchPexels(); });
+  for (const button of document.querySelectorAll('#pexels-section [data-kind]')) {
+    button.addEventListener('click', () => {
+      pexels.kind = button.dataset.kind;
+      pexels.items = [];
+      $('pexels-status').textContent = '';
+      renderPexels();
+      if ($('pexels-q').value.trim().length >= 2) searchPexels();
+    });
+  }
 
   // --- links ------------------------------------------------------------------------
 

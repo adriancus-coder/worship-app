@@ -66,6 +66,29 @@
         <p id="url-message" class="message" role="status" aria-live="polite"></p>
       </form>
 
+      <!-- "Caută pe Pexels" (lib/pexels.js): shown only when the server has PEXELS_API_KEY. -->
+      <section class="pair-form media-form pexels-section" id="pexels-section" aria-labelledby="pexels-heading" hidden>
+        <h2 id="pexels-heading" data-i18n="media.pexelsHeading"></h2>
+        <p class="hint" data-i18n="media.pexelsHint"></p>
+        <form id="pexels-form" class="pexels-form" novalidate>
+          <div class="input-row search-row">
+            <label for="pexels-q" class="sr-only" data-i18n="media.pexelsSearchLabel"></label>
+            <input type="search" id="pexels-q" maxlength="80" enterkeyhint="search" autocomplete="off" autocapitalize="off" spellcheck="false">
+            <button type="submit" class="secondary" id="pexels-search" data-icon="search" data-i18n="media.pexelsSearch"></button>
+          </div>
+        </form>
+        <div class="pexels-tools">
+          <div class="pexels-suggestions" id="pexels-suggestions" role="group" data-i18n-aria-label="media.pexelsSuggestions"></div>
+          <div class="choice-group pexels-kind" role="group" data-i18n-aria-label="media.pexelsKindLabel">
+            <button type="button" data-kind="photos" aria-pressed="true" data-i18n="media.pexelsPhotos"></button>
+            <button type="button" data-kind="videos" aria-pressed="false" data-i18n="media.pexelsVideos"></button>
+          </div>
+        </div>
+        <p id="pexels-status" class="muted" role="status" aria-live="polite"></p>
+        <p id="pexels-message" class="message" role="status" aria-live="polite"></p>
+        <ul id="pexels-grid" class="pexels-grid"></ul>
+      </section>
+
       <div class="pane-heading media-list-head">
         <h2 id="list-heading" data-i18n="media.listHeading"></h2>
         <div class="choice-group media-filters" role="group" data-i18n-aria-label="media.filterLabel">

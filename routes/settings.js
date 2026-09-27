@@ -15,7 +15,7 @@ const { createBackupService } = require('../lib/backup');
 // Admin settings (owner only): the church logo shown by the projector and the default
 // chord notation.
 // GET /api/logo/:file serves it to the users of that admin and to its paired screens.
-function createSettingsRouter({ db, auth, config, logger, screensHub, live, storage, email }) {
+function createSettingsRouter({ db, auth, config, logger, screensHub, live, storage, email, pexels = null }) {
   const router = express.Router();
   const logos = createLogoStore(db, config.DATA_DIR);
   const screens = createScreenStore(db);
@@ -48,6 +48,7 @@ function createSettingsRouter({ db, auth, config, logger, screensHub, live, stor
       backup: backups.lastBackup(req.adminId),
       storage: storage.usage(),
       email: email.status(), // { enabled, from }
+      pexels: pexels ? pexels.status() : { enabled: false }, // { enabled } (lib/pexels.js)
     });
   });
 
