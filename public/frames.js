@@ -93,7 +93,7 @@
   // The clock part of a frame: settings + timezone, hidden while a video plays and while a
   // song section (lyrics) is on the projector; black, logo, idle, verses, announcements and
   // titles keep it. The settings themselves (toggle / position / size) are untouched.
-  const CLOCK_HIDDEN_KINDS = ['video', 'lyrics'];
+  const CLOCK_HIDDEN_KINDS = ['video', 'lyrics', 'translation'];
   function clockFrame(clock, kind) {
     if (!clock) return null;
     const c = normalizeClock(clock);
@@ -109,7 +109,7 @@
   // clock: the church default clock (+ timeZone) for the idle screen; live frames use state.clock.
   // safeMargin: % of each edge kept free of text, logo and clock (0-12; overscan), on every frame.
   // fitMin: the lyrics auto-fit minimum (% of the maximum size, 30-100; LYRICS_FIT_MIN_PCT).
-  function projectorFrame(state, event, songs, { logoUrl = null, videoMedia = null, backgrounds = null, clock = null, safeMargin = DEFAULT_SAFE_MARGIN, fitMin = DEFAULT_FIT_MIN } = {}) {
+  function projectorFrame(state, event, songs, { logoUrl = null, videoMedia = null, backgrounds = null, clock = null, safeMargin = DEFAULT_SAFE_MARGIN, fitMin = DEFAULT_FIT_MIN, translation = null } = {}) {
     const margin = Number.isInteger(safeMargin) && safeMargin >= 0 && safeMargin <= 12 ? safeMargin : DEFAULT_SAFE_MARGIN;
     const fit = Number.isInteger(fitMin) && fitMin >= 30 && fitMin <= 100 ? fitMin : DEFAULT_FIT_MIN;
     if (!state || state.status !== 'live') {
@@ -127,7 +127,16 @@
       const kind = video && (v.state === 'playing' || v.state === 'paused') ? 'video' : 'black';
       return { kind, ...base, clock: clockFrame(state.clock || null, kind) };
     }
-    if (source !== 'content') return { kind: 'black', ...base }; // translation: stage 8
+    // Translation (bridge, SV -> worship): the operator picked "Traducere · <limbă>". The
+    // translated text streams over the bridge and is merged here (lines + partial). Nothing
+    // translated yet, or the bridge dropped: an empty translation frame (black behind), never
+    // a switch back to lyrics on its own.
+    if (source === 'translation') {
+      const lang = state.projector.translationLang || null;
+      const lines = translation && Array.isArray(translation.lines) ? translation.lines : [];
+      return { kind: 'translation', lang, lines, partial: Boolean(translation && translation.partial), ...base, clock: clockFrame(state.clock || null, 'translation') };
+    }
+    if (source !== 'content') return { kind: 'black', ...base };
     // The projector follows the worship position until an operator takes it over (stage 6).
     const pos = state.projector.follows === 'operator'
       ? { itemId: state.projector.itemId, step: state.projector.step, ended: state.projector.ended }

@@ -289,6 +289,13 @@
         case 'lyrics':
           box.append(linesBlock(frame.lines, 'projector-lyrics'));
           break;
+        case 'translation': {
+          // Bridge (SV -> worship): the translated lines, lighter while still in progress.
+          const block = linesBlock(frame.lines && frame.lines.length ? frame.lines : [' '], 'projector-lyrics projector-translation');
+          if (frame.partial) block.classList.add('is-partial');
+          box.append(block);
+          break;
+        }
         case 'verse':
           if (frame.reference) box.append(el('div', 'projector-reference', frame.reference));
           if (frame.text) box.append(linesBlock(frame.text.split('\n'), 'projector-body'));
@@ -333,7 +340,7 @@
     // What to put on the stage for a frame; null = black.
     async function content(frame) {
       if (frame.kind === 'pattern') return patternBox(frame);
-      if (frame.kind === 'lyrics' || frame.kind === 'verse' || frame.kind === 'announcement' || frame.kind === 'title') {
+      if (frame.kind === 'lyrics' || frame.kind === 'verse' || frame.kind === 'announcement' || frame.kind === 'title' || frame.kind === 'translation') {
         return textBox(frame);
       }
       if ((frame.kind === 'logo' || frame.kind === 'idle') && frame.logoUrl) {
@@ -356,8 +363,21 @@
     // The same picture: the version, a prepared video (its own layer), the background and the
     // clock (their own layers) do not count, except for the preview's video placeholder.
     const picture = (f) => JSON.stringify({ ...f, version: 0, background: undefined, nextBackground: undefined, clock: undefined,
+      // A translation frame keeps the same picture as its text streams in (kind + lang); the
+      // lines are updated in place (no re-fade). Every other kind keeps its lines in the picture.
+      lines: f.kind === 'translation' ? undefined : f.lines,
+      partial: undefined,
       video: f.kind === 'video' && videoPlaceholder ? f.video : undefined });
     const sameFrame = (a, b) => a && b && picture(a) === picture(b);
+
+    // Update the translated lines in place, so a streaming translation does not re-fade.
+    function updateTranslationLines(frame) {
+      const block = stage.querySelector('.projector-translation');
+      if (!block) return;
+      block.classList.toggle('is-partial', Boolean(frame.partial));
+      block.replaceChildren(...(frame.lines && frame.lines.length ? frame.lines : [' ']).map((line) => el('div', 'projector-line', line || ' ')));
+      fit();
+    }
 
     async function show(frame) {
       if (!frame) return;
@@ -368,6 +388,7 @@
       if (frame.nextBackground) load(frame.nextBackground);
       if (sameFrame(frame, current)) {
         current = frame;
+        if (frame.kind === 'translation') updateTranslationLines(frame);
         return;
       }
       current = frame;
@@ -402,7 +423,7 @@
 
   // A frame shows lyrics / text (the fullscreen hint must never cover it).
   function isContent(frame) {
-    return Boolean(frame) && ['lyrics', 'verse', 'announcement', 'title', 'video'].includes(frame.kind);
+    return Boolean(frame) && ['lyrics', 'verse', 'announcement', 'title', 'video', 'translation'].includes(frame.kind);
   }
 
   window.PROJECTOR_RENDER = { create, isContent };

@@ -831,6 +831,44 @@ test('projector frames: sources, items, no chords, idle', () => {
   assert.strictEqual(projectorFrame({ ...state(1, 0), status: 'finished' }, { items }, new Map()).kind, 'idle');
 });
 
+test('projector frames: translation source (bridge SV -> worship)', () => {
+  const { projectorFrame } = require('../lib/projector');
+  const base = { version: 4, eventId: 3, status: 'live', worship: { itemId: 1, step: 0 },
+    projector: { follows: 'worship', itemId: null, step: 0, source: 'translation', translationLang: 'en' } };
+  // The live translated text is merged in from the bridge; the clock is hidden (like lyrics).
+  assert.deepStrictEqual(projectorFrame(base, { items: [] }, new Map(), { translation: { lines: ['Holy', 'is the Lord'], partial: false } }),
+    { kind: 'translation', lang: 'en', lines: ['Holy', 'is the Lord'], partial: false, version: 4, eventId: 3, background: null, clock: null, safeMargin: 5, fitMin: 60 });
+  // A partial is flagged; nothing translated yet (or the bridge dropped) is an empty frame.
+  assert.deepStrictEqual(projectorFrame(base, { items: [] }, new Map(), { translation: { lines: ['Holy'], partial: true } }).partial, true);
+  assert.deepStrictEqual(projectorFrame(base, { items: [] }, new Map(), {}), { kind: 'translation', lang: 'en', lines: [], partial: false, version: 4, eventId: 3, background: null, clock: null, safeMargin: 5, fitMin: 60 });
+});
+
+test('live store: translation projector source keeps the picked language', () => {
+  const Database = require('better-sqlite3');
+  const { runMigrations } = require('../lib/db');
+  const L = require('../lib/live');
+  const db = new Database(':memory:');
+  db.pragma('foreign_keys = ON');
+  runMigrations(db);
+  db.prepare("INSERT INTO admins (id, name, created_at) VALUES (1, 'A', 0)").run();
+  const songId = Number(db.prepare("INSERT INTO songs (admin_id, title, title_norm, created_at, updated_at) VALUES (1, 'S', 's', 0, 0)").run().lastInsertRowid);
+  db.prepare("INSERT INTO song_sections (song_id, admin_id, position, type, content, content_hash) VALUES (?, 1, 0, 'verse', 'x', 'h')").run(songId);
+  const eventId = Number(db.prepare("INSERT INTO events (admin_id, name, event_date, status, created_at, updated_at) VALUES (1, 'E', '2026-10-04', 'planned', 0, 0)").run().lastInsertRowid);
+  db.prepare("INSERT INTO setlist_items (event_id, admin_id, position, type, song_id) VALUES (?, 1, 0, 'song', ?)").run(eventId, songId);
+  const store = L.createLiveStore(db);
+  store.command(1, eventId, { type: 'event.start' }, undefined, 'owner');
+  store.command(1, eventId, { type: 'projector.source', source: 'translation', lang: 'EN' }, undefined, 'owner');
+  let snap = store.snapshot(1, eventId);
+  assert.strictEqual(snap.projector.source, 'translation');
+  assert.strictEqual(snap.projector.translationLang, 'en', 'lower-cased and kept');
+  assert.throws(() => store.command(1, eventId, { type: 'projector.source', source: 'translation', lang: '??' }, undefined, 'owner'), /badCommand/);
+  // Leaving translation keeps the last language stored (re-picking is easy); source changes.
+  store.command(1, eventId, { type: 'projector.source', source: 'black' }, undefined, 'owner');
+  snap = store.snapshot(1, eventId);
+  assert.deepStrictEqual([snap.projector.source, snap.projector.translationLang], ['black', 'en']);
+  db.close();
+});
+
 test('logo: type from magic bytes only (PNG, JPEG, WebP; never SVG)', () => {
   const { sniff, isLogoFile } = require('../lib/logo');
   const pad = (bytes) => Buffer.concat([Buffer.from(bytes), Buffer.alloc(16)]);
@@ -2246,6 +2284,55 @@ testAsync('bridge exchange / revoke / status: happy paths and error mapping', as
   assert.deepStrictEqual(await client.status('https://dev.sanctuaryvoice.com', 'tok-123'), { connected: true, svEventId: 'ev-9', targetLanguages: ['en'], expiresAt: 222, lastSeenAt: 333 });
   routes.set('GET /api/bridge/status', () => fakeResponse(401, '{}'));
   await assert.rejects(client.status('https://dev.sanctuaryvoice.com', 'tok-123'), (e) => e.code === 'inactive');
+});
+
+testAsync('bridge hub: connect opens the SV socket, translations feed the projector, gated by dir_in', async () => {
+  const Database = require('better-sqlite3');
+  const { runMigrations } = require('../lib/db');
+  const { createBridge } = require('../lib/bridge');
+  const db = new Database(':memory:');
+  db.pragma('foreign_keys = ON');
+  runMigrations(db);
+  db.prepare("INSERT INTO admins (id, name, created_at) VALUES (1, 'A', 0)").run();
+  const eventId = Number(db.prepare("INSERT INTO events (admin_id, name, event_date, status, created_at, updated_at) VALUES (1, 'E', '2026-10-04', 'live', 0, 0)").run().lastInsertRowid);
+
+  const handlers = {};
+  const socket = { on: (ev, fn) => { handlers[ev] = fn; }, removeAllListeners: () => {}, disconnect: () => {}, emit: () => {} };
+  const ioClient = () => socket;
+  const updates = [];
+  const screensHub = { update: (adminId) => updates.push(adminId) };
+  const fetchImpl = async () => fakeResponse(200, JSON.stringify({ ok: true, bridgeToken: 'tok', svEventId: 'sv-1', targetLanguages: ['en', 'de'], expiresAt: Date.now() + 3600000 }));
+  const logger = { info: () => {}, warn: () => {}, error: () => {} };
+  const bridge = createBridge({ db, config: {}, logger, fetchImpl, ioClient, screensHub });
+
+  const st = await bridge.connect(1, eventId, { svBaseUrl: 'https://dev.sanctuaryvoice.com', code: 'abc23d' });
+  assert.strictEqual(st.connected, true);
+  assert.strictEqual(st.connection.svEventId, 'sv-1');
+  assert.ok(typeof handlers['translation.final'] === 'function', 'SV stream handlers wired');
+
+  // A final translation arrives, but dir_in is OFF: nothing is fed to the projector.
+  handlers['translation.final']({ id: 'e1', translations: { en: 'Holy\nis the Lord', de: 'Heilig' } });
+  assert.strictEqual(bridge.translationFor(1, eventId, 'en'), null, 'no text while dir_in off');
+  assert.strictEqual(updates.length, 0, 'no projector re-render while dir_in off');
+
+  // Turn dir_in on: the stored translation now feeds the projector for the picked language.
+  bridge.setSwitches(1, eventId, { dirIn: true, dirOut: false });
+  assert.deepStrictEqual(bridge.translationFor(1, eventId, 'en'), { lines: ['Holy', 'is the Lord'], partial: false });
+  assert.deepStrictEqual(bridge.translationFor(1, eventId, 'de'), { lines: ['Heilig'], partial: false });
+  assert.strictEqual(bridge.translationFor(2, eventId, 'en'), null, 'scoped to the connection admin');
+  handlers['translation.partial']({ entryId: 'e2', partial: true, translations: { en: 'Holy is' } });
+  assert.deepStrictEqual(bridge.translationFor(1, eventId, 'en'), { lines: ['Holy is'], partial: true });
+  assert.ok(updates.includes(1), 'a partial re-renders the projector when dir_in is on');
+
+  // dir_out needs the church consent first.
+  assert.throws(() => bridge.setSwitches(1, eventId, { dirIn: true, dirOut: true }), (e) => e.code === 'needs_consent');
+  bridge.recordConsent(1, 1);
+  assert.doesNotThrow(() => bridge.setSwitches(1, eventId, { dirIn: true, dirOut: true }));
+
+  await bridge.disconnect(1, eventId);
+  assert.strictEqual(bridge.translationFor(1, eventId, 'en'), null, 'forgotten after disconnect');
+  assert.strictEqual(bridge.status(1, eventId).connected, false);
+  db.close();
 });
 
 (async () => {

@@ -85,7 +85,9 @@ const live = createLiveHub({ db, auth, logger, screensHub, hooks: liveHooks });
 // The bridge to Sanctuary Voice (stage 8): server-to-server only. socket.io-client is the
 // server-side socket to SV's /bridge namespace; global fetch handles the REST handshake.
 const { io: ioClient } = require('socket.io-client');
-const bridge = createBridge({ db, config, logger, ioClient });
+const bridge = createBridge({ db, config, logger, ioClient, screensHub });
+// The projector's translation source reads its live text from the bridge (SV -> worship).
+screensHub.setTranslationSource((adminId, eventId, lang) => bridge.translationFor(adminId, eventId, lang));
 
 const app = express();
 app.disable('x-powered-by');

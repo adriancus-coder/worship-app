@@ -34,6 +34,9 @@ function createScreensHub({ db, logger, config }) {
   const videoStatus = new Map(); // adminId -> Map(screenId -> last playback status of that screen)
   const patterns = new Map(); // screenId -> the labels of the test pattern it shows (until closed / the next live frame)
   let onVideoEvent = () => {};
+  // The latest translated text for the projector's translation source (bridge, SV -> worship):
+  // (adminId, eventId, lang) -> { lines, partial } or null. Set by the bridge (lib/bridge).
+  let translationSource = () => null;
   let nsp = null;
   let mainIo = null;
 
@@ -85,6 +88,10 @@ function createScreensHub({ db, logger, config }) {
       logoUrl: logoUrl(adminId),
       videoMedia: videoMedia(adminId, state.video, found ? found.items : []),
       backgrounds: backgrounds.forEvent(adminId, eventId, state.backgroundOverride),
+      // The live translated text when the projector source is "Traducere · <limbă>" (bridge).
+      translation: state.projector.source === 'translation'
+        ? translationSource(adminId, eventId, state.projector.translationLang)
+        : null,
     });
   }
 
@@ -206,6 +213,12 @@ function createScreensHub({ db, logger, config }) {
     onVideoEvent = handler;
   }
 
+  // The bridge (lib/bridge) provides the live translated text for the translation projector
+  // source and calls update(adminId) when it changes, so screens re-render the new text.
+  function setTranslationSource(fn) {
+    translationSource = typeof fn === 'function' ? fn : (() => null);
+  }
+
   // Where the video is, for a pause: the furthest position any screen reported.
   function lastVideoPosition(adminId) {
     const all = [...(videoStatus.get(adminId) || new Map()).values()];
@@ -276,7 +289,7 @@ function createScreensHub({ db, logger, config }) {
   // pages compute the same frames offline) and the editor's "Implicit (…)".
   const backgroundsFor = (adminId, eventId, override) => backgrounds.forEvent(adminId, eventId, override);
 
-  return { attach, update, marginChanged, testPattern, showsPattern, frameFor, onlineIds, revoked, suspend, watch, setVideoHandler, lastVideoPosition, backgroundsFor };
+  return { attach, update, marginChanged, testPattern, showsPattern, frameFor, onlineIds, revoked, suspend, watch, setVideoHandler, setTranslationSource, lastVideoPosition, backgroundsFor };
 }
 
 module.exports = { NAMESPACE, screensRoom, createScreensHub };
