@@ -2360,6 +2360,9 @@ testAsync('bridge worship -> SV: song.current / song.clear on main-position chan
   await bridge.connect(1, eventId, { svBaseUrl: 'https://dev.sanctuaryvoice.com', code: 'abc23d' });
   live.command(1, eventId, { type: 'event.start' }, undefined, 'owner');
 
+  const songs = () => emitted.filter(([ev]) => ev === 'song.current' || ev === 'song.clear');
+  const setlists = () => emitted.filter(([ev]) => ev === 'setlist.sections');
+
   // dir_out off: nothing is sent even as the position moves.
   bridge.onLiveChanged(1, eventId);
   assert.strictEqual(emitted.length, 0, 'silent while dir_out off');
@@ -2367,32 +2370,39 @@ testAsync('bridge worship -> SV: song.current / song.clear on main-position chan
   // Consent + dir_out on: the current section goes out at once (chords stripped, lang ro).
   bridge.recordConsent(1, 1);
   bridge.setSwitches(1, eventId, { dirIn: false, dirOut: true });
-  assert.strictEqual(emitted.length, 1);
-  assert.strictEqual(emitted[0][0], 'song.current');
-  assert.deepStrictEqual([emitted[0][1].title, emitted[0][1].label, emitted[0][1].text, emitted[0][1].lang], ['Sfânt', 'Strofa 1', 'Ne ridici din noaptea grea', 'ro']);
-  assert.match(emitted[0][1].hash, /^[0-9a-f]{64}$/);
+  assert.strictEqual(songs().length, 1);
+  assert.deepStrictEqual([songs()[0][0], songs()[0][1].title, songs()[0][1].label, songs()[0][1].text, songs()[0][1].lang], ['song.current', 'Sfânt', 'Strofa 1', 'Ne ridici din noaptea grea', 'ro']);
+  assert.match(songs()[0][1].hash, /^[0-9a-f]{64}$/);
+
+  // B4: turning dir_out on also pre-translates the whole setlist (both song sections, deduped,
+  // the same hashes song.current uses).
+  assert.strictEqual(setlists().length, 1, 'setlist.sections sent when dir_out turns on');
+  const pre = setlists()[0][1];
+  assert.deepStrictEqual(pre.map((s) => s.text), ['Ne ridici din noaptea grea', 'Sfânt e Domnul']);
+  assert.strictEqual(pre[0].hash, songs()[0][1].hash, 'pre-translation hash matches song.current');
+  assert.ok(pre.every((s) => /^[0-9a-f]{64}$/.test(s.hash) && s.title === 'Sfânt'));
 
   // Same position again: throttled (one message per position change).
   bridge.onLiveChanged(1, eventId);
-  assert.strictEqual(emitted.length, 1, 'no duplicate for the same section');
+  assert.strictEqual(songs().length, 1, 'no duplicate for the same section');
 
   // Next -> the chorus.
   live.command(1, eventId, { type: 'worship.next' }, undefined, 'owner');
   bridge.onLiveChanged(1, eventId);
-  assert.deepStrictEqual([emitted.length, emitted[1][0], emitted[1][1].text], [2, 'song.current', 'Sfânt e Domnul']);
+  assert.deepStrictEqual([songs().length, songs()[1][0], songs()[1][1].text], [2, 'song.current', 'Sfânt e Domnul']);
 
   // Next -> the verse item (not a song): song.clear, once.
   live.command(1, eventId, { type: 'worship.next' }, undefined, 'owner');
   bridge.onLiveChanged(1, eventId);
-  assert.deepStrictEqual([emitted.length, emitted[2][0]], [3, 'song.clear']);
+  assert.deepStrictEqual([songs().length, songs()[2][0]], [3, 'song.clear']);
   bridge.onLiveChanged(1, eventId);
-  assert.strictEqual(emitted.length, 3, 'clear is sent only once');
+  assert.strictEqual(songs().length, 3, 'clear is sent only once');
 
-  // dir_out off -> clear again.
+  // dir_out off -> no more song.current.
   bridge.setSwitches(1, eventId, { dirIn: false, dirOut: false });
   live.command(1, eventId, { type: 'worship.goto', itemId: db.prepare("SELECT id FROM setlist_items WHERE event_id = ? AND type = 'song'").pluck().get(eventId), step: 0 }, undefined, 'owner');
   bridge.onLiveChanged(1, eventId);
-  assert.strictEqual(emitted.length, 3, 'no song.current once dir_out is off');
+  assert.strictEqual(songs().filter(([ev]) => ev === 'song.current').length, 2, 'no song.current once dir_out is off');
   db.close();
 });
 
