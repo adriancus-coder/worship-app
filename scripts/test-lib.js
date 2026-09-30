@@ -2335,6 +2335,67 @@ testAsync('bridge hub: connect opens the SV socket, translations feed the projec
   db.close();
 });
 
+testAsync('bridge worship -> SV: song.current / song.clear on main-position changes', async () => {
+  const Database = require('better-sqlite3');
+  const { runMigrations } = require('../lib/db');
+  const { createBridge } = require('../lib/bridge');
+  const { createLiveStore } = require('../lib/live');
+  const db = new Database(':memory:');
+  db.pragma('foreign_keys = ON');
+  runMigrations(db);
+  db.prepare("INSERT INTO admins (id, name, created_at) VALUES (1, 'A', 0)").run();
+  const songId = Number(db.prepare("INSERT INTO songs (admin_id, title, title_norm, created_at, updated_at) VALUES (1, 'Sfânt', 'sfant', 0, 0)").run().lastInsertRowid);
+  db.prepare("INSERT INTO song_sections (song_id, admin_id, position, type, content, content_hash) VALUES (?, 1, 0, 'verse', '[G]Ne ridici din [D]noaptea grea', 'h1')").run(songId);
+  db.prepare("INSERT INTO song_sections (song_id, admin_id, position, type, content, content_hash) VALUES (?, 1, 1, 'chorus', '[C]Sfânt e Domnul', 'h2')").run(songId);
+  const eventId = Number(db.prepare("INSERT INTO events (admin_id, name, event_date, status, created_at, updated_at) VALUES (1, 'E', '2026-10-04', 'planned', 0, 0)").run().lastInsertRowid);
+  db.prepare("INSERT INTO setlist_items (event_id, admin_id, position, type, song_id) VALUES (?, 1, 0, 'song', ?)").run(eventId, songId);
+  db.prepare("INSERT INTO setlist_items (event_id, admin_id, position, type, reference, body) VALUES (?, 1, 1, 'verse', 'Ps 23', 'Domnul e Păstorul meu')").run(eventId);
+
+  const emitted = [];
+  const socket = { on: () => {}, removeAllListeners: () => {}, disconnect: () => {}, emit: (ev, payload) => emitted.push([ev, payload]) };
+  const fetchImpl = async () => fakeResponse(200, JSON.stringify({ ok: true, bridgeToken: 'tok', svEventId: 'sv', targetLanguages: ['en'], expiresAt: Date.now() + 3600000 }));
+  const logger = { info: () => {}, warn: () => {}, error: () => {} };
+  const bridge = createBridge({ db, config: {}, logger, fetchImpl, ioClient: () => socket });
+  const live = createLiveStore(db);
+  await bridge.connect(1, eventId, { svBaseUrl: 'https://dev.sanctuaryvoice.com', code: 'abc23d' });
+  live.command(1, eventId, { type: 'event.start' }, undefined, 'owner');
+
+  // dir_out off: nothing is sent even as the position moves.
+  bridge.onLiveChanged(1, eventId);
+  assert.strictEqual(emitted.length, 0, 'silent while dir_out off');
+
+  // Consent + dir_out on: the current section goes out at once (chords stripped, lang ro).
+  bridge.recordConsent(1, 1);
+  bridge.setSwitches(1, eventId, { dirIn: false, dirOut: true });
+  assert.strictEqual(emitted.length, 1);
+  assert.strictEqual(emitted[0][0], 'song.current');
+  assert.deepStrictEqual([emitted[0][1].title, emitted[0][1].label, emitted[0][1].text, emitted[0][1].lang], ['Sfânt', 'Strofa 1', 'Ne ridici din noaptea grea', 'ro']);
+  assert.match(emitted[0][1].hash, /^[0-9a-f]{64}$/);
+
+  // Same position again: throttled (one message per position change).
+  bridge.onLiveChanged(1, eventId);
+  assert.strictEqual(emitted.length, 1, 'no duplicate for the same section');
+
+  // Next -> the chorus.
+  live.command(1, eventId, { type: 'worship.next' }, undefined, 'owner');
+  bridge.onLiveChanged(1, eventId);
+  assert.deepStrictEqual([emitted.length, emitted[1][0], emitted[1][1].text], [2, 'song.current', 'Sfânt e Domnul']);
+
+  // Next -> the verse item (not a song): song.clear, once.
+  live.command(1, eventId, { type: 'worship.next' }, undefined, 'owner');
+  bridge.onLiveChanged(1, eventId);
+  assert.deepStrictEqual([emitted.length, emitted[2][0]], [3, 'song.clear']);
+  bridge.onLiveChanged(1, eventId);
+  assert.strictEqual(emitted.length, 3, 'clear is sent only once');
+
+  // dir_out off -> clear again.
+  bridge.setSwitches(1, eventId, { dirIn: false, dirOut: false });
+  live.command(1, eventId, { type: 'worship.goto', itemId: db.prepare("SELECT id FROM setlist_items WHERE event_id = ? AND type = 'song'").pluck().get(eventId), step: 0 }, undefined, 'owner');
+  bridge.onLiveChanged(1, eventId);
+  assert.strictEqual(emitted.length, 3, 'no song.current once dir_out is off');
+  db.close();
+});
+
 (async () => {
   for (const [name, fn] of asyncTests) {
     try {

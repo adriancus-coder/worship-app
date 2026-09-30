@@ -142,7 +142,9 @@ app.use(createPushRouter({ auth, logger, push }));
 // the assignments router; a minute tick for the day-before reminders (idempotent).
 const notifications = createNotifications({ db, logger, push });
 liveHooks.onLiveStarted = (adminId, eventId) => notifications.onLiveStarted(adminId, eventId);
-liveHooks.onSetlistChanged = (adminId, eventId) => notifications.onSetlistChanged(adminId, eventId);
+liveHooks.onSetlistChanged = (adminId, eventId) => { notifications.onSetlistChanged(adminId, eventId); bridge.onSetlistChanged(adminId, eventId); };
+// The bridge sends the current song section to Sanctuary Voice on every main-position change.
+liveHooks.onLiveChanged = (adminId, eventId) => bridge.onLiveChanged(adminId, eventId);
 assignmentHooks.onDeclined = ({ req, event, row }) => notifications.onDeclined(req.adminId, event, row).catch((err) => logger.error('declined notification failed', err));
 // "Trimite programarea": a notification (+ push) to every pending person not yet told; those
 // without push get an email with the same text and the event link when email is enabled.

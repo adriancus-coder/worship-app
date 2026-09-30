@@ -149,6 +149,8 @@ function createLiveHub({ db, auth, logger, screensHub, hooks = {} }) {
       }
     }
     screensHub.update(adminId);
+    // The bridge (stage 8) may send the current song section to Sanctuary Voice (worship -> SV).
+    fire('onLiveChanged', adminId, eventId);
   }
 
   // A short info for the other event-role pages in the room ("<name> a adăugat <title>");
