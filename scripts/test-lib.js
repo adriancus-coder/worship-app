@@ -2079,6 +2079,7 @@ testAsync('platform deletion: refused while active, the exact name, pending -> c
     db.prepare("INSERT INTO notifications (admin_id, user_id, kind, title, event_id, created_at) VALUES (?, ?, 'assigned', 'T', ?, 0)").run(a, userId, eventId);
     db.prepare("INSERT INTO notification_prefs (user_id, admin_id, kind, enabled) VALUES (?, ?, 'reminder', 0)").run(userId, a);
     db.prepare("INSERT INTO song_proposals (admin_id, event_id, song_id, proposed_by, created_at) VALUES (?, ?, ?, ?, 0)").run(a, eventId, songId, userId);
+    db.prepare("INSERT INTO bridge_connections (event_id, admin_id, sv_base_url, sv_event_id, bridge_token, token_fingerprint, created_at, updated_at) VALUES (?, ?, 'https://dev.sanctuaryvoice.com', 'ev', 'tok', 'fp', 0, 0)").run(eventId, a);
     fs.mkdirSync(path.join(dataDir, 'uploads', `admin-${a}`, 'media'), { recursive: true });
     fs.writeFileSync(path.join(dataDir, 'uploads', `admin-${a}`, 'media', 'f.bin'), Buffer.alloc(64, 1));
   };
@@ -2162,6 +2163,89 @@ test('backup temp sweep: leftover .backup-* folders older than 1 h go at startup
   assert.strictEqual(backups.sweepTemp(), 0, 'nothing more to do');
   db.close();
   fs.rmSync(dataDir, { recursive: true, force: true });
+});
+
+// --- bridge client (stage 8) --------------------------------------------------
+
+const bridgeClient = require('../lib/bridge/client');
+
+test('bridge normalizeCode: SV alphabet, 6-8 chars, upper-cased', () => {
+  assert.strictEqual(bridgeClient.normalizeCode(' abc23d '), 'ABC23D');
+  assert.strictEqual(bridgeClient.normalizeCode('K7MNPQRS'), 'K7MNPQRS');
+  for (const bad of ['abc2', 'ABC23DEF9', 'ABC01D', 'ABC-2D', 'ABCIL0', '', null]) {
+    assert.strictEqual(bridgeClient.normalizeCode(bad), null, String(bad));
+  }
+});
+
+test('bridge normalizeBaseUrl: https, or http only on localhost; origin, no userinfo/query', () => {
+  assert.strictEqual(bridgeClient.normalizeBaseUrl('https://dev.sanctuaryvoice.com/'), 'https://dev.sanctuaryvoice.com');
+  assert.strictEqual(bridgeClient.normalizeBaseUrl('https://sanctuaryvoice.com'), 'https://sanctuaryvoice.com');
+  assert.strictEqual(bridgeClient.normalizeBaseUrl('http://127.0.0.1:4000/x'), 'http://127.0.0.1:4000');
+  assert.strictEqual(bridgeClient.normalizeBaseUrl('http://localhost:3001'), 'http://localhost:3001');
+  for (const bad of ['http://sanctuaryvoice.com', 'ftp://sanctuaryvoice.com', 'https://u:p@sanctuaryvoice.com', 'https://sanctuaryvoice.com/?a=1', 'not a url', '']) {
+    assert.strictEqual(bridgeClient.normalizeBaseUrl(bad), null, String(bad));
+  }
+});
+
+test('bridge parseLanguages / fingerprint', () => {
+  assert.deepStrictEqual(bridgeClient.parseLanguages(['EN', 'ro', 'pt-BR', 5, '', 'toolonglanguage']), ['en', 'ro', 'pt-br']);
+  assert.deepStrictEqual(bridgeClient.parseLanguages('en'), []);
+  assert.match(bridgeClient.fingerprint('abc'), /^[0-9a-f]{12}$/);
+  assert.strictEqual(bridgeClient.fingerprint('abc'), bridgeClient.fingerprint('abc'));
+});
+
+testAsync('bridge exchange / revoke / status: happy paths and error mapping', async () => {
+  const calls = [];
+  const routes = new Map();
+  const fetchImpl = async (url, opts = {}) => {
+    calls.push({ url, method: opts.method || 'GET', headers: opts.headers || {}, body: opts.body ? JSON.parse(opts.body) : null });
+    const key = `${opts.method || 'GET'} ${new URL(url).pathname}`;
+    const handler = routes.get(key);
+    return handler ? handler() : fakeResponse(500, '{}');
+  };
+  const client = bridgeClient.createBridgeClient({ fetchImpl });
+
+  // exchange OK
+  routes.set('POST /api/bridge/exchange', () => fakeResponse(200, JSON.stringify({
+    ok: true, bridgeToken: 'tok-123', svEventId: 'ev-9', targetLanguages: ['EN', 'de'], expiresAt: 111,
+  })));
+  const ex = await client.exchange('https://dev.sanctuaryvoice.com/', 'abc23d');
+  assert.deepStrictEqual(ex, { baseUrl: 'https://dev.sanctuaryvoice.com', bridgeToken: 'tok-123', svEventId: 'ev-9', targetLanguages: ['en', 'de'], expiresAt: 111 });
+  assert.strictEqual(calls[0].url, 'https://dev.sanctuaryvoice.com/api/bridge/exchange');
+  assert.deepStrictEqual(calls[0].body, { code: 'ABC23D' });
+
+  // bad base url / bad code never hit the network
+  calls.length = 0;
+  await assert.rejects(client.exchange('http://evil.example', 'abc23d'), (e) => e.code === 'bad_base_url');
+  await assert.rejects(client.exchange('https://dev.sanctuaryvoice.com', 'nope'), (e) => e.code === 'invalid_code');
+  assert.strictEqual(calls.length, 0, 'no request for invalid inputs');
+
+  // SV error bodies -> the SV code
+  routes.set('POST /api/bridge/exchange', () => fakeResponse(400, JSON.stringify({ ok: false, error: 'code_expired' })));
+  await assert.rejects(client.exchange('https://dev.sanctuaryvoice.com', 'abc23d'), (e) => e.code === 'code_expired' && e.status === 400);
+  routes.set('POST /api/bridge/exchange', () => fakeResponse(429, JSON.stringify({ ok: false, error: 'too_many_attempts' })));
+  await assert.rejects(client.exchange('https://dev.sanctuaryvoice.com', 'abc23d'), (e) => e.code === 'too_many_attempts' && e.status === 429);
+  routes.set('POST /api/bridge/exchange', () => fakeResponse(404, ''));
+  await assert.rejects(client.exchange('https://dev.sanctuaryvoice.com', 'abc23d'), (e) => e.code === 'invalid_code');
+
+  // revoke: Bearer + body, 404 counts as success, 500 throws
+  calls.length = 0;
+  routes.set('POST /api/bridge/revoke', () => fakeResponse(200, JSON.stringify({ ok: true })));
+  assert.deepStrictEqual(await client.revoke('https://dev.sanctuaryvoice.com', 'tok-123'), { ok: true });
+  assert.strictEqual(calls[0].headers.Authorization, 'Bearer tok-123');
+  assert.deepStrictEqual(calls[0].body, { bridgeToken: 'tok-123' });
+  routes.set('POST /api/bridge/revoke', () => fakeResponse(404, '{}'));
+  assert.deepStrictEqual(await client.revoke('https://dev.sanctuaryvoice.com', 'tok-123'), { ok: true });
+  routes.set('POST /api/bridge/revoke', () => fakeResponse(500, '{}'));
+  await assert.rejects(client.revoke('https://dev.sanctuaryvoice.com', 'tok-123'), (e) => e.code === 'revoke_failed');
+
+  // status: 200 shape; 401 -> inactive
+  routes.set('GET /api/bridge/status', () => fakeResponse(200, JSON.stringify({
+    ok: true, connected: true, svEventId: 'ev-9', targetLanguages: ['en'], expiresAt: 222, lastSeenAt: 333,
+  })));
+  assert.deepStrictEqual(await client.status('https://dev.sanctuaryvoice.com', 'tok-123'), { connected: true, svEventId: 'ev-9', targetLanguages: ['en'], expiresAt: 222, lastSeenAt: 333 });
+  routes.set('GET /api/bridge/status', () => fakeResponse(401, '{}'));
+  await assert.rejects(client.status('https://dev.sanctuaryvoice.com', 'tok-123'), (e) => e.code === 'inactive');
 });
 
 (async () => {

@@ -1612,6 +1612,19 @@
         operator: 'operator',
         member: 'membru',
       },
+      bridge: {
+        errors: {
+          invalid_code: 'Cod de conectare greșit.',
+          code_used: 'Codul a fost deja folosit.',
+          code_expired: 'Codul a expirat. Cere unul nou în Sanctuary Voice.',
+          bad_base_url: 'Adresa Sanctuary Voice nu este validă.',
+          too_many_attempts: 'Prea multe încercări. Așteaptă un minut.',
+          needs_consent: 'Proprietarul trebuie să confirme trimiterea cântărilor.',
+          not_connected: 'Nu există o conexiune activă pentru acest eveniment.',
+          inactive: 'Conexiunea nu mai este activă.',
+          exchange_failed: 'Conectarea la Sanctuary Voice a eșuat. Încearcă din nou.',
+        },
+      },
     },
     en: {
       common: {
@@ -3217,6 +3230,19 @@
         leader: 'worship leader',
         operator: 'operator',
         member: 'member',
+      },
+      bridge: {
+        errors: {
+          invalid_code: 'Wrong connection code.',
+          code_used: 'That code has already been used.',
+          code_expired: 'The code has expired. Generate a new one in Sanctuary Voice.',
+          bad_base_url: 'The Sanctuary Voice address is not valid.',
+          too_many_attempts: 'Too many attempts. Wait a minute.',
+          needs_consent: 'The owner must confirm sending songs first.',
+          not_connected: 'There is no active connection for this event.',
+          inactive: 'The connection is no longer active.',
+          exchange_failed: 'Connecting to Sanctuary Voice failed. Please try again.',
+        },
       },
     },
   };

@@ -40,6 +40,8 @@ const { createPlatformRouter } = require('./routes/platform');
 const { createPwaRouter } = require('./routes/pwa');
 const { createLiveHub } = require('./socket/live');
 const { createScreensHub } = require('./socket/screens');
+const { createBridge } = require('./lib/bridge');
+const { createBridgeRouter } = require('./routes/bridge');
 const { createStorageGuard } = require('./lib/storage');
 const { createEmail } = require('./lib/email');
 const { createInviteService } = require('./lib/invites');
@@ -80,6 +82,11 @@ const screensHub = createScreensHub({ db, logger, config });
 const liveHooks = {}; // filled by the notifications module below
 const live = createLiveHub({ db, auth, logger, screensHub, hooks: liveHooks });
 
+// The bridge to Sanctuary Voice (stage 8): server-to-server only. socket.io-client is the
+// server-side socket to SV's /bridge namespace; global fetch handles the REST handshake.
+const { io: ioClient } = require('socket.io-client');
+const bridge = createBridge({ db, config, logger, ioClient });
+
 const app = express();
 app.disable('x-powered-by');
 if (config.IS_PRODUCTION) app.set('trust proxy', 1);
@@ -119,6 +126,7 @@ app.use(createMeRouter({ db, auth, config, logger, live }));
 app.use(createSongsRouter({ db, auth, config, logger, live }));
 app.use(createResurseRouter({ db, auth, logger }));
 app.use(createEventsRouter({ db, auth, logger, live }));
+app.use(createBridgeRouter({ db, auth, logger, bridge }));
 app.use(createHomeRouter({ db, auth }));
 app.use(createTeamRouter({ db, auth, config, logger, live, email, invites }));
 app.use(createPositionsRouter({ db, auth, logger }));
@@ -194,4 +202,6 @@ shutdown.listen();
 
 server.listen(config.PORT, () => {
   logger.info(`${config.APP_NAME} v${config.VERSION} listening on port ${config.PORT} (${config.NODE_ENV})`);
+  // Reopen any stored bridge connections after a restart (SV sockets; no-op without any).
+  try { bridge.resume(); } catch (err) { logger.error('bridge resume failed', err); }
 });
