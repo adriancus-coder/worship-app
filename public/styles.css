@@ -1182,6 +1182,24 @@ body.screen-body.cursor-hidden, body.screen-body.cursor-hidden * { cursor: none;
 .source-buttons { display: flex; flex-wrap: wrap; gap: 6px; }
 .source-buttons button { flex: 1 1 auto; padding: 8px 10px; }
 .source-buttons button:disabled { opacity: 0.45; cursor: not-allowed; }
+/* Bridge to Sanctuary Voice (stage 8): the connection panel on the operator console. */
+.bridge-panel { margin-top: 16px; border-top: 1px solid var(--border); padding-top: 12px; }
+.bridge-panel:empty { display: none; }
+.bridge-heading { font-size: 0.95rem; margin: 0 0 8px; }
+.bridge-connect, .bridge-connected { display: flex; flex-direction: column; gap: 10px; }
+.bridge-field { display: flex; flex-direction: column; gap: 4px; font-size: 0.85rem; color: var(--text-muted); }
+.bridge-code, .bridge-url { padding: 8px 10px; }
+.bridge-code { text-transform: uppercase; letter-spacing: 0.1em; }
+.bridge-advanced { font-size: 0.85rem; color: var(--text-muted); }
+.bridge-state { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0; }
+.bridge-langs { color: var(--text-muted); font-size: 0.85rem; flex-basis: 100%; }
+.bridge-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--text-muted); }
+.bridge-dot.is-live { background: var(--accent-fill); }
+.bridge-switch { display: flex; flex-direction: column; gap: 4px; }
+.bridge-switch .bridge-toggle { align-self: flex-start; }
+.bridge-hint { color: var(--text-muted); font-size: 0.8rem; }
+.bridge-msg { min-height: 1.2em; margin: 4px 0 0; font-size: 0.85rem; }
+.bridge-msg.error { color: var(--error); }
 .notation-choice { display: flex; flex-wrap: wrap; gap: 8px; }
 .notation-choice button { min-width: 120px; }
 /* The corner clock: "Ceas" toggle (its own border) + the four corners; the size below. */
