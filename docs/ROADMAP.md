@@ -193,7 +193,10 @@ never implement a later stage early. Mockups: claude.ai design canvas
   (separate from the public participant code). Entered in the worship event, it is exchanged
   server-to-server for a **bridge token** scoped to that event pair; expires when the event
   ends; either side can disconnect. Projector PCs and phones never talk to Sanctuary Voice.
-- Two independent switches on the connection:
+- The connection panel (one shared component) is available to every event role (owner,
+  presenter, leader, operator) on the event page, the leader/presenter live page and the
+  operator console; a member never sees it. Two independent switches, both available to
+  every event role with no consent gate:
   - **SV → worship:** live translated text becomes a projector source
     ("Traducere · limba X"); shown only when the operator/leader picks it explicitly.
   - **worship → SV:** worship sends the current song + section (title, section label,
@@ -206,8 +209,8 @@ never implement a later stage early. Mockups: claude.ai design canvas
 - Worship never holds translation/AI keys; all translation happens in Sanctuary Voice.
 - If the bridge drops, both apps continue on their own; the projector never switches
   source automatically.
-- Lyrics sent for translation may be copyrighted; the admin enables worship → SV
-  explicitly and is responsible for having the rights.
+- Lyrics sent for translation may be copyrighted; the church is responsible for having the
+  rights (a documentation note, not an in-app gate).
 
 ## Event preparation
 

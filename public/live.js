@@ -319,6 +319,7 @@
     renderCurrent();
     arrangedNote();
     big.update(state.snap, state.items);
+    bridgePanel.update(state.snap);
   }
 
   // "⤢ Versuri mari" (public/big-lyrics.js): the team's position, the page's own commands.
@@ -474,6 +475,10 @@
   const modes = window.LIVE_MODES.controls($('mode-controls'), { send, t, el });
   // "Propuneri (n)" in the aside (public/proposals-ui.js): the same decisions as the toast.
   window.PROPOSALS_UI.roles($('proposals'), { eventId, live: () => Boolean(state.snap && state.snap.status === 'live'), position: 'afterCurrent' });
+  // The bridge to Sanctuary Voice (stage 8): the same shared panel as the event page and the
+  // operator console, plus the "Traducere · <limbă>" projector sources for this live page.
+  const bridgePanel = window.BRIDGE_PANEL.create($('bridge-panel'), { api, eventId, sendCommand: send, sourcesContainer: $('live-translation-sources') });
+  bridgePanel.load();
 
   // A song proposal while live: the toast's actions decide it through the API (routes/proposals.js).
   const toast = window.LIVE_MODES.toast($('info-toast'), {

@@ -25,15 +25,17 @@ worship-app side. Do not rename or reshape the wire here.
 
 ## Two switches, both default OFF
 
-On the connection panel, once connected:
+On the connection panel, once connected. Both switches are available to every event role (owner,
+presenter, leader, operator) — there is no consent gate:
 
 - **"Afișează traducerea pe proiector"** (`dir_in`) — enables the projector source
   **"Traducere · <limbă>"**, one per SV target language. It is shown only when the operator/leader
   picks it explicitly; the projector never switches to it on its own. Final text is shown large,
   in-progress (partial) text lighter. If the bridge drops, the projector carries on.
-- **"Trimite cântările spre traducere"** (`dir_out`) — sends song sections to SV. The church
-  **owner confirms once** (a modal): the lyrics may be copyrighted and the owner is responsible for
-  the rights. The consent is church-wide and stored in `admin_settings` (`bridge_out_consent_at`).
+- **"Trimite cântările spre traducere"** (`dir_out`) — sends song sections to SV.
+
+Note: the lyrics sent for translation may be copyrighted; the church is responsible for having the
+rights to send them. (Documentation only — not a gate in the app.)
 
 ## What flows over the socket
 
@@ -43,7 +45,7 @@ handshake, and reconnects with backoff. Nothing else changes if it drops.
 - **SV → worship** (read-only, `dir_in`): `bridge.ready`, `translation.partial`,
   `translation.final`. The latest text per language is kept in memory (not persisted — a fast
   stream) and merged onto the projector frame for the picked language.
-- **worship → SV** (`dir_out` + consent): `song.current` on every MAIN-position change to a song
+- **worship → SV** (`dir_out`): `song.current` on every MAIN-position change to a song
   section — `{ title, label, text (chords stripped), hash, lang }` — and `song.clear` when the main
   position leaves songs. Throttled to one message per position change. On connect and on any
   setlist change, `setlist.sections` sends all shared song sections ahead so SV can pre-translate
@@ -65,26 +67,27 @@ Base URL: `PUBLIC` SV, default `https://sanctuaryvoice.com`; staging `https://de
 
 ## worship-app endpoints (the UI calls these)
 
-Event-scoped, event roles; consent is owner-only. None ever returns the token.
+Event-scoped, all event roles (owner, presenter, leader, operator); a member sees nothing. None
+ever returns the token.
 
 | Method & path | Purpose |
 | --- | --- |
-| `GET  /api/events/:id/bridge` | connection status + switches + consent |
+| `GET  /api/events/:id/bridge` | connection status + switches |
 | `POST /api/events/:id/bridge/connect` | `{ code, svBaseUrl? }` → exchange + connect |
-| `POST /api/events/:id/bridge/switches` | `{ dirIn, dirOut }` (dirOut needs consent) |
-| `POST /api/events/:id/bridge/consent` | one-time owner consent (owner only) |
+| `POST /api/events/:id/bridge/switches` | `{ dirIn, dirOut }` |
 | `POST /api/events/:id/bridge/refresh` | re-check liveness at SV |
 | `POST /api/events/:id/bridge/disconnect` | revoke + forget |
 
 ## Code map
 
 - `lib/bridge/client.js` — REST handshake + the SV socket (fetch and socket.io-client injected).
-- `lib/bridge/store.js` — `bridge_connections`, the switches, the church consent.
+- `lib/bridge/store.js` — `bridge_connections` and the switches.
 - `lib/bridge/sections.js` — the current song section and the setlist's sections (+ hashing).
 - `lib/bridge/index.js` — the hub: connect/disconnect, switches, the SV → worship translation
   cache, the worship → SV emitters, resume-after-restart.
 - `routes/bridge.js` — the event-scoped HTTP endpoints.
-- `public/bridge-panel.js` — the operator/leader UI (connect, switches, consent, revoke, sources).
+- `public/bridge-panel.js` — the shared UI (event page, live page, operator console): connect,
+  switches, revoke, translation sources.
 - Migrations `037_bridge.sql` (connections) and `038_bridge_translation.sql` (`live_state.translation_lang`).
 
 ## Local mode

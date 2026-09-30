@@ -1,10 +1,12 @@
 'use strict';
 
-// The bridge to Sanctuary Voice (stage 8), operator/leader UI. A small panel that connects the
-// worship event to an SV event with a connection code, shows the connection state, carries the
-// two direction switches (both default off) and a revoke control, and asks the owner once for
-// consent before songs are sent (worship -> SV; lyrics may be copyrighted). It also offers the
+// The bridge to Sanctuary Voice (stage 8) UI. One shared panel used everywhere — the event page,
+// the leader/presenter live page and the operator console — so the state is the same on every
+// surface (the server is the single source of truth; every surface reads /api/events/:id/bridge).
+// It connects the worship event to an SV event with a connection code, shows the connection state,
+// carries the two direction switches (both default off), and a revoke control. It also offers the
 // translation projector source "Traducere · <limbă>" per target language, shown only when picked.
+// Every event role uses it fully (owner, presenter, leader, operator); a member never sees it.
 //
 // Server-to-server only: the panel talks to /api/events/:id/bridge/* and never sees the token.
 
@@ -12,13 +14,13 @@
   const { el } = window.PAGE;
   const { t } = window.I18N;
 
-  // container: the panel host. sourcesContainer: where the "Traducere · <limbă>" buttons go.
-  // sendCommand(type, payload): sends a live command (projector.source). isOwner: consent gate.
-  function create(container, { api, eventId, sendCommand, sourcesContainer = null, isOwner = false } = {}) {
+  // container: the panel host. sourcesContainer: where the "Traducere · <limbă>" buttons go (live
+  // pages only; omitted on the event page, which has no projector). sendCommand(type, payload):
+  // sends a live command (projector.source), on live pages only.
+  function create(container, { api, eventId, sendCommand, sourcesContainer = null } = {}) {
     let status = null; // last GET /api/events/:id/bridge
     let snap = null; // last live snapshot (for the active translation source)
     let busy = false;
-    let owner = Boolean(isOwner); // only the owner may give the worship -> SV consent
 
     const msg = el('p', { class: 'bridge-msg', role: 'status', 'aria-live': 'polite' });
 
@@ -46,32 +48,6 @@
       const res = await api(`/api/events/${eventId}/bridge`);
       if (res.ok) status = res.body;
       render();
-    }
-
-    // --- consent (owner only, once per church) ---
-    let dialog = null;
-    function consentDialog() {
-      if (dialog) return dialog;
-      dialog = el('dialog', { class: 'bridge-consent', 'aria-labelledby': 'bridge-consent-heading' });
-      const form = el('form', { method: 'dialog' });
-      form.append(
-        el('h2', { id: 'bridge-consent-heading', text: t('bridge.consentHeading') }),
-        el('p', { text: t('bridge.consentText') }),
-        el('div', { class: 'form-actions' },
-          el('button', { type: 'submit', value: 'ok', 'data-icon': 'check', text: t('bridge.consentConfirm') }),
-          el('button', { type: 'submit', class: 'secondary', value: 'cancel', text: t('bridge.consentCancel') })),
-      );
-      dialog.append(form);
-      container.append(dialog);
-      return dialog;
-    }
-
-    function askConsent() {
-      return new Promise((resolve) => {
-        const d = consentDialog();
-        d.onclose = () => resolve(d.returnValue === 'ok');
-        d.showModal();
-      });
     }
 
     // --- the connection form / state ---
@@ -108,13 +84,7 @@
       const dirIn = toggle('bridge-dir-in', conn.dirIn, t('bridge.dirIn'), t('bridge.dirInHint'), () => {
         call('POST', '/switches', { dirIn: !conn.dirIn, dirOut: conn.dirOut });
       });
-      const dirOut = toggle('bridge-dir-out', conn.dirOut, t('bridge.dirOut'), t('bridge.dirOutHint'), async () => {
-        if (!conn.dirOut && !status.consent) {
-          if (!owner) { message(t('bridge.needsOwnerConsent'), 'error'); return; }
-          if (!(await askConsent())) return;
-          const consented = await call('POST', '/consent');
-          if (!consented.ok) return;
-        }
+      const dirOut = toggle('bridge-dir-out', conn.dirOut, t('bridge.dirOut'), t('bridge.dirOutHint'), () => {
         call('POST', '/switches', { dirIn: conn.dirIn, dirOut: !conn.dirOut });
       });
 
@@ -154,11 +124,7 @@
       renderSources();
     }
 
-    function setOwner(value) {
-      owner = Boolean(value);
-    }
-
-    return { load, update, render, setOwner };
+    return { load, update, render };
   }
 
   window.BRIDGE_PANEL = { create };

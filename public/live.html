@@ -71,6 +71,7 @@
               <button type="button" class="secondary" data-source="logo" aria-pressed="false" data-i18n="live.projector.logo"></button>
               <button type="button" class="secondary" data-source="black" aria-pressed="false" data-i18n="live.projector.black"></button>
             </div>
+            <div id="live-translation-sources" class="source-buttons" role="group" data-i18n-aria-label="bridge.sourceHeading" hidden></div>
             <div id="bg-live" class="bg-live-row"></div>
             <div id="clock-panel"></div>
             <p class="hint" data-i18n="live.projector.keysHint"></p>
@@ -80,6 +81,7 @@
             <p id="projector-message" class="message" role="status" aria-live="polite"></p>
             <p class="hint"><a class="emergency-link" href="/help/emergency" target="_blank" rel="noopener" data-i18n="live.emergency.prepare"></a></p>
           </section>
+          <div id="bridge-panel" class="bridge-panel"></div>
           <div id="proposals"></div>
           <h2 id="info-heading" data-i18n="live.infoHeading"></h2>
           <div id="info"></div>
@@ -126,6 +128,7 @@
   <script src="/live-clock.js"></script>
   <script src="/big-lyrics.js"></script>
   <script src="/proposals-ui.js"></script>
+  <script src="/bridge-panel.js"></script>
   <script src="/live.js"></script>
 </body>
 </html>

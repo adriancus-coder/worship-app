@@ -333,10 +333,9 @@
   const clockPanel = window.CLOCK_PANEL.create($('clock-panel'), { t, el, onChange: (patch) => send('clock.set', patch) });
   // "Propuneri (n)" under the add panel (public/proposals-ui.js).
   window.PROPOSALS_UI.roles($('proposals'), { eventId, live: () => Boolean(state.snap && state.snap.status === 'live'), position: 'afterCurrent' });
-  // The bridge to Sanctuary Voice (stage 8): connect a code, the two switches, revoke, consent,
+  // The bridge to Sanctuary Voice (stage 8): connect a code, the two switches, revoke,
   // and the "Traducere · <limbă>" projector sources. Additive; hidden features until connected.
   const bridgePanel = window.BRIDGE_PANEL.create($('bridge-panel'), { api, eventId, sendCommand: send, sourcesContainer: $('op-translation-sources') });
-  window.SHELL.me.then((me) => { if (me) bridgePanel.setOwner(me.user.role === 'owner'); });
   bridgePanel.load();
 
   // A song proposal while live: the toast's actions decide it through the API (routes/proposals.js).

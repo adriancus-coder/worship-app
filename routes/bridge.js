@@ -1,13 +1,12 @@
 'use strict';
 
 // Bridge to Sanctuary Voice (stage 8), worship-app side. Event-scoped endpoints the worship UI
-// calls to connect a code, flip the two direction switches, give the one-time consent and
+// calls to connect a code, flip the two direction switches (available to every event role) and
 // disconnect. All server-to-server work happens in lib/bridge; nothing here exposes the token.
 //
 //   GET    /api/events/:id/bridge              status (event roles)
 //   POST   /api/events/:id/bridge/connect      { code, svBaseUrl? }  exchange + connect
-//   POST   /api/events/:id/bridge/switches     { dirIn, dirOut }
-//   POST   /api/events/:id/bridge/consent      one-time owner consent for worship -> SV
+//   POST   /api/events/:id/bridge/switches     { dirIn, dirOut }     (every event role)
 //   POST   /api/events/:id/bridge/refresh      re-check liveness at SV
 //   POST   /api/events/:id/bridge/disconnect   revoke + forget
 
@@ -21,14 +20,13 @@ const { BridgeError } = require('../lib/bridge/client');
 const STATUS_BY_CODE = {
   invalid_code: 400, code_used: 400, code_expired: 400, bad_base_url: 400,
   too_many_attempts: 429,
-  needs_consent: 409, not_connected: 409, inactive: 409,
+  not_connected: 409, inactive: 409,
 };
 
 function createBridgeRouter({ db, auth, logger, bridge }) {
   const router = express.Router();
   const events = createEventStore(db);
   const canEdit = requireRole(...EVENT_ROLES);
-  const ownerOnly = requireRole('owner');
 
   function eventId(req) {
     return /^\d{1,15}$/.test(req.params.id) ? Number(req.params.id) : null;
@@ -81,20 +79,10 @@ function createBridgeRouter({ db, auth, logger, bridge }) {
     if (!event) return;
     const body = req.body || {};
     try {
-      res.json(bridge.setSwitches(req.adminId, event.id, { dirIn: body.dirIn === true, dirOut: body.dirOut === true, userId: req.user.id }));
+      res.json(bridge.setSwitches(req.adminId, event.id, { dirIn: body.dirIn === true, dirOut: body.dirOut === true }));
     } catch (err) {
       fail(req, res, err);
     }
-  });
-
-  // The church-wide, one-time owner consent (copyright): the owner takes responsibility for the
-  // rights to the lyrics sent for translation. Owner only; other event roles get 403.
-  router.post('/api/events/:id/bridge/consent', ownerOnly, (req, res) => {
-    const event = loadEvent(req, res);
-    if (!event) return;
-    bridge.recordConsent(req.adminId, req.user.id);
-    logger.info(`Bridge worship->SV consent given by owner #${req.user.id} (admin #${req.adminId})`);
-    res.json(bridge.status(req.adminId, event.id));
   });
 
   router.post('/api/events/:id/bridge/refresh', asyncRoute(async (req, res) => {

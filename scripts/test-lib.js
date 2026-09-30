@@ -2324,9 +2324,7 @@ testAsync('bridge hub: connect opens the SV socket, translations feed the projec
   assert.deepStrictEqual(bridge.translationFor(1, eventId, 'en'), { lines: ['Holy is'], partial: true });
   assert.ok(updates.includes(1), 'a partial re-renders the projector when dir_in is on');
 
-  // dir_out needs the church consent first.
-  assert.throws(() => bridge.setSwitches(1, eventId, { dirIn: true, dirOut: true }), (e) => e.code === 'needs_consent');
-  bridge.recordConsent(1, 1);
+  // dir_out is available with no consent gate (every event role).
   assert.doesNotThrow(() => bridge.setSwitches(1, eventId, { dirIn: true, dirOut: true }));
 
   await bridge.disconnect(1, eventId);
@@ -2367,8 +2365,7 @@ testAsync('bridge worship -> SV: song.current / song.clear on main-position chan
   bridge.onLiveChanged(1, eventId);
   assert.strictEqual(emitted.length, 0, 'silent while dir_out off');
 
-  // Consent + dir_out on: the current section goes out at once (chords stripped, lang ro).
-  bridge.recordConsent(1, 1);
+  // dir_out on (no consent gate): the current section goes out at once (chords stripped, lang ro).
   bridge.setSwitches(1, eventId, { dirIn: false, dirOut: true });
   assert.strictEqual(songs().length, 1);
   assert.deepStrictEqual([songs()[0][0], songs()[0][1].title, songs()[0][1].label, songs()[0][1].text, songs()[0][1].lang], ['song.current', 'Sfânt', 'Strofa 1', 'Ne ridici din noaptea grea', 'ro']);
