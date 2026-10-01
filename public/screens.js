@@ -1,9 +1,10 @@
 'use strict';
 
-// Projector screens (/screens, owner and operator): the paired screens first (online, last
-// seen, rename, revoke, "Adresa proiectorului"), then "Adaugă un ecran" in two ways: from the
-// operator console (nothing to do here) or with a code on a PC without an operator (the
-// projector address to copy / email / share, then the 6-digit code and a name).
+// Projector screens (/screens, owner and operator): the screens first (online, last seen,
+// rename, test pattern, margin, revoke, each one's static LINK to copy / email / share), then
+// "Adaugă un ecran" in three ways: with a name (its link opens on the projector PC, no
+// pairing), from the operator console (nothing to do here), or with a code on a PC where the
+// link cannot be typed (the projector address, then the 6-digit code and a name).
 
 (function () {
   const { api, el, setTitle } = window.PAGE;
@@ -13,8 +14,11 @@
 
   const state = { screens: null, baseUrl: null, safeMargin: 5, renaming: null, revoking: null, addressOpen: new Set() };
 
-  // "Adresa proiectorului": PUBLIC_BASE_URL when set, else this page's origin.
-  const screenAddress = () => `${state.baseUrl || window.location.origin}/screen`;
+  // "Adresa proiectorului" (the code way): PUBLIC_BASE_URL when set, else this page's origin.
+  const origin = () => state.baseUrl || window.location.origin;
+  const screenAddress = () => `${origin()}/screen`;
+  // A screen's static link: opens that screen's output anywhere, until it is revoked.
+  const screenLink = (screen) => `${origin()}${screen.link}`;
 
   async function copyText(text, input) {
     try {
@@ -52,14 +56,14 @@
       el('span', { class: 'screen-tools' },
         el('button', { type: 'button', class: 'secondary', 'data-icon': 'edit', text: t('screens.rename'), 'aria-label': t('screens.renameLabel', { name: screen.name }), onclick: () => openRename(screen) }),
         el('button', { type: 'button', class: 'secondary', 'data-icon': 'projector', 'data-pattern': String(screen.id), 'aria-pressed': String(Boolean(screen.testPattern)), text: t(screen.testPattern ? 'screens.patternOff' : 'screens.pattern'), 'aria-label': t(screen.testPattern ? 'screens.patternOffFor' : 'screens.patternFor', { name: screen.name }), disabled: screen.online ? null : 'disabled', onclick: () => togglePattern(screen) }),
-        el('button', { type: 'button', class: 'secondary', 'data-icon': 'link', text: t('screens.rowAddress'), 'aria-expanded': String(state.addressOpen.has(screen.id)), 'aria-label': t('screens.rowAddressLabel', { name: screen.name }), onclick: () => toggleAddress(screen) }),
+        el('button', { type: 'button', class: 'secondary', 'data-icon': 'link', text: t('screens.rowLink'), 'aria-expanded': String(state.addressOpen.has(screen.id)), 'aria-label': t('screens.rowLinkLabel', { name: screen.name }), onclick: () => toggleAddress(screen) }),
         el('button', { type: 'button', class: 'secondary', 'data-icon': 'close', text: t('screens.revoke'), 'aria-label': t('screens.revokeLabel', { name: screen.name }), onclick: () => openRevoke(screen) })),
       // "Ecran de test": the calibration pattern on that screen, with "Aplică n %" under it.
       screen.testPattern ? patternPanel(screen) : null,
       // "Margine de siguranță": this screen's own value or the church default (settings).
       marginControl(screen),
-      // "Adresa proiectorului" for this screen: to reopen a PC that lost its window.
-      state.addressOpen.has(screen.id) ? addressBox(screen) : null)));
+      // "Linkul ecranului": to open on the projector PC (copy / email / share).
+      state.addressOpen.has(screen.id) ? linkBox(screen) : null)));
   }
 
   async function togglePattern(screen) {
@@ -112,14 +116,22 @@
     return el('label', { class: 'screen-margin' }, el('span', { class: 'hint', text: t('screens.marginLabel') }), select, message);
   }
 
-  function addressBox(screen) {
-    const input = el('input', { type: 'text', class: 'mono', readonly: 'readonly', value: screenAddress(), 'aria-label': t('screens.addressLabel') });
+  function linkBox(screen) {
+    const url = screenLink(screen);
+    const input = el('input', { type: 'text', class: 'mono', readonly: 'readonly', value: url, 'aria-label': t('screens.rowLinkLabel', { name: screen.name }) });
     const message = el('span', { class: 'message', role: 'status' });
+    const appName = document.documentElement.dataset.appName || '';
+    const body = t('screens.linkEmailBody', { name: screen.name, url });
     return el('div', { class: 'screen-address' },
-      el('span', { class: 'hint', text: t('screens.rowAddressHint') }),
+      el('span', { class: 'hint', text: t('screens.rowLinkHint') }),
       el('div', { class: 'address-box' }, input,
         el('button', { type: 'button', class: 'secondary', 'data-icon': 'copy', text: t('screens.copy'), 'aria-label': t('screens.copyLabel', { name: screen.name }),
-          onclick: async () => { message.textContent = (await copyText(screenAddress(), input)) ? t('screens.copied') : t('screens.copyFailed'); } })),
+          onclick: async () => { message.textContent = (await copyText(url, input)) ? t('screens.copied') : t('screens.copyFailed'); } })),
+      el('div', { class: 'form-actions address-actions' },
+        el('a', { class: 'button secondary', 'data-icon': 'mail', text: t('screens.email'), href: `mailto:?subject=${encodeURIComponent(t('screens.linkEmailSubject', { appName, name: screen.name }))}&body=${encodeURIComponent(body)}` }),
+        typeof navigator.share === 'function'
+          ? el('button', { type: 'button', class: 'secondary', 'data-icon': 'share', text: t('screens.share'), onclick: () => navigator.share({ title: screen.name, text: body }).catch(() => {}) })
+          : null),
       message);
   }
 
@@ -169,7 +181,37 @@
     navigator.share({ title: t('screens.addressLabel'), text: t('screens.emailBody', { url: screenAddress() }) }).catch(() => {});
   });
 
-  // --- pairing -----------------------------------------------------------------------
+  // --- "Adaugă un ecran" with a name: the screen and its link ------------------------------
+
+  $('create-name').value = t('screens.defaultName');
+  $('create-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const message = $('create-message');
+    message.className = 'message';
+    message.textContent = '';
+    $('create-submit').disabled = true;
+    try {
+      const res = await api('/api/screens', { method: 'POST', body: { name: $('create-name').value } });
+      if (res.status === 201) {
+        message.className = 'message success';
+        message.textContent = t('screens.created', { name: res.body.screen.name });
+        state.addressOpen.add(res.body.screen.id); // the new row opens on its link
+        await load();
+        const row = document.querySelector(`.screen-address input[value="${screenLink(res.body.screen)}"]`);
+        if (row) row.focus();
+      } else {
+        message.className = 'message error';
+        message.textContent = res.body.error || t('common.networkError');
+      }
+    } catch (err) {
+      message.className = 'message error';
+      message.textContent = t('common.networkError');
+    } finally {
+      $('create-submit').disabled = false;
+    }
+  });
+
+  // --- pairing with a code -----------------------------------------------------------
 
   $('pair-name').value = t('screens.defaultName');
   $('pair-form').addEventListener('submit', async (event) => {

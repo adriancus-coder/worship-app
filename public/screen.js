@@ -1,10 +1,12 @@
 'use strict';
 
-// The projector screen (/screen). Unpaired: shows a 6-digit pairing code (renewed when it
-// expires) and waits for an owner/leader to claim it. Paired: a black page with no UI that
-// renders the frames the server sends. It never shows an error over the output: when the
-// connection drops it keeps the last frame and reconnects quietly. In the meantime it shows
-// the frames the leader's live page computes in this same browser (emergency mode).
+// The projector screen. /screen/<key> (a screen's static link, from /screens): the output
+// of that screen at once, no pairing. /screen, unpaired: shows a 6-digit pairing code
+// (renewed when it expires) and waits for an owner/operator to claim it. Paired: a black
+// page with no UI that renders the frames the server sends. It never shows an error over
+// the output: when the connection drops it keeps the last frame and reconnects quietly. In
+// the meantime it shows the frames the leader's live page computes in this same browser
+// (emergency mode).
 
 (function () {
   const { t } = window.I18N;
@@ -17,9 +19,14 @@
   const OFFLINE_DOT_MS = 30000;
   const SUSPENDED_RETRY_MS = 30000;
   const LOCAL_HOLD_MS = 10000;
+  const LINK_KEY_RE = /^\/screen\/([a-z0-9]{12})$/;
 
-  const state = { token: null, pairing: null, pollTimer: null, countdown: null, socket: null, view: null, player: null, offlineTimer: null, logos: new Map(),
+  const state = { key: null, linkLost: false, token: null, pairing: null, pollTimer: null, countdown: null, socket: null, view: null, player: null, offlineTimer: null, logos: new Map(),
     channel: null, serverFrame: null, local: null, holdTimer: null };
+
+  // What this screen is to the server: its link key, or the token of a code pairing.
+  const credential = () => (state.key ? { key: state.key } : { token: state.token });
+  const credentialHeaders = () => (state.key ? { 'X-Screen-Key': state.key } : { 'X-Screen-Token': state.token });
 
   function readToken() {
     try {
@@ -101,7 +108,7 @@
       }
       await sleep(Math.min(60000, 5000 * (attempt + 1)));
     }
-    $('pairing-error').textContent = '';
+    $('pairing-error').textContent = state.linkLost ? t('screen.linkInvalid') : '';
     $('pairing-code').textContent = formatCode(state.pairing.code);
     $('pairing-code').setAttribute('aria-label', state.pairing.code.split('').join(' '));
     renderCountdown();
@@ -151,7 +158,7 @@
   async function resolveLogo(url) {
     if (url.startsWith('data:')) return url; // a frame computed by the leader's page offline
     if (!state.logos.has(url)) {
-      state.logos.set(url, fetch(url, { headers: { 'X-Screen-Token': state.token } })
+      state.logos.set(url, fetch(url, { headers: credentialHeaders() })
         .then((res) => (res.ok ? res.blob() : null))
         .then((blob) => (blob ? toDataUrl(blob) : null))
         .catch(() => null));
@@ -173,12 +180,16 @@
     state.offlineTimer = setTimeout(() => { $('offline-dot').hidden = false; }, OFFLINE_DOT_MS);
   }
 
+  // Revoked or unknown: a code pairing again. A static link that stopped working (the screen
+  // was revoked) says so above the code.
   function dropToken() {
     if (state.socket) {
       state.socket.removeAllListeners();
       state.socket.close();
       state.socket = null;
     }
+    state.linkLost = Boolean(state.key);
+    state.key = null;
     saveToken(null);
     showOffline(false);
     startPairing();
@@ -282,7 +293,7 @@
       return;
     }
     const socket = window.io('/screens', {
-      auth: { token: state.token },
+      auth: credential(),
       transports: ['websocket', 'polling'],
       reconnectionDelay: 1000,
       reconnectionDelayMax: 15000,
@@ -311,7 +322,7 @@
       if (reason !== 'io server disconnect') return; // socket.io reconnects by itself
       // Closed by the server: revoked (-> pair again) or a restart (-> reconnect).
       try {
-        const res = await request('GET', '/api/screen/me', null, { 'X-Screen-Token': state.token });
+        const res = await request('GET', '/api/screen/me', null, credentialHeaders());
         if (res.status === 401) return dropToken();
       } catch (err) {
         // Server unreachable: keep trying.
@@ -381,21 +392,11 @@
     $('pairing-app').textContent = document.documentElement.dataset.appName || '';
     document.title = t('screen.pageTitle', { appName: document.documentElement.dataset.appName || '' });
     setInterval(renderCountdown, 1000);
-    // A one-time claim link from the leader's live page pairs this window without a code.
-    const url = new URL(window.location.href);
-    const claim = url.searchParams.get('claim');
-    if (claim) {
-      url.searchParams.delete('claim');
-      window.history.replaceState(null, '', url);
-      try {
-        const res = await request('POST', '/api/screen/claim-link', { claim });
-        if (res.ok) saveToken(res.body.token);
-      } catch (err) {
-        // Falls back to the pairing code.
-      }
-    }
-    state.token = state.token || readToken();
-    if (state.token) connect();
+    // /screen/<key>: this screen's static link - its output at once, nothing stored here.
+    const match = LINK_KEY_RE.exec(window.location.pathname);
+    state.key = match ? match[1] : null;
+    if (!state.key) state.token = readToken();
+    if (state.key || state.token) connect();
     else startPairing();
   })();
 })();

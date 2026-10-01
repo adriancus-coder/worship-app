@@ -5,6 +5,7 @@ const express = require('express');
 const { requireRole } = require('../lib/auth');
 const { VARIANTS, sniffVideo, sniffImage, parseVideoUrl, validateTitle, createMediaStore, createMediaSigner } = require('../lib/media');
 const { createScreenStore } = require('../lib/screens');
+const { screenCredential } = require('./screens');
 const { parseReadability, createBackgroundStore } = require('../lib/backgrounds');
 const { createMediaQuota } = require('../lib/platform');
 
@@ -28,7 +29,7 @@ const asyncRoute = require('../lib/async-route');
 //   GET    /api/media/:id/file[?v=display|thumb]
 //                                      the uploaded file with Range support (images: the
 //          projector version or the thumbnail), for that admin's users (session), its
-//          screens (X-Screen-Token) or a signed URL (screens).
+//          screens (X-Screen-Token / X-Screen-Key) or a signed URL (screens).
 // "cdn.example.org/sky.jpg" -> "sky" (the title of a background fetched from a link).
 function titleFromUrl(url) {
   try {
@@ -65,7 +66,7 @@ function createMediaRouter({ db, auth, config, logger, live, storage, pexels = n
     const owner = id ? adminOf.get(id) : undefined;
     if (owner === undefined) return notFound(req, res);
     const session = auth.getActiveSession(req);
-    const found = session ? null : screens.findByToken(req.get('x-screen-token'));
+    const found = session ? null : screens.identify(screenCredential(req));
     const screen = found && found.adminActive ? found : null; // a deactivated church's screens get nothing
     const allowed = (session && session.admin.id === owner)
       || (screen && screen.adminId === owner)

@@ -400,8 +400,9 @@ async function main() {
     assert.strictEqual((await api('POST', '/api/screens/claim', cookie, { code: pairing.code, name })).status, 201);
     return (await api('GET', `/api/screen/pairings/${pairing.pairingId}`)).body;
   }
-  function connectScreen(token) {
-    const socket = io(`${base()}/screens`, { transports: ['websocket'], auth: { token }, reconnection: false });
+  // auth: a token (string, code pairing) or { key } (a static link).
+  function connectScreen(auth) {
+    const socket = io(`${base()}/screens`, { transports: ['websocket'], auth: typeof auth === 'string' ? { token: auth } : auth, reconnection: false });
     sockets.push(socket);
     socket.frames = [];
     socket.on('projector:frame', (frame) => socket.frames.push(frame));
@@ -426,6 +427,45 @@ async function main() {
     const otherPaired = await pairScreen(other, 'Alt proiector');
     otherScreen = connectScreen(otherPaired.token);
     assert.strictEqual((await frameWhere(otherScreen, () => true)).kind, 'idle');
+  });
+
+  await step('static link (migration 039): a screen made with a name has /screen/<key>; the key opens the page, the socket and the API; the console button reuses one screen per name; revoking kills the link', async () => {
+    const made = await api('POST', '/api/screens', operator, { name: 'Ecran balcon' });
+    assert.strictEqual(made.status, 201, JSON.stringify(made.body));
+    const { id, linkKey, link } = made.body.screen;
+    assert.ok(/^[a-z0-9]{12}$/.test(linkKey) && link === `/screen/${linkKey}`, 'a 12-character key and its relative link');
+    assert.strictEqual((await api('POST', '/api/screens', leader, { name: 'X' })).status, 403, 'SCREEN_ROLES only');
+    assert.strictEqual((await api('POST', '/api/screens', owner, { name: '' })).status, 400);
+    const page = await fetch(`${base()}/screen/${linkKey}`);
+    assert.ok(page.status === 200 && /screen\.js/.test(await page.text()), 'the link serves the projector page');
+    assert.strictEqual((await fetch(`${base()}/screen/${linkKey}x`)).status, 404, 'a malformed key is no page');
+    // every screen has a link, the code-paired ones too
+    const list = (await api('GET', '/api/screens', owner)).body.screens;
+    assert.ok(list.length >= 2 && list.every((s) => /^[a-z0-9]{12}$/.test(s.linkKey) && s.link === `/screen/${s.linkKey}`), 'every listed screen carries its link');
+    assert.strictEqual(new Set(list.map((s) => s.linkKey)).size, list.length, 'keys are unique');
+    // the key is the screen's credential
+    const linked = connectScreen({ key: linkKey });
+    assert.strictEqual((await frameWhere(linked, () => true)).kind, 'lyrics', 'the current frame at once');
+    assert.strictEqual((await api('GET', '/api/screens', owner)).body.screens.find((s) => s.id === id).online, true);
+    const me = await fetch(`${base()}/api/screen/me`, { headers: { 'x-screen-key': linkKey } });
+    assert.deepStrictEqual([me.status, (await me.json()).screen.id], [200, id]);
+    assert.strictEqual((await fetch(`${base()}/api/screen/me`, { headers: { 'x-screen-key': 'zzzzzzzzzzzz' } })).status, 401);
+    const bad = io(`${base()}/screens`, { transports: ['websocket'], auth: { key: 'zzzzzzzzzzzz' }, reconnection: false });
+    sockets.push(bad);
+    assert.strictEqual((await next(bad, 'connect_error')).message, 'unauthorized');
+    // "Deschide ecranul proiectorului": the same screen every time, by its window name
+    const first = await api('POST', '/api/screens/auto-claim', operator, { name: 'Fereastra de proiecție' });
+    const second = await api('POST', '/api/screens/auto-claim', owner, { name: 'Fereastra de proiecție' });
+    assert.deepStrictEqual([first.status, second.status, first.body.screen.id === second.body.screen.id, first.body.url], [201, 201, true, `/screen/${first.body.screen.linkKey}`]);
+    assert.strictEqual((await api('GET', '/api/screens', owner)).body.screens.filter((s) => s.name === 'Fereastra de proiecție').length, 1, 'one row, not one per click');
+    // revoked: the socket drops, the key opens nothing any more
+    const closed = next(linked, 'disconnect');
+    assert.strictEqual((await api('DELETE', `/api/screens/${id}`, owner)).status, 200);
+    assert.strictEqual(await closed, 'io server disconnect');
+    const gone = io(`${base()}/screens`, { transports: ['websocket'], auth: { key: linkKey }, reconnection: false });
+    sockets.push(gone);
+    assert.strictEqual((await next(gone, 'connect_error')).message, 'unauthorized');
+    assert.strictEqual((await fetch(`${base()}/api/screen/me`, { headers: { 'x-screen-key': linkKey } })).status, 401);
   });
 
   await step('safe margin: 5 % on every frame; the church value (owner only) reaches every screen; a screen\'s own value wins', async () => {
@@ -1146,7 +1186,7 @@ async function main() {
 
   await step('revoking a screen disconnects it at once', async () => {
     const list = (await api('GET', '/api/screens', owner)).body.screens;
-    assert.deepStrictEqual(list.map((x) => [x.name, x.online]), [['Proiector sală', false]], 'the restart dropped the socket');
+    assert.deepStrictEqual(list.filter((x) => /^Proiector/.test(x.name)).map((x) => [x.name, x.online]), [['Proiector sală', false]], 'the restart dropped the socket');
     const again = connectScreen((await pairScreen(owner, 'Proiector 2')).token);
     await frameWhere(again, () => true);
     const online = (await api('GET', '/api/screens', owner)).body.screens.find((x) => x.name === 'Proiector 2');

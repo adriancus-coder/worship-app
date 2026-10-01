@@ -152,10 +152,18 @@ never implement a later stage early. Mockups: claude.ai design canvas
 - Separate page with no controls. Opened from the operator console or the leader's live
   page with "Deschide ecranul proiectorului": new window, moved fullscreen to the second
   display via the Window Management API (Chrome/Edge, one-time permission); fallback =
-  drag + F11. Opened from a logged-in page it pairs automatically.
-- A PC with no operator pairs with a 6-digit code entered in the admin. /screens lists the
-  paired screens first, then "Adaugă un ecran" in two ways (from the operator console; with a
-  code, handing over "adresa proiectorului" by copy / email / share).
+  drag + F11. The window opens the static link of the screen "Fereastra de proiecție" (one
+  per church, reused on every click, never a new row).
+- **Every screen has a static link** (`/screen/<link_key>`, migration 039: a random
+  12-character key, unique, given to every screen, older ones included): opened on the
+  projector PC it shows that screen's output at once, in any browser, at any time, with
+  nothing stored in the browser; it stays valid until the screen is revoked (then the page
+  shows a pairing code and says the link is no longer valid). The key is the screen's
+  credential (socket handshake `auth.key`, header `X-Screen-Key`), next to the token of a
+  code pairing. /screens lists the screens first ("Linkul ecranului" per screen: copy /
+  email / share), then "Adaugă un ecran" in three ways: with a name (the screen and its
+  link, the default), from the operator console, with a 6-digit code on a PC where the link
+  cannot be typed (the generic "adresa proiectorului", then the code shown there).
 - **Safe margin** (`safe_margin`, church default 5 %, 0-12; a screen may override it,
   migration 028): text, logo and corner clock (offset = margin + 20 / 24 px) keep away from the
   edges some projectors crop (overscan); backgrounds and video stay full-bleed. Every frame

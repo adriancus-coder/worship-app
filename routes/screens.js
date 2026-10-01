@@ -9,11 +9,17 @@ const { parseSafeMargin, createAdminSettings } = require('../lib/admin-settings'
 const { SCREEN_ROLES } = require('../lib/events');
 const TEN_MINUTES = 10 * 60 * 1000;
 const SCREEN_TOKEN_HEADER = 'x-screen-token';
+const SCREEN_KEY_HEADER = 'x-screen-key';
+
+// The screen's credential from its request headers: X-Screen-Token (code pairing) or
+// X-Screen-Key (static link).
+const screenCredential = (req) => ({ token: req.get(SCREEN_TOKEN_HEADER), key: req.get(SCREEN_KEY_HEADER) });
 
 // Projector screens.
-//   /api/screen/...  called by the screen itself (no user session): pairing, claim links
-//                    and "who am I" with its screen token (X-Screen-Token header).
-//   /api/screens/... owner/leader: claim a code, create a claim link, list, rename, revoke.
+//   /api/screen/...  called by the screen itself (no user session): pairing and "who am I"
+//                    with its credential (X-Screen-Token / X-Screen-Key header).
+//   /api/screens/... owner/operator: create a screen (its static link), claim a code, list,
+//                    rename, margin, test pattern, revoke.
 function createScreensRouter({ db, auth, config, logger, screensHub }) {
   const router = express.Router();
   const screens = createScreenStore(db);
@@ -57,15 +63,8 @@ function createScreensRouter({ db, auth, config, logger, screensHub }) {
     res.json(result);
   });
 
-  router.post('/api/screen/claim-link', (req, res) => {
-    const result = screens.collectLink((req.body || {}).claim);
-    if (!result) return res.status(404).json({ error: req.t('errors.claimLinkInvalid') });
-    logger.info(`Screen #${result.screen.id} paired with a claim link (admin #${result.adminId})`);
-    res.json({ token: result.token, screen: result.screen });
-  });
-
   router.get('/api/screen/me', (req, res) => {
-    const screen = screens.findByToken(req.get(SCREEN_TOKEN_HEADER));
+    const screen = screens.identify(screenCredential(req));
     if (!screen) return res.status(401).json({ error: req.t('errors.screenUnknown') });
     // A deactivated church: the screen keeps its token and waits (public/screen.js).
     if (!screen.adminActive) return res.status(423).json({ code: 'suspended', error: req.t('errors.adminInactive') });
@@ -73,18 +72,29 @@ function createScreensRouter({ db, auth, config, logger, screensHub }) {
     res.json({ screen: { id: screen.id, name: screen.name }, admin: { id: screen.adminId, name: screen.adminName } });
   });
 
-  // A one-time link (60 s) that pairs the window opening it, without a code: from the
-  // leader's live page or the operator console.
-  router.post('/api/screens/auto-claim', auth.requireUser, canManage, noStore, (req, res) => {
-    const name = validateScreenName((req.body || {}).name, req.t);
-    if (name.error) return res.status(400).json({ error: name.error });
-    const link = screens.createLink(req.adminId, req.user.id, name.value);
-    res.status(201).json({ claimUrl: `/screen?claim=${link.claim}`, expiresAt: link.expiresAt });
-  });
-
-  // --- owner / leader -----------------------------------------------------------------
+  // --- owner / operator ---------------------------------------------------------------
 
   router.use('/api/screens', auth.requireUser, canManage, noStore);
+
+  // "Deschide ecranul proiectorului" (the live page, the console): the window opens the
+  // static link of the screen named after it (one per name, reused across clicks).
+  router.post('/api/screens/auto-claim', (req, res) => {
+    const name = validateScreenName((req.body || {}).name, req.t);
+    if (name.error) return res.status(400).json({ error: name.error });
+    const screen = screens.findOrCreate(req.adminId, req.user.id, name.value);
+    screensHub.listChanged(req.adminId);
+    res.status(201).json({ url: screen.link, screen });
+  });
+
+  // "Adaugă un ecran": a screen with its static link, to open on the projector PC.
+  router.post('/api/screens', (req, res) => {
+    const name = validateScreenName((req.body || {}).name, req.t);
+    if (name.error) return res.status(400).json({ error: name.error });
+    const screen = screens.create(req.adminId, req.user.id, name.value);
+    screensHub.listChanged(req.adminId);
+    logger.info(`Screen #${screen.id} "${screen.name}" created with a static link by user #${req.user.id} (admin #${req.adminId})`);
+    res.status(201).json({ screen });
+  });
 
   router.post('/api/screens/claim', (req, res) => {
     const key = `user:${req.user.id}`;
@@ -104,7 +114,6 @@ function createScreensRouter({ db, auth, config, logger, screensHub }) {
     res.status(201).json({ screen });
   });
 
-
   router.get('/api/screens', (req, res) => {
     const online = screensHub.onlineIds(req.adminId);
     // baseUrl: the address of the projector page ("adresa proiectorului"), null -> the page's origin.
@@ -117,6 +126,7 @@ function createScreensRouter({ db, auth, config, logger, screensHub }) {
     if (!id || !screens.get(req.adminId, id)) return res.status(404).json({ error: req.t('errors.screenNotFound') });
     if (name.error) return res.status(400).json({ error: name.error });
     screens.rename(req.adminId, id, name.value);
+    screensHub.listChanged(req.adminId);
     res.json({ screen: screens.get(req.adminId, id) });
   });
 
@@ -156,4 +166,4 @@ function createScreensRouter({ db, auth, config, logger, screensHub }) {
   return router;
 }
 
-module.exports = { SCREEN_TOKEN_HEADER, createScreensRouter };
+module.exports = { SCREEN_TOKEN_HEADER, SCREEN_KEY_HEADER, screenCredential, createScreensRouter };

@@ -21,12 +21,26 @@
 
       <section class="add-screen" aria-labelledby="add-heading">
         <h2 id="add-heading" data-i18n="screens.addHeading"></h2>
-        <!-- a) from the operator console: nothing to fill in -->
+        <!-- a) a screen with its static link: a name, then the link to open on the projector PC -->
+        <div class="add-way">
+          <h3 data-i18n="screens.wayLinkHeading"></h3>
+          <p class="hint" data-i18n="screens.wayLinkText"></p>
+          <form id="create-form" class="pair-form" novalidate>
+            <div class="pair-fields">
+              <label><span data-i18n="screens.nameLabel"></span>
+                <input type="text" id="create-name" maxlength="60" required>
+              </label>
+            </div>
+            <button type="submit" id="create-submit" data-icon="plus" data-i18n="screens.createSubmit"></button>
+            <p id="create-message" class="message" role="status" aria-live="polite"></p>
+          </form>
+        </div>
+        <!-- b) from the operator console: nothing to fill in -->
         <div class="add-way">
           <h3 data-i18n="screens.wayConsoleHeading"></h3>
           <p data-i18n="screens.wayConsoleText"></p>
         </div>
-        <!-- b) with a code, on a PC without an operator: collapsed behind a button -->
+        <!-- c) with a code, on a PC where the link cannot be typed: collapsed behind a button -->
         <div class="add-way">
           <h3 data-i18n="screens.wayCodeHeading"></h3>
           <p class="hint" data-i18n="screens.wayCodeText"></p>
@@ -53,7 +67,7 @@
                   <input type="text" id="pair-name" maxlength="60" required>
                 </label>
               </div>
-              <button type="submit" id="pair-submit" data-icon="check" data-i18n="screens.pairSubmit"></button>
+              <button type="submit" class="secondary" id="pair-submit" data-icon="check" data-i18n="screens.pairSubmit"></button>
               <p id="pair-message" class="message" role="status" aria-live="polite"></p>
             </form>
           </div>

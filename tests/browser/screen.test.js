@@ -2,7 +2,8 @@
 
 // /screen, the projector: pairing with a code, frames following the live position within
 // a second, text always inside the 5 % margins (1280x720 and 1920x1080), black, the cursor
-// hiding, a server restart that never blanks the screen, revoking, the claim link.
+// hiding, a server restart that never blanks the screen, revoking, the static link
+// (/screen/<key>: the output at once, in any browser, again and again; dead once revoked).
 
 module.exports = {
   name: 'screen',
@@ -76,14 +77,30 @@ module.exports = {
     const revoked = await sp.waitForFunction(() => /\d{3} \d{3}/.test(document.getElementById('pairing-code').textContent), null, { timeout: 8000 }).then(() => true, () => false);
     check(revoked && await sp.evaluate(() => localStorage.getItem('wa_screen_token') === null), 'revoked: the screen shows a new pairing code, its token is gone');
 
+    // the static link: the console button's screen, opened in a fresh browser, twice
     const link = (await app.api(app.cookies.operator, 'POST', '/api/screens/auto-claim', { name: 'Fereastra operatorului' })).body;
+    check(/^\/screen\/[a-z0-9]{12}$/.test(link.url) && link.screen.name === 'Fereastra operatorului', `the console button gets the screen's static link ${link.url}`);
     const win = await (await browser.newContext({ viewport: { width: 1280, height: 720 } })).newPage();
-    await win.goto(app.url + link.claimUrl);
-    check(await win.waitForSelector('#output:not([hidden])', { timeout: 6000 }).then(() => true, () => false), 'the claim link pairs a new window at once');
+    win.on('pageerror', (err) => check(false, 'linked screen page error', err.message));
+    await win.goto(app.url + link.url);
+    const shown = await win.waitForFunction(() => !document.getElementById('output').hidden && /Primul/.test(document.querySelector('#output .projector-stage').innerText), null, { timeout: 6000 }).then(() => true, () => false);
+    check(shown && await win.evaluate(() => localStorage.getItem('wa_screen_token') === null), 'the link shows the live frame at once, no code, nothing stored in the browser');
     const again = await (await browser.newContext()).newPage();
-    await again.goto(app.url + link.claimUrl);
-    await again.waitForTimeout(1500);
-    check(/\d{3} \d{3}/.test(await again.textContent('#pairing-code')), 'the same claim link a second time: only a pairing code');
+    await again.goto(app.url + link.url);
+    check(await again.waitForSelector('#output:not([hidden])', { timeout: 6000 }).then(() => true, () => false), 'the same link a second time, in another browser: the output again');
+    check((await app.api(app.cookies.owner, 'GET', '/api/screens')).body.screens.filter((s) => s.name === 'Fereastra operatorului').length === 1, 'one screen row for the window, however often it is opened');
+    // the leader's live page sees it as connected: two windows of one screen count once
+    await lp.waitForFunction(() => /(Un ecran|One screen)/.test(document.getElementById('projector-screens').textContent), null, { timeout: 4000 }).catch(() => {});
+    check(/(Un ecran|One screen)/.test(await lp.textContent('#projector-screens')), 'the live page counts one connected screen (two windows of the same link)', await lp.textContent('#projector-screens'));
+    await again.context().close();
+    // revoked: the link dies, the window falls back to a pairing code and says why
+    await app.api(app.cookies.owner, 'DELETE', `/api/screens/${link.screen.id}`);
+    const dead = await win.waitForFunction(() => /\d{3} \d{3}/.test(document.getElementById('pairing-code').textContent), null, { timeout: 8000 }).then(() => true, () => false);
+    check(dead && /(nu mai este valid|no longer valid)/.test(await win.textContent('#pairing-error')), 'revoked: a pairing code and "the link is no longer valid"', await win.textContent('#pairing-error'));
+    const reopened = await (await browser.newContext()).newPage();
+    await reopened.goto(app.url + link.url);
+    await reopened.waitForFunction(() => /\d{3} \d{3}/.test(document.getElementById('pairing-code').textContent), null, { timeout: 8000 }).catch(() => {});
+    check(/\d{3} \d{3}/.test(await reopened.textContent('#pairing-code')), 'the dead link opened again: only a pairing code');
     const en = await (await browser.newContext({ extraHTTPHeaders: { 'Accept-Language': 'en' } })).newPage();
     await en.goto(`${app.url}/screen`);
     await en.waitForFunction(() => /\d{3} \d{3}/.test(document.getElementById('pairing-code').textContent));

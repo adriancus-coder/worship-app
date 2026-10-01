@@ -6,6 +6,7 @@ const { isValidTime } = require('../lib/dates');
 const { requireRole } = require('../lib/auth');
 const { MAX_BYTES, sniff, createLogoStore } = require('../lib/logo');
 const { createScreenStore } = require('../lib/screens');
+const { screenCredential } = require('./screens');
 const { NOTATIONS, THEME_DEFAULTS, TIME_FORMATS, createAdminSettings, parseSafeMargin } = require('../lib/admin-settings');
 const { parsePatch: parseClockPatch } = require('../lib/clock');
 const { parseChoice, createBackgroundStore } = require('../lib/backgrounds');
@@ -166,11 +167,11 @@ function createSettingsRouter({ db, auth, config, logger, screensHub, live, stor
     res.json({ logo: null });
   });
 
-  // Session user of that admin, or one of its screens (X-Screen-Token). Else 404.
+  // Session user of that admin, or one of its screens (X-Screen-Token / X-Screen-Key). Else 404.
   router.get('/api/logo/:file', (req, res) => {
     const found = logos.find(req.params.file);
     const session = auth.getActiveSession(req);
-    const paired = session ? null : screens.findByToken(req.get('x-screen-token'));
+    const paired = session ? null : screens.identify(screenCredential(req));
     const screen = paired && paired.adminActive ? paired : null; // a deactivated church's screens get nothing
     const adminId = session ? session.admin.id : screen && screen.adminId;
     if (!found || !adminId || found.adminId !== adminId) return res.status(404).json({ error: req.t('errors.notFound') });

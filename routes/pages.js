@@ -28,8 +28,9 @@ function createPagesRouter({ db, auth, sendPage }) {
   });
 
 
-  // The projector screen: no user session (it pairs with a code or a claim link).
-  router.get('/screen', noStore, (req, res) => {
+  // The projector screen: no user session. /screen pairs with a code; /screen/<key> is a
+  // screen's static link (the page reads the key from its address).
+  router.get(['/screen', '/screen/:key([a-z0-9]{12})'], noStore, (req, res) => {
     sendPage(req, res, 'screen');
   });
 

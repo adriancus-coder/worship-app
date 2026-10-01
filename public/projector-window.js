@@ -1,9 +1,10 @@
 'use strict';
 
 // "Deschide ecranul proiectorului" (the leader's live page, the operator console): opens the
-// /screen window, paired at once with a one-time claim link. With the Window Management API
-// (Chrome / Edge, one-time permission) it opens fullscreen on a display other than this one;
-// otherwise as a normal window the user drags to the projector (+ F11).
+// static link of the screen named after this window ("Fereastra de proiecție", one per
+// church, reused). With the Window Management API (Chrome / Edge, one-time permission) it
+// opens fullscreen on a display other than this one; otherwise as a normal window the user
+// drags to the projector (+ F11).
 //
 //   PROJECTOR_WINDOW.setup({ button, hint, message, api, t });
 
@@ -47,7 +48,7 @@
       const features = target
         ? `popup,left=${target.availLeft},top=${target.availTop},width=${target.availWidth},height=${target.availHeight},fullscreen`
         : 'popup,width=1280,height=720';
-      // Opened right away (still inside the click); the claim link is filled in after.
+      // Opened right away (still inside the click); the screen's link is filled in after.
       const win = window.open('about:blank', 'wa-projector', features);
       if (!win) {
         say(t('live.projector.blocked'), 'error');
@@ -59,7 +60,7 @@
         say(res.body.error || t('common.networkError'), 'error');
         return;
       }
-      win.location.href = res.body.claimUrl;
+      win.location.href = res.body.url;
       say(target ? t('live.projector.placed') : t('live.projector.dragHint'), target ? 'success' : null);
     });
     return { say };

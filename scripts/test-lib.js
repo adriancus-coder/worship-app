@@ -2521,6 +2521,42 @@ test('migration 027: the presenter role; existing users and sessions keep their 
   mem.close();
 });
 
+test('static link keys (migration 039): 12 safe characters, unique, on every screen; older rows get one; the key finds the screen until revoked', () => {
+  const Database = require('better-sqlite3');
+  const { runMigrations } = require('../lib/db');
+  const S = require('../lib/screens');
+  const key = S.newLinkKey();
+  assert.ok(S.isLinkKey(key) && key.length === 12 && !/[01oli]/.test(key) && key !== S.newLinkKey(), 'no ambiguous characters');
+  assert.ok(!S.isLinkKey('abc') && !S.isLinkKey(key.toUpperCase()) && !S.isLinkKey(null));
+  assert.strictEqual(S.linkPath(key), `/screen/${key}`);
+  const mem = new Database(':memory:');
+  mem.pragma('foreign_keys = ON');
+  runMigrations(mem);
+  mem.prepare("INSERT INTO admins (id, name, created_at) VALUES (1, 'A', 0), (2, 'B', 0)").run();
+  mem.prepare("INSERT INTO screens (id, admin_id, name, token_hash, created_at) VALUES (1, 1, 'Vechi', 'h1', 0), (2, 2, 'Al altuia', 'h2', 0)").run(); // from before the migration
+  const screens = S.createScreenStore(mem);
+  const old = screens.get(1, 1);
+  assert.ok(S.isLinkKey(old.linkKey) && old.link === `/screen/${old.linkKey}`, 'an older screen gets its key when the store opens');
+  assert.notStrictEqual(old.linkKey, screens.get(2, 2).linkKey);
+  assert.throws(() => mem.prepare('UPDATE screens SET link_key = ? WHERE id = 2').run(old.linkKey), /UNIQUE/);
+  const made = screens.create(1, null, 'Balcon');
+  assert.ok(S.isLinkKey(made.linkKey) && made.name === 'Balcon' && made.safeMargin === null);
+  assert.deepStrictEqual(screens.list(1).map((s) => s.name), ['Balcon', 'Vechi'], 'listed at once (no pairing)');
+  assert.strictEqual(screens.findByToken('f'.repeat(64)), null, 'no token ever matches a link-only screen');
+  const found = screens.findByKey(made.linkKey);
+  assert.deepStrictEqual([found.id, found.adminId, found.adminName, found.adminActive], [made.id, 1, 'A', true]);
+  assert.strictEqual(screens.identify({ key: made.linkKey }).id, made.id);
+  assert.strictEqual(screens.identify({ token: 'x' }), null);
+  assert.strictEqual(screens.findByKey(made.linkKey.toUpperCase()), null);
+  assert.strictEqual(screens.findOrCreate(1, null, 'Balcon').id, made.id, 'the console window: one screen per name');
+  assert.strictEqual(screens.findOrCreate(1, null, 'Scenă').id > made.id, true);
+  assert.strictEqual(screens.findOrCreate(2, null, 'Balcon').adminId, undefined); // another admin: its own screen
+  assert.notStrictEqual(screens.findOrCreate(2, null, 'Balcon').id, made.id);
+  assert.strictEqual(screens.revoke(1, made.id), true);
+  assert.strictEqual(screens.findByKey(made.linkKey), null, 'revoked: the link is dead');
+  mem.close();
+});
+
 test('safe margin: 0-12 % parsed, 5 by default; on every frame; a screen may override (migration 028)', () => {
   const Database = require('better-sqlite3');
   const { runMigrations } = require('../lib/db');

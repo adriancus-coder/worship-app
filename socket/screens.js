@@ -1,7 +1,8 @@
 'use strict';
 
 // Projector screens over socket.io, in their own namespace "/screens". A screen connects
-// with its screen token (handshake auth.token), never a user session, and joins
+// with its credential (handshake auth.token: code pairing; auth.key: its static link),
+// never a user session, and joins
 // "admin:<adminId>:screens". It receives `projector:frame` when it connects and whenever
 // what the admin's projector shows changes (worship moves, source, setlist, start / end).
 
@@ -164,6 +165,11 @@ function createScreensHub({ db, logger, config }) {
     if (mainIo) mainIo.to(watchersRoom(adminId)).emit('projector:screens', { count: screenCount(adminId) });
   }
 
+  // A screen was created, renamed or revoked (routes/screens.js): the watchers hear of it.
+  function listChanged(adminId) {
+    sendCount(adminId);
+  }
+
   // An owner / leader page (main namespace socket) starts watching the projector.
   function watch(socket) {
     const { adminId } = socket.data;
@@ -238,13 +244,14 @@ function createScreensHub({ db, logger, config }) {
         socket.disconnect(true);
       }
     }
+    sendCount(adminId);
   }
 
   function attach(io) {
     mainIo = io;
     nsp = io.of(NAMESPACE);
     nsp.use((socket, next) => {
-      const screen = screens.findByToken(socket.handshake.auth && socket.handshake.auth.token);
+      const screen = screens.identify(socket.handshake.auth);
       if (!screen) return next(new Error('unauthorized'));
       if (!screen.adminActive) return next(new Error('suspended')); // deactivated church: retries later
       socket.data = { screenId: screen.id, adminId: screen.adminId, safeMargin: screen.safeMargin };
@@ -269,7 +276,7 @@ function createScreensHub({ db, logger, config }) {
     // last_seen_at while connected; a screen revoked meanwhile is dropped.
     setInterval(() => {
       for (const socket of nsp.sockets.values()) {
-        const screen = screens.findByToken(socket.handshake.auth.token);
+        const screen = screens.identify(socket.handshake.auth);
         if (!screen || !screen.adminActive) socket.disconnect(true);
         else screens.touch(screen.id);
       }
@@ -289,7 +296,7 @@ function createScreensHub({ db, logger, config }) {
   // pages compute the same frames offline) and the editor's "Implicit (…)".
   const backgroundsFor = (adminId, eventId, override) => backgrounds.forEvent(adminId, eventId, override);
 
-  return { attach, update, marginChanged, testPattern, showsPattern, frameFor, onlineIds, revoked, suspend, watch, setVideoHandler, setTranslationSource, lastVideoPosition, backgroundsFor };
+  return { attach, update, marginChanged, testPattern, showsPattern, frameFor, onlineIds, revoked, listChanged, suspend, watch, setVideoHandler, setTranslationSource, lastVideoPosition, backgroundsFor };
 }
 
 module.exports = { NAMESPACE, screensRoom, createScreensHub };

@@ -111,7 +111,7 @@ module.exports = {
     await p.goto(`${app.url}/events/${E}/operator`);
     await p.waitForSelector('#console:not([hidden])');
     const [popup] = await Promise.all([p.waitForEvent('popup'), p.click('#open-projector')]);
-    await popup.waitForURL('**/screen', { timeout: 5000 });
+    await popup.waitForURL(/\/screen\/[a-z0-9]{12}$/, { timeout: 5000 });
     check(await popup.waitForSelector('#output:not([hidden])', { timeout: 6000 }).then(() => true, () => false), 'operator: "Deschide ecranul proiectorului" opens a paired window as before');
     await popup.close();
   },

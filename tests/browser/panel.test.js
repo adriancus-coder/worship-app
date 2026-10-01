@@ -104,8 +104,8 @@ module.exports = {
     await op.goto(`${app.url}/events/${E}/live`);
     await op.waitForSelector('#open-projector:not([hidden])');
     const [popup] = await Promise.all([op.waitForEvent('popup'), op.click('#open-projector')]);
-    await popup.waitForURL('**/screen', { timeout: 5000 });
-    check(await popup.waitForSelector('#output:not([hidden])', { timeout: 6000 }).then(() => true, () => false), 'owner: "Deschide proiectorul" opens a paired /screen window');
+    await popup.waitForURL(/\/screen\/[a-z0-9]{12}$/, { timeout: 5000 });
+    check(await popup.waitForSelector('#output:not([hidden])', { timeout: 6000 }).then(() => true, () => false), 'owner: "Deschide proiectorul" opens the window on its static link');
     check(await lp.waitForFunction(() => /2/.test(document.getElementById('projector-screens').textContent), null, { timeout: 5000 }).then(() => true, () => false), 'the leader\'s panel counts 2 screens');
     await popup.close();
     await op.context().close();
