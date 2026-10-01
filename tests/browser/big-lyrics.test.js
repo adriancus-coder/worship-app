@@ -115,7 +115,7 @@ module.exports = {
       check(await at() === 'G.1 ended' && await screen() === 'BLACK', `${tag} E in the view: black, the position stays`);
       b = await big(p);
       check(/Terminat|Ended/.test(b.text) && /Luca 2:1-7/.test(b.text) && /Luca 2:1-7/.test(b.next), `${tag} the view says "✓ Terminat" and prepares the next item (the verse)`, b);
-      check(/Conectat|Connected/.test(b.status) && /Împreună|Together/.test(b.status), `${tag} the status line: connection · mode`, b.status);
+      check(/Conectat|Connected/.test(b.status) && /Control comun|Shared control/.test(b.status), `${tag} the status line: connection · mode`, b.status);
       await p.keyboard.press('Escape');
       await wait(200);
       check(!(await big(p)), `${tag} Escape closes`);
@@ -127,7 +127,7 @@ module.exports = {
         await p.keyboard.press('f');
         await p.waitForSelector('dialog.big-lyrics[open]');
         b = await big(p);
-        check(/Luca 2:1-7/.test(b.label) && /Separat|Separate/.test(b.status) && /Echipa e la|The team is at/.test(b.status), `${tag} split: the projector's item, "Echipa e la …"`, b);
+        check(/Luca 2:1-7/.test(b.label) && /Doar operatorul|Operator only/.test(b.status) && /Echipa e la|The team is at/.test(b.status), `${tag} split: the projector's item, "Echipa e la …"`, b);
         await p.keyboard.press('Escape');
       }
       await p.context().close();

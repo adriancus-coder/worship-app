@@ -19,7 +19,7 @@ module.exports = {
     check(await p.$eval('#mode-banner', (b) => b.dataset.mode) === 'notLive', 'before the start: "Evenimentul nu este live"');
     await p.click('#start-button');
     await p.waitForFunction(() => document.getElementById('mode-banner').dataset.mode === 'together');
-    check(true, 'started from the console: banner "Împreună"');
+    check(true, 'started from the console: banner "Control comun"');
     const s = () => app.state();
     await p.keyboard.press('ArrowRight');
     await wait(300);

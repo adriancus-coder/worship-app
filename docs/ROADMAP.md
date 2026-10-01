@@ -61,24 +61,27 @@ never implement a later stage early. Mockups: claude.ai design canvas
   revoking and "Deschide ecranul proiectorului" are the operator's; the presenter and the
   leader keep the projector preview and the source buttons. Owner-only stays owner-only:
   settings, team, logo, backup, platform.
-- **Two live modes** (`live.mode`, any event role; a new start is *together*):
-  - *Împreună* (together, default) — ONE main position. The leader page and the operator
+- **Two live modes** (`live.mode`, any event role; a new start is *together*). In the UI the
+  switch is labelled by who controls the projector: "Proiectorul: Doar operatorul · Control
+  comun" (EN "The projector: Operator only · Shared control"); the internal values stay
+  `together` / `split`:
+  - *Control comun* (together, default) — ONE main position. The leader page and the operator
     console both move it; the projector and the team phones follow it. Projector-position
     commands are refused.
-  - *Separat* (split) — the main position (team phones) and the projector position are
+  - *Doar operatorul* (split) — the main position (team phones) and the projector position are
     independent; anyone with event rights may move either. The leader page's big controls
     move the team, the console's move the projector; each page shows where the other is
     ("Proiectorul e la …" / "Echipa e la …") with "Sari acolo" (key W on the console).
     Entering split copies the main position to the projector; back to together the
     projector shows the main position at once.
   - **The projector is the operator's** (the projector PC is theirs). **Handover consent**
-    (migration 024): in split mode the "Împreună" of anyone else (owner, presenter, leader)
+    (migration 024): in split mode the "Control comun" of anyone else (owner, presenter, leader)
     is a request, not a switch. It is kept in the live state (60 s, expiry silent),
     broadcast as `live:handover`, and shown on the requester's page as "Cerere trimisă… N s"
     with "Anulează"; the console (operator only) gets a toast "<Lider> cere controlul
     proiectorului" with Acceptă (Enter) / Refuză and a badge on the switch. Accept →
     together (the projector shows the main position); refuse → nothing changes ("Operatorul
-    a refuzat" 5 s). The operator switches directly both ways: "Împreună" is the operator
+    a refuzat" 5 s). The operator switches directly both ways: "Control comun" is the operator
     handing the projector over (`handedOver`), e.g. before stepping out. With no operator
     page in the room the request applies at once (`taken`: someone projects in the
     operator's place). Whoever gets the projector is told, for 8 s under the switch and in

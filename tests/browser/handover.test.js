@@ -1,12 +1,12 @@
 'use strict';
 
 // Consent before the leader takes the projector: in split mode with an operator connected,
-// the leader's "Împreună" shows "Cerere trimisă… N s" with "Anulează" (still split); the
+// the leader's "Control comun" shows "Cerere trimisă… N s" with "Anulează" (still split); the
 // console gets a toast "Lider cere controlul proiectorului" (Acceptă / Refuză, Enter accepts
 // when focused) and a badge on the switch; refuse -> "Operatorul a refuzat", still split;
 // accept -> together on both ("ce schimbi aici apare pe proiector" on the leader page);
 // cancel; the big lyrics show the state; the owner asks like the leader; the operator direct
-// both ways ("Împreună" hands over: the leader is told); no operator -> taken at once, the
+// both ways ("Control comun" hands over: the leader is told); no operator -> taken at once, the
 // leader is told; expiry after 60 s. RO / EN; 375 / 1024 / 1440.
 
 const { layoutAudit, wait } = require('./harness');
@@ -28,7 +28,7 @@ module.exports = {
     await op.waitForFunction(() => document.getElementById('mode-banner').dataset.mode === 'split');
     await lp.waitForFunction(() => document.querySelector('#mode-controls [data-value="split"]').getAttribute('aria-pressed') === 'true');
     check(/operatorului.*accepte/.test(await lp.textContent('#mode-controls .mode-hint')), 'leader, split: "Proiectorul e al operatorului; el trebuie să accepte"');
-    check(/al tău.*predă/.test(await op.textContent('#mode-controls .mode-hint')), 'console, split: "Proiectorul e al tău … Împreună îl predă"');
+    check(/al tău.*predă/.test(await op.textContent('#mode-controls .mode-hint')), 'console, split: "Proiectorul e al tău … Control comun îl predă"');
     // the request
     await lp.click('#mode-controls [data-value="together"]');
     await lp.waitForSelector('#mode-controls .handover-line:not([hidden])');
@@ -79,7 +79,7 @@ module.exports = {
     await lp.waitForFunction(() => document.querySelector('#mode-controls .handover-line').hidden, null, { timeout: 3000 }).catch(() => {});
     const afterCancel = { mode: await mode(), lineHidden: await lp.isHidden('#mode-controls .handover-line'), handover: (await app.state()).handover, line: await lp.textContent('#mode-controls .handover-line') };
     check(afterCancel.mode === 'split' && afterCancel.lineHidden && afterCancel.handover === null, 'the leader cancels: the toast goes, still split, nothing pending', afterCancel);
-    // the operator switches directly, both ways; "Împreună" hands the projector over: the leader is told
+    // the operator switches directly, both ways; "Control comun" hands the projector over: the leader is told
     await op.click('#mode-controls [data-value="together"]');
     await op.waitForFunction(() => document.getElementById('mode-banner').dataset.mode === 'together');
     await lp.waitForSelector('#mode-controls .handover-line:not([hidden])', { timeout: 3000 }).catch(() => {});

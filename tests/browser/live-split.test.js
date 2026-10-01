@@ -1,10 +1,10 @@
 'use strict';
 
-// Separate mode on the leader / presenter (and owner) live page: the whole projector panel
+// "Doar operatorul" (split) on the leader / presenter (and owner) live page: the whole projector panel
 // goes (preview, sources, background, clock, video, "Ecrane conectate"); only the dashed
-// "Proiectorul e la … · Sari acolo" card and the Împreună / Separat + Echipa switches stay;
+// "Proiectorul e la … · Sari acolo" card and the Control comun / Doar operatorul + Echipa switches stay;
 // the step grid takes the width (5 columns from 1180 px); B / L / K do nothing (a hint says
-// so); the big lyrics' status line keeps "Proiectorul e la …"; back to Împreună restores the
+// so); the big lyrics' status line keeps "Proiectorul e la …"; back to Control comun restores the
 // panel without a reload; the console is unaffected. RO / EN; 375 / 1024 / 1180 / 1440.
 
 const { wait } = require('./harness');
