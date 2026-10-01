@@ -1566,6 +1566,12 @@ button.op-step:disabled { opacity: 1; cursor: default; }
 .mode-label { font-weight: 700; color: var(--text-muted); }
 .mode-switch button { min-height: var(--touch); padding: 6px 14px; border: 0; border-radius: 0; font-weight: 600; }
 .mode-hint { flex: 1 0 100%; margin: 0; }
+/* "Pe ce ecrane": one option per screen (selection control), its online dot inside */
+.screen-picker { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.screen-picker[hidden] { display: none; }
+.screen-picker-group { display: flex; }
+.screen-picker-group > button { display: inline-flex; align-items: center; gap: 6px; min-height: var(--touch); padding: 6px 12px; }
+.screen-picker-hint { flex: 1 0 100%; margin: 0; }
 .cross-line { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin: 0; padding: 6px 6px 6px 12px; border: 2px dashed var(--worship); border-radius: var(--radius); }
 .cross-line[hidden] { display: none; }
 .cross-line p { flex: 1 1 12rem; min-width: 0; margin: 0; font-weight: 600; overflow-wrap: anywhere; }

@@ -289,6 +289,7 @@
     renderCenter();
     arrangedNote();
     renderSources();
+    screenPicker.update(state.snap);
     backgroundButton.update(state.snap);
     clockPanel.update({ clock: state.snap.clock, enabled: live() });
     $('op-new-song').disabled = !live();
@@ -326,6 +327,8 @@
     canAddUrl: false, // adding to the media library: owner / leader, on /media
   });
   window.PROJECTOR_WINDOW.setup({ button: $('open-projector'), hint: $('projector-permission'), message: $('projector-message'), api, t });
+  // "Pe ce ecrane": which screens show the projection (hidden with fewer than two screens).
+  const screenPicker = window.SCREEN_PICKER.create($('screen-picker'), { send, t, el });
   const modes = window.LIVE_MODES.controls($('mode-controls'), { send, t, el });
   window.SHELL.me.then((me) => { if (me) modes.setMe(me.user); }); // the handover flow depends on who this page is
   const backgroundButton = window.BG_PICKER.liveButton($('bg-live'), { send });
@@ -357,6 +360,7 @@
       state.screens = reply.screens;
       state.logoUrl = reply.logoUrl || null;
       videoPanel.setScreens(reply.screens);
+      screenPicker.setScreens(reply.screenList || []);
       if (reply.videoStatus && reply.videoStatus.length) videoPanel.status(reply.videoStatus);
       if (state.event && state.snap) render();
     });
@@ -498,9 +502,10 @@
       onConnect: watchProjector,
     });
     state.client.socket.on('projector:frame', (frame) => preview.show(frame));
-    state.client.socket.on('projector:screens', ({ count }) => {
+    state.client.socket.on('projector:screens', ({ count, screens }) => {
       state.screens = count;
       videoPanel.setScreens(count);
+      if (screens) screenPicker.setScreens(screens);
       if (state.event) renderHead();
     });
     state.client.socket.on('projector:video-status', (status) => videoPanel.status(status));

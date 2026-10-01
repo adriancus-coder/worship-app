@@ -104,6 +104,29 @@ function createScreensHub({ db, logger, config }) {
     return own === null || own === undefined ? frame : { ...frame, safeMargin: own };
   }
 
+  // "Pe ce ecrane" (live state, migration 040): null = every screen, else the ids of the
+  // screens that show the live event; the others show the idle screen meanwhile.
+  function targetsFor(adminId) {
+    const eventId = live.liveEventId(adminId);
+    return eventId ? live.snapshot(adminId, eventId).screens : null;
+  }
+
+  const isTarget = (targets, screenId) => targets === null || targets.includes(screenId);
+
+  // The frame for one screen: the live frame when it is a target, else the idle screen (its
+  // own margin either way; the live version, so the screen knows how fresh it is).
+  function frameForSocket(adminId, frame, targets, socket) {
+    if (isTarget(targets, socket.data.screenId)) return forScreen(frame, socket);
+    const idle = projectorFrame(null, null, null, { logoUrl: logoUrl(adminId), clock: clockDefaults(adminId), safeMargin: settings.safeMargin(adminId), fitMin: config.LYRICS_FIT_MIN_PCT });
+    return forScreen({ ...idle, version: frame.version }, socket);
+  }
+
+  // The church's screens with their online state, for the pages' "Pe ce ecrane".
+  function screenList(adminId) {
+    const online = onlineIds(adminId);
+    return screens.list(adminId).map((s) => ({ id: s.id, name: s.name, online: online.has(s.id) }));
+  }
+
   // "Ecran de test" (calibrating the projector): a special frame for ONE screen, with the
   // screen's margin; the screen renders the border, the markers and its resolution. It stays
   // until the operator closes it or the next live frame (update) arrives.
@@ -115,24 +138,27 @@ function createScreensHub({ db, logger, config }) {
   function testPattern(adminId, screenId, labels) {
     if (labels) patterns.set(screenId, labels);
     else patterns.delete(screenId);
+    const targets = targetsFor(adminId);
     for (const socket of socketsOf(adminId)) {
       if (socket.data.screenId !== screenId) continue;
-      socket.emit('projector:frame', labels ? patternFrame(adminId, socket, labels) : forScreen(frameFor(adminId), socket));
+      socket.emit('projector:frame', labels ? patternFrame(adminId, socket, labels) : frameForSocket(adminId, frameFor(adminId), targets, socket));
     }
     return patterns.has(screenId);
   }
   const showsPattern = (screenId) => patterns.has(screenId);
 
-  // Something the projector may show changed: send the new frame if it differs.
+  // Something the projector may show changed (the frame or the screens it goes to): send the
+  // new frame if it differs.
   function update(adminId) {
     if (!nsp) return;
     const frame = frameFor(adminId);
-    const key = withoutVersion(frame);
+    const targets = targetsFor(adminId);
+    const key = `${JSON.stringify(targets)}|${withoutVersion(frame)}`;
     if (lastSent.get(adminId) === key) return;
     lastSent.set(adminId, key);
     for (const socket of socketsOf(adminId)) {
       patterns.delete(socket.data.screenId); // a live frame replaces a test pattern
-      socket.emit('projector:frame', forScreen(frame, socket));
+      socket.emit('projector:frame', frameForSocket(adminId, frame, targets, socket));
     }
     mainIo.to(watchersRoom(adminId)).emit('projector:frame', frame);
   }
@@ -142,13 +168,14 @@ function createScreensHub({ db, logger, config }) {
   function marginChanged(adminId, screenId = null) {
     if (!nsp) return;
     const frame = frameFor(adminId);
-    lastSent.set(adminId, withoutVersion(frame));
+    const targets = targetsFor(adminId);
+    lastSent.set(adminId, `${JSON.stringify(targets)}|${withoutVersion(frame)}`);
     for (const socket of socketsOf(adminId)) {
       if (screenId !== null && socket.data.screenId !== screenId) continue;
       const screen = screens.get(adminId, socket.data.screenId);
       socket.data.safeMargin = screen ? screen.safeMargin : null;
       const labels = patterns.get(socket.data.screenId);
-      socket.emit('projector:frame', labels ? patternFrame(adminId, socket, labels) : forScreen(frame, socket));
+      socket.emit('projector:frame', labels ? patternFrame(adminId, socket, labels) : frameForSocket(adminId, frame, targets, socket));
     }
     if (screenId === null) mainIo.to(watchersRoom(adminId)).emit('projector:frame', frame);
   }
@@ -161,8 +188,9 @@ function createScreensHub({ db, logger, config }) {
     return onlineIds(adminId).size;
   }
 
+  // The watchers: how many screens are connected, and the list for "Pe ce ecrane".
   function sendCount(adminId) {
-    if (mainIo) mainIo.to(watchersRoom(adminId)).emit('projector:screens', { count: screenCount(adminId) });
+    if (mainIo) mainIo.to(watchersRoom(adminId)).emit('projector:screens', { count: screenCount(adminId), screens: screenList(adminId) });
   }
 
   // A screen was created, renamed or revoked (routes/screens.js): the watchers hear of it.
@@ -177,6 +205,7 @@ function createScreensHub({ db, logger, config }) {
     return {
       frame: frameFor(adminId),
       screens: screenCount(adminId),
+      screenList: screenList(adminId), // every screen of the church, online or not ("Pe ce ecrane")
       videoStatus: [...(videoStatus.get(adminId) || new Map()).values()],
       logoUrl: logoUrl(adminId), // for pages that compute frames themselves (public/frames.js)
       safeMargin: settings.safeMargin(adminId), // the same pages' frames carry it too
@@ -262,7 +291,7 @@ function createScreensHub({ db, logger, config }) {
       screens.touch(screenId);
       socket.join(screensRoom(adminId));
       socket.emit('screen:hello', { screen: { id: screenId }, adminId });
-      socket.emit('projector:frame', forScreen(frameFor(adminId), socket));
+      socket.emit('projector:frame', frameForSocket(adminId, frameFor(adminId), targetsFor(adminId), socket));
       sendCount(adminId);
       socket.on('screen:video-status', (payload) => onScreenVideoStatus(socket, payload));
       socket.on('screen:video-local', (payload) => onScreenVideoLocal(socket, payload));

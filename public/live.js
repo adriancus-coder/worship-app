@@ -382,6 +382,8 @@
   // Video controls (a module the operator console will reuse in stage 6).
   const videoPanel = window.VIDEO_PANEL.create($('video-panel'), { send, api, t, el });
   const projector = { screens: 0, logoUrl: null, frame: null, safeMargin: null };
+  // "Pe ce ecrane": which screens show the projection (hidden with fewer than two screens).
+  const screenPicker = window.SCREEN_PICKER.create($('screen-picker'), { send, t, el });
   const backgroundButton = window.BG_PICKER.liveButton($('bg-live'), { send });
   // The corner clock (clock.set: show / corner / size; key K toggles it).
   const clockPanel = window.CLOCK_PANEL.create($('clock-panel'), { t, el, onChange: (patch) => send('clock.set', patch) });
@@ -398,6 +400,7 @@
       ? t('live.projector.screensOne')
       : t('live.projector.screens', { n: projector.screens });
     modes.update(snap);
+    screenPicker.update(emergency.active ? null : snap); // no server: nothing to choose
     backgroundButton.update(snap);
     clockPanel.update({ clock: snap && snap.clock, enabled: live && !emergency.active });
     // Separate: the operator owns the projector. The whole panel goes (preview, sources,
@@ -446,6 +449,7 @@
       showServerFrame(reply.frame);
       projector.screens = reply.screens;
       videoPanel.setScreens(reply.screens);
+      screenPicker.setScreens(reply.screenList || []);
       if (reply.videoStatus && reply.videoStatus.length) videoPanel.status(reply.videoStatus);
       renderProjector();
       if (Number.isInteger(reply.safeMargin)) projector.safeMargin = reply.safeMargin;
@@ -739,9 +743,10 @@
       },
     });
     state.client.socket.on('projector:frame', showServerFrame);
-    state.client.socket.on('projector:screens', ({ count }) => {
+    state.client.socket.on('projector:screens', ({ count, screens }) => {
       projector.screens = count;
       videoPanel.setScreens(count);
+      if (screens) screenPicker.setScreens(screens);
       renderProjector();
     });
     state.client.socket.on('projector:video-status', (status) => videoPanel.status(status));

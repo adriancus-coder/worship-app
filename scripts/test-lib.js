@@ -1151,6 +1151,51 @@ test('live store: together and split; switching keeps positions; team mode', () 
   mem.close();
 });
 
+test('live store: "Pe ce ecrane" (migration 040): null = every screen; chosen ids distinct and sorted, existing screens of this admin only; persisted; reset at a new start', () => {
+  const { mem, live, eventId } = liveFixture();
+  mem.prepare("INSERT INTO admins (id, name, created_at) VALUES (2, 'B', 0)").run();
+  const screens = require('../lib/screens').createScreenStore(mem);
+  const a = screens.create(1, 1, 'Sală').id;
+  const b = screens.create(1, 1, 'Hol').id;
+  const foreign = screens.create(2, null, 'Al altuia').id;
+  const cmd = (c, role = 'leader') => live.command(1, eventId, c, undefined, role);
+  const code = (c, role) => { try { cmd(c, role); return 'ok'; } catch (err) { return err.code; } };
+  const snap = () => live.snapshot(1, eventId);
+  assert.strictEqual(snap().screens, null, 'before any start: every screen');
+  assert.strictEqual(code({ type: 'projector.screens', screenIds: [a] }), 'notLive');
+  cmd({ type: 'event.start' });
+  assert.strictEqual(snap().screens, null);
+  for (const role of ['owner', 'presenter', 'leader', 'operator']) assert.strictEqual(code({ type: 'projector.screens', screenIds: [b, a, b] }, role), 'ok', role);
+  assert.deepStrictEqual(snap().screens, [a, b], 'distinct, sorted');
+  assert.strictEqual(code({ type: 'projector.screens', screenIds: [a] }, 'member'), 'forbidden');
+  const v = snap().version;
+  cmd({ type: 'projector.screens', screenIds: [a, b] });
+  assert.strictEqual(snap().version, v, 'the same choice: no-op');
+  assert.strictEqual(code({ type: 'projector.screens', screenIds: [a, foreign] }), 'screenNotFound', 'another admin\'s screen');
+  assert.strictEqual(code({ type: 'projector.screens', screenIds: [a, 12345] }), 'screenNotFound');
+  assert.strictEqual(code({ type: 'projector.screens', screenIds: 'all' }), 'badCommand');
+  assert.strictEqual(code({ type: 'projector.screens', screenIds: [1.5] }), 'badCommand');
+  cmd({ type: 'projector.screens', screenIds: [] });
+  assert.deepStrictEqual(snap().screens, [], 'nobody: allowed (every screen idle)');
+  cmd({ type: 'projector.screens', screenIds: [b] });
+  cmd({ type: 'worship.next' });
+  assert.deepStrictEqual(snap().screens, [b], 'a move keeps the choice');
+  cmd({ type: 'live.mode', mode: 'split' });
+  assert.deepStrictEqual(snap().screens, [b], 'a mode change too');
+  assert.deepStrictEqual(require('../lib/live').createLiveStore(mem).snapshot(1, eventId).screens, [b], 'persisted');
+  screens.revoke(1, b);
+  assert.deepStrictEqual(snap().screens, [b], 'a revoked screen stays in the stored choice (harmless: it is gone)');
+  assert.strictEqual(code({ type: 'projector.screens', screenIds: [b] }), 'screenNotFound', 'but cannot be chosen again');
+  cmd({ type: 'projector.screens', screenIds: null });
+  assert.strictEqual(snap().screens, null);
+  cmd({ type: 'projector.screens', screenIds: [a] });
+  cmd({ type: 'event.end' });
+  mem.prepare("UPDATE events SET status = 'planned' WHERE id = ?").run(eventId);
+  cmd({ type: 'event.start' });
+  assert.strictEqual(snap().screens, null, 'a new start: every screen again');
+  mem.close();
+});
+
 test('live store: both positions clamp on their own after a setlist change; persisted', () => {
   const { mem, live, eventId, items, save } = liveFixture();
   const [song, v1, v2] = items.map((it) => it.id);

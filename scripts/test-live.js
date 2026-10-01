@@ -429,6 +429,54 @@ async function main() {
     assert.strictEqual((await frameWhere(otherScreen, () => true)).kind, 'idle');
   });
 
+  await step('"Pe ce ecrane" (migration 040): the chosen screens get the live frame, the others the idle screen; the watchers keep the live frame; null = all; an unknown id is refused; the state carries it', async () => {
+    const hall = (await api('POST', '/api/screens', owner, { name: 'Ecran hol' })).body.screen;
+    const leadStates = []; // the server broadcasts before it acknowledges
+    lead.socket.on('live:state', (s) => leadStates.push(s));
+    const leadAt = (v) => { const found = leadStates.find((s) => s.version === v); return found ? Promise.resolve(found) : next(lead.socket, 'live:state', (s) => s.version === v); };
+    const hallSocket = connectScreen({ key: hall.linkKey });
+    assert.strictEqual((await frameWhere(hallSocket, () => true)).kind, 'lyrics', 'every screen shows the event at the start');
+    const main = (await api('GET', '/api/screens', owner)).body.screens.find((s) => s.name === 'Proiector sală');
+    assert.strictEqual(mem.state.screens, null, 'the snapshot: null = every screen');
+    const watchers = connect(leader);
+    await next(watchers, 'connect');
+    const watched = await emit(watchers, 'projector:watch', {});
+    assert.deepStrictEqual(watched.screenList.map((s) => [s.name, s.online]).filter((x) => /sală|hol/.test(x[0])), [['Ecran hol', true], ['Proiector sală', true]], 'the watchers get the list with the online state');
+    // only the main screen
+    const watcherFrame = next(watchers, 'projector:frame');
+    const refused = await send(mem.socket, { type: 'projector.screens', screenIds: [main.id] });
+    assert.deepStrictEqual([refused.ok, refused.code], [false, 'forbidden'], 'members choose nothing');
+    assert.deepStrictEqual((await send(lead.socket, { type: 'projector.screens', screenIds: [main.id, main.id] })).ok, true);
+    const idle = await frameWhere(hallSocket, (f) => f.kind === 'idle');
+    assert.deepStrictEqual([idle.eventId, idle.version], [null, version], 'the hall screen: the idle screen, with the live version');
+    assert.strictEqual((await frameWhere(screen, (f) => f.version === version)).kind, 'lyrics', 'the main screen keeps the event');
+    assert.strictEqual((await watcherFrame).kind, 'lyrics', 'the pages keep previewing the live frame');
+    assert.deepStrictEqual((await leadAt(version)).screens, [main.id], 'the state names the chosen screens, distinct');
+    assert.deepStrictEqual((await send(lead.socket, { type: 'projector.screens', screenIds: [main.id] })).version, version, 'the same choice again: noop');
+    // a move while the hall is out: it stays idle
+    await send(lead.socket, { type: 'worship.next' });
+    assert.strictEqual((await frameWhere(screen, (f) => f.version === version)).kind, 'lyrics');
+    assert.strictEqual(hallSocket.frames.every((f) => f.kind === 'lyrics' || f.kind === 'idle') && hallSocket.frames.at(-1).kind === 'idle', true);
+    // a late joiner gets the idle screen too
+    const late = connectScreen({ key: hall.linkKey });
+    assert.strictEqual((await frameWhere(late, () => true)).kind, 'idle');
+    // bad ids
+    assert.strictEqual((await send(lead.socket, { type: 'projector.screens', screenIds: [main.id, 999999] })).code, 'screenNotFound');
+    assert.strictEqual((await send(lead.socket, { type: 'projector.screens', screenIds: 'all' })).code, 'badCommand');
+    assert.strictEqual((await send(lead.socket, { type: 'projector.screens', screenIds: [0] })).code, 'badCommand');
+    // nobody: every screen idle; null: every screen back
+    assert.strictEqual((await send(ownerSocket, { type: 'projector.screens', screenIds: [] })).ok, true);
+    assert.strictEqual((await frameWhere(screen, (f) => f.version === version)).kind, 'idle', 'no screen chosen: the main one idles too');
+    assert.strictEqual((await send(lead.socket, { type: 'projector.screens', screenIds: null })).ok, true);
+    assert.strictEqual((await frameWhere(screen, (f) => f.version === version)).kind, 'lyrics');
+    assert.strictEqual((await frameWhere(hallSocket, (f) => f.version === version)).kind, 'lyrics');
+    assert.strictEqual((await leadAt(version)).screens, null);
+    watchers.close();
+    hallSocket.close();
+    late.close();
+    assert.strictEqual((await api('DELETE', `/api/screens/${hall.id}`, owner)).status, 200);
+  });
+
   await step('static link (migration 039): a screen made with a name has /screen/<key>; the key opens the page, the socket and the API; the console button reuses one screen per name; revoking kills the link', async () => {
     const made = await api('POST', '/api/screens', operator, { name: 'Ecran balcon' });
     assert.strictEqual(made.status, 201, JSON.stringify(made.body));

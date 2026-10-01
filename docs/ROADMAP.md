@@ -164,6 +164,13 @@ never implement a later stage early. Mockups: claude.ai design canvas
   email / share), then "Adaugă un ecran" in three ways: with a name (the screen and its
   link, the default), from the operator console, with a 6-digit code on a PC where the link
   cannot be typed (the generic "adresa proiectorului", then the code shown there).
+- **"Pe ce ecrane"** (live state `screens`, migration 040; command `projector.screens
+  { screenIds: null | [ids] }`, event roles, any mode): which of the church's screens show
+  the live event; null = every screen (a new start resets to it). A screen left out shows the
+  idle screen (logo / clock, its own margin) until it is put back; the previews on the live
+  page and the console keep showing the live frame. Shown on both pages as a selection
+  control with one option per screen (name + online dot), only when the church has two or
+  more screens; nobody chosen = every screen idle (the hint says so).
 - **Safe margin** (`safe_margin`, church default 5 %, 0-12; a screen may override it,
   migration 028): text, logo and corner clock (offset = margin + 20 / 24 px) keep away from the
   edges some projectors crop (overscan); backgrounds and video stay full-bleed. Every frame
