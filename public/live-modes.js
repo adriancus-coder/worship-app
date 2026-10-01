@@ -1,40 +1,48 @@
 'use strict';
 
-// The live-mode controls the leader page and the operator console share:
-//   "Împreună · Separat"                    live.mode together | split
+// The projector controls the leader page and the operator console share:
+//   "Proiectorul: Ion (operator)"  who holds it, with "Cere controlul proiectorului" (anyone
+//                                  else) or "Predă controlul proiectorului" (the holder: a
+//                                  list of the event-role people connected)
 //   "Echipa: Urmărește live · Derulează liber"  team.mode follow | free
-// the handover flow around them (the projector is the operator's: anyone else's "Împreună"
-// in split mode is a request only an operator answers; with no operator connected it applies
-// at once, and whoever gets the projector is told that what they change shows in church:
-// lib/live.js), and the short info toast for additions made by someone else ("<name> a
-// adăugat …"): it hides after 5 s and never takes clicks.
+// the request flow around them (a request waits for a connected holder: Acceptă / Refuză on
+// the holder's page; with the holder away it applies at once; whoever gets the projector is
+// told that what they change shows in church: lib/live.js), and the short info toast for
+// additions made by someone else ("<name> a adăugat …"): it hides after 5 s and never takes
+// clicks.
 //
 //   const modes = LIVE_MODES.controls(container, { send, t, el });
 //   modes.setMe(user);                       // who this page is (role, id)
-//   modes.update(snap);                      // hidden until the event is live
+//   modes.update(snap);                      // hidden until the event is live (snap.holder, snap.presence.people)
 //   modes.handover(event);                   // socket 'live:handover'
 //   modes.statusText();                      // for the big lyrics' status line
 //   const toast = LIVE_MODES.toast(box, { t });
 //   socket.on('live:notice', toast.show);
 //
-// Leader / presenter / owner page: "Cerere trimisă… 58 s" with "Anulează" while pending,
-// "Operatorul a refuzat" for 5 s after a refusal, the switch flips itself on accept (the
-// snapshot) and the line says "ce schimbi aici apare pe proiector" for 8 s - also when the
-// operator hands the projector over or someone takes it with no operator connected. Console
-// (operator): a toast "Liderul cere controlul proiectorului" with Acceptă (primary, Enter
-// when focused) / Refuză that never covers the step grid, and a badge on the switch.
+// Requester: "Cerere trimisă… 58 s" with "Anulează" while pending, "<X> a refuzat" for 5 s
+// after a refusal; on accept the page says for 8 s "<X> a acceptat: ai proiectorul. Ce schimbi
+// aici apare pe proiector" - the same when the holder hands it over or someone takes it with
+// the holder away. Holder: a toast "<X> cere controlul proiectorului" with Acceptă (primary,
+// Enter when focused) / Refuză that never covers the step grid, and a badge on the row.
 
 (function () {
   const TOAST_MS = 5000;
   const ANSWER_MS = 5000;
   const NOTICE_MS = 8000; // "ce schimbi aici apare pe proiector"
-  const ANSWER_ROLES = ['operator']; // lib/live.js HANDOVER_ANSWER_ROLES
-  const REQUESTING_ROLES = ['owner', 'presenter', 'leader']; // lib/live.js REQUESTING_ROLES
 
   function controls(container, { send, t, el }) {
     let snap = null;
     let me = null;
-    const hand = { answer: null, timer: null, askedBy: null }; // answer: { type, until }
+    let pickOpen = false;
+    const hand = { answer: null, timer: null, askedBy: null }; // answer: { type, until, name }
+    // "Proiectorul: <holder>" + the one action this page has (request / hand over).
+    const holderLabel = el('span', { class: 'mode-label', id: 'holder-label' });
+    const holderText = el('strong', { class: 'holder-text', id: 'holder-text' });
+    const action = el('button', { type: 'button', class: 'secondary', id: 'projector-action', 'data-icon': 'projector', onclick: () => onAction() });
+    const badge = el('span', { class: 'handover-badge', hidden: true });
+    const holderRow = el('div', { class: 'mode-row holder-row' }, holderLabel, holderText, action, badge);
+    // The holder's list: "Predă lui <name> (<role>)" for every other event-role person connected.
+    const pick = el('div', { class: 'handover-pick', role: 'group', 'aria-labelledby': 'projector-action', hidden: true });
     const segmented = (labelKey, command, values) => {
       const label = el('span', { class: 'mode-label' });
       const buttons = values.map((value) => el('button', {
@@ -42,26 +50,21 @@
         class: 'secondary',
         'data-value': value,
         'aria-pressed': 'false',
-        onclick: () => {
-          const current = command === 'live.mode' ? snap && snap.mode : snap && snap.teamMode;
-          if (current !== value) send(command, { mode: value });
-        },
+        onclick: () => { if ((snap && snap.teamMode) !== value) send(command, { mode: value }); },
       }));
       const group = el('div', { class: 'mode-switch', role: 'group' }, ...buttons);
-      const badge = el('span', { class: 'handover-badge', hidden: true });
-      const row = el('div', { class: 'mode-row' }, label, group, badge);
-      return { row, label, group, buttons, badge, labelKey, command, values };
+      const row = el('div', { class: 'mode-row' }, label, group);
+      return { row, label, group, buttons, labelKey, command, values };
     };
-    const liveMode = segmented('live.modes.label', 'live.mode', ['together', 'split']);
     const teamMode = segmented('live.modes.teamLabel', 'team.mode', ['follow', 'free']);
     const hint = el('p', { class: 'hint mode-hint' });
-    // The leader's request line: "Cerere trimisă… 58 s" + Anulează, or the answer.
+    // The requester's line: "Cerere trimisă… 58 s" + Anulează, or the answer / the notice.
     const lineText = el('p');
     const cancel = el('button', { type: 'button', class: 'secondary', onclick: () => send('handover.cancel') });
     const line = el('div', { class: 'handover-line', role: 'status', 'aria-live': 'polite', hidden: true }, lineText, cancel);
     container.classList.add('mode-controls');
-    container.replaceChildren(liveMode.row, teamMode.row, hint, line);
-    // The approver's toast (owner / operator), on the page body so it floats over nothing important.
+    container.replaceChildren(holderRow, pick, teamMode.row, hint, line);
+    // The holder's toast, on the page body so it floats over nothing important.
     const toastText = el('p');
     const accept = el('button', { type: 'button', 'data-icon': 'check', onclick: () => send('handover.accept') });
     const refuse = el('button', { type: 'button', class: 'secondary', 'data-icon': 'close', onclick: () => send('handover.refuse') });
@@ -76,10 +79,26 @@
     document.body.append(toast);
 
     const live = () => Boolean(snap) && snap.status === 'live';
+    const holder = () => (live() && snap.holder) || null;
+    const isHolder = () => Boolean(me && holder() && holder().userId === me.id);
     const pending = () => (live() && snap.handover && snap.handover.expiresAt > Date.now() ? snap.handover : null);
     const mine = () => Boolean(pending() && me && pending().requestedBy === me.id);
-    const canAnswer = () => Boolean(me && ANSWER_ROLES.includes(me.role));
     const secondsLeft = () => Math.max(0, Math.ceil((pending().expiresAt - Date.now()) / 1000));
+    const roleName = (role) => (role ? t(`team.roles.${role}`) : '');
+    const personLabel = (p) => `${p.name || t('live.modes.someone')} (${roleName(p.role)})`;
+    const holderName = () => (holder() ? holder().name || t('live.modes.someone') : t('live.modes.nobody'));
+    // The other event-role people connected (from the presence), for "Predă lui …".
+    const others = () => (((snap && snap.presence && snap.presence.people) || []).filter((p) => !me || p.userId !== me.id));
+
+    function onAction() {
+      if (!live()) return;
+      if (isHolder()) {
+        pickOpen = !pickOpen;
+        render();
+        return;
+      }
+      send('projector.request');
+    }
 
     function tick() {
       clearTimeout(hand.timer);
@@ -91,23 +110,20 @@
       if (!p && !hand.answer) render();
     }
 
-    // The text the big lyrics' status line shows for the handover, or ''.
+    // The line after an answer or a change of hands.
+    function answerText(answer) {
+      const name = answer.name || t('live.modes.someone');
+      return t(`live.modes.handover${answer.type[0].toUpperCase()}${answer.type.slice(1)}`, { name });
+    }
+
+    // The text the big lyrics' status line shows for the request flow, or ''.
     function statusText() {
       if (!live()) return '';
       const p = pending();
       if (p && mine()) return t('live.modes.handoverSent', { s: secondsLeft() });
-      if (p && canAnswer()) return t('live.modes.handoverAsk', { name: hand.askedBy || t('live.modes.leader') });
+      if (p && isHolder()) return t('live.modes.handoverAsk', { name: hand.askedBy || t('live.modes.someone') });
       if (hand.answer && hand.answer.until > Date.now()) return answerText(hand.answer);
       return '';
-    }
-
-    // The line after an answer or a handover: refused / accepted (the requester), handed over
-    // by the operator, taken with no operator connected (the taker, or who took it).
-    function answerText(answer) {
-      if (answer.type === 'refused') return t('live.modes.handoverRefused');
-      if (answer.type === 'handedOver') return t('live.modes.handoverGiven', { name: answer.name || t('live.modes.operator') });
-      if (answer.type === 'taken') return answer.mine ? t('live.modes.handoverTaken') : t('live.modes.handoverTakenBy', { name: answer.name || t('live.modes.someone') });
-      return t('live.modes.handoverAccepted');
     }
 
     function render() {
@@ -115,24 +131,46 @@
       toast.hidden = true;
       if (!live()) {
         line.hidden = true;
+        pick.hidden = true;
         return;
       }
-      for (const part of [liveMode, teamMode]) {
-        const id = `${part.command.replace('.', '-')}-label`;
-        part.label.id = id;
-        part.label.textContent = t(part.labelKey);
-        part.group.setAttribute('aria-labelledby', id);
-        const current = part.command === 'live.mode' ? snap.mode : snap.teamMode;
-        for (const button of part.buttons) {
-          button.textContent = t(`live.modes.${button.dataset.value}`);
-          button.setAttribute('aria-pressed', String(button.dataset.value === current));
-        }
-      }
-      const requester = me && REQUESTING_ROLES.includes(me.role); // their switch waits for the operator
-      hint.textContent = snap.mode === 'split'
-        ? t(requester ? 'live.modes.splitLeaderHint' : 'live.modes.splitHint')
-        : t(requester ? 'live.modes.togetherHint' : 'live.modes.togetherOperatorHint');
+      const h = holder();
+      holderLabel.textContent = t('live.modes.label');
+      holderText.textContent = h ? personLabel(h) : t('live.modes.nobody');
       const p = pending();
+      // the action: the holder hands over, everyone else asks
+      action.hidden = !me;
+      action.textContent = t(isHolder() ? 'live.modes.handOver' : 'live.modes.request');
+      action.setAttribute('aria-label', action.textContent);
+      if (isHolder()) {
+        action.setAttribute('aria-expanded', String(pickOpen));
+        action.disabled = others().length === 0;
+      } else {
+        action.removeAttribute('aria-expanded');
+        action.disabled = Boolean(p && mine());
+        pickOpen = false;
+      }
+      pick.hidden = !(isHolder() && pickOpen);
+      if (!pick.hidden) {
+        pick.replaceChildren(...others().map((person) => el('button', {
+          type: 'button', class: 'secondary', 'data-icon': 'projector', 'data-to': String(person.userId),
+          text: t('live.modes.handTo', { name: personLabel(person) }),
+          onclick: () => { pickOpen = false; send('projector.handover', { toUserId: person.userId }); },
+        })));
+      }
+      // the team switch
+      teamMode.label.id = 'team-mode-label';
+      teamMode.label.textContent = t(teamMode.labelKey);
+      teamMode.group.setAttribute('aria-labelledby', 'team-mode-label');
+      for (const button of teamMode.buttons) {
+        button.textContent = t(`live.modes.${button.dataset.value}`);
+        button.setAttribute('aria-pressed', String(button.dataset.value === snap.teamMode));
+      }
+      // what the projector follows, for this page
+      const name = holderName();
+      if (isHolder()) hint.textContent = t(snap.mode === 'split' ? 'live.modes.holderSplitHint' : 'live.modes.holderTogetherHint');
+      else hint.textContent = t(snap.mode === 'split' ? 'live.modes.otherSplitHint' : 'live.modes.otherTogetherHint', { name });
+      if (isHolder() && others().length === 0) hint.textContent += ` ${t('live.modes.nobodyElse')}`;
       // the requester's line
       const answer = hand.answer && hand.answer.until > Date.now() ? hand.answer : null;
       line.hidden = !(p && mine()) && !answer;
@@ -141,14 +179,14 @@
       cancel.textContent = t('live.modes.handoverCancel');
       if (p && mine()) lineText.textContent = t('live.modes.handoverSent', { s: secondsLeft() });
       else if (answer) lineText.textContent = answerText(answer);
-      // the approver's badge and toast
-      const asked = Boolean(p && !mine() && canAnswer());
-      liveMode.badge.hidden = !asked;
-      liveMode.badge.textContent = t('live.modes.handoverBadge');
-      liveMode.group.classList.toggle('pending', asked);
+      // the holder's badge and toast
+      const asked = Boolean(p && !mine() && isHolder());
+      badge.hidden = !asked;
+      badge.textContent = t('live.modes.handoverBadge');
+      holderRow.classList.toggle('pending', asked);
       toast.hidden = !asked;
       if (asked) {
-        toastText.textContent = t('live.modes.handoverAsk', { name: hand.askedBy || t('live.modes.leader') });
+        toastText.textContent = t('live.modes.handoverAsk', { name: hand.askedBy || t('live.modes.someone') });
         accept.textContent = t('live.modes.handoverAccept');
         refuse.textContent = t('live.modes.handoverRefuse');
       }
@@ -164,28 +202,33 @@
         snap = next;
         render();
       },
-      // socket 'live:handover': { type: requested | accepted | refused | cancelled, by, byUserId }
+      // socket 'live:handover': { type: requested | accepted | refused | cancelled | handedOver | taken,
+      // by, byUserId, to?, toUserId? }
       handover(event) {
         if (!event || !snap) return;
+        const actor = Boolean(me && event.byUserId === me.id);
+        const receiver = Boolean(me && event.toUserId !== undefined && event.toUserId === me.id);
+        const notice = (type, name) => { hand.answer = { type, name: name || null, until: Date.now() + NOTICE_MS }; };
         if (event.type === 'requested') {
           hand.askedBy = event.by || null;
           hand.answer = null;
           // The toast takes focus so Enter accepts, unless someone is typing.
-          if (canAnswer() && !(document.activeElement && document.activeElement.closest('input, textarea, select, dialog[open]'))) {
+          if (isHolder() && !(document.activeElement && document.activeElement.closest('input, textarea, select, dialog[open]'))) {
             setTimeout(() => { if (!toast.hidden) accept.focus(); }, 0);
           }
         } else if (event.type === 'refused') {
           // Shown to the one who asked.
           const wasMine = Boolean(me && (event.requestedBy === me.id || mine()));
-          hand.answer = wasMine ? { type: 'refused', until: Date.now() + ANSWER_MS } : null;
-        } else if (event.type === 'accepted' || event.type === 'handedOver' || event.type === 'taken') {
-          // The projector changed hands (the switch flips with the snapshot): everyone who may
-          // now move it is told that what they change shows in church - not the operator who
-          // gave it, not the one who answered.
-          const actor = Boolean(me && event.byUserId === me.id);
-          const operator = Boolean(me && ANSWER_ROLES.includes(me.role));
-          const show = event.type === 'taken' ? !operator : !actor && !operator;
-          hand.answer = show ? { type: event.type, mine: actor, name: event.by || null, until: Date.now() + NOTICE_MS } : null;
+          hand.answer = wasMine ? { type: 'refused', name: event.by || null, until: Date.now() + ANSWER_MS } : null;
+        } else if (event.type === 'accepted' || event.type === 'handedOver') {
+          // The projector changed hands (the snapshot follows): the one who got it is told what
+          // that means; the others who it went to; the one who gave it nothing.
+          if (receiver) notice(event.type === 'accepted' ? 'accepted' : 'received', event.by);
+          else if (!actor) notice('nowHolds', event.to);
+          else hand.answer = null;
+        } else if (event.type === 'taken') {
+          if (actor) notice('taken', null);
+          else notice('takenBy', event.by);
         } else if (event.type === 'cancelled') hand.answer = null;
         render();
       },

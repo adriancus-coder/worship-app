@@ -22,14 +22,14 @@ module.exports = {
       const current = document.querySelector('.live-current').getBoundingClientRect().width;
       return {
         panel: Boolean(panel.getClientRects().length), cross: !document.getElementById('cross').hidden, hint: !document.getElementById('split-keys-hint').hidden,
-        modes: !document.getElementById('mode-controls').hidden && document.querySelectorAll('#mode-controls .mode-switch').length === 2,
+        modes: !document.getElementById('mode-controls').hidden && document.querySelectorAll('#mode-controls .mode-switch').length === 1 && !document.getElementById('projector-action').hidden,
         video: Boolean(document.querySelector('#video-panel') && document.querySelector('#video-panel').getClientRects().length),
         cols, current: Math.round(current), crossText: document.getElementById('cross-text').textContent,
       };
     });
     for (const [lang, width, role] of [['ro', 375, 'leader'], ['en', 1024, 'presenter'], ['ro', 1180, 'leader'], ['en', 1440, 'owner']]) {
       const tag = `[${lang} ${width} ${role}]`;
-      await app.command({ type: 'live.mode', mode: 'together' });
+      await app.takeProjector('owner');
       await app.command({ type: 'projector.source', source: 'content' });
       await app.command({ type: 'worship.goto', itemId: items[0], step: 0 });
       const p = await signIn(role, { width, lang });
@@ -38,7 +38,7 @@ module.exports = {
       await p.waitForSelector('.step[aria-current=step]');
       const together = await layout(p);
       check(together.panel && !together.cross && !together.hint, `${tag} together: the projector panel is there`, together);
-      await app.command({ type: 'live.mode', mode: 'split' });
+      await app.takeProjector('operator');
       await p.waitForFunction(() => document.body.classList.contains('split-mode'));
       await wait(300);
       const split = await layout(p);
@@ -58,7 +58,7 @@ module.exports = {
       check(/(Proiectorul e la|The projector is at)/.test(status), `${tag} big lyrics status: "Proiectorul e la …"`, status);
       await p.keyboard.press('Escape');
       await wait(200);
-      await app.command({ type: 'live.mode', mode: 'together' });
+      await app.takeProjector('owner');
       await p.waitForFunction(() => !document.body.classList.contains('split-mode'));
       await wait(300);
       const back = await layout(p);
@@ -66,7 +66,7 @@ module.exports = {
       await p.context().close();
     }
     // the console keeps its projector controls in split mode
-    await app.command({ type: 'live.mode', mode: 'split' });
+    await app.takeProjector('operator');
     const op = await signIn('operator', { width: 1180 });
     await op.goto(`${app.url}/events/${E}/operator`);
     await op.waitForSelector('#console:not([hidden])');

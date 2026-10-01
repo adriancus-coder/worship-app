@@ -3,9 +3,10 @@
 // Leader control (/events/:id/live, the event roles): moves the main (team) position. The
 // page never moves on its own: every change is a command, and it renders only the live:state
 // snapshots the server broadcasts, except in emergency mode (below).
-// Live control "Împreună · Separat": together, the operator console moves the same position;
-// separate, the projector has its own position (moved from the console) and this page shows
-// where it is, with "Sari acolo" to bring the team there. "Echipa: Urmărește live ·
+// The projector has a holder (public/live-modes.js): held by anyone but an operator, it follows
+// the main position this page moves; held by the operator, it has its own position (moved
+// from the console) and this page shows where it is, with "Sari acolo" to bring the team
+// there. "Cere / Predă controlul proiectorului" change hands. "Echipa: Urmărește live ·
 // Derulează liber" sets how team phones follow. Additions made from the console show a short
 // info toast.
 
@@ -135,7 +136,7 @@
     const presence = (state.snap && state.snap.presence) || {};
     const parts = ['presenter', 'leader', 'owner', 'operator', 'member'].filter((role) => presence[role])
       .map((role) => t(`live.presenceRoles.${role}`, { n: presence[role] }));
-    const total = Object.values(presence).reduce((a, b) => a + b, 0);
+    const total = ['presenter', 'leader', 'owner', 'operator', 'member'].reduce((a, role) => a + (presence[role] || 0), 0);
     $('presence').textContent = `${t('live.online', { n: total })}${parts.length ? ` · ${parts.join(' · ')}` : ''}`;
   }
 
@@ -733,6 +734,7 @@
       onPresence: (presence) => {
         if (state.snap) state.snap = { ...state.snap, presence };
         if (state.event) renderPresence();
+        if (state.snap) modes.update(state.snap); // who can receive the projector
       },
       onConnection: renderConnection,
       onGone: gone,

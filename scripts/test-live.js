@@ -327,6 +327,16 @@ async function main() {
     if (reply.ok) version = reply.version;
     return reply;
   };
+  // Gives the projector to socket's user: a request, accepted from holderSocket when the holder
+  // is connected (an operator holding it = split; anyone else = together).
+  const takeProjector = async (socket, holderSocket) => {
+    const reply = await send(socket, { type: 'projector.request' });
+    assert.strictEqual(reply.ok, true, JSON.stringify(reply));
+    if (reply.handover === 'requested') {
+      const accepted = await send(holderSocket, { type: 'handover.accept' });
+      assert.strictEqual(accepted.ok, true, JSON.stringify(accepted));
+    }
+  };
   // The server broadcasts before it acknowledges, so a state may already have arrived.
   const memberStates = [];
   const record = (socket) => socket.on('live:state', (s) => memberStates.push(s));
@@ -745,9 +755,9 @@ async function main() {
     };
     await send(lead.socket, { type: 'worship.goto', itemId: i1, step: 0 });
     await frameWhere(screen, (f) => f.version === version || (f.kind === 'lyrics' && f.lines[0] === 'verse'));
-    assert.strictEqual((await emit(mem.socket, 'live:command', { eventId: ev.id, type: 'live.mode', mode: 'split' })).code, 'forbidden');
-    // the operator switches to split: the projector starts at the main position
-    await opSend({ type: 'live.mode', mode: 'split' });
+    assert.strictEqual((await emit(mem.socket, 'live:command', { eventId: ev.id, type: 'projector.request' })).code, 'forbidden');
+    // the operator takes the projector (the leader, who holds it, accepts): split, the projector starts at the main position
+    await takeProjector(op.socket, lead.socket);
     let snap = await memberAt(version);
     assert.deepStrictEqual([snap.mode, snap.projector.follows, snap.projector.itemId, snap.projector.step], ['split', 'operator', i1, 0]);
     await opSend({ type: 'projector.goto', itemId: i2, step: 0 });
@@ -775,10 +785,10 @@ async function main() {
     assert.strictEqual((await frameWhere(screen, (f) => f.version === version)).kind, 'black');
     await send(lead.socket, { type: 'projector.source', source: 'content' });
     await frameWhere(screen, (f) => f.version === version);
-    // back to together: the leader asks (an operator is in the room), the operator accepts,
-    // and the projector shows the main position at once
-    const asked = await send(lead.socket, { type: 'live.mode', mode: 'together' });
-    assert.strictEqual(asked.handover, 'requested', 'the leader\'s switch waits for the operator');
+    // back to together: the leader asks (the operator holds it and is in the room), the
+    // operator accepts, and the projector shows the main position at once
+    const asked = await send(lead.socket, { type: 'projector.request' });
+    assert.strictEqual(asked.handover, 'requested', 'the leader\'s request waits for the operator');
     await opSend({ type: 'handover.accept' });
     frame = await frameWhere(screen, (f) => f.version === version);
     assert.deepStrictEqual([frame.kind, frame.lines], ['lyrics', ['chorus']]);
@@ -788,80 +798,77 @@ async function main() {
     op.socket.close();
   });
 
-  await step('projector handover: the leader asks, the operator refuses / accepts, cancel; the owner asks too; the operator hands over; no operator -> taken at once', async () => {
+  await step('projector holder: requests go to whoever holds it (operator or owner alike): refuse / accept / cancel; the holder hands it over; the holder away -> taken at once; every page is told', async () => {
     const op = await joined(operator, ev.id);
     const events = { leader: [], operator: [], member: [], owner: [] };
     lead.socket.on('live:handover', (h) => events.leader.push(h));
     op.socket.on('live:handover', (h) => events.operator.push(h));
     mem.socket.on('live:handover', (h) => events.member.push(h));
     ownerSocket.on('live:handover', (h) => events.owner.push(h));
-    const opSend = (cmd) => emit(op.socket, 'live:command', { eventId: ev.id, ...cmd });
+    const opSend = async (cmd) => { const reply = await emit(op.socket, 'live:command', { eventId: ev.id, ...cmd }); if (reply.ok) version = reply.version; return reply; };
     const settle = () => new Promise((r) => setTimeout(r, 120));
-    await opSend({ type: 'live.mode', mode: 'split' });
-    // the leader's "Împreună": a request, not a switch
-    let reply = await send(lead.socket, { type: 'live.mode', mode: 'together' });
+    const holderOf = (snap) => [snap.holder.role, snap.holder.name];
+    let snap = await memberAt(version);
+    assert.deepStrictEqual(holderOf(snap), ['leader', 'Lider'], 'the leader holds the projector (took it back in the earlier step)');
+    const ids = Object.fromEntries(snap.presence.people.map((p) => [p.role, p.userId]));
+    // the operator asks: a request to the leader, not a switch
+    let reply = await opSend({ type: 'projector.request' });
     assert.deepStrictEqual([reply.ok, reply.handover, typeof reply.expiresAt], [true, 'requested', 'number'], JSON.stringify(reply));
     assert.ok(reply.expiresAt - Date.now() > 55000 && reply.expiresAt - Date.now() <= 60000, '60 s');
-    let snap = await memberAt(version);
-    assert.deepStrictEqual([snap.mode, Boolean(snap.handover), snap.handover.expiresAt], ['split', true, reply.expiresAt], 'still split, the request in the snapshot');
+    snap = await memberAt(version);
+    assert.deepStrictEqual([holderOf(snap), snap.mode, Boolean(snap.handover), snap.handover.expiresAt], [['leader', 'Lider'], 'together', true, reply.expiresAt], 'still the leader\'s, the request in the snapshot');
     await settle();
-    assert.deepStrictEqual(events.operator.map((h) => [h.type, h.by]), [['requested', 'Lider']], 'the console is told who asks');
+    assert.deepStrictEqual(events.leader.at(-1) && [events.leader.at(-1).type, events.leader.at(-1).by, events.leader.at(-1).toUserId], ['requested', 'Operator', ids.leader], 'the holder is told who asks');
     assert.deepStrictEqual(events.member, [], 'team phones are not concerned');
-    // refuse: nothing changes, the leader is told
-    reply = await opSend({ type: 'handover.refuse' });
-    assert.strictEqual(reply.ok, true);
-    version = reply.version;
-    snap = await memberAt(version);
-    assert.deepStrictEqual([snap.mode, snap.handover], ['split', null]);
-    await settle();
-    assert.deepStrictEqual(events.leader.at(-1).type, 'refused');
-    assert.strictEqual((await opSend({ type: 'handover.accept' })).code, 'noHandover');
-    // accept: together
-    await send(lead.socket, { type: 'live.mode', mode: 'together' });
-    reply = await opSend({ type: 'handover.accept' });
-    version = reply.version;
-    snap = await memberAt(version);
-    assert.deepStrictEqual([snap.mode, snap.projector.follows, snap.handover], ['together', 'worship', null]);
-    await settle();
-    assert.deepStrictEqual([events.leader.at(-1).type, events.leader.at(-1).by], ['accepted', 'Operator'], 'the leader is told who accepted');
-    // cancel by the leader
-    await opSend({ type: 'live.mode', mode: 'split' });
-    await send(lead.socket, { type: 'live.mode', mode: 'together' });
-    reply = await send(lead.socket, { type: 'handover.cancel' });
+    // refuse: nothing changes, the operator is told
+    reply = await send(lead.socket, { type: 'handover.refuse' });
     assert.strictEqual(reply.ok, true);
     snap = await memberAt(version);
-    assert.deepStrictEqual([snap.mode, snap.handover], ['split', null]);
+    assert.deepStrictEqual([holderOf(snap), snap.handover], [['leader', 'Lider'], null]);
     await settle();
-    assert.strictEqual(events.operator.at(-1).type, 'cancelled');
-    // forbidden answers (the owner too); the owner asks like the leader
-    assert.strictEqual((await send(lead.socket, { type: 'handover.accept' })).code, 'forbidden');
+    assert.deepStrictEqual([events.operator.at(-1).type, events.operator.at(-1).by], ['refused', 'Lider']);
+    assert.strictEqual((await send(lead.socket, { type: 'handover.accept' })).code, 'noHandover');
+    // accept: the operator holds it -> split, the projector starts at the main position
+    await opSend({ type: 'projector.request' });
+    reply = await send(lead.socket, { type: 'handover.accept' });
+    snap = await memberAt(version);
+    assert.deepStrictEqual([holderOf(snap), snap.mode, snap.projector.follows, snap.handover, snap.projector.itemId, snap.projector.step], [['operator', 'Operator'], 'split', 'operator', null, snap.worship.itemId, snap.worship.step]);
+    await settle();
+    assert.deepStrictEqual([events.operator.at(-1).type, events.operator.at(-1).by, events.operator.at(-1).to, events.owner.at(-1).type], ['accepted', 'Lider', 'Operator', 'accepted'], 'the receiver and the others hear of it');
+    // the owner asks the operator: the same flow (the owner is not special); only the holder answers
+    reply = await send(ownerSocket, { type: 'projector.request' });
+    assert.strictEqual(reply.handover, 'requested', 'the owner asks the holder too');
+    assert.strictEqual((await send(ownerSocket, { type: 'handover.accept' })).code, 'notHolder', 'and cannot answer in the holder\'s place');
+    assert.strictEqual((await send(lead.socket, { type: 'handover.refuse' })).code, 'notHolder');
     assert.strictEqual((await emit(mem.socket, 'live:command', { eventId: ev.id, type: 'handover.refuse' })).code, 'forbidden');
-    reply = await send(ownerSocket, { type: 'live.mode', mode: 'together' });
-    assert.deepStrictEqual([reply.handover, (await memberAt(version)).mode], ['requested', 'split'], 'the owner asks the operator too');
-    assert.strictEqual((await send(ownerSocket, { type: 'handover.accept' })).code, 'forbidden', 'and cannot answer in the operator\'s place');
     await settle();
     assert.deepStrictEqual([events.operator.at(-1).type, events.operator.at(-1).by], ['requested', 'Ana']);
     reply = await send(ownerSocket, { type: 'handover.cancel' });
-    version = reply.version;
-    // the operator switches directly both ways; "Împreună" hands the projector over: the others are told
-    reply = await opSend({ type: 'live.mode', mode: 'together' });
-    version = reply.version;
-    assert.deepStrictEqual([reply.handover, (await memberAt(version)).mode], [undefined, 'together'], 'the operator: direct');
+    assert.strictEqual(reply.ok, true);
+    snap = await memberAt(version);
+    assert.deepStrictEqual([holderOf(snap), snap.handover], [['operator', 'Operator'], null]);
     await settle();
-    assert.deepStrictEqual([events.leader.at(-1).type, events.leader.at(-1).by, events.owner.at(-1).type], ['handedOver', 'Operator', 'handedOver'], 'leader and owner pages hear of the handover');
-    reply = await opSend({ type: 'live.mode', mode: 'split' });
-    version = reply.version;
-    assert.strictEqual((await memberAt(version)).mode, 'split');
-    reply = await send(lead.socket, { type: 'live.mode', mode: 'together' });
-    assert.strictEqual(reply.handover, 'requested');
-    reply = await send(lead.socket, { type: 'handover.cancel' });
-    version = reply.version;
-    // no operator in the room: the leader's switch applies at once, "taken"; the owner in the room cannot answer, so it does not count
-    await emit(op.socket, 'live:leave', {});
-    reply = await send(lead.socket, { type: 'live.mode', mode: 'together' });
-    assert.deepStrictEqual([reply.handover, (await memberAt(version)).mode], [undefined, 'together'], 'taken at once');
+    assert.strictEqual(events.operator.at(-1).type, 'cancelled');
+    // "Predă controlul proiectorului": the holder gives it to a connected event-role person
+    assert.strictEqual((await send(lead.socket, { type: 'projector.handover', toUserId: ids.owner })).code, 'notHolder');
+    assert.strictEqual((await opSend({ type: 'projector.handover', toUserId: 999999 })).code, 'notOnline');
+    const memberId = (await api('GET', '/api/team', owner)).body.users.find((u) => u.role === 'member').id;
+    assert.strictEqual((await opSend({ type: 'projector.handover', toUserId: memberId })).code, 'notOnline', 'never to a member');
+    reply = await opSend({ type: 'projector.handover', toUserId: ids.owner });
+    assert.strictEqual(reply.ok, true, JSON.stringify(reply));
+    snap = await memberAt(version);
+    assert.deepStrictEqual([holderOf(snap), snap.mode, snap.projector.follows], [['owner', 'Ana'], 'together', 'worship']);
     await settle();
-    assert.deepStrictEqual([events.leader.at(-1).type, events.leader.at(-1).byUserId === undefined, events.owner.at(-1).type], ['taken', false, 'taken'], 'both pages are told the leader took the projector');
+    assert.deepStrictEqual([events.owner.at(-1).type, events.owner.at(-1).by, events.owner.at(-1).to, events.leader.at(-1).type, events.leader.at(-1).to], ['handedOver', 'Operator', 'Ana', 'handedOver', 'Ana'], 'the receiver and the others are told');
+    // the holder away: the leader's request applies at once ("taken"), everyone is told
+    await emit(ownerSocket, 'live:leave', {});
+    reply = await send(lead.socket, { type: 'projector.request' });
+    assert.deepStrictEqual([reply.ok, reply.handover], [true, undefined], 'taken at once');
+    snap = await memberAt(version);
+    assert.deepStrictEqual([holderOf(snap), snap.mode], [['leader', 'Lider'], 'together']);
+    await settle();
+    assert.deepStrictEqual([events.leader.at(-1).type, events.leader.at(-1).byUserId, events.operator.at(-1).type, events.operator.at(-1).by], ['taken', ids.leader, 'taken', 'Lider']);
+    assert.strictEqual((await emit(ownerSocket, 'live:join', { eventId: ev.id })).ok, true);
     for (const s of [lead.socket, op.socket, mem.socket, ownerSocket]) s.off('live:handover');
     op.socket.close();
   });
@@ -933,7 +940,7 @@ async function main() {
     assert.strictEqual((await send(lead.socket, { type: 'worship.endItem', target: 'team' })).code, 'badCommand');
     // split: the console ends only the projector's item, the leader only the team's
     await send(lead.socket, { type: 'worship.goto', itemId: i1, step: 1 });
-    await opSend({ type: 'live.mode', mode: 'split' });
+    await takeProjector(op.socket, lead.socket); // the operator takes the projector: split
     await opSend({ type: 'worship.endItem', target: 'projector' });
     snap = await memberAt(version);
     assert.deepStrictEqual([snap.projector.itemId, snap.projector.step, snap.projector.ended, snap.worship.ended], [i1, 1, true, false], 'projector only');
@@ -950,7 +957,7 @@ async function main() {
     snap = await memberAt(version);
     assert.deepStrictEqual([snap.worship.itemId, snap.worship.ended, snap.projector.source], [i2, false, 'logo'], 'split: the team move leaves the projector source alone');
     await send(lead.socket, { type: 'projector.source', source: 'content' });
-    await opSend({ type: 'live.mode', mode: 'together' }); // the operator switches directly
+    await takeProjector(lead.socket, op.socket); // the leader takes it back: together
     await send(lead.socket, { type: 'worship.goto', itemId: i1, step: 0 });
     await memberAt(version);
     op.socket.close();
@@ -1195,10 +1202,11 @@ async function main() {
     mem.socket = again.socket;
   });
 
-  await step('server restart: clients reconnect to the persisted position, mode and team mode', async () => {
-    let r = await send(lead.socket, { type: 'live.mode', mode: 'split' });
-    assert.strictEqual(r.ok, true, JSON.stringify(r));
-    r = await send(lead.socket, { type: 'team.mode', mode: 'free' });
+  await step('server restart: clients reconnect to the persisted position, holder (mode) and team mode', async () => {
+    const op = await joined(operator, ev.id);
+    await takeProjector(op.socket, lead.socket); // the operator holds it: split
+    op.socket.close();
+    let r = await send(lead.socket, { type: 'team.mode', mode: 'free' });
     assert.strictEqual(r.ok, true);
     r = await send(lead.socket, { type: 'worship.endItem' }); // "Sfârșit" survives the restart
     assert.strictEqual(r.ok, true);

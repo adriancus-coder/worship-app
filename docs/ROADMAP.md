@@ -61,35 +61,32 @@ never implement a later stage early. Mockups: claude.ai design canvas
   revoking and "Deschide ecranul proiectorului" are the operator's; the presenter and the
   leader keep the projector preview and the source buttons. Owner-only stays owner-only:
   settings, team, logo, backup, platform.
-- **Two live modes** (`live.mode`, any event role; a new start is *together*). In the UI the
-  switch is labelled by who controls the projector: "Proiectorul: Doar operatorul · Control
-  comun" (EN "The projector: Operator only · Shared control"); the internal values stay
-  `together` / `split`:
-  - *Control comun* (together, default) — ONE main position. The leader page and the operator
-    console both move it; the projector and the team phones follow it. Projector-position
-    commands are refused.
-  - *Doar operatorul* (split) — the main position (team phones) and the projector position are
-    independent; anyone with event rights may move either. The leader page's big controls
-    move the team, the console's move the projector; each page shows where the other is
-    ("Proiectorul e la …" / "Echipa e la …") with "Sari acolo" (key W on the console).
-    Entering split copies the main position to the projector; back to together the
-    projector shows the main position at once.
-  - **The projector is the operator's** (the projector PC is theirs). **Handover consent**
-    (migration 024): in split mode the "Control comun" of anyone else (owner, presenter, leader)
-    is a request, not a switch. It is kept in the live state (60 s, expiry silent),
-    broadcast as `live:handover`, and shown on the requester's page as "Cerere trimisă… N s"
-    with "Anulează"; the console (operator only) gets a toast "<Lider> cere controlul
-    proiectorului" with Acceptă (Enter) / Refuză and a badge on the switch. Accept →
-    together (the projector shows the main position); refuse → nothing changes ("Operatorul
-    a refuzat" 5 s). The operator switches directly both ways: "Control comun" is the operator
-    handing the projector over (`handedOver`), e.g. before stepping out. With no operator
-    page in the room the request applies at once (`taken`: someone projects in the
-    operator's place). Whoever gets the projector is told, for 8 s under the switch and in
-    the big lyrics' status line, that what they change shows on the projector in front of
-    the church ("Operatorul a acceptat / <X> a predat proiectorul / ai preluat proiectorul:
-    ce schimbi aici apare pe proiector"); the together hint says the same. Together → split
-    stays direct for everyone (the operator taking it back); a restart clears pending
-    requests.
+- **The projector has a holder** (migration 041): one event-role person controls what the
+  church sees. The live mode follows from the holder's role (the internal values stay
+  `together` / `split`): an **operator** holds it → *split* (the projector follows the
+  console's own position; the leader page's big controls move the team, the console's move
+  the projector; each page shows where the other is: "Proiectorul e la …" / "Echipa e la …"
+  with "Sari acolo", key W on the console); **anyone else** holds it → *together* (ONE main
+  position: the leader page and the console both move it; the projector and the team phones
+  follow it; projector-position commands are refused). At the start the holder is a
+  connected operator if there is one, else whoever starts. Taking it as an operator copies
+  the main position to the projector; back to together the projector shows the main
+  position at once.
+  - **Requests and hand-overs** (`projector.request`, `projector.handover { toUserId }`,
+    `handover.accept / refuse / cancel`): every live page shows "Proiectorul: <name> (<role>)"
+    and ONE action. Anyone but the holder has **"Cere controlul proiectorului"**: a request
+    kept in the live state (60 s, expiry silent), broadcast as `live:handover`, shown as
+    "Cerere trimisă… N s" with "Anulează"; the holder's page (operator or owner alike, and
+    only theirs) gets a toast "<X> cere controlul proiectorului" with Acceptă (Enter) /
+    Refuză and a badge. Accept → the requester holds it; refuse → nothing changes ("<X> a
+    refuzat" 5 s). With the holder not connected (or nobody holding it yet) a request
+    applies at once (`taken`). The holder has **"Predă controlul proiectorului"**: a list
+    "Predă lui <name> (<role>)" of the event-role people connected (from the presence; never a
+    member). Whoever gets the projector is told for 8 s, under the action and in the big
+    lyrics' status line, that what they change shows on the projector in front of the church
+    ("<X> a acceptat: ai proiectorul" / "<X> ți-a predat proiectorul" / "ai preluat
+    proiectorul"); the others see "<X> are acum proiectorul"; the hints say whose it is and
+    what the projector follows. A restart clears pending requests; the end of the event too.
 - **Team mode** (`team.mode`, any event role; a new start is *follow*):
   - *Urmărește live* (follow) — phones follow the main position. Someone who moves away on
     their own phone (swipe, ← / →) keeps their place with a floating "Revino la live";

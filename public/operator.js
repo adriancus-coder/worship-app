@@ -1,10 +1,12 @@
 'use strict';
 
 // Operator console (/events/:id/operator: the event roles), on the projector PC. Full
-// controls, like the leader page: start / end, the live mode and the team mode.
-//   Împreună  the console moves the ONE main position (worship.*): projector and team follow
-//   Separat   the console moves the projector (projector.*); it shows where the team is, with
-//             "Sari acolo" (W) to bring the projector there
+// controls, like the leader page: start / end, the projector's holder and the team mode.
+//   the operator holds the projector  the console moves the projector (projector.*); it shows
+//                                     where the team is, with "Sari acolo" (W) to bring the
+//                                     projector there ("Proiectorul e al tău")
+//   someone else holds it             the console moves the ONE main position (worship.*):
+//                                     projector and team follow ("Proiectorul e la <name>")
 // Additions go where the operator chooses: "Doar pe proiector" (a projector-only item) or
 // "În setlist" (shared, the team sees it at once). No approval.
 // Like every live page it renders only the server's snapshots (which, for these roles,
@@ -33,13 +35,14 @@
       : snap.worship;
   }
 
-  // Moves from this page: the projector when separate, the main position together. A
-  // projector-only item can only be shown on its own: choosing it switches to separate.
+  // Moves from this page: the projector when it is the operator's, the main position
+  // otherwise. A projector-only item can only be shown on its own: choosing it asks for the
+  // projector first (shown at once when nobody connected holds it; else the request is sent).
   async function goto(item, step) {
     if (split()) return send('projector.goto', { itemId: item.id, step });
     if (item.scope === 'projector') {
-      const reply = await send('live.mode', { mode: 'split' });
-      return reply.ok ? send('projector.goto', { itemId: item.id, step }) : reply;
+      const reply = await send('projector.request');
+      return reply.ok && !reply.handover ? send('projector.goto', { itemId: item.id, step }) : reply;
     }
     return send('worship.goto', { itemId: item.id, step });
   }
@@ -109,11 +112,14 @@
 
   // --- rendering --------------------------------------------------------------------
 
+  // "Proiectorul e al tău" (an operator holds it: split) / "Proiectorul e la <name>" (together).
   function renderBanner() {
     const mode = !live() ? 'notLive' : state.snap.mode;
+    const holder = live() && state.snap.holder;
+    const name = holder ? `${holder.name || t('live.modes.someone')} (${t(`team.roles.${holder.role}`)})` : t('live.modes.nobody');
     $('mode-banner').dataset.mode = mode;
-    $('mode-title').textContent = t(`operator.banner.${mode}`);
-    $('mode-detail').textContent = t(`operator.banner.${mode}Detail`);
+    $('mode-title').textContent = t(`operator.banner.${mode}`, { name });
+    $('mode-detail').textContent = t(`operator.banner.${mode}Detail`, { name });
   }
 
   function renderConnection(value) {
@@ -496,6 +502,11 @@
         $('status').hidden = true;
         $('console').hidden = false;
         render();
+      },
+      onPresence: (presence) => {
+        if (!state.snap) return;
+        state.snap = { ...state.snap, presence };
+        modes.update(state.snap); // who can receive the projector
       },
       onConnection: renderConnection,
       onGone: gone,

@@ -37,7 +37,7 @@ module.exports = {
       ['ro', 1180, 'operator', 'operator', '.op-step'], ['en', 1440, 'leader', 'live', '.step'],
     ]) {
       const tag = `[${lang} ${width} ${role}]`;
-      await app.command({ type: 'live.mode', mode: 'together' });
+      await app.takeProjector('owner');
       await app.command({ type: 'projector.source', source: 'content' });
       await app.command({ type: 'worship.goto', itemId: G, step: 0 });
       await wait(300);
@@ -115,19 +115,19 @@ module.exports = {
       check(await at() === 'G.1 ended' && await screen() === 'BLACK', `${tag} E in the view: black, the position stays`);
       b = await big(p);
       check(/Terminat|Ended/.test(b.text) && /Luca 2:1-7/.test(b.text) && /Luca 2:1-7/.test(b.next), `${tag} the view says "✓ Terminat" and prepares the next item (the verse)`, b);
-      check(/Conectat|Connected/.test(b.status) && /Control comun|Shared control/.test(b.status), `${tag} the status line: connection · mode`, b.status);
+      check(/Conectat|Connected/.test(b.status) && /Proiectorul: Ana|The projector: Ana/.test(b.status), `${tag} the status line: connection · who holds the projector`, b.status);
       await p.keyboard.press('Escape');
       await wait(200);
       check(!(await big(p)), `${tag} Escape closes`);
       // split mode on the console: the status line says where the team is
       if (sub === 'operator') {
-        await app.command({ type: 'live.mode', mode: 'split' });
-        await app.command({ type: 'projector.goto', itemId: VERSE, step: 0 });
+        await app.takeProjector('operator');
+        await app.command({ type: 'projector.goto', itemId: VERSE, step: 0 }, 'operator');
         await wait(400);
         await p.keyboard.press('f');
         await p.waitForSelector('dialog.big-lyrics[open]');
         b = await big(p);
-        check(/Luca 2:1-7/.test(b.label) && /Doar operatorul|Operator only/.test(b.status) && /Echipa e la|The team is at/.test(b.status), `${tag} split: the projector's item, "Echipa e la …"`, b);
+        check(/Luca 2:1-7/.test(b.label) && /Proiectorul: Operator|The projector: Operator/.test(b.status) && /Echipa e la|The team is at/.test(b.status), `${tag} split: the projector's item, "Echipa e la …"`, b);
         await p.keyboard.press('Escape');
       }
       await p.context().close();

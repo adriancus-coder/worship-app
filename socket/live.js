@@ -4,7 +4,7 @@
 // a socket joins at most one event room, "admin:<adminId>:event:<eventId>", and receives
 // full `live:state` snapshots from the server (the single source of truth).
 
-const { LiveError, HANDOVER_ANSWER_ROLES, createLiveStore } = require('../lib/live');
+const { LiveError, createLiveStore } = require('../lib/live');
 const { EVENT_ROLES } = require('../lib/events');
 const { resolveLang, t: translate } = require('../lib/i18n');
 
@@ -13,7 +13,7 @@ const PRESENCE_DEBOUNCE_MS = 1000;
 const SESSION_SWEEP_MS = 30 * 1000;
 
 const COMMANDS = ['event.start', 'event.end', 'worship.next', 'worship.prev', 'worship.goto', 'worship.endItem',
-  'live.mode', 'team.mode', 'background.set',
+  'projector.request', 'projector.handover', 'team.mode', 'background.set',
   'projector.next', 'projector.prev', 'projector.goto', 'projector.syncToWorship', 'projector.source', 'projector.screens',
   'video.prepare', 'video.play', 'video.pause', 'video.restart', 'video.stop', 'video.volume',
   'clock.set', 'handover.accept', 'handover.refuse', 'handover.cancel', 'operator.addItem'];
@@ -41,17 +41,26 @@ function createLiveHub({ db, auth, logger, screensHub, hooks = {} }) {
     return translate(key, vars, socket.data.lang);
   }
 
-  // Distinct users per role in the room (several tabs of one person count once).
+  // Distinct users per role in the room (several tabs of one person count once), and the
+  // event-role people by name (`people`: for "Predă controlul proiectorului").
   function presence(room) {
     const counts = Object.fromEntries(ROLES.map((role) => [role, 0]));
+    const people = [];
     const seen = new Set();
     for (const id of io.sockets.adapter.rooms.get(room) || []) {
       const socket = io.sockets.sockets.get(id);
       if (!socket || seen.has(socket.data.userId)) continue;
       seen.add(socket.data.userId);
       counts[socket.data.role] = (counts[socket.data.role] || 0) + 1;
+      if (COMMAND_ROLES.includes(socket.data.role)) people.push({ userId: socket.data.userId, name: socket.data.userName, role: socket.data.role });
     }
-    return counts;
+    people.sort((a, b) => String(a.name).localeCompare(String(b.name)));
+    return { ...counts, people };
+  }
+
+  // The event-role people in the room, for the store (who can hold or receive the projector).
+  function online(adminId, eventId) {
+    return presence(roomName(adminId, eventId)).people.map(({ userId, role }) => ({ userId, role }));
   }
 
   // role, lang: the receiver's. The event roles also get every item (with the projector-only
@@ -167,17 +176,14 @@ function createLiveHub({ db, auth, logger, screensHub, hooks = {} }) {
     io.to(homeRoom(adminId)).emit('home:changed', { eventId });
   }
 
-  // An operator page is in the room (someone who can answer a request to take the projector).
-  function hasApprovers(adminId, eventId) {
-    for (const id of io.sockets.adapter.rooms.get(roomName(adminId, eventId)) || []) {
-      const socket = io.sockets.sockets.get(id);
-      if (socket && HANDOVER_ANSWER_ROLES.includes(socket.data.role)) return true;
-    }
-    return false;
+  // { to: name } of a person in the room, for the handover notices.
+  function nameOf(adminId, eventId, userId) {
+    const found = userId ? presence(roomName(adminId, eventId)).people.find((p) => p.userId === userId) : null;
+    return found ? { to: found.name } : {};
   }
 
-  // The handover request and its answers, to every event-role page in the room (the leader
-  // sees the answer, the console the request); team phones are not concerned.
+  // The handover request and its answers, to every event-role page in the room (the
+  // requester sees the answer, the holder the request); team phones are not concerned.
   function handoverNotice(adminId, eventId, payload) {
     for (const id of io.sockets.adapter.rooms.get(roomName(adminId, eventId)) || []) {
       const socket = io.sockets.sockets.get(id);
@@ -208,7 +214,7 @@ function createLiveHub({ db, auth, logger, screensHub, hooks = {} }) {
     const command = cmd.type === 'video.pause' ? { ...cmd, position: screensHub.lastVideoPosition(adminId) } : cmd;
     let result;
     try {
-      result = store.command(adminId, cmd.eventId, command, expected, role, { userId, hasApprovers: hasApprovers(adminId, cmd.eventId) });
+      result = store.command(adminId, cmd.eventId, command, expected, role, { userId, online: online(adminId, cmd.eventId) });
     } catch (err) {
       if (!(err instanceof LiveError)) throw err;
       if (err.code === 'stale') return fail(socket, ack, 'stale', { state: fullSnapshot(adminId, cmd.eventId, role, socket.data.lang) });
@@ -220,7 +226,7 @@ function createLiveHub({ db, auth, logger, screensHub, hooks = {} }) {
     if (result.changed) broadcast(adminId, cmd.eventId);
     if (result.notice) notice(adminId, cmd.eventId, { ...result.notice, by: socket.data.userName, byUserId: userId }, socket.id);
     if (result.handoverEvent) {
-      const ev = { ...result.handoverEvent, by: socket.data.userName };
+      const ev = { ...result.handoverEvent, by: socket.data.userName, ...nameOf(adminId, cmd.eventId, result.handoverEvent.toUserId) };
       handoverNotice(adminId, cmd.eventId, ev);
       logger.info(`Handover ${ev.type} by user #${userId} (event #${cmd.eventId}, admin #${adminId})`);
     }
@@ -332,7 +338,7 @@ function createLiveHub({ db, auth, logger, screensHub, hooks = {} }) {
       }
     }
     try {
-      const result = store.command(adminId, eventId, { type: 'event.start' }, undefined, role);
+      const result = store.command(adminId, eventId, { type: 'event.start' }, undefined, role, { userId, online: io ? online(adminId, eventId) : [] });
       logger.info(`Event #${eventId} started by user #${userId} (admin #${adminId}) from the home page`);
       if (io && result.changed) {
         broadcast(adminId, eventId);

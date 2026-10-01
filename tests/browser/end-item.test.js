@@ -26,7 +26,7 @@ module.exports = {
     };
     const button = (p, sel) => p.evaluate((sel) => { const b = document.querySelector(sel); return { text: b.textContent, disabled: b.disabled }; }, sel);
     const reset = async () => {
-      await app.command({ type: 'live.mode', mode: 'together' });
+      await app.takeProjector('owner');
       await app.command({ type: 'projector.source', source: 'content' });
       await app.command({ type: 'worship.goto', itemId: G, step: 0 });
       await wait(300);
@@ -110,8 +110,8 @@ module.exports = {
         const C = await signIn('operator', { width, lang });
         await C.goto(`${app.url}/events/${E}/operator`);
         await C.waitForSelector('#op-end-item:not([disabled])');
-        await app.command({ type: 'live.mode', mode: 'split' });
-        await app.command({ type: 'projector.goto', itemId: SIX, step: 0 });
+        await app.takeProjector('operator');
+        await app.command({ type: 'projector.goto', itemId: SIX, step: 0 }, 'operator');
         await wait(400);
         await C.click('#op-end-item');
         let t = await state();

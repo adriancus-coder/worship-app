@@ -84,7 +84,7 @@ module.exports = {
       await p.waitForSelector('#live:not([hidden])');
       await p.waitForTimeout(400);
       const live = await audit(p);
-      check(live.some((g) => /mode-switch/.test(g.name)) && !live.some((g) => g.problems.length), `${tag} live page mode switches: fit (rows ${live.filter((g) => /mode-switch/.test(g.name)).map((g) => g.rows).join('/')})`, live.filter((g) => g.problems.length));
+      check(live.some((g) => /mode-switch/.test(g.name)) && !live.some((g) => g.problems.length), `${tag} live page team switch: fit (rows ${live.filter((g) => /mode-switch/.test(g.name)).map((g) => g.rows).join('/')})`, live.filter((g) => g.problems.length));
       await p.goto(`${app.url}/events/${E}/operator`);
       await p.waitForSelector('#console:not([hidden])');
       await p.waitForTimeout(400);

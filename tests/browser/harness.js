@@ -84,16 +84,29 @@ async function startApp(options = {}) {
     return /wa_sid=[0-9a-f]+/.exec(res.headers.get('set-cookie'))[0];
   };
 
-  // A socket command as the owner (moves live state without a page).
-  app.command = async (cmd) => {
+  // A socket command as the owner (or `as`: a role of USERS) - moves live state without a page.
+  app.command = async (cmd, as = 'owner') => {
     const { io } = require('socket.io-client');
-    const socket = io(url, { transports: ['websocket'], extraHeaders: { Cookie: app.cookies.owner }, reconnection: false });
+    const socket = io(url, { transports: ['websocket'], extraHeaders: { Cookie: app.cookies[as] }, reconnection: false });
     const emit = (event, payload) => new Promise((resolve) => socket.emit(event, payload, resolve));
     await new Promise((resolve, reject) => { socket.once('connect', resolve); socket.once('connect_error', reject); });
     await emit('live:join', { eventId: cmd.eventId || app.seed.eventId });
     const reply = await emit('live:command', { eventId: app.seed.eventId, ...cmd });
     socket.close();
     return reply;
+  };
+
+  // Gives the projector to `as` (a role of USERS): a request, accepted by the holder when one
+  // is connected. An operator holding it = split mode; anyone else = together.
+  app.takeProjector = async (as) => {
+    const reply = await app.command({ type: 'projector.request' }, as);
+    if (!reply.ok) throw new Error(`projector.request as ${as}: ${JSON.stringify(reply)}`);
+    if (reply.handover !== 'requested') return reply;
+    const holder = (await app.state()).holder;
+    const role = holder && Object.keys(USERS).find((r) => r === holder.role);
+    const accepted = await app.command({ type: 'handover.accept' }, role || 'operator');
+    if (!accepted.ok) throw new Error(`handover.accept as ${role}: ${JSON.stringify(accepted)}`);
+    return accepted;
   };
 
   // The live state the server holds now (as the owner sees it).

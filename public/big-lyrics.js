@@ -274,7 +274,8 @@
         const key = nav.away ? 'big.memberAway' : (snap.teamMode === 'free' ? 'big.memberFree' : 'big.memberFollow');
         return { value, conn: t(`live.connection.${value}`), text: t(key) };
       }
-      const bits = [t(`live.modes.${snap.mode === 'split' ? 'split' : 'together'}`)];
+      const holder = snap.holder ? `${snap.holder.name || t('live.modes.someone')} (${t(`team.roles.${snap.holder.role}`)})` : t('live.modes.nobody');
+      const bits = [t('live.modes.holderIs', { name: holder })];
       if (snap.mode === 'split') {
         const projector = drivesProjector();
         const at = projector ? snap.worship : { itemId: snap.projector.itemId, step: snap.projector.step };
