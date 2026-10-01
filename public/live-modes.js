@@ -3,9 +3,11 @@
 // The live-mode controls the leader page and the operator console share:
 //   "Împreună · Separat"                    live.mode together | split
 //   "Echipa: Urmărește live · Derulează liber"  team.mode follow | free
-// the handover flow around them (a LEADER's "Împreună" in split mode is a request the
-// operator / owner answers: lib/live.js), and the short info toast for additions made by
-// someone else ("<name> a adăugat …"): it hides after 5 s and never takes clicks.
+// the handover flow around them (the projector is the operator's: anyone else's "Împreună"
+// in split mode is a request only an operator answers; with no operator connected it applies
+// at once, and whoever gets the projector is told that what they change shows in church:
+// lib/live.js), and the short info toast for additions made by someone else ("<name> a
+// adăugat …"): it hides after 5 s and never takes clicks.
 //
 //   const modes = LIVE_MODES.controls(container, { send, t, el });
 //   modes.setMe(user);                       // who this page is (role, id)
@@ -15,15 +17,19 @@
 //   const toast = LIVE_MODES.toast(box, { t });
 //   socket.on('live:notice', toast.show);
 //
-// Leader page: "Cerere trimisă… 58 s" with "Anulează" while pending, "Operatorul a refuzat"
-// for 5 s after a refusal, the switch flips itself on accept (the snapshot). Console (owner /
-// operator): a toast "Liderul cere controlul proiectorului" with Acceptă (primary, Enter
+// Leader / presenter / owner page: "Cerere trimisă… 58 s" with "Anulează" while pending,
+// "Operatorul a refuzat" for 5 s after a refusal, the switch flips itself on accept (the
+// snapshot) and the line says "ce schimbi aici apare pe proiector" for 8 s - also when the
+// operator hands the projector over or someone takes it with no operator connected. Console
+// (operator): a toast "Liderul cere controlul proiectorului" with Acceptă (primary, Enter
 // when focused) / Refuză that never covers the step grid, and a badge on the switch.
 
 (function () {
   const TOAST_MS = 5000;
   const ANSWER_MS = 5000;
-  const ANSWER_ROLES = ['owner', 'operator'];
+  const NOTICE_MS = 8000; // "ce schimbi aici apare pe proiector"
+  const ANSWER_ROLES = ['operator']; // lib/live.js HANDOVER_ANSWER_ROLES
+  const REQUESTING_ROLES = ['owner', 'presenter', 'leader']; // lib/live.js REQUESTING_ROLES
 
   function controls(container, { send, t, el }) {
     let snap = null;
@@ -91,8 +97,17 @@
       const p = pending();
       if (p && mine()) return t('live.modes.handoverSent', { s: secondsLeft() });
       if (p && canAnswer()) return t('live.modes.handoverAsk', { name: hand.askedBy || t('live.modes.leader') });
-      if (hand.answer && hand.answer.until > Date.now()) return t(`live.modes.handover${hand.answer.type === 'refused' ? 'Refused' : 'Accepted'}`);
+      if (hand.answer && hand.answer.until > Date.now()) return answerText(hand.answer);
       return '';
+    }
+
+    // The line after an answer or a handover: refused / accepted (the requester), handed over
+    // by the operator, taken with no operator connected (the taker, or who took it).
+    function answerText(answer) {
+      if (answer.type === 'refused') return t('live.modes.handoverRefused');
+      if (answer.type === 'handedOver') return t('live.modes.handoverGiven', { name: answer.name || t('live.modes.operator') });
+      if (answer.type === 'taken') return answer.mine ? t('live.modes.handoverTaken') : t('live.modes.handoverTakenBy', { name: answer.name || t('live.modes.someone') });
+      return t('live.modes.handoverAccepted');
     }
 
     function render() {
@@ -113,10 +128,10 @@
           button.setAttribute('aria-pressed', String(button.dataset.value === current));
         }
       }
-      const leader = me && (me.role === 'leader' || me.role === 'presenter'); // their switch waits for the operator
+      const requester = me && REQUESTING_ROLES.includes(me.role); // their switch waits for the operator
       hint.textContent = snap.mode === 'split'
-        ? t(leader ? 'live.modes.splitLeaderHint' : 'live.modes.splitHint')
-        : t('live.modes.togetherHint');
+        ? t(requester ? 'live.modes.splitLeaderHint' : 'live.modes.splitHint')
+        : t(requester ? 'live.modes.togetherHint' : 'live.modes.togetherOperatorHint');
       const p = pending();
       // the requester's line
       const answer = hand.answer && hand.answer.until > Date.now() ? hand.answer : null;
@@ -125,7 +140,7 @@
       cancel.hidden = !(p && mine());
       cancel.textContent = t('live.modes.handoverCancel');
       if (p && mine()) lineText.textContent = t('live.modes.handoverSent', { s: secondsLeft() });
-      else if (answer) lineText.textContent = t(`live.modes.handover${answer.type === 'refused' ? 'Refused' : 'Accepted'}`);
+      else if (answer) lineText.textContent = answerText(answer);
       // the approver's badge and toast
       const asked = Boolean(p && !mine() && canAnswer());
       liveMode.badge.hidden = !asked;
@@ -159,10 +174,18 @@
           if (canAnswer() && !(document.activeElement && document.activeElement.closest('input, textarea, select, dialog[open]'))) {
             setTimeout(() => { if (!toast.hidden) accept.focus(); }, 0);
           }
-        } else if (event.type === 'refused' || event.type === 'accepted') {
-          // The answer, shown to the one who asked (accept: the switch flips with the snapshot).
+        } else if (event.type === 'refused') {
+          // Shown to the one who asked.
           const wasMine = Boolean(me && (event.requestedBy === me.id || mine()));
-          hand.answer = wasMine && event.type === 'refused' ? { type: 'refused', until: Date.now() + ANSWER_MS } : null;
+          hand.answer = wasMine ? { type: 'refused', until: Date.now() + ANSWER_MS } : null;
+        } else if (event.type === 'accepted' || event.type === 'handedOver' || event.type === 'taken') {
+          // The projector changed hands (the switch flips with the snapshot): everyone who may
+          // now move it is told that what they change shows in church - not the operator who
+          // gave it, not the one who answered.
+          const actor = Boolean(me && event.byUserId === me.id);
+          const operator = Boolean(me && ANSWER_ROLES.includes(me.role));
+          const show = event.type === 'taken' ? !operator : !actor && !operator;
+          hand.answer = show ? { type: event.type, mine: actor, name: event.by || null, until: Date.now() + NOTICE_MS } : null;
         } else if (event.type === 'cancelled') hand.answer = null;
         render();
       },

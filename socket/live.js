@@ -167,8 +167,7 @@ function createLiveHub({ db, auth, logger, screensHub, hooks = {} }) {
     io.to(homeRoom(adminId)).emit('home:changed', { eventId });
   }
 
-  // An owner or operator page is in the room (someone who can answer a leader's request to
-  // take the projector).
+  // An operator page is in the room (someone who can answer a request to take the projector).
   function hasApprovers(adminId, eventId) {
     for (const id of io.sockets.adapter.rooms.get(roomName(adminId, eventId)) || []) {
       const socket = io.sockets.sockets.get(id);

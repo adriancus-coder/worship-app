@@ -4,9 +4,10 @@
 // the leader's "Împreună" shows "Cerere trimisă… N s" with "Anulează" (still split); the
 // console gets a toast "Lider cere controlul proiectorului" (Acceptă / Refuză, Enter accepts
 // when focused) and a badge on the switch; refuse -> "Operatorul a refuzat", still split;
-// accept -> together on both; cancel; the big lyrics show the state; no operator ->
-// immediate; the owner immediate; the operator direct both ways; expiry after 60 s. RO / EN;
-// 375 / 1024 / 1440.
+// accept -> together on both ("ce schimbi aici apare pe proiector" on the leader page);
+// cancel; the big lyrics show the state; the owner asks like the leader; the operator direct
+// both ways ("Împreună" hands over: the leader is told); no operator -> taken at once, the
+// leader is told; expiry after 60 s. RO / EN; 375 / 1024 / 1440.
 
 const { layoutAudit, wait } = require('./harness');
 
@@ -26,7 +27,8 @@ module.exports = {
     await op.click('#mode-controls [data-value="split"]');
     await op.waitForFunction(() => document.getElementById('mode-banner').dataset.mode === 'split');
     await lp.waitForFunction(() => document.querySelector('#mode-controls [data-value="split"]').getAttribute('aria-pressed') === 'true');
-    check(/operator/.test(await lp.textContent('#mode-controls .mode-hint')), 'leader, split: "Proiectorul e la operator; el trebuie să accepte"');
+    check(/operatorului.*accepte/.test(await lp.textContent('#mode-controls .mode-hint')), 'leader, split: "Proiectorul e al operatorului; el trebuie să accepte"');
+    check(/al tău.*predă/.test(await op.textContent('#mode-controls .mode-hint')), 'console, split: "Proiectorul e al tău … Împreună îl predă"');
     // the request
     await lp.click('#mode-controls [data-value="together"]');
     await lp.waitForSelector('#mode-controls .handover-line:not([hidden])');
@@ -62,7 +64,11 @@ module.exports = {
     await op.focus('.handover-toast button:has-text("Acceptă")');
     await op.keyboard.press('Enter');
     await lp.waitForFunction(() => document.querySelector('#mode-controls [data-value="together"]').getAttribute('aria-pressed') === 'true', null, { timeout: 3000 });
-    check(await mode() === 'together' && await lp.isHidden('#mode-controls .handover-line') && await op.isHidden('.handover-toast'), 'Enter accepts: together on both, nothing pending');
+    check(await mode() === 'together' && await op.isHidden('.handover-toast'), 'Enter accepts: together on both, nothing pending');
+    check(/acceptat.*apare pe proiector/.test(await lp.textContent('#mode-controls .handover-line')) && /apare pe proiector/.test(await lp.textContent('#mode-controls .mode-hint')), 'the leader is told: "Operatorul a acceptat: ce schimbi aici apare pe proiector"', await lp.textContent('#mode-controls .handover-line'));
+    check(/predat.*îl mută și ei/.test(await op.textContent('#mode-controls .mode-hint')), 'console, together: "Proiectorul e predat …"');
+    const noticeGone = await lp.waitForFunction(() => document.querySelector('#mode-controls .handover-line').hidden, null, { timeout: 10000 }).then(() => true, () => false);
+    check(noticeGone, 'the notice disappears after 8 s');
     // cancel
     await op.click('#mode-controls [data-value="split"]');
     await lp.waitForFunction(() => document.querySelector('#mode-controls [data-value="split"]').getAttribute('aria-pressed') === 'true');
@@ -73,20 +79,31 @@ module.exports = {
     await lp.waitForFunction(() => document.querySelector('#mode-controls .handover-line').hidden, null, { timeout: 3000 }).catch(() => {});
     const afterCancel = { mode: await mode(), lineHidden: await lp.isHidden('#mode-controls .handover-line'), handover: (await app.state()).handover, line: await lp.textContent('#mode-controls .handover-line') };
     check(afterCancel.mode === 'split' && afterCancel.lineHidden && afterCancel.handover === null, 'the leader cancels: the toast goes, still split, nothing pending', afterCancel);
-    // the operator switches directly, both ways
+    // the operator switches directly, both ways; "Împreună" hands the projector over: the leader is told
     await op.click('#mode-controls [data-value="together"]');
     await op.waitForFunction(() => document.getElementById('mode-banner').dataset.mode === 'together');
+    await lp.waitForSelector('#mode-controls .handover-line:not([hidden])', { timeout: 3000 }).catch(() => {});
+    check(/Operator a predat proiectorul.*apare pe proiector/.test(await lp.textContent('#mode-controls .handover-line')), 'the operator hands over: "Operator a predat proiectorul: ce schimbi aici apare pe proiector" on the leader page', await lp.textContent('#mode-controls .handover-line'));
     await op.click('#mode-controls [data-value="split"]');
     await op.waitForFunction(() => document.getElementById('mode-banner').dataset.mode === 'split');
-    check(await op.isHidden('.handover-toast') && await lp.isHidden('#mode-controls .handover-line'), 'the operator switches directly, both ways');
-    // the owner: immediate
+    await lp.waitForFunction(() => document.querySelector('#mode-controls [data-value="split"]').getAttribute('aria-pressed') === 'true');
+    check(await op.isHidden('.handover-toast') && await op.isHidden('#mode-controls .handover-line'), 'the operator switches directly, both ways, no line on the console');
+    // the owner asks like the leader; the console answers
     const own = await signIn('owner', { width: 1024 });
     await own.goto(`${app.url}/events/${E}/live`);
     await own.waitForSelector('#live:not([hidden])');
+    await own.waitForFunction(() => document.querySelector('#mode-controls [data-value="split"]').getAttribute('aria-pressed') === 'true');
     await own.click('#mode-controls [data-value="together"]');
-    await own.waitForFunction(() => document.querySelector('#mode-controls [data-value="together"]').getAttribute('aria-pressed') === 'true');
-    check(await mode() === 'together' && await own.isHidden('#mode-controls .handover-line') && await op.isHidden('.handover-toast'), 'the owner: immediate');
+    await own.waitForSelector('#mode-controls .handover-line:not([hidden])');
+    await op.waitForSelector('.handover-toast:not([hidden])');
+    check(await mode() === 'split' && /Cerere trimisă/.test(await own.textContent('#mode-controls .handover-line')) && /Ana cere controlul/.test(await op.textContent('.handover-toast p')), 'the owner asks too: "Cerere trimisă", the console gets "Ana cere controlul proiectorului"');
+    check(await own.isHidden('.handover-toast'), 'the owner never gets the approver\'s toast');
+    await op.click('.handover-toast button:has-text("Acceptă")');
+    await own.waitForFunction(() => document.querySelector('#mode-controls [data-value="together"]').getAttribute('aria-pressed') === 'true', null, { timeout: 3000 });
+    check(await mode() === 'together' && /acceptat.*apare pe proiector/.test(await own.textContent('#mode-controls .handover-line')), 'accepted: together, the owner is told what it means');
     await own.context().close();
+    await op.click('#mode-controls [data-value="split"]');
+    await op.waitForFunction(() => document.getElementById('mode-banner').dataset.mode === 'split');
     // 375 / 1440: the leader's line
     await op.click('#mode-controls [data-value="split"]');
     await lp.waitForFunction(() => document.querySelector('#mode-controls [data-value="split"]').getAttribute('aria-pressed') === 'true');
@@ -106,12 +123,13 @@ module.exports = {
     // the console's own tick hides the toast within a second of the leader's line
     const toastGone = await op.waitForFunction(() => document.querySelector('.handover-toast').hidden, null, { timeout: 3000 }).then(() => true, () => false);
     check(expired && toastGone && await mode() === 'split' && (await app.state()).handover === null, 'expiry after 60 s: silent, still split', { expired, toastGone });
-    // no operator / owner connected: immediate
+    // no operator connected: taken at once, and the leader is told what that means
     await op.context().close();
     await wait(500);
     await lp.click('#mode-controls [data-value="together"]');
     await lp.waitForFunction(() => document.querySelector('#mode-controls [data-value="together"]').getAttribute('aria-pressed') === 'true', null, { timeout: 3000 });
-    check(await mode() === 'together' && await lp.isHidden('#mode-controls .handover-line'), 'no operator connected: the switch applies at once');
+    await lp.waitForSelector('#mode-controls .handover-line:not([hidden])', { timeout: 3000 }).catch(() => {});
+    check(await mode() === 'together' && /nu e conectat.*ai preluat proiectorul.*apare pe proiector/.test(await lp.textContent('#mode-controls .handover-line')), 'no operator connected: the switch applies at once, "Operatorul nu e conectat — ai preluat proiectorul"', await lp.textContent('#mode-controls .handover-line'));
     await lp.context().close();
     // English
     await app.command({ type: 'live.mode', mode: 'split' });

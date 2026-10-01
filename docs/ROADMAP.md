@@ -71,15 +71,22 @@ never implement a later stage early. Mockups: claude.ai design canvas
     ("Proiectorul e la …" / "Echipa e la …") with "Sari acolo" (key W on the console).
     Entering split copies the main position to the projector; back to together the
     projector shows the main position at once.
-  - **Handover consent** (migration 024): in split mode a LEADER's "Împreună" is a request,
-    not a switch. It is kept in the live state (60 s, expiry silent), broadcast as
-    `live:handover`, and shown on the leader page as "Cerere trimisă… N s" with "Anulează";
-    the console (operator, owner) gets a toast "<Lider> cere controlul proiectorului" with
-    Acceptă (Enter) / Refuză and a badge on the switch. Accept → together (the projector
-    shows the main position); refuse → nothing changes ("Operatorul a refuzat" 5 s). With no
-    operator / owner page in the room the switch applies at once; the owner's requests and
-    every operator switch are direct; leader together → split stays direct; a restart clears
-    pending requests. The big lyrics show the state in their status line.
+  - **The projector is the operator's** (the projector PC is theirs). **Handover consent**
+    (migration 024): in split mode the "Împreună" of anyone else (owner, presenter, leader)
+    is a request, not a switch. It is kept in the live state (60 s, expiry silent),
+    broadcast as `live:handover`, and shown on the requester's page as "Cerere trimisă… N s"
+    with "Anulează"; the console (operator only) gets a toast "<Lider> cere controlul
+    proiectorului" with Acceptă (Enter) / Refuză and a badge on the switch. Accept →
+    together (the projector shows the main position); refuse → nothing changes ("Operatorul
+    a refuzat" 5 s). The operator switches directly both ways: "Împreună" is the operator
+    handing the projector over (`handedOver`), e.g. before stepping out. With no operator
+    page in the room the request applies at once (`taken`: someone projects in the
+    operator's place). Whoever gets the projector is told, for 8 s under the switch and in
+    the big lyrics' status line, that what they change shows on the projector in front of
+    the church ("Operatorul a acceptat / <X> a predat proiectorul / ai preluat proiectorul:
+    ce schimbi aici apare pe proiector"); the together hint says the same. Together → split
+    stays direct for everyone (the operator taking it back); a restart clears pending
+    requests.
 - **Team mode** (`team.mode`, any event role; a new start is *follow*):
   - *Urmărește live* (follow) — phones follow the main position. Someone who moves away on
     their own phone (swipe, ← / →) keeps their place with a floating "Revino la live";
