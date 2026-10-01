@@ -2047,7 +2047,7 @@ test('projector holder (migration 041): the start gives it to a connected operat
   assert.deepStrictEqual([r.changed, r.handoverEvent.type, r.handoverEvent.again, snap().version], [false, 'requested', true, v], 'asking again: the same request');
   // only the holder answers; refuse changes nothing but the request
   assert.strictEqual(code({ type: 'handover.accept' }, 'operator', { userId: 7 }), 'notHolder');
-  assert.strictEqual(code({ type: 'handover.accept' }, 'owner', { userId: 1 }), 'notHolder', 'the owner is not the holder here');
+  assert.strictEqual(code({ type: 'handover.accept' }, 'presenter', { userId: 8 }), 'notHolder', 'a presenter is neither the holder nor an owner');
   assert.strictEqual(code({ type: 'handover.accept' }, 'member', { userId: 9 }), 'forbidden');
   r = cmd({ type: 'handover.refuse' }, 'leader', { userId: 5 });
   assert.deepStrictEqual([r.handoverEvent.type, r.handoverEvent.byUserId, r.handoverEvent.requestedBy, who(), snap().handover], ['refused', 5, 7, [5, 'leader'], null]);
@@ -2075,6 +2075,23 @@ test('projector holder (migration 041): the start gives it to a connected operat
   assert.deepStrictEqual([r.handoverEvent, who(), snap().mode], [{ type: 'taken', byUserId: 7, byRole: 'operator', from: 1 }, [7, 'operator'], 'split'], 'the owner is away: taken');
   r = cmd({ type: 'projector.request' }, 'leader', { userId: 5, online: [LEAD] });
   assert.deepStrictEqual([r.handoverEvent.type, who(), snap().mode], ['taken', [5, 'leader'], 'together'], 'the operator is away: taken, together again');
+  // an owner may always answer (not their own request); an owner connected keeps a request pending even with the holder away
+  cmd({ type: 'projector.request' }, 'operator', { userId: 7, online: [OP] });
+  assert.deepStrictEqual(who(), [7, 'operator']);
+  r = cmd({ type: 'projector.request' }, 'leader', { userId: 5, online: [LEAD, OP, OWNER] });
+  assert.strictEqual(r.handoverEvent.type, 'requested');
+  r = cmd({ type: 'handover.accept' }, 'owner', { userId: 1, online: [LEAD, OP, OWNER] });
+  assert.deepStrictEqual([r.handoverEvent.type, r.handoverEvent.byUserId, who()], ['accepted', 1, [5, 'leader']], 'the owner answered for the operator');
+  cmd({ type: 'projector.request' }, 'owner', { userId: 1, online: [LEAD, OWNER] });
+  assert.strictEqual(code({ type: 'handover.accept' }, 'owner', { userId: 1, online: [LEAD, OWNER] }), 'notHolder', 'never their own request');
+  cmd({ type: 'handover.cancel' }, 'owner', { userId: 1 });
+  cmd({ type: 'projector.request' }, 'operator', { userId: 7, online: [OP] });
+  r = cmd({ type: 'projector.request' }, 'leader', { userId: 5, online: [LEAD, OWNER] });
+  assert.strictEqual(r.handoverEvent.type, 'requested', 'the holder is away but an owner is connected: the request waits for the owner');
+  r = cmd({ type: 'handover.refuse' }, 'owner', { userId: 1 });
+  assert.deepStrictEqual([r.handoverEvent.type, who()], ['refused', [7, 'operator']]);
+  r = cmd({ type: 'projector.request' }, 'leader', { userId: 5, online: [LEAD] });
+  assert.deepStrictEqual([r.handoverEvent.type, who()], ['taken', [5, 'leader']], 'nobody who could answer: taken');
   // hand over: the holder only, to a connected event-role person
   assert.strictEqual(code({ type: 'projector.handover', toUserId: 7 }, 'operator', { userId: 7, online: [LEAD, OP] }), 'notHolder');
   assert.strictEqual(code({ type: 'projector.handover', toUserId: 7 }, 'leader', { userId: 5, online: [LEAD] }), 'notOnline', 'the operator is not connected');

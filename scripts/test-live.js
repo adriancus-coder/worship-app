@@ -838,8 +838,8 @@ async function main() {
     // the owner asks the operator: the same flow (the owner is not special); only the holder answers
     reply = await send(ownerSocket, { type: 'projector.request' });
     assert.strictEqual(reply.handover, 'requested', 'the owner asks the holder too');
-    assert.strictEqual((await send(ownerSocket, { type: 'handover.accept' })).code, 'notHolder', 'and cannot answer in the holder\'s place');
-    assert.strictEqual((await send(lead.socket, { type: 'handover.refuse' })).code, 'notHolder');
+    assert.strictEqual((await send(ownerSocket, { type: 'handover.accept' })).code, 'notHolder', 'and cannot answer their own request');
+    assert.strictEqual((await send(lead.socket, { type: 'handover.refuse' })).code, 'notHolder', 'a leader is neither the holder nor an owner');
     assert.strictEqual((await emit(mem.socket, 'live:command', { eventId: ev.id, type: 'handover.refuse' })).code, 'forbidden');
     await settle();
     assert.deepStrictEqual([events.operator.at(-1).type, events.operator.at(-1).by], ['requested', 'Ana']);
@@ -860,7 +860,21 @@ async function main() {
     assert.deepStrictEqual([holderOf(snap), snap.mode, snap.projector.follows], [['owner', 'Ana'], 'together', 'worship']);
     await settle();
     assert.deepStrictEqual([events.owner.at(-1).type, events.owner.at(-1).by, events.owner.at(-1).to, events.leader.at(-1).type, events.leader.at(-1).to], ['handedOver', 'Operator', 'Ana', 'handedOver', 'Ana'], 'the receiver and the others are told');
-    // the holder away: the leader's request applies at once ("taken"), everyone is told
+    // an owner may answer for the holder: the operator holds it, the leader asks, the owner accepts
+    await takeProjector(op.socket, ownerSocket);
+    reply = await send(lead.socket, { type: 'projector.request' });
+    assert.strictEqual(reply.handover, 'requested');
+    await settle();
+    assert.deepStrictEqual([events.owner.at(-1).type, events.owner.at(-1).by], ['requested', 'Lider'], 'the owner is told too');
+    reply = await send(ownerSocket, { type: 'handover.accept' });
+    assert.strictEqual(reply.ok, true, JSON.stringify(reply));
+    snap = await memberAt(version);
+    assert.deepStrictEqual([holderOf(snap), snap.mode], [['leader', 'Lider'], 'together'], 'the owner answered for the operator');
+    await settle();
+    assert.deepStrictEqual([events.leader.at(-1).type, events.leader.at(-1).by], ['accepted', 'Ana']);
+    // the holder and every owner away: the operator's request applies at once ("taken"), everyone is told
+    await takeProjector(op.socket, lead.socket);
+    await takeProjector(ownerSocket, op.socket);
     await emit(ownerSocket, 'live:leave', {});
     reply = await send(lead.socket, { type: 'projector.request' });
     assert.deepStrictEqual([reply.ok, reply.handover], [true, undefined], 'taken at once');

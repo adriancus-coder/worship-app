@@ -6,7 +6,8 @@
 // (Acceptă / Refuză, Enter accepts when focused) and a badge; refuse -> "Operator a refuzat";
 // accept -> the leader holds it (together), told "ai proiectorul. Ce schimbi aici apare pe
 // proiector"; the operator asks it back the same way; cancel; "Predă controlul proiectorului"
-// lists the people connected; the owner asks like anyone else; the big lyrics show the state;
+// lists the people connected; the owner asks like anyone else and may answer any request from
+// any page; the big lyrics show the state;
 // expiry after 60 s; the holder away -> taken at once. RO / EN; 375 / 1024 / 1440.
 
 const { layoutAudit, wait } = require('./harness');
@@ -105,12 +106,25 @@ module.exports = {
     await own.waitForSelector('#mode-controls .handover-line:not([hidden])');
     await lp.waitForSelector('.handover-toast:not([hidden])', { timeout: 3000 });
     check(await holder() === 'leader' && /Cerere trimisă/.test(await own.textContent('#mode-controls .handover-line')) && /Ana cere controlul/.test(await lp.textContent('.handover-toast p')), 'the owner asks too: "Cerere trimisă", the leader gets "Ana cere controlul proiectorului"');
-    check(await own.isHidden('.handover-toast') && await op.isHidden('.handover-toast'), 'nobody but the holder gets the toast');
+    check(await own.isHidden('.handover-toast') && await op.isHidden('.handover-toast'), 'neither the requester nor the operator gets the toast');
     await lp.click('.handover-toast button:has-text("Acceptă")');
     await own.waitForFunction(() => /Ana \(Proprietar\)/.test(document.getElementById('holder-text').textContent), null, { timeout: 3000 });
     check(await holder() === 'owner' && /Lider a acceptat: ai proiectorul/.test(await own.textContent('#mode-controls .handover-line')), 'accepted: the owner holds it and is told what it means');
     await op.waitForSelector('#mode-controls .handover-line:not([hidden])', { timeout: 3000 }).catch(() => {});
     check(/Ana are acum proiectorul/.test(await op.textContent('#mode-controls .handover-line')), 'the others see "Ana are acum proiectorul"', await op.textContent('#mode-controls .handover-line'));
+    // the owner answers for the holder: the operator holds it, the leader asks, the owner's live page gets the toast
+    await op.click('#projector-action');
+    await own.waitForSelector('.handover-toast:not([hidden])', { timeout: 3000 });
+    await own.click('.handover-toast button:has-text("Acceptă")');
+    await op.waitForFunction(() => document.getElementById('mode-banner').dataset.mode === 'split');
+    await lp.click('#projector-action');
+    const ownToast = await own.waitForSelector('.handover-toast:not([hidden])', { timeout: 3000 }).then(() => true, () => false);
+    check(ownToast && /Lider cere controlul/.test(await own.textContent('.handover-toast p')) && !(await op.isHidden('.handover-toast')), 'the operator holds it: the owner\'s live page gets the request too, next to the console');
+    await own.click('.handover-toast button:has-text("Acceptă")');
+    await lp.waitForFunction(() => /Lider \(Lider\)/.test(document.getElementById('holder-text').textContent), null, { timeout: 3000 });
+    check(await holder() === 'leader' && /Ana a acceptat: ai proiectorul/.test(await lp.textContent('#mode-controls .handover-line')) && await op.isHidden('.handover-toast'), 'the owner accepted for the operator: the leader holds it, "Ana a acceptat"', await lp.textContent('#mode-controls .handover-line'));
+    await app.takeProjector('owner'); // the owner holds it again for the layout checks below
+    await lp.waitForFunction(() => /Ana/.test(document.getElementById('holder-text').textContent), null, { timeout: 3000 });
     // 375 / 1440: the leader's request line (the owner holds it, connected)
     for (const width of [375, 1440]) {
       await lp.setViewportSize({ width, height: width < 600 ? 740 : 900 });

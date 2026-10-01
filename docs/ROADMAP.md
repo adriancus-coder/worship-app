@@ -76,11 +76,11 @@ never implement a later stage early. Mockups: claude.ai design canvas
     `handover.accept / refuse / cancel`): every live page shows "Proiectorul: <name> (<role>)"
     and ONE action. Anyone but the holder has **"Cere controlul proiectorului"**: a request
     kept in the live state (60 s, expiry silent), broadcast as `live:handover`, shown as
-    "Cerere trimisă… N s" with "Anulează"; the holder's page (operator or owner alike, and
-    only theirs) gets a toast "<X> cere controlul proiectorului" with Acceptă (Enter) /
-    Refuză and a badge. Accept → the requester holds it; refuse → nothing changes ("<X> a
-    refuzat" 5 s). With the holder not connected (or nobody holding it yet) a request
-    applies at once (`taken`). The holder has **"Predă controlul proiectorului"**: a list
+    "Cerere trimisă… N s" with "Anulează"; the holder's pages AND every owner's (the owner
+    may always answer, on whatever page they have open, never their own request) get a toast
+    "<X> cere controlul proiectorului" with Acceptă (Enter) / Refuză and a badge. Accept →
+    the requester holds it; refuse → nothing changes ("<X> a refuzat" 5 s). With none of
+    them connected (or nobody holding it yet) a request applies at once (`taken`). The holder has **"Predă controlul proiectorului"**: a list
     "Predă lui <name> (<role>)" of the event-role people connected (from the presence; never a
     member). Whoever gets the projector is told for 8 s, under the action and in the big
     lyrics' status line, that what they change shows on the projector in front of the church

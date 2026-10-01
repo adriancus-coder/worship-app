@@ -7,7 +7,8 @@
 //   "Echipa: Urmărește live · Derulează liber"  team.mode follow | free
 // the request flow around them (a request waits for a connected holder: Acceptă / Refuză on
 // the holder's page; with the holder away it applies at once; whoever gets the projector is
-// told that what they change shows in church: lib/live.js), and the short info toast for
+// told that what they change shows in church: lib/live.js; an owner may always answer, on
+// whatever page they have open), and the short info toast for
 // additions made by someone else ("<name> a adăugat …"): it hides after 5 s and never takes
 // clicks.
 //
@@ -83,6 +84,8 @@
     const isHolder = () => Boolean(me && holder() && holder().userId === me.id);
     const pending = () => (live() && snap.handover && snap.handover.expiresAt > Date.now() ? snap.handover : null);
     const mine = () => Boolean(pending() && me && pending().requestedBy === me.id);
+    // The holder answers; an owner always may (not their own request).
+    const canAnswer = () => Boolean(me && (isHolder() || (me.role === 'owner' && !mine())));
     const secondsLeft = () => Math.max(0, Math.ceil((pending().expiresAt - Date.now()) / 1000));
     const roleName = (role) => (role ? t(`team.roles.${role}`) : '');
     const personLabel = (p) => `${p.name || t('live.modes.someone')} (${roleName(p.role)})`;
@@ -121,7 +124,7 @@
       if (!live()) return '';
       const p = pending();
       if (p && mine()) return t('live.modes.handoverSent', { s: secondsLeft() });
-      if (p && isHolder()) return t('live.modes.handoverAsk', { name: hand.askedBy || t('live.modes.someone') });
+      if (p && canAnswer()) return t('live.modes.handoverAsk', { name: hand.askedBy || t('live.modes.someone') });
       if (hand.answer && hand.answer.until > Date.now()) return answerText(hand.answer);
       return '';
     }
@@ -180,7 +183,7 @@
       if (p && mine()) lineText.textContent = t('live.modes.handoverSent', { s: secondsLeft() });
       else if (answer) lineText.textContent = answerText(answer);
       // the holder's badge and toast
-      const asked = Boolean(p && !mine() && isHolder());
+      const asked = Boolean(p && canAnswer());
       badge.hidden = !asked;
       badge.textContent = t('live.modes.handoverBadge');
       holderRow.classList.toggle('pending', asked);
@@ -213,7 +216,7 @@
           hand.askedBy = event.by || null;
           hand.answer = null;
           // The toast takes focus so Enter accepts, unless someone is typing.
-          if (isHolder() && !(document.activeElement && document.activeElement.closest('input, textarea, select, dialog[open]'))) {
+          if (canAnswer() && !(document.activeElement && document.activeElement.closest('input, textarea, select, dialog[open]'))) {
             setTimeout(() => { if (!toast.hidden) accept.focus(); }, 0);
           }
         } else if (event.type === 'refused') {
