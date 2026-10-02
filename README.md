@@ -31,6 +31,10 @@ on tap. To confirm a deploy: compare `shortCommit` in `/api/health` with `git lo
 ## Scripts
 
 - `npm start` — start the server.
-- `npm run check` — syntax-check every `.js` file.
+- `npm run check` — must pass before every commit: syntax check, i18n parity (RO / EN),
+  WCAG AA contrast of the colour tokens, the unit tests and the live (socket) tests.
+- `npm run test:browser` — the browser suite (Playwright, `tests/browser/`); one file with
+  `node tests/browser/run.js <name>`.
+- `npm run vapid` — print a VAPID key pair for web push (`docs/PUSH.md`); never commit it.
 
 See `CLAUDE.md` for conventions and `docs/ROADMAP.md` for the plan.

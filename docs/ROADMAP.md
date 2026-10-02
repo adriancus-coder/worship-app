@@ -211,10 +211,15 @@ never implement a later stage early. Mockups: claude.ai design canvas
 
 ## Bridge to Sanctuary Voice (optional, two-way)
 
-- Connection: Sanctuary Voice generates a short-lived **connection code** for its event
-  (separate from the public participant code). Entered in the worship event, it is exchanged
-  server-to-server for a **bridge token** scoped to that event pair; expires when the event
-  ends; either side can disconnect. Projector PCs and phones never talk to Sanctuary Voice.
+- **Church pairing (one-time, the usual way):** the owner pairs the church once with its
+  Sanctuary Voice organisation (Settings → "Sanctuary Voice", a one-time pairing code from
+  SV's admin; migration 042). From then on the connection panel lists SV's events and
+  connects with one tap ("Conectează la Serviciu duminică (live)"); "Desparte" forgets it.
+- **Connection code (fallback):** Sanctuary Voice generates a short-lived **connection code**
+  for its event (separate from the public participant code), entered behind "Conectează cu
+  cod". Either way the server gets a **bridge token** scoped to that event pair (server to
+  server; expires when the event ends; either side can disconnect). Projector PCs and phones
+  never talk to Sanctuary Voice. Details: `docs/BRIDGE.md`.
 - The connection panel (one shared component) is available to every event role (owner,
   presenter, leader, operator) on the event page, the leader/presenter live page and the
   operator console; a member never sees it. Two independent switches, both available to
@@ -293,8 +298,16 @@ never implement a later stage early. Mockups: claude.ai design canvas
    direct additions (projector only / setlist), team follow mode.
 7. Team (done): user invites, roles, positions, assignments, confirmations, unavailability,
    notifications + push, rehearsal view.
-8. Bridge to Sanctuary Voice via event code:
+8. Bridge to Sanctuary Voice (done): church pairing once, then one-tap connections (a
+   connection code as fallback):
    8a. SV → worship: live translated text as a projector source.
    8b. worship → SV: current song/section + setlist pre-translation for SV participants.
-   (Requires matching work in the sanctuary-voice-app repo.)
-9. Pilot at Maranata, then 1–2 other churches.
+   (Matching work done in the sanctuary-voice-app repo.)
+9. Pilot at Maranata, then 1–2 other churches. Before it: test on `dev`, promote `dev` to
+   `main` (backup branch first, fast-forward only), set the production env on Render
+   (`render.yaml`), run `/setup`, check `/api/health` against the deployed commit, and a
+   rehearsal Sunday in church (projector PC on its screen link, console, leader tablet,
+   team phones, an internet drop).
+
+Later, not planned in detail yet: a local mode (the server on the operator PC, devices on
+the church Wi-Fi; rule 8 keeps the live path ready for it), Norwegian UI, the subscription.
