@@ -403,7 +403,11 @@
     modes.update(snap);
     screenPicker.update(emergency.active ? null : snap); // no server: nothing to choose
     backgroundButton.update(snap);
-    clockPanel.update({ clock: snap && snap.clock, enabled: live && !emergency.active });
+    // Before the start the projector can be prepared (clock, background, screens, video):
+    // the start keeps it (lib/live.js PREPARE_COMMANDS); the screens stay idle until then.
+    const planned = Boolean(snap) && snap.status === 'planned';
+    $('prep-hint').hidden = !planned;
+    clockPanel.update({ clock: snap && snap.clock, enabled: (live || planned) && !emergency.active });
     // Separate: the operator owns the projector. The whole panel goes (preview, sources,
     // background, clock, video, screens); only "Proiectorul e la … · Sari acolo" and the
     // switches stay, and the step grid takes the width. B / L / K do nothing here then.

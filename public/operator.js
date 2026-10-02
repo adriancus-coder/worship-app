@@ -297,12 +297,15 @@
     renderSources();
     screenPicker.update(state.snap);
     backgroundButton.update(state.snap);
-    clockPanel.update({ clock: state.snap.clock, enabled: live() });
+    // Before the start the projector can be prepared (lib/live.js PREPARE_COMMANDS).
+    const planned = state.snap.status === 'planned';
+    $('prep-hint').hidden = !planned;
+    clockPanel.update({ clock: state.snap.clock, enabled: live() || planned });
     $('op-new-song').disabled = !live();
     addSearch.render(); // its actions follow live()
     videoPanel.setSetlist(items());
     videoPanel.update(state.snap);
-    videoPanel.setLocked(!live());
+    videoPanel.setLocked(!live() && !planned);
     big.update(state.snap, items());
     bridgePanel.update(state.snap);
   }

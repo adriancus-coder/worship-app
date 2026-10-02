@@ -53,8 +53,9 @@
       return item ? item.title || t('setlist.types.video') : t('video.untitled');
     }
 
-    function statusText(video, live) {
+    function statusText(video, live, planned) {
       const status = state.status;
+      if (planned) return video && video.state !== 'none' ? t('video.preparedBeforeLive') : t('video.nothingPrepared');
       if (!live) return t('video.notLive');
       if (!video || video.state === 'none') return t('video.nothingPrepared');
       if (!state.screens) return t('video.noScreens');
@@ -116,7 +117,7 @@
       const snap = state.snap;
       const video = snap ? snap.video : null;
       const text = root.querySelector('#video-status-text');
-      if (text) text.textContent = statusText(video, Boolean(snap) && snap.status === 'live');
+      if (text) text.textContent = statusText(video, Boolean(snap) && snap.status === 'live', Boolean(snap) && snap.status === 'planned');
       const bar = root.querySelector('.video-progress progress');
       const label = root.querySelector('.video-time');
       if (!bar || !label || !video) return;
@@ -132,6 +133,8 @@
       const focusedId = root.contains(document.activeElement) ? document.activeElement.id : null;
       const snap = state.snap;
       const live = Boolean(snap) && snap.status === 'live';
+      // planned: a video can be chosen (and its volume set) before the start; it plays only live
+      const planned = Boolean(snap) && snap.status === 'planned';
       const video = snap ? snap.video : null;
       const loaded = video && video.state !== 'none';
       const playing = loaded && video.state === 'playing' && snap.projector.source === 'video';
@@ -157,11 +160,11 @@
       root.replaceChildren(...[
         el('h3', { id: 'video-heading', text: t('video.heading') }),
         tabs,
-        el('div', { id: 'video-tab-panel', role: 'tabpanel', 'aria-labelledby': `video-tab-${state.tab}`, class: 'video-tab-panel' }, live ? tabPanel() : el('p', { class: 'muted', text: t('video.notLive') })),
+        el('div', { id: 'video-tab-panel', role: 'tabpanel', 'aria-labelledby': `video-tab-${state.tab}`, class: 'video-tab-panel' }, live || planned ? tabPanel() : el('p', { class: 'muted', text: t('video.notLive') })),
         state.message ? el('p', { class: 'message error', role: 'alert', text: state.message }) : null,
         el('div', { class: `video-status${loaded ? ' loaded' : ''}` },
           loaded ? el('p', { class: 'video-status-title', text: preparedTitle(video) }) : null,
-          el('p', { class: 'video-status-text', id: 'video-status-text', role: 'status', 'aria-live': 'polite', text: statusText(video, live) }),
+          el('p', { class: 'video-status-text', id: 'video-status-text', role: 'status', 'aria-live': 'polite', text: statusText(video, live, planned) }),
           loaded ? el('div', { class: 'video-progress' },
             el('progress', { max: String(duration || 1), value: String(Math.min(position || 0, duration || 1)), 'aria-label': t('video.progress') }),
             el('span', { class: 'video-time', text: `${time(position)} / ${time(duration)}` })) : null),
@@ -180,7 +183,7 @@
           el('label', { class: 'video-volume' },
             el('span', { text: t('video.volume') }),
             el('input', {
-              type: 'range', id: 'video-volume', min: '0', max: '1', step: '0.05', value: String(video ? video.volume : 1), disabled: !live,
+              type: 'range', id: 'video-volume', min: '0', max: '1', step: '0.05', value: String(video ? video.volume : 1), disabled: !live && !planned,
               onchange: (event) => send('video.volume', { volume: Number(event.target.value) }),
             }))),
       ].filter(Boolean)); // a null would be inserted as the text "null"

@@ -178,6 +178,13 @@ never implement a later stage early. Mockups: claude.ai design canvas
   page and the console keep showing the live frame. Shown on both pages as a selection
   control with one option per screen (name + online dot), only when the church has two or
   more screens; nobody chosen = every screen idle (the hint says so).
+- **Preparing the projector before the start** (migration 043): on a planned event the event
+  roles may already set the corner clock, the background override, "Pe ce ecrane" and the
+  prepared video (+ volume) from the console or the live page ("Pregătire: … se păstrează la
+  pornire"); the event page has a "Proiector" card leading there ("Pregătește proiectorul":
+  the console for owner / operator, the live page for presenter / leader). The start keeps
+  them (`live_state.prepared`), otherwise it starts from the church defaults as before.
+  Sources, playback, moves and the holder still wait for the start; screens stay idle.
 - **Safe margin** (`safe_margin`, church default 5 %, 0-12; a screen may override it,
   migration 028): text, logo and corner clock (offset = margin + 20 / 24 px) keep away from the
   edges some projectors crop (overscan); backgrounds and video stay full-bleed. Every frame

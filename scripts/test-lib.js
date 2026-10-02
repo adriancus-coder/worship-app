@@ -1162,7 +1162,6 @@ test('live store: "Pe ce ecrane" (migration 040): null = every screen; chosen id
   const code = (c, role) => { try { cmd(c, role); return 'ok'; } catch (err) { return err.code; } };
   const snap = () => live.snapshot(1, eventId);
   assert.strictEqual(snap().screens, null, 'before any start: every screen');
-  assert.strictEqual(code({ type: 'projector.screens', screenIds: [a] }), 'notLive');
   cmd({ type: 'event.start' });
   assert.strictEqual(snap().screens, null);
   for (const role of ['owner', 'presenter', 'leader', 'operator']) assert.strictEqual(code({ type: 'projector.screens', screenIds: [b, a, b] }, role), 'ok', role);
@@ -1193,6 +1192,53 @@ test('live store: "Pe ce ecrane" (migration 040): null = every screen; chosen id
   mem.prepare("UPDATE events SET status = 'planned' WHERE id = ?").run(eventId);
   cmd({ type: 'event.start' });
   assert.strictEqual(snap().screens, null, 'a new start: every screen again');
+  mem.close();
+});
+
+test('live store: projector preparation before the start (migration 043): clock, background, screens, video while planned; the start keeps them; nothing else; not on a template', () => {
+  const { mem, live, eventId } = liveFixture();
+  const { PREPARE_COMMANDS } = require('../lib/live');
+  assert.deepStrictEqual(PREPARE_COMMANDS, ['clock.set', 'background.set', 'projector.screens', 'video.prepare', 'video.volume']);
+  const screens = require('../lib/screens').createScreenStore(mem);
+  const a = screens.create(1, 1, 'Sală').id;
+  screens.create(1, 1, 'Hol');
+  mem.prepare("INSERT INTO media (id, admin_id, kind, title, created_at) VALUES (50, 1, 'image', 'Cer', 0)").run();
+  mem.prepare("INSERT INTO media (id, admin_id, kind, title, created_at) VALUES (51, 1, 'upload', 'Intro', 0)").run();
+  const cmd = (c, role = 'leader') => live.command(1, eventId, c, undefined, role);
+  const code = (c, role) => { try { cmd(c, role); return 'ok'; } catch (err) { return err.code; } };
+  const snap = () => live.snapshot(1, eventId);
+  assert.deepStrictEqual([snap().status, snap().prepared], ['planned', false]);
+  // allowed while planned
+  cmd({ type: 'clock.set', show: false, position: 'top-left', scale: 1.2 });
+  cmd({ type: 'background.set', background: 50 }, 'presenter');
+  cmd({ type: 'projector.screens', screenIds: [a] }, 'operator');
+  cmd({ type: 'video.prepare', mediaId: 51 }, 'owner');
+  cmd({ type: 'video.volume', volume: 0.5 });
+  let s = snap();
+  assert.deepStrictEqual([s.status, s.prepared, s.clock.show, s.clock.position, s.clock.scale, s.backgroundOverride, s.screens, s.video.state, s.video.mediaId, s.video.volume],
+    ['planned', true, false, 'top-left', 1.2, 50, [a], 'prepared', 51, 0.5], 'stored, still planned, marked prepared');
+  // everything else still waits for the start
+  for (const c of [{ type: 'video.play' }, { type: 'projector.source', source: 'black' }, { type: 'worship.next' }, { type: 'team.mode', mode: 'free' }, { type: 'projector.request' }]) {
+    assert.strictEqual(code(c), 'notLive', c.type);
+  }
+  assert.strictEqual(code({ type: 'clock.set', show: true }, 'member'), 'forbidden');
+  // the start keeps the preparation (and clears the mark), positions start as usual
+  cmd({ type: 'event.start' }, 'leader');
+  s = snap();
+  assert.deepStrictEqual([s.status, s.prepared, s.clock.show, s.clock.position, s.backgroundOverride, s.screens, s.video.state, s.video.mediaId, s.video.volume, s.projector.source, s.worship.step],
+    ['live', false, false, 'top-left', 50, [a], 'prepared', 51, 0.5, 'content', 0]);
+  assert.strictEqual(code({ type: 'video.play' }), 'ok', 'the prepared video plays live');
+  // a second run of the same event (reopened) without preparation starts from the defaults
+  cmd({ type: 'event.end' }, 'leader');
+  mem.prepare("UPDATE events SET status = 'planned' WHERE id = ?").run(eventId);
+  cmd({ type: 'event.start' }, 'leader');
+  s = snap();
+  assert.deepStrictEqual([s.clock.show, s.backgroundOverride, s.screens, s.video.state], [true, null, null, 'none'], 'not prepared: the church defaults');
+  // finished events and templates are never prepared
+  cmd({ type: 'event.end' }, 'leader');
+  assert.strictEqual(code({ type: 'clock.set', show: false }), 'notLive', 'finished');
+  mem.prepare("UPDATE events SET status = 'planned', is_template = 1 WHERE id = ?").run(eventId);
+  assert.strictEqual(code({ type: 'clock.set', show: false }), 'notLive', 'a template');
   mem.close();
 });
 
@@ -1982,7 +2028,7 @@ test('corner clock: settings, the three fields on every frame, hidden while a vi
   const code = (c, role) => { try { cmd(c, role); return 'ok'; } catch (err) { return err.code; } };
   const snap = () => live.snapshot(1, eventId);
   assert.deepStrictEqual(snap().clock, { show: true, position: 'top-right', scale: 0.7, timeZone: 'Europe/Oslo', format: '24' }, 'not yet live: what it would start with');
-  assert.strictEqual(code({ type: 'clock.set', show: false }), 'notLive');
+  // (a clock set before the start is preparation, kept by the start: its own test)
   cmd({ type: 'event.start' }, 'operator');
   assert.deepStrictEqual(snap().clock, { show: true, position: 'top-right', scale: 0.7, timeZone: 'Europe/Oslo', format: '24' }, 'started from the church defaults');
   let v = snap().version;
@@ -2029,6 +2075,7 @@ test('projector holder (migration 041): the start gives it to a connected operat
   // the start: the leader starts with an operator connected -> the operator holds (split)
   cmd({ type: 'event.start' }, 'leader', { userId: 5, online: [LEAD, OP] });
   assert.deepStrictEqual([who(), snap().mode, snap().projector.follows], [[7, 'operator'], 'split', 'operator']);
+  assert.deepStrictEqual([snap().projector.itemId, snap().projector.step], [snap().worship.itemId, 0], 'the operator\'s projector starts at the first item, not on nothing');
   cmd({ type: 'event.end' }, 'leader');
   mem.prepare("UPDATE events SET status = 'planned' WHERE id = ?").run(eventId); // a second start
   live.command(1, eventId, { type: 'event.start' }, undefined, 'leader', { now: T, userId: 5, online: [LEAD, OWNER] });

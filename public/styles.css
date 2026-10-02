@@ -1184,6 +1184,10 @@ body.screen-body.cursor-hidden, body.screen-body.cursor-hidden * { cursor: none;
 .source-buttons button:disabled { opacity: 0.45; cursor: not-allowed; }
 /* Bridge to Sanctuary Voice (stage 8): the connection panel on the operator console. */
 .bridge-panel { margin-top: 16px; border-top: 1px solid var(--border); padding-top: 12px; }
+.projector-prep-card { margin-top: 16px; border-top: 1px solid var(--border); padding-top: 12px; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+.projector-prep-card[hidden] { display: none; }
+.projector-prep-card .hint { margin: 0; }
+.prep-hint { margin: 6px 0; }
 .bridge-panel:empty { display: none; }
 .bridge-heading { font-size: 0.95rem; margin: 0 0 8px; }
 .bridge-connect, .bridge-connected { display: flex; flex-direction: column; gap: 10px; }

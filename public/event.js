@@ -345,6 +345,23 @@
     renderTeam();
     renderProposals();
     renderBridge();
+    renderProjectorPrep();
+  }
+
+  // "Proiector": before the start the projector can already be prepared (clock, background,
+  // screens, video) on the console (owner, operator) or the live page (presenter, leader); the
+  // start keeps it (lib/live.js PREPARE_COMMANDS). Event roles, planned or live events.
+  function renderProjectorPrep() {
+    const ev = state.event;
+    const show = Boolean(ev && !ev.isTemplate && ev.status !== 'finished' && canEdit(state.me));
+    $('projector-card').hidden = !show;
+    if (!show) return;
+    const role = state.me && state.me.user ? state.me.user.role : null;
+    const consoleRole = role === 'owner' || role === 'operator';
+    const link = $('projector-prep-link');
+    link.href = consoleRole ? `/events/${ev.id}/operator` : `/events/${ev.id}/live?view=full`;
+    link.textContent = t(ev.status === 'live' ? 'setlist.projectorOpenLive' : 'setlist.projectorPrepare');
+    $('projector-prep-text').textContent = t(ev.status === 'live' ? 'setlist.projectorLiveText' : 'setlist.projectorPrepText');
   }
 
   // The bridge to Sanctuary Voice (stage 8): the same shared panel as the live page and the

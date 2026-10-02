@@ -173,8 +173,8 @@
 
     async function render() {
       const items = await list();
-      const live = Boolean(snap) && snap.status === 'live';
-      button.disabled = !live;
+      // live, or planned: prepared before the start (kept by it)
+      button.disabled = !(snap && (snap.status === 'live' || snap.status === 'planned'));
       const override = snap ? snap.backgroundOverride : null;
       const title = (id) => (items.find((m) => m.id === Number(id)) || {}).title;
       let text;

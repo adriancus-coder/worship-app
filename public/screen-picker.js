@@ -23,11 +23,13 @@
     container.replaceChildren(label, group, hint);
 
     const live = () => Boolean(snap) && snap.status === 'live';
+    const planned = () => Boolean(snap) && snap.status === 'planned'; // prepared before the start
+    const editable = () => live() || planned();
     // null in the state = every screen; here always the explicit ids.
     const selected = () => (snap && Array.isArray(snap.screens) ? snap.screens : list.map((s) => s.id));
 
     function toggle(id) {
-      if (!live()) return;
+      if (!editable()) return;
       const current = selected();
       const next = current.includes(id) ? current.filter((x) => x !== id) : [...current, id].sort((a, b) => a - b);
       const all = list.every((s) => next.includes(s.id));
@@ -45,10 +47,10 @@
         'data-screen': String(s.id),
         'aria-pressed': String(chosen.includes(s.id)),
         'aria-label': `${s.name} · ${t(s.online ? 'screens.online' : 'screens.offline')}`,
-        disabled: live() ? null : 'disabled',
+        disabled: editable() ? null : 'disabled',
         onclick: () => toggle(s.id),
       }, el('span', { class: `online-dot${s.online ? ' on' : ''}`, 'aria-hidden': 'true' }), el('span', { text: s.name }))));
-      hint.textContent = !live() ? t('live.projector.targetsNotLive') : chosen.length === 0 ? t('live.projector.targetsNone') : t('live.projector.targetsHint');
+      hint.textContent = !editable() ? t('live.projector.targetsNotLive') : chosen.length === 0 ? t('live.projector.targetsNone') : t(live() ? 'live.projector.targetsHint' : 'live.projector.targetsPrep');
     }
 
     return {
