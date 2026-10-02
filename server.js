@@ -205,7 +205,7 @@ const shutdown = createShutdown({ server, io, db, logger, t });
 shutdown.listen();
 
 server.listen(config.PORT, () => {
-  logger.info(`${config.APP_NAME} v${config.VERSION} listening on port ${config.PORT} (${config.NODE_ENV})`);
+  logger.info(`${config.APP_NAME} v${config.VERSION} (${config.SHORT_COMMIT || 'commit unknown'}) listening on port ${config.PORT} (${config.NODE_ENV})`);
   // Reopen any stored bridge connections after a restart (SV sockets; no-op without any).
   try { bridge.resume(); } catch (err) { logger.error('bridge resume failed', err); }
 });

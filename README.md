@@ -18,6 +18,16 @@ as described in `docs/EMAIL.md`; without them the app hands out temporary passwo
 Backgrounds can be added by link or searched on Pexels (`PEXELS_API_KEY`, see
 `docs/BACKGROUNDS.md`); without a key the Pexels tab is hidden.
 
+## Versions
+
+Every page and `/api/health` carry the build the server runs: the `package.json` version
+plus the git commit (`0.1.0+569a1ad`). On Render the commit comes from `RENDER_GIT_COMMIT`
+(set on every deploy); elsewhere from `GIT_COMMIT` / `SOURCE_COMMIT` or the checkout itself.
+The service worker's cache version starts with this label, so every deployed commit is a
+new build for installed apps (PWA): pages of an older build show "Versiune nouă disponibilă ·
+Reîncarcă", and "Mai mult → Versiune …" shows the running build and checks for a newer one
+on tap. To confirm a deploy: compare `shortCommit` in `/api/health` with `git log -1` on `main`.
+
 ## Scripts
 
 - `npm start` — start the server.

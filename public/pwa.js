@@ -328,9 +328,22 @@
     if (install.sheet && install.sheet.open) openSheet(install.sheet.dataset.kind);
   });
 
+  // "Verifică actualizări" (Mai mult): ask the browser for a new worker now. -> 'available'
+  // (a newer build waits: reload to get it), 'current' (this is the latest), 'unknown' (no
+  // service worker here).
+  async function checkForUpdate() {
+    const reg = await ready;
+    if (!reg) return 'unknown';
+    try { await reg.update(); } catch (err) { /* offline: what we know */ }
+    if (reg.waiting && !update.waiting) await waitingFound(reg.waiting);
+    return update.waiting && !update.current ? 'available' : 'current';
+  }
+
   window.PWA = {
     ready,
     clearPrivate,
+    checkForUpdate,
+    reload: reloadNow,
     get registration() { return registration; },
     get updateWaiting() { return Boolean(update.waiting); },
     get build() { return build; },

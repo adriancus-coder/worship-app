@@ -28,6 +28,15 @@ module.exports = {
       await p.goto(`${app.url}/events`);
       await p.waitForSelector('#app-shell .shell-label:not(:empty)');
       await p.click('.shell-more');
+      // the version row: "Versiune 0.1.0 · <commit>" from the page's build, a tap checks for updates
+      await p.waitForSelector('.shell-version');
+      const versionText = await p.textContent('.shell-version');
+      const health = (await app.api(null, 'GET', '/api/health')).body;
+      check(new RegExp(`Versiune ${health.version.replace(/\./g, '\\.')}${health.shortCommit ? ` · ${health.shortCommit}` : ''}`).test(versionText), `[${width}] "Mai mult": the version and the commit (${health.version} ${health.shortCommit || ''})`, versionText);
+      check(health.build.startsWith(health.shortCommit ? `${health.version}+${health.shortCommit}-` : `${health.version}-`) && await p.evaluate(() => document.documentElement.dataset.build) === health.build, `[${width}] /api/health: the PWA build version matches the page's`, health);
+      await p.click('.shell-version');
+      await p.waitForFunction(() => /(ultima versiune|latest version|Reîncarcă pagina|Reload the page)/.test(document.querySelector('.shell-version-state').textContent), null, { timeout: 8000 }).catch(() => {});
+      check(/(ultima versiune|latest version|Reîncarcă pagina|Reload the page)/.test(await p.textContent('.shell-version-state')), `[${width}] the check answers "Ești la ultima versiune"`, await p.textContent('.shell-version-state'));
       const panel = await p.evaluate(() => ({
         open: !document.getElementById('shell-panel').hidden,
         role: document.querySelector('.shell-who-role').textContent,

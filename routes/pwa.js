@@ -12,7 +12,7 @@ const SHORT_NAME_MAX = 12;
 // Screen"). Names from config, language from the request.
 function createPwaRouter({ config, logger, sendPage, themeOf = () => 'dark' }) {
   const router = express.Router();
-  const build = buildInfo(config.VERSION);
+  const build = buildInfo(config.BUILD_LABEL);
   const workerSource = fs.readFileSync(path.join(__dirname, '..', 'lib', 'service-worker.js'), 'utf8')
     .replace(/\/\* __CONFIG__ \*\/ \{[^}]*\}/, JSON.stringify({ version: build.version, precache: build.precache, offline: '/offline' }));
   logger.info(`Service worker cache version ${build.version} (${build.precache.length} static files)`);

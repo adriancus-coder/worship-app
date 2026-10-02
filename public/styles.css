@@ -1369,6 +1369,12 @@ body.has-shell .shell-panel-body { padding-bottom: 12px; } /* the tab bar alread
   cursor: pointer;
 }
 .shell-row:hover { background: var(--background); }
+.shell-version { font-weight: 500; color: var(--text-muted); }
+.shell-version-lines { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.shell-version-text { font-variant-numeric: tabular-nums; }
+.shell-version-state { font-size: 0.8rem; }
+.shell-version.has-update { color: var(--text); font-weight: 700; }
+.shell-version.has-update .shell-version-state { color: var(--accent-text); }
 .shell-row:focus-visible { outline: 3px solid var(--focus); outline-offset: -3px; }
 .shell-row .shell-icon { flex: none; width: 22px; height: 22px; color: var(--text-muted); }
 .shell-row .shell-icon-chevron { width: 18px; height: 18px; margin-left: auto; }

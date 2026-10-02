@@ -29,6 +29,7 @@
     logout: 'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9',
     chevron: 'M9 6l6 6-6 6',
     install: 'M12 3v12M7 10l5 5 5-5M5 21h14',
+    refresh: 'M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5',
   };
 
   function icon(name) {
@@ -275,6 +276,31 @@
     },
   }, icon('install'), installLabel, icon('chevron'));
 
+  // "Versiune 0.1.0 · 569a1ad": the build this page runs (lib/version.js); a tap checks for
+  // a newer deploy and offers the reload (public/pwa.js).
+  const versionText = el('span', { class: 'shell-row-label shell-version-text' });
+  const versionState = el('span', { class: 'shell-version-state', role: 'status', 'aria-live': 'polite' });
+  let versionCheck = null; // 'checking' | 'available' | 'current' | 'unknown' | null
+  const versionRow = el('button', {
+    type: 'button',
+    class: 'shell-row shell-version',
+    onclick: async () => {
+      if (versionCheck === 'available') { if (window.PWA) window.PWA.reload(); return; }
+      if (versionCheck === 'checking') return;
+      versionCheck = 'checking';
+      renderVersion();
+      versionCheck = window.PWA ? await window.PWA.checkForUpdate() : 'unknown';
+      renderVersion();
+    },
+  }, icon('refresh'), el('span', { class: 'shell-version-lines' }, versionText, versionState));
+  function renderVersion() {
+    const label = document.documentElement.dataset.version || '';
+    const [version, commit] = label.split('+');
+    versionText.textContent = t('shell.version', { version: version || '—', commit: commit ? ` · ${commit}` : '' });
+    versionState.textContent = versionCheck ? t(`shell.version${versionCheck[0].toUpperCase()}${versionCheck.slice(1)}`) : t('shell.versionCheck');
+    versionRow.classList.toggle('has-update', versionCheck === 'available');
+  }
+
   const navSection = section('shell.sections.navigation', el('ul', { class: 'shell-rows' }, ...navLinks.map((p) => p.item)));
   panel.append(
     handle,
@@ -289,7 +315,8 @@
       section('shell.sections.account',
         installRow,
         el('ul', { class: 'shell-rows' }, ...accountLinks.map((p) => p.item)),
-        logout)));
+        logout,
+        versionRow)));
 
   // Chord notation: the page's own switch module when it has one (song pages), else a small
   // one here that saves the same preference.
@@ -355,6 +382,7 @@
     renderTheme();
     logoutLabel.textContent = t('app.logout');
     installLabel.textContent = t('pwa.install');
+    renderVersion();
     for (const p of pageLinks) p.label.textContent = t(p.key);
     if (notationGroup.renderSwitch) notationGroup.renderSwitch();
     viewAsLabel.textContent = t('shell.viewAs');

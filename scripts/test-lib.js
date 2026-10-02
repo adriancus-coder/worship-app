@@ -2284,6 +2284,29 @@ test('backup temp sweep: leftover .backup-* folders older than 1 h go at startup
   fs.rmSync(dataDir, { recursive: true, force: true });
 });
 
+// --- build identity (lib/version.js) ---------------------------------------------
+
+test('build identity: the commit from the host env (Render first), else git, else none; the label feeds the PWA cache version', () => {
+  const { buildIdentity } = require('../lib/version');
+  const os = require('os');
+  const fs = require('fs');
+  const path = require('path');
+  const nowhere = fs.mkdtempSync(path.join(os.tmpdir(), 'wa-nogit-')); // no .git here: git fails
+  const render = buildIdentity({ version: '0.1.0', env: { RENDER_GIT_COMMIT: 'ABCDEF0123456789abcdef0123456789abcdef01', GIT_COMMIT: '1111111' }, cwd: nowhere });
+  assert.deepStrictEqual(render, { version: '0.1.0', commit: 'abcdef0123456789abcdef0123456789abcdef01', shortCommit: 'abcdef0', label: '0.1.0+abcdef0' });
+  assert.strictEqual(buildIdentity({ version: '0.1.0', env: { GIT_COMMIT: '1111111' }, cwd: nowhere }).label, '0.1.0+1111111', 'GIT_COMMIT when Render\'s is missing');
+  assert.strictEqual(buildIdentity({ version: '0.1.0', env: { RENDER_GIT_COMMIT: 'not a sha' }, cwd: nowhere }).commit, null, 'junk is ignored');
+  const none = buildIdentity({ version: '0.1.0', env: {}, cwd: nowhere });
+  assert.deepStrictEqual(none, { version: '0.1.0', commit: null, shortCommit: null, label: '0.1.0' }, 'nothing known: the version alone');
+  const here = buildIdentity({ version: '0.1.0', env: {} }); // this checkout
+  assert.ok(here.commit === null || /^[0-9a-f]{40}$/.test(here.commit), 'git, when available, gives the full sha');
+  // the PWA cache version starts with the label: a new commit is a new build
+  const { buildInfo } = require('../lib/pwa');
+  assert.ok(buildInfo('0.1.0+abcdef0').version.startsWith('0.1.0+abcdef0-'));
+  assert.notStrictEqual(buildInfo('0.1.0+abcdef0').version, buildInfo('0.1.0+1234567').version);
+  fs.rmSync(nowhere, { recursive: true, force: true });
+});
+
 // --- bridge client (stage 8) --------------------------------------------------
 
 const bridgeClient = require('../lib/bridge/client');
