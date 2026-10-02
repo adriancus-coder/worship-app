@@ -1200,6 +1200,10 @@ body.screen-body.cursor-hidden, body.screen-body.cursor-hidden * { cursor: none;
 .bridge-hint { color: var(--text-muted); font-size: 0.8rem; }
 .bridge-msg { min-height: 1.2em; margin: 4px 0 0; font-size: 0.85rem; }
 .bridge-msg.error { color: var(--error); }
+.bridge-paired { display: flex; flex-direction: column; gap: 10px; }
+.bridge-sv-events { display: flex; flex-direction: column; gap: 8px; }
+.bridge-sv-events button { text-align: left; }
+.sv-form { display: flex; flex-direction: column; gap: 8px; }
 .notation-choice { display: flex; flex-wrap: wrap; gap: 8px; }
 .notation-choice button { min-width: 120px; }
 /* The corner clock: "Ceas" toggle (its own border) + the four corners; the size below. */

@@ -2198,6 +2198,7 @@ testAsync('platform deletion: refused while active, the exact name, pending -> c
     db.prepare("INSERT INTO notification_prefs (user_id, admin_id, kind, enabled) VALUES (?, ?, 'reminder', 0)").run(userId, a);
     db.prepare("INSERT INTO song_proposals (admin_id, event_id, song_id, proposed_by, created_at) VALUES (?, ?, ?, ?, 0)").run(a, eventId, songId, userId);
     db.prepare("INSERT INTO bridge_connections (event_id, admin_id, sv_base_url, sv_event_id, bridge_token, token_fingerprint, created_at, updated_at) VALUES (?, ?, 'https://dev.sanctuaryvoice.com', 'ev', 'tok', 'fp', 0, 0)").run(eventId, a);
+    db.prepare("INSERT INTO bridge_pairings (admin_id, sv_base_url, pairing_token, token_fingerprint, sv_org_id, paired_at) VALUES (?, 'https://dev.sanctuaryvoice.com', 'pt', 'fp', 'org', 0)").run(a);
     fs.mkdirSync(path.join(dataDir, 'uploads', `admin-${a}`, 'media'), { recursive: true });
     fs.writeFileSync(path.join(dataDir, 'uploads', `admin-${a}`, 'media', 'f.bin'), Buffer.alloc(64, 1));
   };
@@ -2364,6 +2365,119 @@ testAsync('bridge exchange / revoke / status: happy paths and error mapping', as
   assert.deepStrictEqual(await client.status('https://dev.sanctuaryvoice.com', 'tok-123'), { connected: true, svEventId: 'ev-9', targetLanguages: ['en'], expiresAt: 222, lastSeenAt: 333 });
   routes.set('GET /api/bridge/status', () => fakeResponse(401, '{}'));
   await assert.rejects(client.status('https://dev.sanctuaryvoice.com', 'tok-123'), (e) => e.code === 'inactive');
+});
+
+testAsync('bridge client church pairing: pair / listEvents / connectPaired / unpair, and their error codes', async () => {
+  const calls = [];
+  const routes = new Map();
+  const fetchImpl = async (url, opts = {}) => {
+    calls.push({ url, method: opts.method || 'GET', headers: opts.headers || {}, body: opts.body ? JSON.parse(opts.body) : null });
+    const handler = routes.get(`${opts.method || 'GET'} ${new URL(url).pathname}`);
+    return handler ? handler() : fakeResponse(500, '{}');
+  };
+  const client = bridgeClient.createBridgeClient({ fetchImpl });
+  const base = 'https://dev.sanctuaryvoice.com';
+  routes.set('POST /api/bridge/pair', () => fakeResponse(200, JSON.stringify({ ok: true, pairingToken: 'pt-1', svOrgId: 'org-7', svOrgName: 'Biserica Harul', expiresAt: null })));
+  const paired = await client.pair(`${base}/`, 'k7mnpq', 'Harul');
+  assert.deepStrictEqual(paired, { baseUrl: base, pairingToken: 'pt-1', svOrgId: 'org-7', svOrgName: 'Biserica Harul', expiresAt: null });
+  assert.deepStrictEqual(calls[0].body, { code: 'K7MNPQ', churchName: 'Harul' });
+  await assert.rejects(client.pair(base, 'no', 'x'), (e) => e.code === 'invalid_code');
+  routes.set('POST /api/bridge/pair', () => fakeResponse(400, JSON.stringify({ ok: false, error: 'code_used' })));
+  await assert.rejects(client.pair(base, 'k7mnpq', 'x'), (e) => e.code === 'code_used');
+  routes.set('POST /api/bridge/pair', () => fakeResponse(500, '{}'));
+  await assert.rejects(client.pair(base, 'k7mnpq', 'x'), (e) => e.code === 'pair_failed');
+  // events: normalized, startsAt as a number or an ISO string, 401 -> unpaired
+  routes.set('GET /api/bridge/events', () => fakeResponse(200, JSON.stringify({ ok: true, events: [
+    { svEventId: 'ev-1', name: 'Duminică', startsAt: '2026-10-04T08:00:00Z', status: 'live', targetLanguages: ['EN', 'no'] },
+    { svEventId: 42, name: 'Seara', startsAt: 1790000000000, status: 'planned' },
+    { nope: true },
+  ] })));
+  calls.length = 0;
+  const events = await client.listEvents(base, 'pt-1');
+  assert.deepStrictEqual(events, [
+    { svEventId: 'ev-1', name: 'Duminică', startsAt: Date.parse('2026-10-04T08:00:00Z'), status: 'live', targetLanguages: ['en', 'no'] },
+    { svEventId: '42', name: 'Seara', startsAt: 1790000000000, status: 'planned', targetLanguages: [] },
+  ]);
+  assert.strictEqual(calls[0].headers.Authorization, 'Bearer pt-1');
+  routes.set('GET /api/bridge/events', () => fakeResponse(401, JSON.stringify({ ok: false, error: 'unpaired' })));
+  await assert.rejects(client.listEvents(base, 'pt-1'), (e) => e.code === 'unpaired');
+  // connect: the exchange body; 404 -> unknown_event; 401 -> unpaired
+  routes.set('POST /api/bridge/connect', () => fakeResponse(200, JSON.stringify({ ok: true, bridgeToken: 'bt-9', svEventId: 'ev-1', targetLanguages: ['en'], expiresAt: 555 })));
+  calls.length = 0;
+  assert.deepStrictEqual(await client.connectPaired(base, 'pt-1', 'ev-1', 'Serviciu'), { baseUrl: base, bridgeToken: 'bt-9', svEventId: 'ev-1', targetLanguages: ['en'], expiresAt: 555 });
+  assert.deepStrictEqual([calls[0].headers.Authorization, calls[0].body], ['Bearer pt-1', { svEventId: 'ev-1', worshipEventName: 'Serviciu' }]);
+  routes.set('POST /api/bridge/connect', () => fakeResponse(404, JSON.stringify({ ok: false, error: 'unknown_event' })));
+  await assert.rejects(client.connectPaired(base, 'pt-1', 'ev-x', ''), (e) => e.code === 'unknown_event' && e.status === 404);
+  routes.set('POST /api/bridge/connect', () => fakeResponse(401, '{}'));
+  await assert.rejects(client.connectPaired(base, 'pt-1', 'ev-1', ''), (e) => e.code === 'unpaired');
+  // unpair: ok, and 401 / 404 count as done
+  routes.set('POST /api/bridge/unpair', () => fakeResponse(200, JSON.stringify({ ok: true })));
+  assert.deepStrictEqual(await client.unpair(base, 'pt-1'), { ok: true });
+  routes.set('POST /api/bridge/unpair', () => fakeResponse(401, '{}'));
+  assert.deepStrictEqual(await client.unpair(base, 'pt-1'), { ok: true });
+  routes.set('POST /api/bridge/unpair', () => fakeResponse(500, '{}'));
+  await assert.rejects(client.unpair(base, 'pt-1'), (e) => e.code === 'unpair_failed');
+});
+
+testAsync('bridge hub church pairing (migration 042): pair once, list SV events, connect without a code, a revoked pairing is remembered, unpair', async () => {
+  const Database = require('better-sqlite3');
+  const { runMigrations } = require('../lib/db');
+  const { createBridge } = require('../lib/bridge');
+  const db = new Database(':memory:');
+  db.pragma('foreign_keys = ON');
+  runMigrations(db);
+  db.prepare("INSERT INTO admins (id, name, created_at) VALUES (1, 'Biserica Harul', 0), (2, 'Alta', 0)").run();
+  db.prepare("INSERT INTO users (id, admin_id, email, name, password_hash, role, created_at) VALUES (1, 1, 'a@x.ro', 'Ana', 'x', 'owner', 0)").run();
+  const eventId = Number(db.prepare("INSERT INTO events (admin_id, name, event_date, status, created_at, updated_at) VALUES (1, 'Serviciu', '2026-10-04', 'live', 0, 0)").run().lastInsertRowid);
+  const calls = [];
+  let unpaired = false;
+  const fetchImpl = async (url, opts = {}) => {
+    const path = new URL(url).pathname;
+    calls.push({ path, auth: (opts.headers || {}).Authorization || null, body: opts.body ? JSON.parse(opts.body) : null });
+    if (path === '/api/bridge/pair') return fakeResponse(200, JSON.stringify({ ok: true, pairingToken: 'pt-1', svOrgId: 'org-7', svOrgName: 'Harul SV' }));
+    if (unpaired) return fakeResponse(401, JSON.stringify({ ok: false, error: 'unpaired' }));
+    if (path === '/api/bridge/events') return fakeResponse(200, JSON.stringify({ ok: true, events: [{ svEventId: 'ev-1', name: 'Duminică', startsAt: 1, status: 'live', targetLanguages: ['en'] }] }));
+    if (path === '/api/bridge/connect') return fakeResponse(200, JSON.stringify({ ok: true, bridgeToken: 'bt-1', svEventId: 'ev-1', targetLanguages: ['en'], expiresAt: Date.now() + 3600000 }));
+    if (path === '/api/bridge/unpair' || path === '/api/bridge/revoke') return fakeResponse(200, JSON.stringify({ ok: true }));
+    return fakeResponse(500, '{}');
+  };
+  const socket = { on: () => {}, removeAllListeners: () => {}, disconnect: () => {}, emit: () => {} };
+  const logger = { info: () => {}, warn: () => {}, error: () => {} };
+  const bridge = createBridge({ db, config: {}, logger, fetchImpl, ioClient: () => socket });
+  assert.strictEqual(bridge.pairingStatus(1), null, 'not paired');
+  await assert.rejects(bridge.svEvents(1), (e) => e.code === 'not_paired');
+  await assert.rejects(bridge.connectPaired(1, eventId, { svEventId: 'ev-1' }), (e) => e.code === 'not_paired');
+  // pair: the church name goes to SV; the token stays server-side
+  const pairing = await bridge.pair(1, 1, { svBaseUrl: 'https://dev.sanctuaryvoice.com', code: 'k7mnpq' });
+  assert.deepStrictEqual([pairing.paired, pairing.status, pairing.svOrgId, pairing.svOrgName, typeof pairing.pairedAt], [true, 'paired', 'org-7', 'Harul SV', 'number']);
+  assert.strictEqual(Object.keys(pairing).some((k) => /token/i.test(k)), false, 'no token in the public view');
+  assert.deepStrictEqual(calls[0].body, { code: 'K7MNPQ', churchName: 'Biserica Harul' });
+  assert.strictEqual(bridge.pairingStatus(2), null, 'another church is not paired');
+  // the events, then a one-tap connect: the same lifecycle as a code exchange
+  const events = await bridge.svEvents(1);
+  assert.deepStrictEqual(events.map((e) => [e.svEventId, e.status]), [['ev-1', 'live']]);
+  assert.strictEqual(calls.at(-1).auth, 'Bearer pt-1');
+  const st = await bridge.connectPaired(1, eventId, { svEventId: 'ev-1' });
+  assert.deepStrictEqual([st.connected, st.connection.svEventId, st.connection.svBaseUrl, st.pairing.paired], [true, 'ev-1', 'https://dev.sanctuaryvoice.com', true]);
+  assert.deepStrictEqual(calls.at(-1).body, { svEventId: 'ev-1', worshipEventName: 'Serviciu' });
+  assert.strictEqual(bridge.status(1, eventId).pairing.svOrgName, 'Harul SV', 'the event status carries the pairing');
+  await assert.rejects(bridge.connectPaired(1, eventId, { svEventId: '' }), (e) => e.code === 'unknown_event');
+  // SV revoked the pairing: remembered as unpaired_remote until the owner pairs again
+  unpaired = true;
+  await assert.rejects(bridge.svEvents(1), (e) => e.code === 'unpaired');
+  assert.deepStrictEqual([bridge.pairingStatus(1).paired, bridge.pairingStatus(1).status], [false, 'unpaired_remote']);
+  await assert.rejects(bridge.svEvents(1), (e) => e.code === 'not_paired', 'no more calls to SV until paired again');
+  unpaired = false;
+  await bridge.pair(1, 1, { svBaseUrl: 'https://dev.sanctuaryvoice.com', code: 'k7mnpq' });
+  assert.strictEqual(bridge.pairingStatus(1).paired, true);
+  // unpair: forgotten here, told to SV; the event bridge stays
+  assert.strictEqual(await bridge.unpair(1), null);
+  assert.strictEqual(bridge.pairingStatus(1), null);
+  assert.strictEqual(calls.at(-1).path, '/api/bridge/unpair');
+  assert.strictEqual(bridge.status(1, eventId).connected, true, 'the open event bridge is untouched');
+  assert.strictEqual(await bridge.unpair(1), null, 'unpairing twice is fine');
+  await bridge.disconnect(1, eventId);
+  db.close();
 });
 
 testAsync('bridge hub: connect opens the SV socket, translations feed the projector, gated by dir_in', async () => {

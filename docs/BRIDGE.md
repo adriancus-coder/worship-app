@@ -96,49 +96,59 @@ The bridge is a cloud feature (it reaches SV over HTTPS). It degrades gracefully
 offline, the live path (setlist, positions, projector control) runs entirely on this server +
 SQLite, exactly as CLAUDE.md rule 8 requires. Nothing in the live path depends on SV.
 
-## Proposed: church pairing (one-time), then one-tap connections
+## Church pairing (one-time), then one-tap connections
 
-**Status: proposal, to be agreed with the Sanctuary Voice repo (which owns the wire).** Nothing of
-this is implemented yet on either side. Today every event needs a fresh code typed from SV's Live
-tab. The goal: pair the church with SV **once**, then connect any event with a single tap.
+Pair the church with SV **once**; afterwards any event connects with a single tap, no code typed.
+The typed connection code stays as a fallback ("Conectează cu cod": a church not paired, or a
+guest SV event). SV's side (the pairing code in its admin, the four calls below) lives in the SV
+repo, whose `docs/BRIDGE.md` stays authoritative for the wire.
 
 ### Flow
 
 1. **Pair once** (worship-app owner, Settings → "Sanctuary Voice"): SV's admin shows a one-time
-   **pairing code** ("Împerechează worship-app", same alphabet as the connection code). The owner
-   types it in worship-app, which exchanges it server-to-server for a long-lived **pairing token**
-   scoped to `{worship church (admin) ↔ SV organisation}`. Stored server-side only
-   (`bridge_pairings`, one row per admin), never sent to a browser. Revocable from either side.
-2. **Connect an event** (any event role, the connection panel): no code. worship-app asks SV for
-   the organisation's events that can take a bridge and shows them as a list ("Conectează la:
-   Serviciu duminică · 10:00"); with exactly one SV event live or planned today it offers it
-   directly ("Conectează la Serviciu duminică"). The pick exchanges the pairing token for the
-   per-event **bridge token** exactly as today, so everything after the handshake (switches,
-   socket, translation sources, `song.current`, `setlist.sections`) stays unchanged.
-3. **Unpair** (owner): revokes the pairing at SV and forgets it; open event bridges keep working
-   until their own token expires or is revoked.
+   **pairing code** (Live → "Împerechează worship-app"). The owner types it in worship-app, which
+   exchanges it server-to-server for a long-lived **pairing token** scoped to `{worship church
+   (admin) ↔ SV organisation}`. Stored server-side only (`bridge_pairings`, migration 042, one row
+   per admin), never sent to a browser; `token_fingerprint` for logs. Revocable from either side:
+   after SV revokes it, SV answers 401 `unpaired`, worship-app marks the pairing `unpaired_remote`
+   and the owner pairs again.
+2. **Connect an event** (any event role, the connection panel): no code. worship-app lists SV's
+   events that may take a bridge ("Conectează la Serviciu duminică · 10:00 (live)"): the live one
+   (or the only one) is the primary action, the others secondary; "Reîncarcă" reloads the list.
+   The pick exchanges the pairing token for the per-event **bridge token** exactly as today
+   (`/api/bridge/connect` answers the body of `/api/bridge/exchange`), so everything after the
+   handshake (switches, socket, translation sources, `song.current`, `setlist.sections`) is
+   unchanged.
+3. **Unpair** (owner, Settings): revokes the pairing at SV (best effort) and forgets it; event
+   bridges already open keep working until their own token expires or is revoked.
 
-The typed connection code stays as a fallback (a church not paired, or a guest SV event).
-
-### Wire additions (SV side; naming to be confirmed by SV)
+### Wire (SV side)
 
 | Method & path | Auth | Purpose |
 | --- | --- | --- |
-| `POST /api/bridge/pair` | the pairing code | `{ code, churchName }` → `{ ok, pairingToken, svOrgId, svOrgName, expiresAt? }` (long-lived or no expiry) |
-| `GET  /api/bridge/events` | pairing token | `{ ok, events: [{ svEventId, name, startsAt, status: 'live' \| 'planned', targetLanguages }] }` — today's and upcoming events that may take a bridge |
-| `POST /api/bridge/connect` | pairing token | `{ svEventId, worshipEventName }` → the same body as `/api/bridge/exchange` (`bridgeToken`, `svEventId`, `targetLanguages`, `expiresAt`) |
-| `POST /api/bridge/unpair` | pairing token | `{ ok }` |
+| `POST /api/bridge/pair-code` | SV owner session | SV's admin generates the one-time pairing code (SV only) |
+| `POST /api/bridge/pair` | the pairing code | `{ code, churchName }` → `{ ok, pairingToken, svOrgId, svOrgName, expiresAt: null }` |
+| `GET  /api/bridge/events` | `Bearer <pairingToken>` | `{ ok, events: [{ svEventId, name, startsAt, status: 'live' \| 'planned', targetLanguages }] }` |
+| `POST /api/bridge/connect` | `Bearer <pairingToken>` | `{ svEventId, worshipEventName }` → exactly the exchange body; 404 `unknown_event` |
+| `POST /api/bridge/unpair` | `Bearer <pairingToken>` | `{ ok }` |
 
-Security: the pairing token is a client credential like the bridge token (server-side only,
-`token_fingerprint` for logs); SV may rotate it and must reject it after an unpair from its side.
-One pairing per worship admin; SV decides whether one organisation may pair several worship
-churches.
+### worship-app endpoints
 
-### worship-app side (once SV confirms)
+| Method & path | Who | Purpose |
+| --- | --- | --- |
+| `GET  /api/bridge/pairing` | owner | `{ pairing }` (tokenless: `paired`, `status`, `svOrgName`, `pairedAt`; null when not paired) |
+| `POST /api/bridge/pair` | owner | `{ code, svBaseUrl? }` → `{ pairing }` |
+| `POST /api/bridge/unpair` | owner | `{ pairing: null }` |
+| `GET  /api/events/:id/bridge/sv-events` | event roles | `{ events }` from SV (409 `not_paired` / `unpaired`) |
+| `POST /api/events/:id/bridge/connect` | event roles | `{ svEventId }` (paired) **or** `{ code, svBaseUrl? }` |
 
-- Migration `bridge_pairings (admin_id PK, sv_base_url, pairing_token, token_fingerprint,
-  sv_org_id, sv_org_name, paired_by, paired_at, last_checked_at)`.
-- `lib/bridge/client.js`: `pair`, `listEvents`, `connectPaired`, `unpair` next to `exchange`.
-- Settings page: "Sanctuary Voice" card (owner): paired as "<org>", "Împerechează" / "Desparte".
-- `public/bridge-panel.js`: when paired, the event list / the one-tap button first; the code
-  field behind "Conectează cu cod".
+`GET /api/events/:id/bridge` also carries `pairing`, so the panel knows which form to show.
+
+### Code map
+
+- `lib/bridge/client.js` — `pair`, `listEvents`, `connectPaired`, `unpair` next to `exchange`.
+- `lib/bridge/store.js` — `bridge_pairings` (`pairing`, `savePairing`, `markPairing`, `removePairing`).
+- `lib/bridge/index.js` — `pair`, `unpair`, `pairingStatus`, `svEvents`, `connectPaired` (the
+  same lifecycle as `connect` after the grant).
+- `routes/bridge.js` — the owner routes and `sv-events`; `public/settings.js` — the Settings card;
+  `public/bridge-panel.js` — the one-tap list and "Conectează cu cod".

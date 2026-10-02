@@ -42,6 +42,7 @@
     renderTimeFormat(res.body.timeFormat);
     renderEmail(res.body.email);
     renderPexels(res.body.pexels);
+    loadPairing();
     renderBackup(res.body.backup);
     renderStorage(res.body.storage);
     await renderBackgrounds(res.body.backgroundDefaults || {});
@@ -227,6 +228,56 @@
     if (value) clock = value;
     if (clock) clockPanel.update({ clock, enabled: true });
   }
+
+  // Sanctuary Voice: the church pairing (docs/BRIDGE.md "Church pairing"): pair once with a
+  // code from SV's admin; "Desparte" forgets it. GET/POST /api/bridge/pairing|pair|unpair.
+  let pairing = null;
+  async function loadPairing() {
+    const res = await api('/api/bridge/pairing');
+    if (res.ok) renderPairing(res.body.pairing);
+  }
+  function renderPairing(info) {
+    pairing = info || null;
+    const paired = Boolean(pairing && pairing.paired);
+    const lost = Boolean(pairing && !pairing.paired);
+    $('sv-status').textContent = paired || lost
+      ? `${t('settings.svPaired', { org: pairing.svOrgName || pairing.svOrgId })} · ${t('settings.svPairedSince', { date: new Date(pairing.pairedAt).toLocaleDateString(window.I18N.lang === 'ro' ? 'ro-RO' : 'en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) })}`
+      : t('settings.svNotPaired');
+    $('sv-lost').hidden = !lost;
+    $('sv-form').hidden = paired;
+    $('sv-paired-actions').hidden = !(paired || lost);
+  }
+  $('sv-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const msg = $('sv-message');
+    msg.className = 'message';
+    msg.textContent = '';
+    $('sv-pair').disabled = true;
+    $('sv-pair').textContent = t('settings.svPairing');
+    try {
+      const res = await api('/api/bridge/pair', { method: 'POST', body: { code: $('sv-code').value, svBaseUrl: $('sv-url').value.trim() || undefined } });
+      if (res.ok) {
+        renderPairing(res.body.pairing);
+        $('sv-code').value = '';
+        msg.className = 'message success';
+        msg.textContent = t('settings.svPaired_done', { org: res.body.pairing.svOrgName || res.body.pairing.svOrgId });
+      } else {
+        msg.className = 'message error';
+        msg.textContent = res.body.error || t('common.networkError');
+      }
+    } finally {
+      $('sv-pair').disabled = false;
+      $('sv-pair').textContent = t('settings.svPair');
+    }
+  });
+  $('sv-unpair').addEventListener('click', async () => {
+    if (!window.confirm(t('settings.svUnpairConfirm'))) return;
+    const res = await api('/api/bridge/unpair', { method: 'POST' });
+    const msg = $('sv-message');
+    msg.className = `message ${res.ok ? 'success' : 'error'}`;
+    msg.textContent = res.ok ? t('settings.svUnpaired') : (res.body.error || t('common.networkError'));
+    if (res.ok) renderPairing(null);
+  });
 
   // Pexels: "activ" / "dezactivat" (lib/pexels.js, docs/BACKGROUNDS.md), like the email card.
   let pexelsInfo = null;

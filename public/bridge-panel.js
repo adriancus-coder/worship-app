@@ -3,9 +3,11 @@
 // The bridge to Sanctuary Voice (stage 8) UI. One shared panel used everywhere — the event page,
 // the leader/presenter live page and the operator console — so the state is the same on every
 // surface (the server is the single source of truth; every surface reads /api/events/:id/bridge).
-// It connects the worship event to an SV event with a connection code, shows the connection state,
-// carries the two direction switches (both default off), and a revoke control. It also offers the
-// translation projector source "Traducere · <limbă>" per target language, shown only when picked.
+// It connects the worship event to an SV event — with ONE tap when the church is paired with SV
+// (the owner did that once in Settings: the panel lists SV's events, "Conectează la <event>"), else
+// with a connection code — shows the connection state, carries the two direction switches (both
+// default off), and a revoke control. It also offers the translation projector source
+// "Traducere · <limbă>" per target language, shown only when picked.
 // Every event role uses it fully (owner, presenter, leader, operator); a member never sees it.
 //
 // Server-to-server only: the panel talks to /api/events/:id/bridge/* and never sees the token.
@@ -21,6 +23,8 @@
     let status = null; // last GET /api/events/:id/bridge
     let snap = null; // last live snapshot (for the active translation source)
     let busy = false;
+    let svEvents = null; // the paired church's SV events: null (not loaded), 'loading', 'lost', or a list
+    let codeOpen = false; // the code form shown under the one-tap list
 
     const msg = el('p', { class: 'bridge-msg', role: 'status', 'aria-live': 'polite' });
 
@@ -36,6 +40,7 @@
         message(res.body && res.body.error ? res.body.error : t('common.networkError'), 'error');
       }
       render();
+      if (paired() && !(status && status.connected) && svEvents === null) loadSvEvents(); // e.g. after a disconnect
       return res;
     }
 
@@ -48,6 +53,53 @@
       const res = await api(`/api/events/${eventId}/bridge`);
       if (res.ok) status = res.body;
       render();
+      if (paired() && !(status && status.connected) && svEvents === null) loadSvEvents();
+    }
+
+    const paired = () => Boolean(status && status.pairing && status.pairing.paired);
+
+    // The paired church's SV events (today's and upcoming), for the one-tap connection.
+    async function loadSvEvents() {
+      svEvents = 'loading';
+      render();
+      const res = await api(`/api/events/${eventId}/bridge/sv-events`);
+      if (res.ok) svEvents = res.body.events || [];
+      else {
+        svEvents = res.body && res.body.code === 'unpaired' ? 'lost' : [];
+        if (res.body && res.body.code !== 'unpaired') message(res.body.error || t('common.networkError'), 'error');
+      }
+      render();
+    }
+
+    // Paired: "Conectează la <event>" per SV event (the live one, or the only one, is the primary
+    // action; the others secondary), "Reîncarcă", and the code form behind "Conectează cu cod".
+    function pairedForm() {
+      const org = status.pairing.svOrgName;
+      const parts = [el('p', { class: 'bridge-hint', text: t('bridge.pairedWith', { org }) })];
+      if (svEvents === 'loading' || svEvents === null) parts.push(el('p', { class: 'bridge-hint', text: t('bridge.pairedLoading') }));
+      else if (svEvents === 'lost') parts.push(el('p', { class: 'bridge-msg error', text: t('bridge.pairedLost') }));
+      else if (!svEvents.length) parts.push(el('p', { class: 'bridge-hint', text: t('bridge.pairedNone') }));
+      else {
+        const primary = svEvents.find((ev) => ev.status === 'live') || (svEvents.length === 1 ? svEvents[0] : null);
+        if (svEvents.length > 1) parts.push(el('p', { class: 'bridge-hint', text: t('bridge.pairedPick') }));
+        parts.push(el('div', { class: 'bridge-sv-events' }, ...svEvents.map((ev) => el('button', {
+          type: 'button', class: ev === primary ? '' : 'secondary', 'data-icon': 'link', 'data-sv-event': ev.svEventId, disabled: busy,
+          text: t('bridge.pairedConnect', { name: svEventLabel(ev) }),
+          onclick: () => call('POST', '/connect', { svEventId: ev.svEventId }),
+        }))));
+      }
+      const actions = el('div', { class: 'form-actions' },
+        svEvents !== 'lost' ? el('button', { type: 'button', class: 'secondary', 'data-icon': 'restart', id: 'bridge-sv-refresh', disabled: busy || svEvents === 'loading', text: t('bridge.pairedRefresh'), onclick: loadSvEvents }) : null,
+        el('button', { type: 'button', class: 'secondary', id: 'bridge-with-code', 'aria-expanded': String(codeOpen), text: t('bridge.withCode'), onclick: () => { codeOpen = !codeOpen; render(); } }));
+      parts.push(actions);
+      if (codeOpen) parts.push(connectForm());
+      return el('div', { class: 'bridge-paired' }, ...parts);
+    }
+
+    // "Serviciu duminică · 10:00 (live)"
+    function svEventLabel(ev) {
+      const time = ev.startsAt ? new Date(ev.startsAt).toLocaleString(window.I18N.lang === 'ro' ? 'ro-RO' : 'en-GB', { weekday: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+      return `${ev.name || ev.svEventId}${time ? ` · ${time}` : ''}${ev.status === 'live' ? ` (${t('bridge.liveTag')})` : ''}`;
     }
 
     // --- the connection form / state ---
@@ -63,7 +115,8 @@
         const value = code.value.trim();
         if (!value) return;
         call('POST', '/connect', { code: value, svBaseUrl: url.value.trim() || undefined });
-      } }, el('label', { class: 'bridge-field' }, t('bridge.codeLabel'), code), advanced, el('div', { class: 'form-actions' }, submit));
+      } }, el('label', { class: 'bridge-field' }, t('bridge.codeLabel'), code), advanced, el('div', { class: 'form-actions' }, submit),
+      paired() ? null : el('p', { class: 'bridge-hint', text: t('bridge.notPairedHint') }));
       return form;
     }
 
@@ -95,7 +148,7 @@
     }
 
     function render() {
-      const body = status && status.connected ? connectedState() : connectForm();
+      const body = status && status.connected ? connectedState() : (paired() ? pairedForm() : connectForm());
       container.replaceChildren(el('h3', { class: 'bridge-heading', text: t('bridge.heading') }), body, msg);
       renderSources();
     }

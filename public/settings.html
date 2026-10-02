@@ -131,6 +131,32 @@
       </div>
     </section>
 
+    <section class="settings-section" aria-labelledby="sv-heading">
+      <h2 id="sv-heading" data-i18n="settings.svHeading"></h2>
+      <p class="hint" data-i18n="settings.svIntro"></p>
+      <div class="email-card" id="sv-card">
+        <p id="sv-status" class="email-status"></p>
+        <p id="sv-lost" class="message error" hidden data-i18n="settings.svLost"></p>
+        <form id="sv-form" class="sv-form" novalidate hidden>
+          <label><span data-i18n="settings.svCodeLabel"></span>
+            <input type="text" id="sv-code" class="mono code-input" maxlength="8" autocomplete="off" autocapitalize="characters" spellcheck="false" required>
+          </label>
+          <p class="hint" data-i18n="settings.svCodeHint"></p>
+          <details class="bridge-advanced">
+            <summary data-i18n="settings.svAdvanced"></summary>
+            <label><span data-i18n="settings.svUrlLabel"></span><input type="url" id="sv-url" autocomplete="off" placeholder="https://sanctuaryvoice.com"></label>
+          </details>
+          <div class="form-actions">
+            <button type="submit" id="sv-pair" data-icon="link" data-i18n="settings.svPair"></button>
+          </div>
+        </form>
+        <div class="form-actions" id="sv-paired-actions" hidden>
+          <button type="button" class="secondary" id="sv-unpair" data-icon="close" data-i18n="settings.svUnpair"></button>
+        </div>
+        <p id="sv-message" class="message" role="status" aria-live="polite"></p>
+      </div>
+    </section>
+
     <section class="settings-section" aria-labelledby="pexels-heading">
       <h2 id="pexels-heading" data-i18n="settings.pexelsHeading"></h2>
       <div class="email-card" id="pexels-card">
