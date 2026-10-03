@@ -32,7 +32,7 @@
   }
 
   function create(container, { eventId, mode = 'view', onSummary = () => {} } = {}) {
-    const state = { data: null, message: '', kind: '' };
+    const state = { data: null, message: '', kind: '', removing: null }; // removing: the row whose ✕ asks for a confirmation
 
     async function load() {
       const res = await api(`/api/events/${eventId}/assignments`);
@@ -144,7 +144,14 @@
               row.status === 'declined' ? el('span', { class: 'assign-warning', text: t('assign.declinedHint') }) : null,
               // "Trimite" / "Retrimite" for this person only, while the answer is pending
               row.status === 'pending' ? el('button', { type: 'button', class: 'secondary assign-send-one', 'data-icon': 'mail', 'data-assignment': String(row.id), text: t(row.notifiedAt ? 'assign.resendOne' : 'assign.sendOne'), 'aria-label': t(row.notifiedAt ? 'assign.resendOneFor' : 'assign.sendOneFor', { name: row.userName }), onclick: (event) => send(event, [row.id]) }) : null,
-              el('button', { type: 'button', class: 'secondary icon-button assign-remove', 'aria-label': t('assign.remove', { name: row.userName }), onclick: () => save(current().filter((c) => !(c.userId === row.userId && c.positionId === row.positionId))) }, el('span', { 'aria-hidden': 'true', text: '✕' })));
+              el('button', { type: 'button', class: 'secondary icon-button assign-remove', 'aria-label': t('assign.remove', { name: row.userName }), onclick: () => { state.removing = row.id; render(); } }, el('span', { 'aria-hidden': 'true', text: '✕' })),
+              // ✕ asks first: "Scoți pe <name> de la <position>?" (told people get a notice)
+              state.removing === row.id ? el('div', { class: 'assign-remove-confirm', role: 'group' },
+                el('p', { text: t('assign.removeConfirm', { name: row.userName, position: position.name }) }),
+                row.notifiedAt && row.status !== 'declined' ? el('p', { class: 'hint', text: t('assign.removeTold', { name: row.userName }) }) : null,
+                el('div', { class: 'form-actions' },
+                  el('button', { type: 'button', class: 'danger', 'data-icon': 'close', 'data-remove-yes': String(row.id), text: t('assign.removeYes'), onclick: () => { state.removing = null; save(current().filter((c) => !(c.userId === row.userId && c.positionId === row.positionId))); } }),
+                  el('button', { type: 'button', class: 'secondary', text: t('assign.removeNo'), onclick: () => { state.removing = null; render(); } }))) : null);
           })),
           position.active ? picker(position) : null)),
         el('p', { class: `message assign-message${state.kind ? ` ${state.kind}` : ''}`, role: 'status', 'aria-live': 'polite', text: state.message })));

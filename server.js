@@ -151,6 +151,7 @@ liveHooks.onSetlistChanged = (adminId, eventId) => { notifications.onSetlistChan
 // The bridge sends the current song section to Sanctuary Voice on every main-position change.
 liveHooks.onLiveChanged = (adminId, eventId) => bridge.onLiveChanged(adminId, eventId);
 unavailabilityHooks.onAdded = ({ req, range }) => notifications.onUnavailable(req.adminId, req.user, range).catch((err) => logger.error('unavailable notification failed', err));
+assignmentHooks.onRemoved = ({ req, event, rows }) => notifications.onRemoved(req.adminId, event, rows).catch((err) => logger.error('removed notification failed', err));
 assignmentHooks.onAccepted = ({ req, event, row }) => notifications.onAccepted(req.adminId, event, row).catch((err) => logger.error('accepted notification failed', err));
 assignmentHooks.onDeclined = ({ req, event, row }) => notifications.onDeclined(req.adminId, event, row).catch((err) => logger.error('declined notification failed', err));
 // "Trimite programarea": a notification (+ push) to every pending person not yet told; those

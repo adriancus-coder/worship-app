@@ -1750,6 +1750,19 @@ async function main() {
     const evN = (await api('POST', '/api/events', owner, { name: 'Notificări', eventDate: '2026-12-06', startTime: '10:00' })).body.event;
     await api('PUT', `/api/events/${evN.id}/assignments`, leader, { assignments: [{ userId: memberId, positionId: voceId }] });
     const before = (await api('GET', '/api/notifications', member)).body;
+    // taken off before being told: no "unassigned" notice (they never knew); told: one
+    const unassigned = async () => (await api('GET', '/api/notifications', member)).body.notifications.filter((n) => n.kind === 'unassigned').length;
+    const u0 = await unassigned();
+    await api('PUT', `/api/events/${evN.id}/assignments`, leader, { assignments: [] });
+    await new Promise((r) => setTimeout(r, 50));
+    assert.strictEqual(await unassigned(), u0, 'not told yet: no notice');
+    await api('PUT', `/api/events/${evN.id}/assignments`, leader, { assignments: [{ userId: memberId, positionId: voceId }] });
+    await api('POST', `/api/events/${evN.id}/assignments/send`, leader);
+    await api('PUT', `/api/events/${evN.id}/assignments`, leader, { assignments: [] });
+    await new Promise((r) => setTimeout(r, 50));
+    const gone = (await api('GET', '/api/notifications', member)).body.notifications.find((n) => n.kind === 'unassigned');
+    assert.ok(await unassigned() === u0 + 1 && /Nu mai ești programat: Voce/.test(gone.title), 'told, then taken off: one notice');
+    await api('PUT', `/api/events/${evN.id}/assignments`, leader, { assignments: [{ userId: memberId, positionId: voceId }] });
     const mine = (await api('GET', `/api/events/${evN.id}/assignments`, member)).body.me[0];
     // "Vin": the owner and the leader hear it too, never the operator
     await api('POST', `/api/events/${evN.id}/assignments/${mine.id}/respond`, member, { status: 'accepted' });

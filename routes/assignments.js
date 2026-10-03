@@ -15,7 +15,7 @@ const { createUnavailabilityStore } = require('../lib/unavailability');
 //                                               { ids: [aid] }: just these pending rows (sent before too:
 //                                               a reminder)
 //   POST /api/events/:id/assignments/:aid/respond  the assigned person: { status: accepted|declined, note? }
-// hooks (set later by the notifications module): onAccepted(...), onDeclined(...), onSent(...).
+// hooks (set later by the notifications module): onAccepted(...), onDeclined(...), onRemoved(...), onSent(...).
 function createAssignmentsRouter({ db, auth, logger, hooks = {} }) {
   const router = express.Router();
   const events = createEventStore(db);
@@ -75,9 +75,16 @@ function createAssignmentsRouter({ db, auth, logger, hooks = {} }) {
     if (!found) return;
     const wanted = (req.body || {}).assignments;
     if (!Array.isArray(wanted) || wanted.length > 200) return res.status(400).json({ error: req.t('errors.badRequest') });
+    const before = assignments.list(req.adminId, found.event.id);
     const out = assignments.replace(req.adminId, found.event.id, wanted, req.user.id);
     if (out.error) return res.status(400).json({ error: req.t(`errors.${out.error === 'badRequest' ? 'badRequest' : 'assignmentInvalid'}`) });
     if (out.added || out.removed) logger.info(`Event #${found.event.id}: team +${out.added} -${out.removed} by user #${req.user.id} (admin #${req.adminId})`);
+    // the people taken off a position they had been told about hear it (never one not told yet)
+    if (out.removed && hooks.onRemoved && !found.event.isTemplate) {
+      const kept = new Set(wanted.map((w) => `${w && w.userId}:${w && w.positionId}`));
+      const gone = before.filter((r) => r.notifiedAt && r.status !== 'declined' && !kept.has(`${r.userId}:${r.positionId}`));
+      if (gone.length) hooks.onRemoved({ req, event: found.event, rows: gone });
+    }
     res.json(payload(req, found));
   });
 

@@ -1700,6 +1700,8 @@ button.op-step:disabled { opacity: 1; cursor: default; }
 .assign-answer-buttons button { padding: 8px 14px; }
 .assign-note { flex: 1 1 160px; min-height: var(--touch); }
 .assign-remove { margin-left: auto; }
+.assign-remove-confirm { flex: 1 1 100%; padding: 8px 10px; border: 1px solid var(--error); border-radius: var(--radius); }
+.assign-remove-confirm p { margin: 0 0 6px; }
 .assign-picker { width: 100%; min-height: var(--touch); margin-top: 6px; }
 .team-position { display: flex; flex-direction: column; gap: 4px; }
 .team-summary { display: inline-flex; align-items: center; min-height: var(--touch); margin: 4px 0 0; padding: 6px 12px; font-weight: 600; color: var(--text-muted); background: var(--surface); border: 1px solid var(--border); }

@@ -472,6 +472,10 @@
         suggested: 'Cu această poziție',
         others: 'Alții',
         remove: 'Scoate {name}',
+        removeConfirm: 'Scoți pe {name} de la {position}?',
+        removeTold: '{name} primește o notificare că nu mai e programat.',
+        removeYes: 'Scoate',
+        removeNo: 'Anulează',
         unavailable: 'indisponibil',
         unavailableOption: '{name} — {reason}',
         unavailableWarning: 'Indisponibil în ziua evenimentului: {reason}',
@@ -493,6 +497,7 @@
       },
       notifKinds: {
         assigned: { title: 'Ești programat: {positions}', body: '{name} · {date} {time}. Spune dacă poți veni.' },
+        unassigned: { title: 'Nu mai ești programat: {positions}', body: '{name} · {date} {time}. Liderul a schimbat echipa.' },
         reminder: { title: 'Mâine slujești: {name}', body: '{date} {time}. Vezi programul și pregătește-te.' },
         setlist_changed: { title: 'Programul s-a schimbat: {name}', body: 'Liderul a modificat programul evenimentului la care ești programat.' },
         accepted: { title: '{who} vine: {position}', body: '{name} · {date}{note}' },
@@ -512,6 +517,7 @@
         prefsSaved: 'Salvat.',
         kinds: {
           assigned: 'Programare în echipă',
+          unassigned: 'Scos din programare',
           reminder: 'Reamintire cu o zi înainte',
           setlist_changed: 'Programul s-a schimbat',
           accepted: 'Cineva a confirmat (pentru lider)',
@@ -2251,6 +2257,10 @@
         suggested: 'With this position',
         others: 'Others',
         remove: 'Remove {name}',
+        removeConfirm: 'Take {name} off {position}?',
+        removeTold: '{name} is told they are no longer scheduled.',
+        removeYes: 'Remove',
+        removeNo: 'Cancel',
         unavailable: 'unavailable',
         unavailableOption: '{name} — {reason}',
         unavailableWarning: 'Unavailable on the event day: {reason}',
@@ -2272,6 +2282,7 @@
       },
       notifKinds: {
         assigned: { title: 'You are scheduled: {positions}', body: '{name} · {date} {time}. Say whether you can come.' },
+        unassigned: { title: 'You are no longer scheduled: {positions}', body: '{name} · {date} {time}. The leader changed the team.' },
         reminder: { title: 'You serve tomorrow: {name}', body: '{date} {time}. See the setlist and get ready.' },
         setlist_changed: { title: 'The setlist changed: {name}', body: 'The leader changed the setlist of an event you are scheduled for.' },
         accepted: { title: '{who} is coming: {position}', body: '{name} · {date}{note}' },
@@ -2291,6 +2302,7 @@
         prefsSaved: 'Saved.',
         kinds: {
           assigned: 'Team scheduling',
+          unassigned: 'Taken off the schedule',
           reminder: 'Reminder the day before',
           setlist_changed: 'The setlist changed',
           accepted: 'Someone confirmed (for the leader)',

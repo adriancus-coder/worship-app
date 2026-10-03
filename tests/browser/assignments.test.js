@@ -90,8 +90,24 @@ module.exports = {
     const declined = await l.evaluate(() => { const r = document.querySelector('.assign-row-declined'); return { text: r.textContent, red: getComputedStyle(r).borderTopColor }; });
     check(/Prezentator/.test(declined.text) && /Sunt plecat/.test(declined.text) && /alege pe altcineva/.test(declined.text), 'leader: the declined row is highlighted with the note and "alege pe altcineva"', declined);
     check(/1 confirmați · 1 așteaptă · 1 nu poate/.test(await l.textContent('#team-edit-summary')), 'leader summary "1 confirmați · 1 așteaptă · 1 nu poate"');
+    // ✕ asks first; Anulează keeps the row, Scoate takes it off and the person (told before) hears it
+    const memberRow = l.locator('#team-panel .assign-row', { hasText: 'Membru' }).first();
+    await memberRow.locator('.assign-remove').click();
+    await l.waitForSelector('.assign-remove-confirm');
+    const ask = await l.textContent('.assign-remove-confirm');
+    check(/Scoți pe Membru de la .*Chitară\?/.test(ask) && /primește o notificare/.test(ask), 'the ✕ asks first, saying the person will be told', ask);
+    const ac = await layoutAudit(l, '#team-panel');
+    check(!ac.overflow && !ac.small.length, 'the confirmation 375: no overflow, targets >= 44 px', ac);
+    await l.click('.assign-remove-confirm button.secondary');
+    check(await l.locator('.assign-remove-confirm').count() === 0 && await l.locator('#team-panel .assign-row', { hasText: 'Membru' }).count() === 1, 'Anulează: the row stays');
+    await memberRow.locator('.assign-remove').click();
+    await l.click('.assign-remove-confirm [data-remove-yes]');
+    await l.waitForFunction(() => ![...document.querySelectorAll('#team-panel .assign-row')].some((r) => /Membru/.test(r.textContent)));
+    await wait(200);
+    const told = (await app.api(app.cookies.member, 'GET', '/api/notifications')).body.notifications.find((n) => n.kind === 'unassigned');
+    check(Boolean(told) && /No longer scheduled|no longer scheduled/.test(told.title), 'Scoate: the row is gone; the member is told (in their language)', told);
     await l.goto(`${app.url}/app`);
     await l.waitForSelector('.now-team-summary');
-    check(/1 confirmați · 1 așteaptă · 1 nu poate/.test(await l.textContent('.now-team-summary')), 'home card (leader): the team summary');
+    check(/0 confirmați · 1 așteaptă · 1 nu poate/.test(await l.textContent('.now-team-summary')), 'home card (leader): the team summary (the confirmed member was taken off)');
   },
 };
