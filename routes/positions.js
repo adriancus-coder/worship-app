@@ -2,7 +2,7 @@
 
 const express = require('express');
 const { requireRole } = require('../lib/auth');
-const { validatePositionName, createPositionStore } = require('../lib/positions');
+const { validatePositionName, validatePositionEmoji, createPositionStore } = require('../lib/positions');
 
 // "Poziții în echipă" (Setări, and /positions for the leader): the positions a church uses.
 // Everyone signed in reads them (pickers, the profile); owner and leader edit them.
@@ -27,7 +27,9 @@ function createPositionsRouter({ db, auth, logger }) {
   router.post('/api/positions', canManage, (req, res) => {
     const name = validatePositionName((req.body || {}).name, req.t);
     if (name.error) return res.status(400).json({ error: name.error });
-    const created = positions.create(req.adminId, name.value);
+    const emoji = (req.body || {}).emoji === undefined ? { value: undefined } : validatePositionEmoji(req.body.emoji, req.t);
+    if (emoji.error) return res.status(400).json({ error: emoji.error });
+    const created = positions.create(req.adminId, name.value, emoji.value);
     if (!created) return res.status(400).json({ error: req.t('errors.positionsTooMany') });
     logger.info(`Position "${created.name}" added by user #${req.user.id} (admin #${req.adminId})`);
     res.status(201).json({ position: created, positions: positions.list(req.adminId) });
@@ -42,7 +44,7 @@ function createPositionsRouter({ db, auth, logger }) {
     res.json({ positions: positions.list(req.adminId) });
   });
 
-  // Rename and / or (de)activate: { name?, active? }.
+  // Rename, change the emoji ('' / null clears it) and / or (de)activate: { name?, emoji?, active? }.
   router.put('/api/positions/:id', canManage, (req, res) => {
     const id = idOf(req);
     const body = req.body || {};
@@ -51,6 +53,11 @@ function createPositionsRouter({ db, auth, logger }) {
       const name = validatePositionName(body.name, req.t);
       if (name.error) return res.status(400).json({ error: name.error });
       patch.name = name.value;
+    }
+    if (body.emoji !== undefined) {
+      const emoji = validatePositionEmoji(body.emoji, req.t);
+      if (emoji.error) return res.status(400).json({ error: emoji.error });
+      patch.emoji = emoji.value;
     }
     if (body.active !== undefined) patch.active = Boolean(body.active);
     if (!Object.keys(patch).length) return res.status(400).json({ error: req.t('errors.badRequest') });

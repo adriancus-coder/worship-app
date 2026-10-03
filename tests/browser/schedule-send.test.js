@@ -40,7 +40,7 @@ module.exports = {
     await l.click('#tab-team');
     await l.waitForSelector('#team-panel .team-position');
     const pick = async (position, name) => {
-      const group = l.locator(`.team-position:has(h3:text-is("${position}"))`);
+      const group = l.locator(`.team-position:has(h3:text-matches("(^| )${position}$"))`);
       const value = await group.locator(`option:has-text("${name}")`).first().getAttribute('value');
       await group.locator('select').selectOption(value);
       await group.locator(`.assign-row:has-text("${name}")`).waitFor();

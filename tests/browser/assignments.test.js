@@ -28,10 +28,10 @@ module.exports = {
     await l.click('#tab-team');
     await l.waitForSelector('#team-panel:not([hidden]) .team-position');
     const groups = await l.evaluate(() => [...document.querySelectorAll('.team-position')].map((g) => ({ name: g.querySelector('h3').textContent, options: [...g.querySelectorAll('optgroup')].map((o) => `${o.label}: ${[...o.querySelectorAll('option')].map((x) => x.textContent).join('/')}`) })));
-    const chitara = groups.find((g) => g.name === 'Chitară');
+    const chitara = groups.find((g) => g.name === '🎸 Chitară');
     check(groups.length >= 7 && chitara && /Cu această poziție: Membru/.test(chitara.options[0]) && /Alții/.test(chitara.options[1]), 'Echipa tab: one picker per position, the people with the position first', chitara);
     const pick = async (position, name) => {
-      const group = l.locator(`.team-position:has(h3:text-is("${position}"))`);
+      const group = l.locator(`.team-position:has(h3:text-matches("(^| )${position}$"))`);
       const value = await group.locator(`option:has-text("${name}")`).first().getAttribute('value');
       await group.locator('select').selectOption(value);
       await group.locator(`.assign-row:has-text("${name}")`).waitFor();
@@ -52,7 +52,7 @@ module.exports = {
     const m = await signIn('member', { width: 1024, lang: 'en' });
     await m.goto(`${app.url}/app`);
     await m.waitForSelector('.now-assignment');
-    check(/You are scheduled: Chitară/.test(await m.textContent('.now-assignment')) && await m.locator('.now-assignment button[data-answer]').count() === 2, 'home card: "You are scheduled: Chitară" with I’m in / I can’t');
+    check(/You are scheduled: 🎸 Chitară/.test(await m.textContent('.now-assignment')) && await m.locator('.now-assignment button[data-answer]').count() === 2, 'home card: "You are scheduled: Chitară" with I’m in / I can’t');
     await m.goto(`${app.url}/events/${E}`);
     await m.waitForSelector('#tab-team:not([hidden])');
     await m.click('#tab-team');

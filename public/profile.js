@@ -21,7 +21,7 @@
     $('p-email').textContent = state.profile.email;
     $('p-positions').replaceChildren(...state.positions.map((p) => el('label', { class: 'checkbox' },
       el('input', { type: 'checkbox', name: 'position', value: String(p.id), checked: state.profile.positionIds.includes(p.id) ? 'checked' : null }),
-      el('span', { text: p.name }))));
+      el('span', { text: window.PAGE.positionLabel(p) }))));
   }
 
   $('profile-form').addEventListener('submit', async (event) => {

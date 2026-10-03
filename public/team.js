@@ -14,7 +14,7 @@
   const { t } = window.I18N;
   const $ = (id) => document.getElementById(id);
   const state = { users: [], positions: [], baseUrl: null, emailEnabled: false, meId: null, editing: null, confirm: null, result: null };
-  const positionName = (id) => { const p = state.positions.find((x) => x.id === id); return p ? p.name : null; };
+  const positionName = (id) => { const p = state.positions.find((x) => x.id === id); return p ? window.PAGE.positionLabel(p) : null; };
 
   const baseUrl = () => state.baseUrl || window.location.origin;
 
@@ -50,7 +50,7 @@
             user.id === state.meId ? el('span', { class: 'muted', text: ` · ${t('team.you')}` }) : null),
           el('p', { class: 'team-email', text: user.email }),
           el('p', { class: 'team-meta' },
-            el('span', { class: `pill role-pill role-${user.role}`, text: owner ? t('team.roles.owner') : t(`team.roles.${user.role}`) }),
+            el('span', { class: `pill role-pill role-${user.role}`, text: window.PAGE.roleLabel(owner ? 'owner' : user.role) }),
             owner ? null : el('span', { class: `pill status-pill status-${status}`, text: t(`team.status.${status}`) }),
             el('span', { class: 'muted', text: lastLogin(user.lastLoginAt) })),
           // "Indisponibil" (lib/unavailability.js): the person's upcoming ranges, for the owner.
@@ -161,7 +161,7 @@
     renderRoleHelp();
     $('edit-positions').replaceChildren(...state.positions.filter((p) => p.active || (user.positionIds || []).includes(p.id)).map((p) => el('label', { class: 'checkbox' },
       el('input', { type: 'checkbox', name: 'edit-position', value: String(p.id), checked: (user.positionIds || []).includes(p.id) ? 'checked' : null }),
-      el('span', { text: p.name }))));
+      el('span', { text: window.PAGE.positionLabel(p) }))));
     say('edit-message', '', 'error');
     $('edit-dialog').showModal();
     $('edit-name').focus();
@@ -261,8 +261,15 @@
     $('result-message').value = '';
   });
 
+  // The role select: the emoji before each name (PAGE.roleLabel), after the i18n texts.
+  function renderRoleOptions() {
+    for (const option of $('edit-role').options) option.textContent = window.PAGE.roleLabel(option.value);
+  }
+  renderRoleOptions();
+
   document.addEventListener('i18n:change', () => {
     render();
+    renderRoleOptions();
     renderRoleHelp();
     if (state.result) renderResult();
   });
@@ -310,7 +317,7 @@
     $('directory').replaceChildren(...state.users.map((user) => el('li', { class: 'team-row directory-row' },
       el('div', { class: 'team-main' },
         el('p', { class: 'team-name' }, el('span', { text: user.name }), user.me ? el('span', { class: 'muted', text: ` · ${t('team.you')}` }) : null),
-        el('p', { class: 'team-meta' }, el('span', { class: `pill role-pill role-${user.role}`, text: t(`team.roles.${user.role}`) })),
+        el('p', { class: 'team-meta' }, el('span', { class: `pill role-pill role-${user.role}`, text: window.PAGE.roleLabel(user.role) })),
         el('p', { class: 'team-positions' }, ...((user.positionIds || []).map(positionName).filter(Boolean).length
           ? user.positionIds.map(positionName).filter(Boolean).map((name) => el('span', { class: 'pill position-pill', text: name }))
           : [el('span', { class: 'muted', text: t('team.noPositions') })])),

@@ -70,7 +70,7 @@
       const d = state.data;
       const groups = new Map();
       for (const row of d.assignments) {
-        if (!groups.has(row.positionId)) groups.set(row.positionId, { name: row.positionName, rows: [] });
+        if (!groups.has(row.positionId)) groups.set(row.positionId, { name: window.PAGE.positionLabel({ name: row.positionName, emoji: row.positionEmoji }), rows: [] });
         groups.get(row.positionId).rows.push(row);
       }
       const meIds = new Set(d.me.map((r) => r.id));
@@ -133,7 +133,7 @@
         el('p', { class: 'hint', text: t('assign.editHint') }),
         active.length ? null : el('p', { class: 'muted', text: t('assign.noPositions') }),
         ...active.map((position) => el('div', { class: 'team-position', 'data-position': String(position.id) },
-          el('h3', { text: position.name }),
+          el('h3', { text: window.PAGE.positionLabel(position) }),
           el('ul', { class: 'team-group-list' }, ...d.assignments.filter((r) => r.positionId === position.id).map((row) => {
             const busy = unavailableHere(row);
             return el('li', { class: `assign-row assign-row-${row.status}${busy ? ' unavailable' : ''}` },

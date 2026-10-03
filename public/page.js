@@ -172,5 +172,12 @@
     });
   }
 
-  window.PAGE = { api, el, canEdit, canEditEvents, EVENT_ROLES, setTitle, formatDate, dateBlock, setupTabs, backLink, keepFrom, eventBack, linkBack };
+  // Emoji before a role or a position name (Echipa, the event's team, the pickers). The role
+  // ones are fixed; a position's comes from Echipa → Poziții (lib/positions.js).
+  const ROLE_EMOJI = { owner: '👑', presenter: '🎙️', leader: '⭐', operator: '💻', member: '🎵' };
+  const withEmoji = (emoji, text) => (emoji ? `${emoji} ${text}` : text);
+  const roleLabel = (role) => withEmoji(ROLE_EMOJI[role], window.I18N.t(`team.roles.${role}`));
+  const positionLabel = (p) => (p ? withEmoji(p.emoji, p.name) : '');
+
+  window.PAGE = { api, el, ROLE_EMOJI, roleLabel, positionLabel, canEdit, canEditEvents, EVENT_ROLES, setTitle, formatDate, dateBlock, setupTabs, backLink, keepFrom, eventBack, linkBack };
 })();

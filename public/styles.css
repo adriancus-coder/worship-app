@@ -1781,6 +1781,10 @@ button.op-step:disabled { opacity: 1; cursor: default; }
 .position-name { flex: 1 1 140px; font-weight: 600; }
 .position-name.inactive { color: var(--text-muted); text-decoration: line-through; }
 .position-rename { flex: 1 1 140px; min-height: var(--touch); }
+.position-emoji { flex: none; width: 1.6em; font-size: 1.15rem; text-align: center; }
+.position-emoji:empty { display: none; }
+.position-emoji-input { flex: none; width: 4em; min-height: var(--touch); font-size: 1.15rem; text-align: center; }
+.role-emoji { font-weight: 400; }
 .position-tools { display: flex; flex-wrap: wrap; gap: 6px; margin-left: auto; }
 .position-tools button { padding: 6px 10px; }
 .positions-add { display: flex; flex-wrap: wrap; gap: 8px; }

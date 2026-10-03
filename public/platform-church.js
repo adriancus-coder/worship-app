@@ -127,7 +127,7 @@
           el('p', { class: 'team-name', text: user.name }),
           el('p', { class: 'team-email', text: user.email }),
           el('p', { class: 'team-meta' },
-            el('span', { class: `pill role-pill role-${user.role}`, text: t(`team.roles.${user.role}`) }),
+            el('span', { class: `pill role-pill role-${user.role}`, text: window.PAGE.roleLabel(user.role) }),
             el('span', { class: `pill status-pill status-${status}`, text: t(`team.status.${status}`) }),
             el('span', { class: 'muted', text: lastLogin(user.lastLoginAt) }))),
         // The church's owner is managed through the church (the header actions), never here.

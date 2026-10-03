@@ -2885,7 +2885,7 @@ test('safe margin: 0-12 % parsed, 5 by default; on every frame; a screen may ove
 test('positions (migration 029): seeded once per admin, add / rename / reorder / deactivate, the users\' usual positions', () => {
   const Database = require('better-sqlite3');
   const { runMigrations } = require('../lib/db');
-  const { createPositionStore, DEFAULT_POSITIONS, validatePositionName } = require('../lib/positions');
+  const { createPositionStore, DEFAULT_POSITIONS, DEFAULT_EMOJI, guessEmoji, validatePositionName, validatePositionEmoji } = require('../lib/positions');
   const mem = new Database(':memory:');
   mem.pragma('foreign_keys = ON');
   runMigrations(mem);
@@ -2897,8 +2897,16 @@ test('positions (migration 029): seeded once per admin, add / rename / reorder /
   assert.strictEqual(P.list(2).length, 7, 'per admin');
   const violin = P.create(1, 'Vioară');
   assert.deepStrictEqual([violin.name, violin.sort, violin.active], ['Vioară', 7, true]);
-  assert.deepStrictEqual(P.update(1, violin.id, { name: 'Vioara', active: false }), { id: violin.id, name: 'Vioara', sort: 7, active: false });
+  assert.deepStrictEqual(P.update(1, violin.id, { name: 'Vioara', active: false }), { id: violin.id, name: 'Vioara', emoji: '🎻', sort: 7, active: false });
   assert.strictEqual(P.update(2, violin.id, { name: 'x' }), null, 'another admin');
+  // emoji (migration 044): the defaults have theirs, new ones a guess from the name, changeable
+  assert.deepStrictEqual(P.list(1).slice(0, 7).map((p) => p.emoji), DEFAULT_POSITIONS.map((n) => DEFAULT_EMOJI[n]));
+  assert.deepStrictEqual([guessEmoji('Bass'), guessEmoji('Sunet'), guessEmoji('Drums'), guessEmoji('Altceva')], ['🎸', '🎚️', '🥁', null]);
+  assert.strictEqual(P.create(2, 'Lumini', null).emoji, null, 'null = none');
+  assert.strictEqual(P.update(1, violin.id, { emoji: '🎷' }).emoji, '🎷');
+  const tt = (k) => k;
+  assert.deepStrictEqual(['🎤', ' 🎙️ ', '👩🏽‍🎤', '', null].map((v) => validatePositionEmoji(v, tt).value), ['🎤', '🎙️', '👩🏽‍🎤', null, null]);
+  assert.ok(['abc', '🎤x', '1', 42, '🎤🎤🎤🎤🎤🎤🎤🎤🎤'].every((v) => validatePositionEmoji(v, tt).error), 'letters, digits, too long: refused');
   assert.deepStrictEqual(P.list(1, { activeOnly: true }).map((p) => p.name).length, 7, 'inactive ones out of the pickers');
   const ids = P.list(1).map((p) => p.id);
   assert.strictEqual(P.reorder(1, [ids[1], ids[0], ...ids.slice(2)]), true);

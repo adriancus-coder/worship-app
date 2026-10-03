@@ -31,7 +31,7 @@ module.exports = {
     await l.waitForSelector('#editor-tabs:not([hidden])');
     await l.click('#tab-team');
     await l.waitForSelector('#team-panel .team-position');
-    const opt = l.locator('.team-position:has(h3:text-is("Chitară")) option:has-text("Membru")').first();
+    const opt = l.locator('.team-position:has(h3:text-matches("(^| )Chitară$")) option:has-text("Membru")').first();
     check((await opt.getAttribute('disabled')) !== null && /Holiday/.test(await opt.textContent()), 'picker: the member is greyed with the reason on that day', await opt.textContent());
     // assigned via the API anyway (e.g. before the period was added): the row warns
     const positions = (await app.api(owner, 'GET', '/api/positions')).body.positions;

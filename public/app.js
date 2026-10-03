@@ -84,7 +84,7 @@
       // Stage 7: this person's assignments on the event ("Ești programat: Chitară", Vin / Nu pot
       // while pending) and, for the event roles, the team summary.
       ...(state.home.assignments || []).map((a) => el('div', { class: `now-assignment now-assignment-${a.status}` },
-        el('span', { class: 'now-assignment-text', text: t('assign.youAre', { position: a.positionName }) }),
+        el('span', { class: 'now-assignment-text', text: t('assign.youAre', { position: window.PAGE.positionLabel({ name: a.positionName, emoji: a.positionEmoji }) }) }),
         a.status === 'pending'
           ? el('span', { class: 'assign-answer-buttons' },
             el('button', { type: 'button', 'data-icon': 'check', 'data-answer': 'accepted', text: t('assign.yes'), onclick: () => answer(event, a, 'accepted') }),

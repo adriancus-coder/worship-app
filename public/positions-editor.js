@@ -1,8 +1,8 @@
 'use strict';
 
 // "Poziții în echipă": the positions a church uses (lib/positions.js), edited by the owner
-// (Echipa → Poziții): add, rename inline, move up / down, deactivate /
-// reactivate. Mounted with POSITIONS_EDITOR.mount(container); everything through
+// (Echipa → Poziții): add (the emoji guessed from the name), rename and change the emoji
+// inline, move up / down, deactivate / reactivate. Mounted with POSITIONS_EDITOR.mount(container); everything through
 // /api/positions.
 
 (function () {
@@ -39,17 +39,24 @@
       const name = editing
         ? el('input', { type: 'text', class: 'position-rename', value: p.name, maxlength: '40', 'aria-label': t('positions.renameLabel', { name: p.name }) })
         : el('span', { class: `position-name${p.active ? '' : ' inactive'}`, text: p.name });
+      const emoji = editing
+        ? el('input', { type: 'text', class: 'position-emoji-input', value: p.emoji || '', maxlength: '16', autocomplete: 'off', inputmode: 'text', 'aria-label': t('positions.emojiLabel', { name: p.name }) })
+        : el('span', { class: 'position-emoji', 'aria-hidden': 'true', text: p.emoji || '' });
       const tools = el('span', { class: 'position-tools' });
-      if (!state.canManage) return el('li', { class: 'position-row' }, name, p.active ? null : el('span', { class: 'pill status-pill status-inactive', text: t('positions.inactive') }));
+      if (!state.canManage) return el('li', { class: 'position-row' }, emoji, name, p.active ? null : el('span', { class: 'pill status-pill status-inactive', text: t('positions.inactive') }));
       if (editing) {
         const save = async () => {
           const value = name.value.trim();
           if (!value) return;
-          if (value !== p.name && !(await change(`/api/positions/${p.id}`, 'PUT', { name: value }))) return;
+          const icon = emoji.value.trim();
+          const patch = {};
+          if (value !== p.name) patch.name = value;
+          if (icon !== (p.emoji || '')) patch.emoji = icon;
+          if (Object.keys(patch).length && !(await change(`/api/positions/${p.id}`, 'PUT', patch))) return;
           state.editing = null;
           render();
         };
-        name.addEventListener('keydown', (event) => { if (event.key === 'Enter') { event.preventDefault(); save(); } if (event.key === 'Escape') { state.editing = null; render(); } });
+        for (const field of [name, emoji]) field.addEventListener('keydown', (event) => { if (event.key === 'Enter') { event.preventDefault(); save(); } if (event.key === 'Escape') { state.editing = null; render(); } });
         tools.append(
           el('button', { type: 'button', 'data-icon': 'check', text: t('positions.save'), onclick: save }),
           el('button', { type: 'button', class: 'secondary', text: t('positions.cancel'), onclick: () => { state.editing = null; render(); } }));
@@ -62,7 +69,7 @@
             ? el('button', { type: 'button', class: 'secondary danger-text', 'data-icon': 'close', text: t('positions.deactivate'), 'aria-label': t('positions.deactivateLabel', { name: p.name }), onclick: () => change(`/api/positions/${p.id}`, 'PUT', { active: false }) })
             : el('button', { type: 'button', class: 'secondary', 'data-icon': 'restart', text: t('positions.reactivate'), 'aria-label': t('positions.reactivateLabel', { name: p.name }), onclick: () => change(`/api/positions/${p.id}`, 'PUT', { active: true }) }));
       }
-      return el('li', { class: `position-row${p.active ? '' : ' inactive'}`, 'data-position': String(p.id) }, name,
+      return el('li', { class: `position-row${p.active ? '' : ' inactive'}`, 'data-position': String(p.id) }, emoji, name,
         p.active ? null : el('span', { class: 'pill status-pill status-inactive', text: t('positions.inactive') }), tools);
     }
 
