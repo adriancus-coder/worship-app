@@ -138,7 +138,8 @@ app.use(createPositionsRouter({ db, auth, logger }));
 app.use(createRolesRouter({ db, auth, logger }));
 const assignmentHooks = {}; // filled by the notifications module (stage 7)
 app.use(createAssignmentsRouter({ db, auth, logger, hooks: assignmentHooks }));
-app.use(createUnavailabilityRouter({ db, auth, logger }));
+const unavailabilityHooks = {};
+app.use(createUnavailabilityRouter({ db, auth, logger, hooks: unavailabilityHooks }));
 const push = createPush({ db, config, logger });
 logger.info(push.enabled ? 'Push: enabled (VAPID keys set)' : 'Push: disabled (no VAPID keys; npm run vapid, docs/PUSH.md)');
 app.use(createPushRouter({ auth, logger, push }));
@@ -149,6 +150,7 @@ liveHooks.onLiveStarted = (adminId, eventId) => notifications.onLiveStarted(admi
 liveHooks.onSetlistChanged = (adminId, eventId) => { notifications.onSetlistChanged(adminId, eventId); bridge.onSetlistChanged(adminId, eventId); };
 // The bridge sends the current song section to Sanctuary Voice on every main-position change.
 liveHooks.onLiveChanged = (adminId, eventId) => bridge.onLiveChanged(adminId, eventId);
+unavailabilityHooks.onAdded = ({ req, range }) => notifications.onUnavailable(req.adminId, req.user, range).catch((err) => logger.error('unavailable notification failed', err));
 assignmentHooks.onDeclined = ({ req, event, row }) => notifications.onDeclined(req.adminId, event, row).catch((err) => logger.error('declined notification failed', err));
 // "Trimite programarea": a notification (+ push) to every pending person not yet told; those
 // without push get an email with the same text and the event link when email is enabled.

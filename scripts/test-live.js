@@ -1713,6 +1713,23 @@ async function main() {
     assert.strictEqual((await api('GET', `/api/events/${evFree.id}/assignments`, leader)).body.people.find((p) => p.id === memberId).unavailable, null);
     assert.strictEqual((await api('DELETE', `/api/me/unavailability/${added.body.range.id}`, leader)).status, 404, 'not theirs');
     assert.deepStrictEqual((await api('DELETE', `/api/me/unavailability/${added.body.range.id}`, member)).body.ranges, []);
+    // a new range tells the schedulers (owner, leader; never the person), naming the events
+    // the person is scheduled for in it; the same dates again: no second range, no second notice
+    const voce = (await api('GET', '/api/positions', owner)).body.positions[0].id;
+    await api('PUT', `/api/events/${evU.id}/assignments`, leader, { assignments: [{ userId: memberId, positionId: voce }] });
+    const notices = async (cookie) => (await api('GET', '/api/notifications', cookie)).body.notifications.filter((n) => n.kind === 'unavailable');
+    const [o0, l0, m0] = [(await notices(owner)).length, (await notices(leader)).length, (await notices(member)).length];
+    const again = await api('POST', '/api/me/unavailability', member, { dateFrom: '2026-11-01', dateTo: '2026-11-03' });
+    assert.strictEqual(again.status, 201);
+    await new Promise((r) => setTimeout(r, 100));
+    const ownerNotice = (await notices(owner))[0];
+    assert.deepStrictEqual([(await notices(owner)).length, (await notices(leader)).length, (await notices(member)).length], [o0 + 1, l0 + 1, m0], 'owner and leader told, not the person');
+    assert.ok(/Membru e indisponibil: 01\.11\.2026 – 03\.11\.2026/.test(ownerNotice.title) && /Programat la: .*În concediu \(02\.11\.2026\)/.test(ownerNotice.body) && /\/events\/\d+\/edit$/.test(ownerNotice.url), JSON.stringify(ownerNotice));
+    const dup = await api('POST', '/api/me/unavailability', member, { dateFrom: '2026-11-01', dateTo: '2026-11-03' });
+    assert.deepStrictEqual([dup.status, dup.body.ranges.length, dup.body.range.id], [201, 1, again.body.range.id], 'the same dates: the existing range');
+    await new Promise((r) => setTimeout(r, 100));
+    assert.strictEqual((await notices(owner)).length, o0 + 1, 'no second notice');
+    await api('DELETE', `/api/me/unavailability/${again.body.range.id}`, member);
     await api('DELETE', `/api/events/${evU.id}`, owner);
     await api('DELETE', `/api/events/${evFree.id}`, owner);
   });

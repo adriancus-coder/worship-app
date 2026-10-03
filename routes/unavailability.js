@@ -9,7 +9,8 @@ const { can } = require('../lib/roles');
 // "Indisponibil" (lib/unavailability.js):
 //   GET / POST /api/me/unavailability, DELETE /api/me/unavailability/:id   one's own ranges
 //   GET /api/unavailability                                               owner, leader: everyone's
-function createUnavailabilityRouter({ db, auth, logger }) {
+// hooks.onAdded({ req, range }): a new range (the notifications tell the schedulers).
+function createUnavailabilityRouter({ db, auth, logger, hooks = {} }) {
   const router = express.Router();
   const store = createUnavailabilityStore(db);
   const settings = createAdminSettings(db);
@@ -25,7 +26,10 @@ function createUnavailabilityRouter({ db, auth, logger }) {
     if (error) return res.status(400).json({ error });
     const range = store.add(req.adminId, req.user.id, value);
     if (!range) return res.status(400).json({ error: req.t('errors.unavailabilityTooMany') });
-    logger.info(`User #${req.user.id} is unavailable ${value.dateFrom}..${value.dateTo} (admin #${req.adminId})`);
+    if (!range.existing) {
+      logger.info(`User #${req.user.id} is unavailable ${value.dateFrom}..${value.dateTo} (admin #${req.adminId})`);
+      if (hooks.onAdded) hooks.onAdded({ req, range });
+    }
     res.status(201).json({ range, ranges: store.listForUser(req.adminId, req.user.id, today(req)) });
   });
 

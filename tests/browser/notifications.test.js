@@ -45,7 +45,7 @@ module.exports = {
       check(!a.overflow && !a.small.length, `${tag} notifications page: no overflow, targets >= 44 px`, a);
       // per-kind switches
       const kinds = await p.evaluate(() => [...document.querySelectorAll('#notif-prefs input')].map((i) => `${i.dataset.kind}:${i.checked}`));
-      check(kinds.length === 7 && kinds.every((k) => k.endsWith(':true')), `${tag} seven kinds, all on`, kinds);
+      check(kinds.length === 8 && kinds.every((k) => k.endsWith(':true')), `${tag} eight kinds, all on`, kinds);
       await p.click('#notif-prefs input[data-kind="reminder"]');
       await p.waitForFunction(() => /\S/.test(document.getElementById('prefs-message').textContent));
       check((await app.api(app.cookies[role], 'GET', '/api/notifications')).body.prefs.reminder === false, `${tag} a switch saves (reminder off)`);

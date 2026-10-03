@@ -1708,7 +1708,7 @@ button.op-step:disabled { opacity: 1; cursor: default; }
 .now-assignment-text { font-weight: 600; }
 .now-team-summary { display: inline-flex; align-items: center; min-height: var(--touch); margin-top: 8px; padding: 6px 12px; font-weight: 600; color: var(--text-muted); border: 1px solid var(--border); border-radius: var(--radius); text-decoration: none; }
 .team-unavail { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 0 !important; font-size: 0.875rem; }
-.unavail-pill { color: var(--error); border-color: var(--error); }
+.unavail-pill { color: var(--error); border-color: var(--error); flex: 0 1 auto; min-width: 0; max-width: 100%; white-space: normal; overflow-wrap: anywhere; border-radius: var(--radius); } /* a long range wraps, never past the screen */
 .unavail { display: flex; flex-direction: column; gap: 8px; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border); }
 .unavail h2, .unavail .hint, .unavail p { margin: 0; }
 .unavail-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
