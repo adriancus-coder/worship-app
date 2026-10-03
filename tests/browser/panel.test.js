@@ -27,7 +27,7 @@ module.exports = {
     await lp.click('#start-button');
     await sp.waitForFunction(() => /Ne ridici/.test(document.querySelector('#output .projector-stage').innerText));
     await lp.waitForTimeout(300);
-    check(await preview() === (await screen()).text && await pressed() === 'content', 'started: preview == screen, "Conținut" selected');
+    check(await preview() === (await screen()).text && await pressed() === 'content', 'started: preview == screen, "Cântare" selected');
     await lp.click('#next-button');
     await sp.waitForFunction(() => /Sfânt/.test(document.querySelector('#output .projector-stage').innerText));
     await lp.waitForTimeout(300);
