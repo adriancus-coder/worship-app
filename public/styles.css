@@ -1718,6 +1718,9 @@ button.op-step:disabled { opacity: 1; cursor: default; }
 .shell-badge { position: absolute; top: 6px; right: calc(50% - 22px); min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; font-size: 0.7rem; font-weight: 700; line-height: 18px; text-align: center; color: var(--on-accent); background: var(--accent-fill); }
 .shell-badge[hidden] { display: none; }
 .shell-more { position: relative; }
+.shell-row-badge { flex: none; min-width: 22px; height: 22px; padding: 0 7px; border-radius: 999px; font-size: 0.8rem; font-weight: 700; line-height: 22px; text-align: center; color: var(--on-accent); background: var(--accent-fill); }
+.shell-row-badge[hidden] { display: none; }
+.shell-row .shell-row-badge + .shell-icon-chevron { margin-left: 0; }
 .notif-section { display: flex; flex-direction: column; gap: 8px; margin-top: 20px; }
 .notif-section h2, .notif-section .hint { margin: 0; }
 .notif-list-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }

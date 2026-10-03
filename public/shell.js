@@ -30,6 +30,7 @@
     chevron: 'M9 6l6 6-6 6',
     install: 'M12 3v12M7 10l5 5 5-5M5 21h14',
     refresh: 'M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5',
+    bell: 'M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.9 1.9 0 0 0 3.4 0',
   };
 
   function icon(name) {
@@ -146,12 +147,16 @@
   // The unread notifications badge (lib/notifications.js): fetched on load and when the page
   // comes back to the front; the notifications page clears it.
   const moreBadge = el('span', { class: 'shell-badge', hidden: true, 'aria-hidden': 'true' });
+  // The same count on the "Notificări" row inside the panel.
+  const rowBadge = el('span', { class: 'shell-row-badge', hidden: true, 'aria-hidden': 'true' });
   const moreButton = el('button', {
     type: 'button', class: 'shell-item shell-more', 'aria-expanded': 'false', 'aria-controls': 'shell-panel',
   }, icon('more'), moreLabel, moreBadge);
   function setUnread(n) {
     moreBadge.hidden = !n;
     moreBadge.textContent = n > 99 ? '99+' : String(n);
+    rowBadge.hidden = !n;
+    rowBadge.textContent = moreBadge.textContent;
     moreButton.setAttribute('aria-label', n ? `${t('shell.more')} · ${t('shell.unread', { n })}` : t('shell.more'));
   }
   function refreshUnread() {
@@ -182,7 +187,7 @@
   // A row that opens a page: icon, label, chevron.
   const pageRow = (p) => {
     const label = el('span', { class: 'shell-row-label' });
-    const link = el('a', { class: 'shell-row', href: p.href, 'data-page': p.id }, icon(p.icon), label, icon('chevron'));
+    const link = el('a', { class: 'shell-row', href: p.href, 'data-page': p.id }, icon(p.icon), label, p.badge || null, icon('chevron'));
     if (window.location.pathname === p.href) link.setAttribute('aria-current', 'page');
     const item = el('li', { hidden: true }, link);
     return { ...p, link, label, item };
@@ -196,7 +201,7 @@
     { id: 'platform', href: '/platform', key: 'shell.platform', icon: 'platform', roles: ['owner'], platform: true },
   ].map(pageRow);
   const accountLinks = [
-    { id: 'notifications', href: '/notifications', key: 'shell.notifications', icon: 'install', roles: ['owner', 'presenter', 'leader', 'operator', 'member'] },
+    { id: 'notifications', href: '/notifications', key: 'shell.notifications', icon: 'bell', badge: rowBadge, roles: ['owner', 'presenter', 'leader', 'operator', 'member'] },
     { id: 'profile', href: '/profile', key: 'shell.profile', icon: 'team', roles: ['owner', 'presenter', 'leader', 'operator', 'member'] },
     { id: 'password', href: '/change-password', key: 'shell.password', icon: 'password', roles: ['owner', 'presenter', 'leader', 'operator', 'member'] },
   ].map(pageRow);
