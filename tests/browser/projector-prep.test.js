@@ -27,18 +27,20 @@ module.exports = {
     // the event page: the "Proiector" card, per role
     const op = await signIn('operator', { width: 1280 });
     await op.goto(`${app.url}/events/${E}/edit`);
+    await op.click('#tab-projector'); // the projector has its own tab
     await op.waitForSelector('#projector-card:not([hidden])');
     check(/consolă|console/i.test(await op.textContent('#projector-card')) || /Pregătește proiectorul/.test(await op.textContent('#projector-prep-link')), 'the event page: a "Proiector" card with "Pregătește proiectorul"', await op.textContent('#projector-card'));
     check((await op.getAttribute('#projector-prep-link', 'href')) === `/events/${E}/operator`, 'operator: the card leads to the console');
     const lead = await signIn('leader', { width: 1024 });
     await lead.goto(`${app.url}/events/${E}/edit`);
+    await lead.click('#tab-projector');
     await lead.waitForSelector('#projector-card:not([hidden])');
     check((await lead.getAttribute('#projector-prep-link', 'href')) === `/events/${E}/live?view=full`, 'leader: the card leads to the live page');
     const mem = await signIn('member', { width: 375 });
     await mem.goto(`${app.url}/events/${E}`);
     await mem.waitForSelector('#event:not([hidden])');
     await wait(300);
-    check(await mem.isHidden('#projector-card'), 'a member: no "Proiector" card');
+    check(await mem.isHidden('#tab-projector') && await mem.isHidden('#tab-bridge') && !(await mem.isHidden('#tab-proposals')), 'a member: no Proiector / Traducere tabs (Propuneri yes)');
 
     // the console before the start: the hint, the controls enabled
     await op.click('#projector-prep-link');

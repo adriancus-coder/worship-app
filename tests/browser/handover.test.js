@@ -34,7 +34,8 @@ module.exports = {
     check(/Proiectorul e al tău/.test(await op.textContent('#mode-title')) && (await op.textContent('#projector-action')).trim() === 'Predă controlul proiectorului', 'console: "Proiectorul e al tău", the action is "Predă controlul proiectorului"');
     // the request
     await lp.click('#projector-action');
-    await lp.waitForSelector('#mode-controls .handover-line:not([hidden])');
+    // (the line may still show "Operator a preluat proiectorul" for a moment: wait for the request)
+    await lp.waitForFunction(() => /Cerere trimisă/.test(document.querySelector('#mode-controls .handover-line p').textContent), null, { timeout: 4000 }).catch(() => {});
     const line = await lp.textContent('#mode-controls .handover-line p');
     check(/Cerere trimisă… (5\d|60) s/.test(line) && await holder() === 'operator', `leader: "${line}", the operator still holds it`);
     const toast = await op.waitForSelector('.handover-toast:not([hidden])', { timeout: 3000 }).then(() => true, () => false);

@@ -19,10 +19,13 @@ const audit = (page) => page.evaluate((SEL) => {
     if (!buttons.length) continue;
     const rects = buttons.map((b) => b.getBoundingClientRect());
     const problems = [];
+    // a group that scrolls sideways on purpose (the event tabs on phones): buttons beyond its
+    // edges are reachable by scrolling, not cut off
+    const scrolls = ['auto', 'scroll'].includes(getComputedStyle(group).overflowX);
     rects.forEach((r, i) => {
       const b = buttons[i];
       if (b.scrollWidth > b.clientWidth + 1) problems.push(`clipped:${b.textContent.trim()}`);
-      if (r.left < g.left - 1 || r.right > g.right + 1) problems.push(`outside:${b.textContent.trim()}`);
+      if (!scrolls && (r.left < g.left - 1 || r.right > g.right + 1)) problems.push(`outside:${b.textContent.trim()}`);
       if (r.height < 44) problems.push(`small:${b.textContent.trim()}`);
       for (let j = i + 1; j < rects.length; j++) {
         const o = rects[j];

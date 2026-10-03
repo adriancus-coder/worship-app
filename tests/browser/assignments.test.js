@@ -54,9 +54,11 @@ module.exports = {
     await m.waitForSelector('.now-assignment');
     check(/You are scheduled: Chitară/.test(await m.textContent('.now-assignment')) && await m.locator('.now-assignment button[data-answer]').count() === 2, 'home card: "You are scheduled: Chitară" with I’m in / I can’t');
     await m.goto(`${app.url}/events/${E}`);
+    await m.waitForSelector('#tab-team:not([hidden])');
+    await m.click('#tab-team');
     await m.waitForSelector('#team-card .team-card');
     const mineRow = m.locator('#team-card .assign-row.mine');
-    check(await mineRow.count() === 1 && await m.locator('#team-card .assign-row').count() === 3 && await m.locator('#editor-tabs:not([hidden])').count() === 0, 'event page: the team card with 3 rows, my row marked, no Echipa tab for a member');
+    check(await mineRow.count() === 1 && await m.locator('#team-card .assign-row').count() === 3 && await m.locator('#team-edit .team-position').count() === 0, 'event page: the Echipa tab with the card (3 rows, my row marked), no assigning for a member');
     await mineRow.locator('.assign-note').fill('Only until 11');
     await mineRow.locator('button[data-answer="accepted"]').click();
     await m.waitForFunction(() => /Your answer was sent/.test(document.querySelector('#team-card .assign-message').textContent));
@@ -66,6 +68,7 @@ module.exports = {
     // the presenter declines with a note from the home card + event page
     const pr = await signIn('presenter', { width: 375, lang: 'ro' });
     await pr.goto(`${app.url}/events/${E}`);
+    await pr.click('#tab-team');
     await pr.waitForSelector('#team-card .assign-row.mine');
     await pr.locator('#team-card .assign-row.mine .assign-note').fill('Sunt plecat');
     await pr.locator('#team-card .assign-row.mine button[data-answer="declined"]').click();
@@ -74,8 +77,10 @@ module.exports = {
     // the operator: the card, the summary, no tab
     const op = await signIn('operator', { width: 1024 });
     await op.goto(`${app.url}/events/${E}/edit`);
+    await op.waitForSelector('#team-summary:not([hidden])');
+    await op.click('#team-summary'); // the summary opens the Echipa tab
     await op.waitForSelector('#team-card .team-card');
-    check(await op.locator('#editor-tabs:not([hidden])').count() === 0 && !(await op.isHidden('#team-summary')) && /1 confirmați · 1 așteaptă · 1 nu poate/.test(await op.textContent('#team-summary')), 'operator in the editor: no Echipa tab, the card and the summary "1 confirmați · 1 așteaptă · 1 nu poate"', await op.textContent('#team-summary'));
+    check(await op.locator('#team-edit .team-position').count() === 0 && /1 confirmați · 1 așteaptă · 1 nu poate/.test(await op.textContent('#team-summary')), 'operator in the editor: the Echipa tab shows the card (no assigning) and the summary "1 confirmați · 1 așteaptă · 1 nu poate"', await op.textContent('#team-summary'));
     check((await app.api(app.cookies.operator, 'PUT', `/api/events/${E}/assignments`, { assignments: [] })).status === 403, 'operator: cannot assign (403)');
     // the leader: the declined row stands out with the note; the home summary
     await l.reload();

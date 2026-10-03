@@ -1667,6 +1667,16 @@ button.op-step:disabled { opacity: 1; cursor: default; }
 .tab-count { display: inline-block; min-width: 1.4em; padding: 0 0.35em; border-radius: 999px; font-size: 0.8em; background: var(--surface); color: var(--text-muted); }
 .tab-count:empty { display: none; }
 .editor-tabs { margin: 0 0 12px; }
+.editor-tabs > button { flex: 1 1 auto; }
+/* Phones: one row that scrolls sideways (five tabs never wrap into three rows and push the
+   save bar under the tab bar); the selected tab is scrolled into view (public/event.js). */
+@media (max-width: 699px) {
+  #editor-tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; overscroll-behavior-x: contain; }
+  #editor-tabs::-webkit-scrollbar { display: none; }
+  #editor-tabs > button { flex: 0 0 auto; padding-left: 12px; padding-right: 12px; white-space: nowrap; }
+}
+.event-tab-panel { padding-top: 4px; }
+.event-tab-panel .bridge-panel, .event-tab-panel .projector-prep-card { margin-top: 0; border-top: 0; padding-top: 0; }
 /* The team of an event (public/team-card.js) */
 .team-card, .team-edit { display: flex; flex-direction: column; gap: 10px; margin: 0 0 16px; padding: 12px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
 .team-card-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; }

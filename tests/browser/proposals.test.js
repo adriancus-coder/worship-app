@@ -32,6 +32,7 @@ module.exports = {
     // the member (RO 375) on the planned event's page
     const m = await signIn('member', { width: 375, lang: 'ro' });
     await m.goto(`${app.url}/events/${E2}`);
+    await m.click('#tab-proposals'); // the proposals have their own tab
     await m.waitForSelector('#propose-song');
     check(await m.locator('#proposals .proposal-row').count() === 0, 'member: "Propune o cântare", no proposals yet');
     await m.click('#propose-song');
@@ -48,6 +49,9 @@ module.exports = {
     // the leader (EN 1440): the editor's "Propuneri (2)" with name and note
     const l = await signIn('leader', { width: 1440, lang: 'en' });
     await l.goto(`${app.url}/events/${E2}/edit`);
+    await l.waitForSelector('#tab-proposals:not([hidden])');
+    check(/Proposals 2/.test((await l.textContent('#tab-proposals')).replace(/\s+/g, ' ')), 'leader: the "Proposals 2" tab counts the open ones', await l.textContent('#tab-proposals'));
+    await l.click('#tab-proposals');
     await l.waitForSelector('#proposals .proposal-row');
     const rows = await l.evaluate(() => [...document.querySelectorAll('#proposals .proposal-row')].map((r) => r.textContent));
     check(rows.length === 2 && rows.some((r) => /Sfânt în G/.test(r) && /proposed by Membru/.test(r) && /Ar merge după predică/.test(r)) && (await l.textContent('#proposals-count')) === '2' && /Proposals: 2/.test(await l.textContent('#proposals-badge')), 'leader: two proposals with the proposer and the note; the count and the header badge', rows);
@@ -65,6 +69,7 @@ module.exports = {
     check(!al.overflow && !al.small.length, 'leader 1440: targets >= 44 px', al);
     // the member sees the answers + notifications
     await m.reload();
+    await m.click('#tab-proposals');
     await m.waitForSelector('#proposals .proposal-row');
     const after = await m.evaluate(() => [...document.querySelectorAll('#proposals .proposal-row')].map((r) => r.textContent));
     check(after.some((r) => /Sfânt în G/.test(r) && /Adăugată/.test(r)) && after.some((r) => /Mare ești Tu/.test(r) && /Respinsă/.test(r) && /Răspuns: Next Sunday/.test(r)), 'member: pills Adăugată / Respinsă with the leader\'s note', after);
@@ -113,6 +118,7 @@ module.exports = {
     // finished: no button
     await app.command({ type: 'event.end' });
     await m.goto(`${app.url}/events/${E}`);
+    await m.click('#tab-proposals');
     await m.waitForSelector('#proposals .proposals-member');
     check(await m.locator('#propose-song').count() === 0, 'finished event: no "Propune o cântare"');
   },

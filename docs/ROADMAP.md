@@ -181,7 +181,7 @@ never implement a later stage early. Mockups: claude.ai design canvas
 - **Preparing the projector before the start** (migration 043): on a planned event the event
   roles may already set the corner clock, the background override, "Pe ce ecrane" and the
   prepared video (+ volume) from the console or the live page ("Pregătire: … se păstrează la
-  pornire"); the event page has a "Proiector" card leading there ("Pregătește proiectorul":
+  pornire"); the event page's "Proiector" tab leads there ("Pregătește proiectorul":
   the console for owner / operator, the live page for presenter / leader). The start keeps
   them (`live_state.prepared`), otherwise it starts from the church defaults as before.
   Sources, playback, moves and the holder still wait for the start; screens stay idle.
@@ -247,6 +247,11 @@ never implement a later stage early. Mockups: claude.ai design canvas
   rights (a documentation note, not an in-app gate).
 
 ## Event preparation
+
+- **The event page's tabs:** "Program" holds only the setlist; "Echipa", "Propuneri",
+  "Proiector" and "Traducere" are tabs of their own, each shown only to whoever has that
+  panel (a member: Program, Echipa, Propuneri; the event roles editing: all five). The tab
+  bar shows when there is more than the Program; Echipa and Propuneri carry their counts.
 
 - Events: name, date, time; create from a template or copy a previous event.
 - "+ Eveniment nou" is one tap (`POST /api/events/quick`): name, time and items from the

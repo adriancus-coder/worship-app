@@ -19,6 +19,7 @@ module.exports = {
     // not paired: the event page offers the code form and the hint; the API agrees
     const lp = await signIn('leader', { width: 1024 });
     await lp.goto(`${app.url}/events/${E}`);
+    await lp.click('#tab-bridge'); // translation has its own tab
     await lp.waitForSelector('#bridge-card .bridge-connect');
     check(/(Setări|Settings)/.test(await lp.textContent('#bridge-card')) && !(await lp.isHidden('#bridge-code')), 'not paired: the code form with the hint about pairing in Settings');
     check((await app.api(app.cookies.leader, 'GET', '/api/bridge/pairing')).status === 403, 'the pairing API is the owner\'s');
@@ -43,6 +44,7 @@ module.exports = {
     check(!a.overflow && !a.small.length, 'the card: no overflow, targets >= 44 px', a);
     // the event page: one tap
     await lp.reload();
+    await lp.click('#tab-bridge');
     await lp.waitForSelector('#bridge-card .bridge-paired');
     await lp.waitForSelector('#bridge-card [data-sv-event]', { timeout: 5000 });
     const buttons = await lp.$$eval('#bridge-card [data-sv-event]', (l) => l.map((b) => `${b.dataset.svEvent}:${b.classList.contains('secondary') ? 'secondary' : 'primary'}:${b.textContent.trim()}`));
@@ -71,6 +73,7 @@ module.exports = {
     await p.waitForSelector('#sv-form:not([hidden])', { timeout: 5000 });
     check(/(Neîmperecheată|Not paired)/.test(await p.textContent('#sv-status')), 'unpaired: "Neîmperecheată" again');
     await lp.reload();
+    await lp.click('#tab-bridge');
     await lp.waitForSelector('#bridge-card .bridge-connect');
     check(!(await lp.isHidden('#bridge-code')), 'unpaired: the event page offers the code form again');
     await wait(200);

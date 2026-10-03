@@ -355,6 +355,7 @@
     const ev = state.event;
     const show = Boolean(ev && !ev.isTemplate && ev.status !== 'finished' && canEdit(state.me));
     $('projector-card').hidden = !show;
+    setTabAvailable('projector', show);
     if (!show) return;
     const role = state.me && state.me.user ? state.me.user.role : null;
     const consoleRole = role === 'owner' || role === 'operator';
@@ -371,8 +372,9 @@
   const bridgeBox = { ui: null, mounted: false };
   function renderBridge() {
     const ev = state.event;
-    const show = ev && !ev.isTemplate && canEdit(state.me);
+    const show = Boolean(ev && !ev.isTemplate && canEdit(state.me));
     $('bridge-card').hidden = !show;
+    setTabAvailable('bridge', show);
     if (!show || bridgeBox.mounted) return;
     bridgeBox.mounted = true;
     bridgeBox.ui = window.BRIDGE_PANEL.create($('bridge-card'), { api, eventId: ev.id });
@@ -386,11 +388,12 @@
     const ev = state.event;
     const editor = canEdit(state.me);
     const wanted = ev.isTemplate ? null : (editor ? (state.editing && ev.status !== 'finished' ? 'roles' : 'badge') : 'member');
+    setTabAvailable('proposals', wanted === 'member' || wanted === 'roles');
     if (proposalsBox.mode === wanted) return;
     proposalsBox.mode = wanted;
     $('proposals').replaceChildren();
     if (wanted === 'member') proposalsBox.ui = window.PROPOSALS_UI.member($('proposals'), { eventId: ev.id });
-    else if (wanted === 'roles') proposalsBox.ui = window.PROPOSALS_UI.roles($('proposals'), { eventId: ev.id, live: () => state.event.status === 'live', onCount: renderProposalsBadge });
+    else if (wanted === 'roles') proposalsBox.ui = window.PROPOSALS_UI.roles($('proposals'), { eventId: ev.id, live: () => state.event.status === 'live', onCount: (n) => { renderProposalsBadge(n); $('tab-proposals-count').textContent = n ? String(n) : ''; } });
     else if (wanted === 'badge') api(`/api/events/${ev.id}/proposals`).then((res) => { if (res.ok) renderProposalsBadge(res.body.openCount); }).catch(() => {});
   }
   // A proposal added in the editor: the server has the new item; the editor takes it (as a
@@ -413,23 +416,24 @@
     if (n && !state.editing) { badge.classList.add('linkish'); badge.onclick = () => { window.location.assign(keepFrom(`/events/${state.event.id}/edit`)); }; }
   }
 
-  // --- the team (public/team-card.js): the editor's Echipa tab (owner, leader) or the card ----
+  // --- the team (public/team-card.js): the Echipa tab - assigning (owner, leader editing) or
+  // the card (everyone else) ---
   const team = { card: null, mode: null, summary: null };
   const ASSIGN_ROLES = ['owner', 'leader']; // lib/assignments.js
   function renderTeam() {
     const ev = state.event;
     const role = state.me && state.me.user.role;
     const wanted = ev.isTemplate && !state.editing ? null : (state.editing && ASSIGN_ROLES.includes(role) ? 'edit' : 'view');
-    $('editor-tabs').hidden = wanted !== 'edit';
-    if (wanted !== 'edit') showEditorTab('program');
+    setTabAvailable('team', Boolean(wanted));
     if (!wanted) {
       $('team-card').replaceChildren();
+      $('team-edit').replaceChildren();
       return;
     }
     if (team.card && team.mode === wanted) return;
     team.mode = wanted;
-    const container = wanted === 'edit' ? $('team-panel') : $('team-card');
-    (wanted === 'edit' ? $('team-card') : $('team-panel')).replaceChildren();
+    const container = wanted === 'edit' ? $('team-edit') : $('team-card');
+    (wanted === 'edit' ? $('team-card') : $('team-edit')).replaceChildren();
     team.card = window.TEAM_CARD.create(container, {
       eventId: ev.id, mode: wanted,
       onSummary: (summary) => {
@@ -450,21 +454,41 @@
     box.textContent = window.TEAM_CARD.summaryText(team.summary);
     box.className = `team-summary${team.summary.declined ? ' has-declined' : ''}`;
   }
-  $('team-summary').addEventListener('click', () => {
-    if (!$('editor-tabs').hidden) showEditorTab('team');
-    else $('team-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
-  });
+  $('team-summary').addEventListener('click', () => showEditorTab('team'));
 
-  const editorTabs = window.PAGE.setupTabs([$('tab-program'), $('tab-team')], (index) => showEditorTab(index === 1 ? 'team' : 'program', true));
+  // The event's tabs: Program (the setlist only) | Echipa | Propuneri | Proiector | Traducere.
+  // A tab shows when its panel is available to this person; the bar when there are two or more.
+  const TABS = [
+    { name: 'program', tab: 'tab-program', panel: 'editor-program' },
+    { name: 'team', tab: 'tab-team', panel: 'team-panel' },
+    { name: 'proposals', tab: 'tab-proposals', panel: 'proposals-panel' },
+    { name: 'projector', tab: 'tab-projector', panel: 'projector-panel' },
+    { name: 'bridge', tab: 'tab-bridge', panel: 'bridge-panel' },
+  ];
+  const tabState = { current: 'program', available: new Set(['program']) };
+  window.PAGE.setupTabs(TABS.map((x) => $(x.tab)), (index) => showEditorTab(TABS[index].name, true));
   function showEditorTab(name, fromTabs) {
-    $('editor-program').hidden = name === 'team';
-    $('team-panel').hidden = name !== 'team';
-    if (!fromTabs) {
-      $('tab-program').setAttribute('aria-selected', String(name !== 'team'));
-      $('tab-team').setAttribute('aria-selected', String(name === 'team'));
+    const wanted = tabState.available.has(name) ? name : 'program';
+    tabState.current = wanted;
+    for (const x of TABS) {
+      $(x.panel).hidden = x.name !== wanted;
+      if (!fromTabs || x.name !== wanted) {
+        $(x.tab).setAttribute('aria-selected', String(x.name === wanted));
+        $(x.tab).tabIndex = x.name === wanted ? 0 : -1;
+      }
     }
+    // phones: the tab row scrolls sideways; keep the selected tab in view
+    const selected = $(TABS.find((x) => x.name === wanted).tab);
+    if (!$('editor-tabs').hidden && selected.scrollIntoView) selected.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   }
-  void editorTabs;
+  function setTabAvailable(name, on) {
+    if (on) tabState.available.add(name);
+    else tabState.available.delete(name);
+    const x = TABS.find((tab) => tab.name === name);
+    $(x.tab).hidden = !on;
+    $('editor-tabs').hidden = tabState.available.size < 2;
+    if (!on && tabState.current === name) showEditorTab('program');
+  }
 
   function changed() {
     state.justSaved = false;

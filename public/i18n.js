@@ -435,9 +435,12 @@
       },
       assign: {
         heading: 'Echipa',
-        tabsLabel: 'Program sau echipă',
+        tabsLabel: 'Secțiunile evenimentului',
         tabProgram: 'Program',
         tabTeam: 'Echipa',
+        tabProposals: 'Propuneri',
+        tabProjector: 'Proiector',
+        tabBridge: 'Traducere',
         summary: '{accepted} confirmați · {pending} așteaptă · {declined} nu poate',
         empty: 'Nimeni programat încă.',
         status: {
@@ -2138,9 +2141,12 @@
       },
       assign: {
         heading: 'Team',
-        tabsLabel: 'Setlist or team',
+        tabsLabel: 'Event sections',
         tabProgram: 'Setlist',
         tabTeam: 'Team',
+        tabProposals: 'Proposals',
+        tabProjector: 'Projector',
+        tabBridge: 'Translation',
         summary: '{accepted} confirmed · {pending} waiting · {declined} cannot',
         empty: 'Nobody scheduled yet.',
         status: {

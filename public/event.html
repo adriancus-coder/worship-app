@@ -40,12 +40,32 @@
         <p id="action-message" class="message" role="status" aria-live="polite"></p>
       </header>
 
-      <!-- The editor's tabs (owner, leader): Program | Echipa. Others see the team card below. -->
+      <!-- The event's tabs: Program (only the setlist) | Echipa | Propuneri | Proiector |
+           Traducere. Each tab shows only when this person has that panel; the bar shows when
+           there is more than the Program. -->
       <div class="tabs editor-tabs" id="editor-tabs" role="tablist" hidden data-i18n-aria-label="assign.tabsLabel">
         <button type="button" role="tab" id="tab-program" aria-controls="editor-program" aria-selected="true" data-i18n="assign.tabProgram"></button>
-        <button type="button" role="tab" id="tab-team" aria-controls="team-panel" aria-selected="false" tabindex="-1"><span data-i18n="assign.tabTeam"></span> <span class="tab-count" id="tab-team-count"></span></button>
+        <button type="button" role="tab" id="tab-team" aria-controls="team-panel" aria-selected="false" tabindex="-1" hidden><span data-i18n="assign.tabTeam"></span> <span class="tab-count" id="tab-team-count"></span></button>
+        <button type="button" role="tab" id="tab-proposals" aria-controls="proposals-panel" aria-selected="false" tabindex="-1" hidden><span data-i18n="assign.tabProposals"></span> <span class="tab-count" id="tab-proposals-count"></span></button>
+        <button type="button" role="tab" id="tab-projector" aria-controls="projector-panel" aria-selected="false" tabindex="-1" hidden data-i18n="assign.tabProjector"></button>
+        <button type="button" role="tab" id="tab-bridge" aria-controls="bridge-panel" aria-selected="false" tabindex="-1" hidden data-i18n="assign.tabBridge"></button>
       </div>
-      <div id="team-panel" class="team-panel" role="tabpanel" hidden></div>
+      <div id="team-panel" class="team-panel" role="tabpanel" aria-labelledby="tab-team" hidden>
+        <div id="team-edit"></div>
+        <div id="team-card"></div>
+      </div>
+      <div id="proposals-panel" class="event-tab-panel" role="tabpanel" aria-labelledby="tab-proposals" hidden>
+        <div id="proposals"></div>
+      </div>
+      <div id="projector-panel" class="event-tab-panel" role="tabpanel" aria-labelledby="tab-projector" hidden>
+        <section id="projector-card" class="projector-prep-card" hidden>
+          <p id="projector-prep-text" class="hint"></p>
+          <a class="button secondary" id="projector-prep-link" href="#" data-icon="projector"></a>
+        </section>
+      </div>
+      <div id="bridge-panel" class="event-tab-panel" role="tabpanel" aria-labelledby="tab-bridge" hidden>
+        <div id="bridge-card" class="bridge-panel"></div>
+      </div>
 
       <div class="editor-grid" id="editor-program">
         <section class="setlist-pane" aria-labelledby="setlist-heading">
@@ -89,16 +109,6 @@
             </div>
             <p class="message" id="quick-message" role="status" aria-live="polite"></p>
           </details>
-          <!-- The team card (everyone) and the proposals (members: propose; event roles: decide)
-               scroll with the Program, so the save bar stays above the tab bar on phones. -->
-          <div id="team-card"></div>
-          <div id="proposals"></div>
-          <div id="bridge-card" class="bridge-panel"></div>
-          <section id="projector-card" class="projector-prep-card" hidden aria-labelledby="projector-card-heading">
-            <h3 id="projector-card-heading" class="bridge-heading" data-i18n="setlist.projectorHeading"></h3>
-            <p id="projector-prep-text" class="hint"></p>
-            <a class="button secondary" id="projector-prep-link" href="#" data-icon="projector"></a>
-          </section>
           <p id="setlist-empty" class="muted pane-state" hidden data-i18n="setlist.empty"></p>
           <ol id="items" class="setlist"></ol>
           <div class="add-bar" id="add-bar" role="group" data-i18n-aria-label="setlist.addLabel" hidden>
