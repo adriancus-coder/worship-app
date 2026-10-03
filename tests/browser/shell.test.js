@@ -43,6 +43,21 @@ module.exports = {
         pages: [...document.querySelectorAll('#shell-panel li:not([hidden]) .shell-row[data-page]')].map((a) => a.dataset.page),
       }));
       check(panel.open && !panel.pages.includes('team') && !panel.pages.includes('positions') && panel.pages.includes('settings'), `[${width}] owner "Mai mult": settings listed, Echipa / Poziții moved to the main nav`, panel);
+      check(/^Proprietar .+ · Biserica Harul$/.test(panel.role.trim()), `[${width}] the header names the platform's owner: "${panel.role}"`, panel.role);
+      if (width === 1024) {
+        // viewing as a leader, the header still says who the account is
+        await p.keyboard.press('Escape');
+        await p.request.put(`${app.url}/api/me/view-as`, { data: { role: 'leader' } });
+        await p.reload();
+        await p.waitForSelector('#app-shell .shell-label:not(:empty)');
+        await p.click('.shell-more');
+        await p.waitForFunction(() => /Proprietar/.test(document.querySelector('.shell-who-role').textContent), null, { timeout: 4000 }).catch(() => {});
+        check(/^Proprietar .+ · Biserica Harul$/.test((await p.textContent('.shell-who-role')).trim()) && !(await p.isHidden('#view-as-bar')), '[1024] viewing as a leader: the header still names the owner; the bar says "Vezi ca …"', await p.textContent('.shell-who-role'));
+        await p.request.put(`${app.url}/api/me/view-as`, { data: { role: null } });
+        await p.reload();
+        await p.waitForSelector('#app-shell .shell-label:not(:empty)');
+        await p.click('.shell-more');
+      }
       await p.keyboard.press('Escape');
       const closed = await p.waitForFunction(() => document.getElementById('shell-panel').hidden && document.activeElement.classList.contains('shell-more'), null, { timeout: 2000 }).then(() => true, () => false);
       check(closed, `[${width}] Escape closes the panel, focus back on "Mai mult"`);

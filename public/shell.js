@@ -389,7 +389,12 @@
     for (const b of viewAsButtons) b.textContent = t(`team.roles.${b.dataset.viewAs}`);
     if (me) {
       whoName.textContent = me.user.name;
-      whoRole.textContent = t('shell.roleAt', { role: t(`roles.${me.user.role}`), adminName: me.admin.name });
+      // who the account really is (also while "Vezi aplicația ca" shows another role): the
+      // platform's owner, or the account's own role
+      const who = me.platformAccount
+        ? t('shell.platformOwnerRole', { appName: document.documentElement.dataset.appName || '' })
+        : t(`roles.${me.user.realRole || me.user.role}`);
+      whoRole.textContent = t('shell.roleAt', { role: who, adminName: me.admin.name });
       for (const p of pageLinks) p.item.hidden = !p.roles.includes(me.user.role) || (p.platform && !me.platformOwner);
       // a real owner (also while viewing as someone else) may switch the view
       viewAsRow.hidden = me.user.realRole !== 'owner';

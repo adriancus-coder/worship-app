@@ -92,6 +92,7 @@ function createAuthRouter({ db, auth, config, logger, live }) {
       },
       admin: req.admin,
       platformOwner: Boolean(req.platformOwner), // "Mai mult → Platformă"
+      platformAccount: Boolean(req.platformAccount), // the account is the platform's owner (even viewing as)
     });
   });
 
