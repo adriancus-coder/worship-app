@@ -101,6 +101,8 @@ app.use(helmet({
       // vendor scripts); uploads, local files (blob:) and direct https .mp4 / .webm links.
       frameSrc: ["'self'", 'https://www.youtube-nocookie.com', 'https://player.vimeo.com'],
       mediaSrc: ["'self'", 'blob:', 'https:'],
+      // Media → Pexels: search thumbnails load straight from the Pexels image CDN.
+      imgSrc: ["'self'", 'data:', 'blob:', 'https://images.pexels.com'],
     },
   },
   strictTransportSecurity: config.IS_PRODUCTION,

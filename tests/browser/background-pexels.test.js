@@ -20,7 +20,9 @@ module.exports = {
     for (const [lang, width] of [['ro', 375], ['en', 1024]]) {
       const tag = `[${lang} ${width}]`;
       const p = await signIn('leader', { width, lang });
-      await p.goto(`${app.url}/media`);
+      const res = await p.goto(`${app.url}/media`);
+      const csp = (res.headers()['content-security-policy'] || '').split(';').find((d) => /^\s*img-src/.test(d)) || '';
+      check(/https:\/\/images\.pexels\.com/.test(csp), `${tag} the page allows Pexels thumbnails (img-src)`, csp);
       await p.waitForSelector('#pexels-section:not([hidden])');
       const chips = await p.$$eval('#pexels-suggestions button', (l) => l.map((b) => b.textContent));
       check(chips.length >= 5 && chips.includes('sky') && chips.includes('worship'), `${tag} the tab shows with suggestions (${chips.join(', ')})`, chips);
