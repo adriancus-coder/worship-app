@@ -129,7 +129,7 @@
       container.replaceChildren(el('div', { class: 'team-edit' },
         el('div', { class: 'team-card-head' },
           el('p', { class: 'team-card-summary', id: 'team-edit-summary', text: summaryText(d.summary) }),
-          el('button', { type: 'button', id: 'send-schedule', 'data-icon': 'mail', text: t('assign.send'), disabled: pending ? null : 'disabled', title: pending ? '' : t('assign.nothingToSend'), onclick: send })),
+          el('button', { type: 'button', id: 'send-schedule', 'data-icon': 'mail', text: t('assign.send'), disabled: pending ? null : 'disabled', title: pending ? '' : t('assign.nothingToSend'), onclick: (event) => send(event) })),
         el('p', { class: 'hint', text: t('assign.editHint') }),
         active.length ? null : el('p', { class: 'muted', text: t('assign.noPositions') }),
         ...active.map((position) => el('div', { class: 'team-position', 'data-position': String(position.id) },
@@ -142,17 +142,23 @@
               row.note ? el('span', { class: 'assign-note-text', text: row.note }) : null,
               busy ? el('span', { class: 'assign-warning', text: t('assign.unavailableWarning', { reason: busy.note || t('assign.unavailable') }) }) : null,
               row.status === 'declined' ? el('span', { class: 'assign-warning', text: t('assign.declinedHint') }) : null,
+              // "Trimite" / "Retrimite" for this person only, while the answer is pending
+              row.status === 'pending' ? el('button', { type: 'button', class: 'secondary assign-send-one', 'data-icon': 'mail', 'data-assignment': String(row.id), text: t(row.notifiedAt ? 'assign.resendOne' : 'assign.sendOne'), 'aria-label': t(row.notifiedAt ? 'assign.resendOneFor' : 'assign.sendOneFor', { name: row.userName }), onclick: (event) => send(event, [row.id]) }) : null,
               el('button', { type: 'button', class: 'secondary icon-button assign-remove', 'aria-label': t('assign.remove', { name: row.userName }), onclick: () => save(current().filter((c) => !(c.userId === row.userId && c.positionId === row.positionId))) }, el('span', { 'aria-hidden': 'true', text: '✕' })));
           })),
           position.active ? picker(position) : null)),
         el('p', { class: `message assign-message${state.kind ? ` ${state.kind}` : ''}`, role: 'status', 'aria-live': 'polite', text: state.message })));
     }
 
-    async function send() {
-      const button = container.querySelector('#send-schedule');
+    // ids: one person's rows ("Trimite" / "Retrimite" under the name), else everyone not yet sent.
+    async function send(event, ids) {
+      const button = event && event.currentTarget;
       if (button) button.disabled = true;
-      const res = await api(`/api/events/${eventId}/assignments/send`, { method: 'POST' });
-      if (!res.ok) return say(res.body.error || t('common.networkError'), 'error');
+      const res = await api(`/api/events/${eventId}/assignments/send`, { method: 'POST', body: ids ? { ids } : {} });
+      if (!res.ok) {
+        if (button) button.disabled = false;
+        return say(res.body.error || t('common.networkError'), 'error');
+      }
       state.data = res.body;
       const s = res.body.sent || {};
       const parts = [t('assign.sentTo', { n: s.sent || 0 })];

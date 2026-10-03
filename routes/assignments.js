@@ -11,8 +11,9 @@ const { createUnavailabilityStore } = require('../lib/unavailability');
 // The team of an event (lib/assignments.js).
 //   GET  /api/events/:id/assignments            everyone of the admin (members: no notes but their own)
 //   PUT  /api/events/:id/assignments            owner, leader: the full list [{ userId, positionId }]
-//   POST /api/events/:id/assignments/send       owner, leader: marks the pending rows as sent (stage 7
-//                                               commit 6 adds the notifications and emails)
+//   POST /api/events/:id/assignments/send       owner, leader: notifies the pending rows not yet sent;
+//                                               { ids: [aid] }: just these pending rows (sent before too:
+//                                               a reminder)
 //   POST /api/events/:id/assignments/:aid/respond  the assigned person: { status: accepted|declined, note? }
 // hooks (set later by the notifications module): onDeclined(...), onSent(...).
 function createAssignmentsRouter({ db, auth, logger, hooks = {} }) {
@@ -81,13 +82,18 @@ function createAssignmentsRouter({ db, auth, logger, hooks = {} }) {
   });
 
   // "Trimite programarea": every pending row not yet sent is marked; the hook notifies.
+  // { ids }: "Trimite" / "Retrimite" under one name - those pending rows, sent or not.
   router.post('/api/events/:id/assignments/send', async (req, res, next) => {
     try {
       if (!canAssign(req)) return res.status(403).json({ error: req.t('errors.forbidden') });
       const found = load(req, res);
       if (!found) return;
       if (found.event.isTemplate) return res.status(400).json({ error: req.t('errors.badRequest') });
-      const rows = assignments.list(req.adminId, found.event.id).filter((r) => r.status === 'pending' && !r.notifiedAt);
+      const ids = (req.body || {}).ids;
+      if (ids !== undefined && (!Array.isArray(ids) || !ids.length || !ids.every((id) => Number.isInteger(id)))) return res.status(400).json({ error: req.t('errors.badRequest') });
+      const rows = assignments.list(req.adminId, found.event.id)
+        .filter((r) => r.status === 'pending' && (ids ? ids.includes(r.id) : !r.notifiedAt));
+      if (ids && !rows.length) return res.status(409).json({ code: 'notPending', error: req.t('errors.assignNotPending') });
       const result = hooks.onSent ? await hooks.onSent({ req, event: found.event, rows }) : { sent: rows.length, withoutPush: 0, emailed: 0 };
       assignments.markSent(req.adminId, rows.map((r) => r.id));
       logger.info(`Event #${found.event.id}: schedule sent to ${rows.length} person(s) by user #${req.user.id} (admin #${req.adminId})`);

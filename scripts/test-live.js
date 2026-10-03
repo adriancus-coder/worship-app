@@ -1675,6 +1675,12 @@ async function main() {
     assert.ok(assignedRow && /Ești programat: Chitară/.test(assignedRow.title) && /Programare/.test(assignedRow.body) && assignedRow.url === `/events/${ev2.id}`, 'the "assigned" notification names the position and the event');
     assert.deepStrictEqual((await api('POST', `/api/events/${ev2.id}/assignments/send`, leader)).body.sent, { sent: 0, withoutPush: 0, emailed: 0 }, 're-sending reaches nobody new');
     assert.strictEqual((await api('POST', `/api/events/${ev2.id}/assignments/send`, operator)).status, 403);
+    // one person ("Trimite" / "Retrimite" under the name): that pending row, sent before or not
+    const one = (await api('GET', `/api/events/${ev2.id}/assignments`, leader)).body.assignments.find((r) => r.userId === memberId && r.positionId === chitara && r.status === 'pending');
+    const again = await api('POST', `/api/events/${ev2.id}/assignments/send`, leader, { ids: [one.id] });
+    assert.deepStrictEqual([again.status, again.body.sent.sent], [200, 1], 'a reminder to this one person');
+    assert.strictEqual((await api('POST', `/api/events/${ev2.id}/assignments/send`, leader, { ids: ['x'] })).status, 400);
+    assert.strictEqual((await api('POST', `/api/events/${ev2.id}/assignments/send`, leader, { ids: [999999] })).status, 409, 'not a pending row of this event');
     // a copy of the event carries the team as pending; a template keeps the usual team
     const copy = (await api('POST', '/api/events', owner, { name: 'Copie', eventDate: '2026-11-08', fromEventId: ev2.id })).body.event;
     const copied = (await api('GET', `/api/events/${copy.id}/assignments`, owner)).body.assignments;

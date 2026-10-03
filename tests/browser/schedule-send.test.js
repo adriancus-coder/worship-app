@@ -70,5 +70,13 @@ module.exports = {
     await wait(200);
     check(lines('push-outbox.jsonl').length === 1 && lines('outbox.jsonl').length === 2 && lines('outbox.jsonl')[1].to === 'prez@x.ro', 're-sending reaches only the new row (one more email, no new push)');
     check((await app.api(app.cookies.member, 'GET', '/api/notifications')).body.notifications.filter((x) => x.kind === 'assigned' && x.eventId === E2).length === 1, 'the member was not told twice');
+    // one person: "Retrimite" under the name reaches only them
+    const row = l.locator('#team-panel .assign-row', { hasText: 'Operator' }).first();
+    check((await row.locator('.assign-send-one').textContent()).trim() === 'Retrimite', 'a sent, pending person: "Retrimite" under the name');
+    await row.locator('.assign-send-one').click();
+    await l.waitForFunction(() => /Trimis la 1/.test(document.querySelector('#team-panel .assign-message').textContent));
+    await wait(200);
+    const mails2 = lines('outbox.jsonl');
+    check(mails2.length === 3 && mails2[2].to === 'op@x.ro' && lines('push-outbox.jsonl').length === 1, 'only the operator got it again (one more email, no push)', mails2.map((m) => m.to));
   },
 };
