@@ -77,7 +77,7 @@
     if (!list.items.length) { $('notif-status').removeAttribute('data-i18n'); $('notif-status').textContent = t('notif.listEmpty'); }
     $('notif-read-all').hidden = list.unread === 0;
     $('notif-list').replaceChildren(...list.items.map((n) => el('li', { class: `notif-row${n.readAt ? '' : ' unread'}`, 'data-kind': n.kind },
-      el('a', { class: 'notif-link', href: n.url || '/app', onclick: () => { if (!n.readAt) api('/api/notifications/read', { method: 'POST', body: { ids: [n.id] } }).catch(() => {}); } },
+      el('a', { class: 'notif-link', href: n.url || '/app', onclick: (event) => open(event, n) },
         el('span', { class: 'notif-dot', 'aria-hidden': 'true' }),
         el('span', { class: 'notif-text' },
           el('span', { class: 'notif-title', text: n.title }),
@@ -86,6 +86,21 @@
     $('notif-prefs').replaceChildren(...list.kinds.map((kind) => el('label', { class: 'checkbox' },
       el('input', { type: 'checkbox', 'data-kind': kind, checked: list.prefs[kind] ? 'checked' : null, onchange: (event) => savePref(kind, event.target.checked) }),
       el('span', { text: t(`notif.kinds.${kind}`) }))));
+  }
+
+  // A tap marks it read first (the dot goes, the badges count down), then opens its page.
+  async function open(event, n) {
+    if (n.readAt || event.ctrlKey || event.metaKey || event.shiftKey) return;
+    event.preventDefault();
+    const href = event.currentTarget.href;
+    const res = await api('/api/notifications/read', { method: 'POST', body: { ids: [n.id] } }).catch(() => null);
+    if (res && res.ok) {
+      n.readAt = Date.now();
+      list.unread = res.body.unread;
+      renderList();
+      if (window.SHELL && window.SHELL.setUnread) window.SHELL.setUnread(list.unread);
+    }
+    window.location.assign(href);
   }
 
   async function savePref(kind, enabled) {

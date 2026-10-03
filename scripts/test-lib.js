@@ -3035,12 +3035,12 @@ testAsync('web push (lib/push.js): keys, VAPID header, aes128gcm round trip, del
   assert.strictEqual(push.listForUser(1, 1).length, 2);
   assert.strictEqual(push.subscribe(1, 1, sub, 'UA/1b').id, push.listForUser(1, 1)[0].id, 'the same endpoint again updates the row');
   status = (url) => (url.endsWith('/gone') ? 410 : 201);
-  const out = await push.sendToUser(1, 1, { title: 'Ești programat', body: 'Chitară', url: '/events/1', tag: 'assigned' });
+  const out = await push.sendToUser(1, 1, { title: 'Ești programat', body: 'Chitară', url: '/events/1', tag: 'assigned', id: 7 });
   assert.deepStrictEqual(out, { sent: 1, failed: 0, removed: 1 }, 'a 410 removes the subscription');
   assert.deepStrictEqual(push.listForUser(1, 1).map((r) => r.endpoint), ['https://push.test/send/1']);
   const call = calls.find((c) => c.url === 'https://push.test/send/1');
   assert.deepStrictEqual([call.headers['Content-Encoding'], call.headers.TTL, call.headers.Urgency, /^vapid t=/.test(call.headers.Authorization)], ['aes128gcm', '86400', 'normal', true]);
-  assert.deepStrictEqual(JSON.parse(P.decrypt(call.body, client.getPrivateKey(), sub.keys.auth)), { title: 'Ești programat', body: 'Chitară', url: '/events/1', tag: 'assigned' }, 'the browser would read the small payload');
+  assert.deepStrictEqual(JSON.parse(P.decrypt(call.body, client.getPrivateKey(), sub.keys.auth)), { title: 'Ești programat', body: 'Chitară', url: '/events/1', tag: 'assigned', id: 7 }, 'the browser would read the small payload');
   status = 500;
   assert.deepStrictEqual(await push.sendToUser(1, 1, { title: 'x' }), { sent: 0, failed: 1, removed: 0 });
   assert.strictEqual(push.listForUser(1, 1)[0].failedCount, 1, 'other failures only count');
@@ -3073,7 +3073,7 @@ testAsync('notifications (migration 033): rows in the person\'s language + push 
   assert.deepStrictEqual(out, { sent: 1, withPush: 1, withoutPush: 0, userIds: [3] });
   const maria = N.list(1, 3);
   assert.deepStrictEqual([maria.length, maria[0].kind, maria[0].title, maria[0].url, maria[0].readAt], [1, 'assigned', 'You are scheduled: Chitară', '/events/1', null], 'English for Maria');
-  assert.deepStrictEqual([pushed.length, pushed[0].u, pushed[0].tag, pushed[0].title], [1, 3, 'assigned-1', 'You are scheduled: Chitară']);
+  assert.deepStrictEqual([pushed.length, pushed[0].u, pushed[0].tag, pushed[0].title, typeof pushed[0].id], [1, 3, 'assigned-1', 'You are scheduled: Chitară', 'number']);
   // declined: the owner and the leaders, not the one who declined (the leader here)
   await N.onDeclined(1, { id: 1, name: 'Duminică', eventDate: '2026-10-04' }, rows.find((r) => r.userId === 2));
   assert.deepStrictEqual([N.list(1, 1).length, N.list(1, 2).length, N.list(1, 3).length], [1, 0, 1]);

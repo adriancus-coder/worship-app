@@ -2,7 +2,8 @@
 
 // Stage 7, the notifications centre: rows appear in the person's language, the unread badge on
 // "Mai mult", the list with unread marks, "Marchează toate ca citite", the per-kind switches;
-// a notification's link opens its page. RO 375 / EN 1024.
+// the same count on the "Notificări" row in the menu; a tap on a notification marks it read
+// and opens its page. RO 375 / EN 1024.
 
 const { layoutAudit, wait } = require('./harness');
 
@@ -31,6 +32,10 @@ module.exports = {
       await p.waitForFunction(() => { const b = document.querySelector('.shell-badge'); return b && !b.hidden; }, null, { timeout: 5000 });
       const badge = await p.textContent('.shell-badge');
       check(Number(badge) >= 1, `${tag} the unread badge on "Mai mult" (${badge})`);
+      await p.click('.shell-more');
+      await p.waitForSelector('#shell-panel a[data-page="notifications"]', { state: 'visible' });
+      const rowBadge = await p.evaluate(() => { const b = document.querySelector('#shell-panel a[data-page="notifications"] .shell-row-badge'); return b && !b.hidden ? b.textContent : null; });
+      check(rowBadge === badge, `${tag} the menu row "Notificări" shows the same count (${rowBadge})`);
       await p.goto(`${app.url}/notifications`);
       await p.waitForSelector('.notif-row');
       const rows = await p.evaluate(() => [...document.querySelectorAll('.notif-row')].map((r) => ({ kind: r.dataset.kind, unread: r.classList.contains('unread'), title: r.querySelector('.notif-title').textContent })));
@@ -46,14 +51,20 @@ module.exports = {
       check((await app.api(app.cookies[role], 'GET', '/api/notifications')).body.prefs.reminder === false, `${tag} a switch saves (reminder off)`);
       await p.click('#notif-prefs input[data-kind="reminder"]');
       await wait(200);
-      // mark all read: the badge goes
-      await p.click('#notif-read-all');
-      await p.waitForFunction(() => !document.querySelector('.notif-row.unread') && document.querySelector('.shell-badge').hidden, null, { timeout: 5000 });
-      check(await p.isHidden('#notif-read-all'), `${tag} "Marchează toate ca citite": no unread rows, the badge gone`);
-      // the link opens the page
-      await p.click('.notif-row .notif-link');
+      // a tap on one: marked read, then its page opens
+      const before = (await app.api(app.cookies[role], 'GET', '/api/notifications')).body;
+      const target = before.notifications.find((n) => n.kind === expectKind && !n.readAt);
+      await p.click(`.notif-row.unread[data-kind="${expectKind}"] .notif-link`);
       await p.waitForURL(`**/events/${E2}**`);
       check(new URL(p.url()).pathname.startsWith(`/events/${E2}`), `${tag} a notification opens its event`);
+      const after = (await app.api(app.cookies[role], 'GET', '/api/notifications')).body;
+      check(after.notifications.find((n) => n.id === target.id).readAt && after.unread === before.unread - 1, `${tag} the tapped notification is read (${before.unread} -> ${after.unread} unread)`);
+      // mark all read: the badge goes
+      await p.goto(`${app.url}/notifications`);
+      await p.waitForSelector('.notif-row');
+      if (after.unread) await p.click('#notif-read-all');
+      await p.waitForFunction(() => !document.querySelector('.notif-row.unread') && document.querySelector('.shell-badge').hidden, null, { timeout: 5000 });
+      check(await p.isHidden('#notif-read-all'), `${tag} "Marchează toate ca citite": no unread rows, the badge gone`);
       await p.context().close();
     }
   },
