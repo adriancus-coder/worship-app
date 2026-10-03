@@ -15,7 +15,7 @@ const { createUnavailabilityStore } = require('../lib/unavailability');
 //                                               { ids: [aid] }: just these pending rows (sent before too:
 //                                               a reminder)
 //   POST /api/events/:id/assignments/:aid/respond  the assigned person: { status: accepted|declined, note? }
-// hooks (set later by the notifications module): onDeclined(...), onSent(...).
+// hooks (set later by the notifications module): onAccepted(...), onDeclined(...), onSent(...).
 function createAssignmentsRouter({ db, auth, logger, hooks = {} }) {
   const router = express.Router();
   const events = createEventStore(db);
@@ -114,6 +114,7 @@ function createAssignmentsRouter({ db, auth, logger, hooks = {} }) {
     if (!row) return res.status(404).json({ error: req.t('errors.notFound') });
     logger.info(`Event #${found.event.id}: user #${req.user.id} ${body.status} (${row.positionName}) (admin #${req.adminId})`);
     if (body.status === 'declined' && hooks.onDeclined) hooks.onDeclined({ req, event: found.event, row });
+    if (body.status === 'accepted' && hooks.onAccepted) hooks.onAccepted({ req, event: found.event, row });
     res.json(payload(req, found));
   });
 

@@ -1751,6 +1751,12 @@ async function main() {
     await api('PUT', `/api/events/${evN.id}/assignments`, leader, { assignments: [{ userId: memberId, positionId: voceId }] });
     const before = (await api('GET', '/api/notifications', member)).body;
     const mine = (await api('GET', `/api/events/${evN.id}/assignments`, member)).body.me[0];
+    // "Vin": the owner and the leader hear it too, never the operator
+    await api('POST', `/api/events/${evN.id}/assignments/${mine.id}/respond`, member, { status: 'accepted' });
+    await new Promise((r) => setTimeout(r, 50));
+    assert.ok((await api('GET', '/api/notifications', leader)).body.notifications.some((n) => n.kind === 'accepted' && /Membru vine: Voce/.test(n.title) && n.url === `/events/${evN.id}/edit`), 'the leader hears who confirmed');
+    assert.ok((await api('GET', '/api/notifications', owner)).body.notifications.some((n) => n.kind === 'accepted'), 'the owner too');
+    assert.ok(!(await api('GET', '/api/notifications', operator)).body.notifications.some((n) => n.kind === 'accepted'), 'not the operator');
     await api('POST', `/api/events/${evN.id}/assignments/${mine.id}/respond`, member, { status: 'declined', note: 'Plecat' });
     const forLeader = (await api('GET', '/api/notifications', leader)).body;
     const forOwner = (await api('GET', '/api/notifications', owner)).body;
