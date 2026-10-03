@@ -1,0 +1,104 @@
+'use strict';
+
+const express = require('express');
+const asyncRoute = require('../lib/async-route');
+const { safeEqual, hashPassword } = require('../lib/auth');
+const { DEFAULTS: DEFAULT_SETTINGS } = require('../lib/admin-settings');
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MIN_PASSWORD_LENGTH = 10;
+const MAX_NAME_LENGTH = 100;
+
+class SetupConflict extends Error {}
+
+function cleanText(value) {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function validate(body, t) {
+  const adminName = cleanText(body.adminName);
+  const ownerName = cleanText(body.ownerName);
+  const ownerEmail = cleanText(body.ownerEmail).toLowerCase();
+  const ownerPassword = typeof body.ownerPassword === 'string' ? body.ownerPassword : '';
+
+  if (!adminName || adminName.length > MAX_NAME_LENGTH) {
+    return { error: t('errors.adminNameInvalid', { max: MAX_NAME_LENGTH }) };
+  }
+  if (!ownerName || ownerName.length > MAX_NAME_LENGTH) {
+    return { error: t('errors.ownerNameInvalid', { max: MAX_NAME_LENGTH }) };
+  }
+  if (ownerEmail.length > 254 || !EMAIL_RE.test(ownerEmail)) {
+    return { error: t('errors.emailInvalid') };
+  }
+  if (ownerPassword.length < MIN_PASSWORD_LENGTH) {
+    return { error: t('errors.passwordTooShort', { min: MIN_PASSWORD_LENGTH }) };
+  }
+  return { value: { adminName, ownerName, ownerEmail, ownerPassword } };
+}
+
+function createSetupRouter({ db, config, logger, sendPage }) {
+  const router = express.Router();
+
+  const countAdmins = db.prepare('SELECT COUNT(*) FROM admins').pluck();
+  // The first admin runs the platform (lib/auth.js isPlatformOwner).
+  const insertAdmin = db.prepare('INSERT INTO admins (name, created_at, platform_owner) VALUES (?, ?, 1)');
+  const insertSetting = db.prepare('INSERT INTO admin_settings (admin_id, key, value) VALUES (?, ?, ?)');
+  const insertUser = db.prepare(`INSERT INTO users
+    (admin_id, email, name, password_hash, role, active, created_at)
+    VALUES (?, ?, ?, ?, 'owner', 1, ?)`);
+
+  const createAdminAndOwner = db.transaction((input, passwordHash) => {
+    if (countAdmins.get() > 0) throw new SetupConflict();
+    const now = Date.now();
+    const adminId = Number(insertAdmin.run(input.adminName, now).lastInsertRowid);
+    insertSetting.run(adminId, 'timezone', DEFAULT_SETTINGS.timezone);
+    const userId = Number(insertUser.run(adminId, input.ownerEmail, input.ownerName, passwordHash, now).lastInsertRowid);
+    return { adminId, userId };
+  });
+
+  if (!config.SETUP_TOKEN.trim() && countAdmins.get() === 0) {
+    logger.warn('No admin account exists and SETUP_TOKEN is not set: set SETUP_TOKEN to enable first-run setup at /setup');
+  }
+
+  router.get('/setup', (req, res) => {
+    if (countAdmins.get() > 0) return res.redirect('/');
+    sendPage(req, res, 'setup');
+  });
+
+  router.post('/api/setup', asyncRoute(async (req, res) => {
+    const body = req.body || {};
+    // Pasted codes often carry stray whitespace; ignore it on both sides.
+    const expectedToken = config.SETUP_TOKEN.trim();
+
+    if (!expectedToken) {
+      logger.warn('Setup attempt rejected: SETUP_TOKEN is not set, first-run setup is disabled');
+      return res.status(403).json({ error: req.t('errors.setupDisabled') });
+    }
+    if (typeof body.setupToken !== 'string' || !safeEqual(body.setupToken.trim(), expectedToken)) {
+      logger.warn(`Setup attempt rejected: invalid setup token from ${req.ip}`);
+      return res.status(403).json({ error: req.t('errors.setupBadToken') });
+    }
+    if (countAdmins.get() > 0) {
+      return res.status(409).json({ error: req.t('errors.setupDone') });
+    }
+
+    const { error, value } = validate(body, req.t);
+    if (error) return res.status(400).json({ error });
+
+    const passwordHash = await hashPassword(value.ownerPassword);
+    try {
+      const { adminId, userId } = createAdminAndOwner(value, passwordHash);
+      logger.info(`First-run setup complete: admin #${adminId}, owner user #${userId}`);
+      return res.json({ ok: true });
+    } catch (err) {
+      if (err instanceof SetupConflict) {
+        return res.status(409).json({ error: req.t('errors.setupDone') });
+      }
+      throw err;
+    }
+  }));
+
+  return router;
+}
+
+module.exports = createSetupRouter;

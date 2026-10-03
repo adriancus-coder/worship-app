@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="{{LANG}}" data-app-name="{{APP_NAME}}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#141318">
+  <title data-i18n="help.emergency.pageTitle">{{APP_NAME}}</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <nav class="topnav" data-i18n-aria-label="nav.label">
+      <a href="/app" data-i18n="nav.home"></a>
+      <a href="/library" data-i18n="nav.library"></a>
+      <a href="/events" data-i18n="nav.events"></a>
+    </nav>
+    <div class="lang-switch" role="group" aria-label="Limbă / Language">
+      <button type="button" data-lang="ro" lang="ro" aria-pressed="false">RO</button>
+      <button type="button" data-lang="en" lang="en" aria-pressed="false">EN</button>
+    </div>
+  </header>
+  <main class="wide help-page">
+    <h1 data-i18n="help.emergency.heading"></h1>
+    <p data-i18n="help.emergency.intro"></p>
+
+    <section aria-labelledby="before-heading">
+      <h2 id="before-heading" data-i18n="help.emergency.beforeHeading"></h2>
+      <ul>
+        <li data-i18n="help.emergency.beforeSameBrowser"></li>
+        <li data-i18n="help.emergency.beforeOpenEarly"></li>
+        <li data-i18n="help.emergency.beforeNoReload"></li>
+      </ul>
+    </section>
+
+    <section aria-labelledby="hotspot-heading">
+      <h2 id="hotspot-heading" data-i18n="help.emergency.hotspotHeading"></h2>
+      <p data-i18n="help.emergency.hotspotIntro"></p>
+      <ol>
+        <li data-i18n="help.emergency.hotspotStep1"></li>
+        <li data-i18n="help.emergency.hotspotStep2"></li>
+        <li data-i18n="help.emergency.hotspotStep3"></li>
+      </ol>
+      <p class="hint" data-i18n="help.emergency.hotspotData"></p>
+    </section>
+
+    <section aria-labelledby="works-heading">
+      <h2 id="works-heading" data-i18n="help.emergency.worksHeading"></h2>
+      <ul>
+        <li data-i18n="help.emergency.worksMove"></li>
+        <li data-i18n="help.emergency.worksSources"></li>
+        <li data-i18n="help.emergency.worksProjector"></li>
+        <li data-i18n="help.emergency.worksTeam"></li>
+      </ul>
+    </section>
+
+    <section aria-labelledby="not-heading">
+      <h2 id="not-heading" data-i18n="help.emergency.notHeading"></h2>
+      <ul>
+        <li data-i18n="help.emergency.notStartEnd"></li>
+        <li data-i18n="help.emergency.notVideo"></li>
+        <li data-i18n="help.emergency.notEdit"></li>
+        <li data-i18n="help.emergency.notOtherScreens"></li>
+        <li data-i18n="help.emergency.notTeam"></li>
+      </ul>
+    </section>
+
+    <section aria-labelledby="back-heading">
+      <h2 id="back-heading" data-i18n="help.emergency.backHeading"></h2>
+      <p data-i18n="help.emergency.backSame"></p>
+      <p data-i18n="help.emergency.backMoved"></p>
+    </section>
+  </main>
+  <script src="/i18n.js"></script>
+</body>
+</html>

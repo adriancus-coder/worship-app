@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="{{LANG}}" data-app-name="{{APP_NAME}}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#141318">
+  <title data-i18n="team.pageTitle">{{APP_NAME}}</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body data-shell="team" class="list-page">
+  <main class="wide team-page">
+    <div class="page-head">
+      <h1 data-i18n="team.heading"></h1>
+      <button type="button" id="add-person" data-icon="person-plus" data-i18n="team.add" hidden></button>
+      <a class="button secondary" id="my-profile" href="/profile" data-icon="edit" data-i18n="team.myProfile" hidden></a>
+    </div>
+    <p class="muted" id="team-intro" data-i18n="team.intro"></p>
+    <!-- The owner: Persoane · Poziții · Indisponibilități -->
+    <div class="tabs team-tabs" id="team-tabs" role="tablist" data-i18n-aria-label="team.tabsLabel" hidden>
+      <button type="button" role="tab" id="tab-people" aria-controls="people-panel" aria-selected="true" data-tab="people" data-i18n="team.tabs.people"></button>
+      <button type="button" role="tab" id="tab-positions" aria-controls="positions-panel" aria-selected="false" tabindex="-1" data-tab="positions" data-i18n="team.tabs.positions"></button>
+      <button type="button" role="tab" id="tab-roles" aria-controls="roles-panel" aria-selected="false" tabindex="-1" data-tab="roles" data-i18n="team.tabs.roles"></button>
+      <button type="button" role="tab" id="tab-unavail" aria-controls="unavail-panel" aria-selected="false" tabindex="-1" data-tab="unavail" data-i18n="team.tabs.unavailability"></button>
+    </div>
+    <p id="page-message" class="message" role="status" aria-live="polite"></p>
+    <div id="people-panel" role="tabpanel" class="team-pane" data-list-pane="team.heading">
+      <p id="status" class="muted pane-state" role="status" aria-live="polite" data-i18n="events.loading"></p>
+      <ul id="team" class="team-list"></ul>
+      <!-- every other role: the read-only directory -->
+      <ul id="directory" class="team-list directory-list" hidden></ul>
+    </div>
+    <div id="positions-panel" role="tabpanel" class="team-panel" data-list-pane="team.tabs.positions" hidden>
+      <p class="hint" data-i18n="positions.intro"></p>
+      <div id="positions-editor"></div>
+    </div>
+    <div id="roles-panel" role="tabpanel" class="team-panel" data-list-pane="team.tabs.roles" hidden>
+      <div id="roles-editor"></div>
+    </div>
+    <div id="unavail-panel" role="tabpanel" class="team-panel" data-list-pane="team.tabs.unavailability" hidden>
+      <h2 class="team-panel-heading" data-i18n="team.unavailAllHeading"></h2>
+      <ul id="unavail-all" class="unavail-all"></ul>
+      <p id="unavail-all-empty" class="muted" data-i18n="team.noUnavailability" hidden></p>
+      <section class="unavail" id="unavail" aria-labelledby="unavail-heading">
+        <h2 id="unavail-heading" data-i18n="team.unavailMineHeading"></h2>
+        <ul id="unavail-list" class="unavail-list"></ul>
+        <p id="unavail-empty" class="muted" data-i18n="unavail.empty"></p>
+        <form id="unavail-form" class="unavail-form" novalidate>
+          <div class="field-row">
+            <div class="field"><label for="u-from" data-i18n="unavail.fromLabel"></label><input type="date" id="u-from" required></div>
+            <div class="field"><label for="u-to" data-i18n="unavail.toLabel"></label><input type="date" id="u-to"></div>
+          </div>
+          <div class="field"><label for="u-note" data-i18n="unavail.noteLabel"></label><input type="text" id="u-note" maxlength="120"></div>
+          <p id="unavail-message" class="message" role="status" aria-live="polite"></p>
+          <button type="submit" class="secondary" id="u-add" data-icon="plus" data-i18n="unavail.add"></button>
+        </form>
+      </section>
+    </div>
+
+    <dialog id="add-dialog" aria-labelledby="add-heading">
+      <form id="add-form" method="dialog" novalidate>
+        <h2 id="add-heading" data-i18n="team.addHeading"></h2>
+        <label><span data-i18n="team.nameLabel"></span><input type="text" id="add-name" maxlength="100" autocomplete="off" required></label>
+        <label><span data-i18n="team.emailLabel"></span><input type="email" id="add-email" maxlength="254" inputmode="email" autocomplete="off" autocapitalize="off" spellcheck="false" required></label>
+        <fieldset class="role-choice">
+          <legend data-i18n="team.roleLabel"></legend>
+          <label class="role-option"><input type="radio" name="add-role" value="presenter"><span><strong><span class="role-emoji" aria-hidden="true">🎙️</span> <span data-i18n="team.roles.presenter"></span></strong><span class="hint" data-i18n="team.roleHelp.presenter"></span></span></label>
+          <label class="role-option"><input type="radio" name="add-role" value="leader"><span><strong><span class="role-emoji" aria-hidden="true">⭐</span> <span data-i18n="team.roles.leader"></span></strong><span class="hint" data-i18n="team.roleHelp.leader"></span></span></label>
+          <label class="role-option"><input type="radio" name="add-role" value="operator"><span><strong><span class="role-emoji" aria-hidden="true">💻</span> <span data-i18n="team.roles.operator"></span></strong><span class="hint" data-i18n="team.roleHelp.operator"></span></span></label>
+          <label class="role-option"><input type="radio" name="add-role" value="member" checked><span><strong><span class="role-emoji" aria-hidden="true">🎵</span> <span data-i18n="team.roles.member"></span></strong><span class="hint" data-i18n="team.roleHelp.member"></span></span></label>
+          <div id="add-custom-roles" class="role-custom-options"></div>
+        </fieldset>
+        <p id="add-message" class="message error" role="alert"></p>
+        <p id="add-email-hint" class="hint" hidden data-i18n="team.sendInviteHint"></p>
+        <div class="form-actions">
+          <button type="submit" id="add-submit-email" value="email" hidden data-icon="mail" data-i18n="team.sendInvite"></button>
+          <button type="submit" id="add-submit" value="add" data-icon="person-plus" data-i18n="team.create"></button>
+          <button type="button" class="secondary" data-close data-i18n="team.cancel"></button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="edit-dialog" aria-labelledby="edit-heading">
+      <form id="edit-form" method="dialog" novalidate>
+        <h2 id="edit-heading" data-i18n="team.editHeading"></h2>
+        <label><span data-i18n="team.nameLabel"></span><input type="text" id="edit-name" maxlength="100" autocomplete="off" required></label>
+        <label><span data-i18n="team.emailLabel"></span><input type="email" id="edit-email" maxlength="254" inputmode="email" autocomplete="off" autocapitalize="off" spellcheck="false" required></label>
+        <label><span data-i18n="team.roleLabel"></span>
+          <select id="edit-role">
+            <option value="presenter" data-i18n="team.roles.presenter"></option>
+            <option value="leader" data-i18n="team.roles.leader"></option>
+            <option value="operator" data-i18n="team.roles.operator"></option>
+            <option value="member" data-i18n="team.roles.member"></option>
+          </select>
+        </label>
+        <p id="edit-role-help" class="hint"></p>
+        <fieldset class="positions-choice">
+          <legend data-i18n="team.positionsLabel"></legend>
+          <div id="edit-positions" class="checkbox-list"></div>
+        </fieldset>
+        <p id="edit-message" class="message error" role="alert"></p>
+        <div class="form-actions">
+          <button type="submit" id="edit-submit" data-icon="check" data-i18n="team.save"></button>
+          <button type="button" class="secondary" data-close data-i18n="team.cancel"></button>
+        </div>
+      </form>
+    </dialog>
+
+    <!-- one person's card (everyone): tap a name -->
+    <dialog id="person-dialog" class="person-dialog" aria-labelledby="person-heading">
+      <h2 id="person-heading"></h2>
+      <div id="person-body"></div>
+      <div class="form-actions"><button type="button" class="secondary" id="person-close"></button></div>
+    </dialog>
+
+    <dialog id="confirm-dialog" aria-labelledby="confirm-heading">
+      <h2 id="confirm-heading"></h2>
+      <p id="confirm-text"></p>
+      <p id="confirm-message" class="message error" role="alert"></p>
+      <div class="form-actions">
+        <button type="button" id="confirm-yes"></button>
+        <button type="button" class="secondary" data-close data-i18n="team.cancel"></button>
+      </div>
+    </dialog>
+
+    <dialog id="result-dialog" class="result-dialog" aria-labelledby="result-heading">
+      <h2 id="result-heading"></h2>
+      <p class="result-warning" role="alert" data-i18n="team.shownOnce"></p>
+      <dl class="result-card">
+        <dt data-i18n="team.emailLabel"></dt>
+        <dd id="result-email"></dd>
+        <dt data-i18n="team.temporaryPassword"></dt>
+        <dd id="result-password" class="result-password" translate="no"></dd>
+      </dl>
+      <button type="button" class="secondary" id="copy-password" data-icon="copy" data-i18n="team.copy"></button>
+      <label class="result-message-label"><span data-i18n="team.messageLabel"></span>
+        <textarea id="result-message" rows="5" readonly></textarea>
+      </label>
+      <div class="form-actions">
+        <button type="button" id="copy-message" data-icon="copy" data-i18n="team.copyMessage"></button>
+        <button type="button" class="secondary" id="share-message" hidden data-icon="share" data-i18n="team.share"></button>
+      </div>
+      <p id="copy-status" class="message success" role="status" aria-live="polite"></p>
+      <div class="form-actions">
+        <button type="button" class="secondary" data-close data-i18n="team.done"></button>
+      </div>
+    </dialog>
+  </main>
+  <script src="/i18n.js"></script>
+  <script src="/page.js"></script>
+  <script src="/list-pane.js"></script>
+  <script src="/shell.js"></script>
+  <script src="/positions-editor.js"></script>
+  <script src="/roles-editor.js"></script>
+  <script src="/unavailability.js"></script>
+  <script src="/team.js"></script>
+</body>
+</html>

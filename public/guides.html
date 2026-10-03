@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="{{LANG}}" data-app-name="{{APP_NAME}}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#141318">
+  <title data-i18n="guides.heading">{{APP_NAME}}</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body data-shell="more" class="list-page">
+  <main>
+    <div class="page-head">
+      <h1 data-i18n="guides.heading"></h1>
+      <button type="button" id="guide-add" hidden data-icon="plus" data-i18n="guides.add"></button>
+    </div>
+    <p class="hint" data-i18n="guides.intro"></p>
+    <div class="choice-group guides-filter" id="guides-filter" role="group" data-i18n-aria-label="guides.filterLabel" hidden>
+      <button type="button" data-filter="mine" aria-pressed="true" data-i18n="guides.forMine"></button>
+      <button type="button" data-filter="all" aria-pressed="false" data-i18n="guides.all"></button>
+    </div>
+    <p id="page-message" class="message" role="status" aria-live="polite"></p>
+    <div id="guides-pane" data-list-pane="guides.heading">
+      <p id="guides-status" class="muted pane-state" role="status" aria-live="polite" data-i18n="guides.loading"></p>
+      <ul id="guides-list" class="guides-list"></ul>
+    </div>
+
+    <dialog id="guide-dialog" aria-labelledby="guide-dialog-heading">
+      <form id="guide-form" method="dialog" novalidate>
+        <h2 id="guide-dialog-heading" data-i18n="guides.newHeading"></h2>
+        <div class="field-row role-name-row">
+          <label class="field role-name-field"><span data-i18n="guides.titleLabel"></span><input type="text" id="g-title" maxlength="80" autocomplete="off" required></label>
+          <label class="field"><span data-i18n="guides.emojiLabel"></span><input type="text" id="g-emoji" class="position-emoji-input" maxlength="16" autocomplete="off"></label>
+        </div>
+        <label><span data-i18n="guides.summaryLabel"></span><textarea id="g-summary" rows="2" maxlength="300"></textarea></label>
+        <fieldset class="positions-choice">
+          <legend data-i18n="guides.positionsLabel"></legend>
+          <p class="hint" data-i18n="guides.positionsHint"></p>
+          <div id="g-positions" class="checkbox-list"></div>
+        </fieldset>
+        <!-- ✨ AI (only when the server has it): a draft of the steps from a description + photos -->
+        <fieldset class="positions-choice guide-ai" id="g-ai" hidden>
+          <legend data-i18n="guides.aiHeading"></legend>
+          <p class="hint" data-i18n="guides.aiIntro"></p>
+          <label><span data-i18n="guides.aiDescLabel"></span><textarea id="g-ai-desc" rows="3" maxlength="2000"></textarea></label>
+          <label class="button secondary guide-photo-pick" data-icon="plus"><input type="file" id="g-ai-photos" class="sr-only" accept="image/*" multiple><span data-i18n="guides.aiPhotos"></span></label>
+          <p id="g-ai-count" class="hint"></p>
+          <div class="form-actions"><button type="button" class="secondary" id="g-ai-draft" data-icon="sparkle" data-i18n="guides.aiDraft"></button></div>
+          <p id="g-ai-status" class="message" role="status" aria-live="polite"></p>
+          <div id="g-ai-preview" class="guide-ai-preview" hidden></div>
+        </fieldset>
+        <p id="guide-message" class="message error" role="alert"></p>
+        <div class="form-actions">
+          <button type="submit" id="g-create" data-icon="check" data-i18n="guides.create"></button>
+          <button type="button" class="secondary" data-close data-i18n="guides.cancel"></button>
+        </div>
+      </form>
+    </dialog>
+  </main>
+  <script src="/i18n.js"></script>
+  <script src="/page.js"></script>
+  <script src="/list-pane.js"></script>
+  <script src="/shell.js"></script>
+  <script src="/guides.js"></script>
+</body>
+</html>

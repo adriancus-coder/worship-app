@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="{{LANG}}" data-app-name="{{APP_NAME}}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#141318">
+  <title data-i18n="guides.heading">{{APP_NAME}}</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body data-shell="more">
+  <main class="guide-page">
+    <p class="back"><a id="back-link" href="/guides" data-i18n="guides.back"></a></p>
+    <p id="guide-status" class="muted" role="status" aria-live="polite" data-i18n="guides.loading"></p>
+    <article id="guide" hidden>
+      <div class="page-head">
+        <h1 id="guide-title"></h1>
+        <button type="button" class="secondary" id="guide-edit" hidden data-icon="edit"></button>
+      </div>
+      <p id="guide-summary" class="guide-lead"></p>
+      <p id="guide-for" class="muted"></p>
+      <p id="guide-message" class="message" role="status" aria-live="polite"></p>
+
+      <!-- editing: the guide's details -->
+      <form id="guide-details" class="guide-details" novalidate hidden>
+        <h2 data-i18n="guides.details"></h2>
+        <div class="field-row role-name-row">
+          <label class="field role-name-field"><span data-i18n="guides.titleLabel"></span><input type="text" id="d-title" maxlength="80" autocomplete="off" required></label>
+          <label class="field"><span data-i18n="guides.emojiLabel"></span><input type="text" id="d-emoji" class="position-emoji-input" maxlength="16" autocomplete="off"></label>
+        </div>
+        <label><span data-i18n="guides.summaryLabel"></span><textarea id="d-summary" rows="2" maxlength="300"></textarea></label>
+        <fieldset class="positions-choice">
+          <legend data-i18n="guides.positionsLabel"></legend>
+          <p class="hint" data-i18n="guides.positionsHint"></p>
+          <div id="d-positions" class="checkbox-list"></div>
+        </fieldset>
+        <div class="form-actions"><button type="submit" class="secondary" id="d-save" data-icon="check" data-i18n="guides.save"></button></div>
+      </form>
+
+      <section class="guide-section" aria-labelledby="steps-heading">
+        <div class="guide-section-head">
+          <h2 id="steps-heading" data-i18n="guides.stepsHeading"></h2>
+          <span id="guide-progress" class="muted" role="status" aria-live="polite"></span>
+          <button type="button" class="secondary" id="guide-restart" hidden data-icon="restart" data-i18n="guides.restart"></button>
+        </div>
+        <ol id="steps" class="guide-items guide-steps"></ol>
+        <div id="add-step" class="guide-add" hidden></div>
+      </section>
+
+      <section class="guide-section" aria-labelledby="problems-heading">
+        <h2 id="problems-heading" data-i18n="guides.problemsHeading"></h2>
+        <ul id="problems" class="guide-items guide-problems"></ul>
+        <div id="add-problem" class="guide-add" hidden></div>
+      </section>
+
+      <!-- ✨ AI (only when the server has it): an answer from this guide only -->
+      <form id="guide-ask" class="guide-ask" novalidate hidden>
+        <h2 data-i18n="guides.askHeading"></h2>
+        <label for="ask-q" data-i18n="guides.askLabel"></label>
+        <div class="guide-ask-row">
+          <input type="text" id="ask-q" maxlength="500" autocomplete="off">
+          <button type="submit" class="secondary" id="ask-go" data-icon="sparkle" data-i18n="guides.askButton"></button>
+        </div>
+        <p id="ask-status" class="message" role="status" aria-live="polite"></p>
+        <p id="ask-answer" class="guide-answer" hidden></p>
+        <p id="ask-note" class="hint" hidden data-i18n="guides.askNote"></p>
+      </form>
+
+      <div id="guide-delete" class="guide-delete" hidden></div>
+    </article>
+  </main>
+  <script src="/i18n.js"></script>
+  <script src="/page.js"></script>
+  <script src="/shell.js"></script>
+  <script src="/guide.js"></script>
+</body>
+</html>

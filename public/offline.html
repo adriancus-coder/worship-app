@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="{{LANG}}" data-app-name="{{APP_NAME}}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title data-i18n="offline.pageTitle">{{APP_NAME}}</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <main class="offline-page">
+    <img class="offline-icon" src="/icons/icon-192.png" alt="" width="72" height="72">
+    <h1 data-i18n="offline.heading"></h1>
+    <p data-i18n="offline.text"></p>
+    <p class="hint" data-i18n="offline.hint"></p>
+    <button type="button" id="retry" data-icon="restart" data-i18n="offline.retry"></button>
+    <p><a href="/help/emergency" data-i18n="offline.help"></a></p>
+  </main>
+  <script src="/i18n.js"></script>
+  <script src="/offline.js"></script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- worship-app icon: an eighth note in the accent colour on the stage background. -->
+  <rect width="512" height="512" rx="112" fill="#141318"/>
+  <g fill="#E8A33D">
+    <ellipse cx="214" cy="358" rx="70" ry="54" transform="rotate(-22 214 358)"/>
+    <rect x="262" y="124" width="26" height="236" rx="9"/>
+    <path d="M275 124 C 300 150, 370 162, 372 232 C 373 262, 352 290, 336 302 C 350 272, 352 240, 330 218 C 312 200, 290 196, 275 196 Z"/>
+  </g>
+</svg>
