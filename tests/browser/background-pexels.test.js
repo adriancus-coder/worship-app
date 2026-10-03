@@ -36,6 +36,8 @@ module.exports = {
       // "Adaugă": the projector-size photo, attribution in the list
       await p.click('#pexels-grid .pexels-item >> nth=0 >> button');
       await p.waitForFunction(() => document.getElementById('pexels-message').classList.contains('success'), null, { timeout: 15000 });
+      // the tile is drawn again after the message: wait for its new label
+      await p.waitForFunction(() => /(Adăugată|Added)/.test(document.querySelector('#pexels-grid .pexels-item button').textContent), null, { timeout: 5000 }).catch(() => {});
       check(/Ana Fotograf/.test(await p.textContent('#pexels-message')) && /(Adăugată|Added)/.test(await p.locator('#pexels-grid .pexels-item').first().locator('button').textContent()), `${tag} "Adaugă": stored, the tile says Adăugată`, await p.textContent('#pexels-message'));
       await p.waitForSelector('.media-row:has-text("Blue sky")');
       const row = await p.locator('.media-row', { hasText: 'Blue sky' }).first().evaluate((li) => ({ source: (li.querySelector('.media-source') || {}).textContent, link: (li.querySelector('.media-source a') || {}).getAttribute && li.querySelector('.media-source a').getAttribute('href') }));
