@@ -81,7 +81,7 @@ module.exports = {
       await p.waitForSelector('#directory .directory-row');
       const d = await p.evaluate(() => ({
         current: document.querySelector('#app-shell .shell-item[aria-current="page"]').dataset.section,
-        rows: document.querySelectorAll('#directory .directory-row').length, buttons: document.querySelectorAll('#directory button').length,
+        rows: document.querySelectorAll('#directory .directory-row').length, buttons: document.querySelectorAll('#directory button:not(.person-open)').length,
         text: document.getElementById('directory').innerText, tabs: document.getElementById('team-tabs').hidden, add: document.getElementById('add-person').hidden,
         profile: !document.getElementById('my-profile').hidden && document.getElementById('my-profile').getAttribute('href') === '/profile',
         emails: /@/.test(document.querySelector('main').innerText), phones: /\+40|\d{3} \d{3}/.test(document.getElementById('directory').innerText),

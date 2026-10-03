@@ -12,6 +12,10 @@
 (function () {
   const { api, el, setTitle, formatDate } = window.PAGE;
   const { t } = window.I18N;
+  // "Indisponibil: <dates> · <reason>" (the reason when the person wrote one).
+  const yearNow = () => String(new Date().getFullYear());
+  const rangeText = (r) => (r.dateFrom === r.dateTo ? formatDate(r.dateFrom, yearNow()) : t('unavail.range', { from: formatDate(r.dateFrom, yearNow()), to: formatDate(r.dateTo, yearNow()) }));
+  const unavailText = (r) => (r.note ? t('team.unavailableWhy', { when: rangeText(r), note: r.note }) : t('team.unavailable', { when: rangeText(r) }));
   const $ = (id) => document.getElementById(id);
   const state = { users: [], positions: [], roles: [], baseUrl: null, emailEnabled: false, meId: null, editing: null, confirm: null, result: null };
   const positionName = (id) => { const p = state.positions.find((x) => x.id === id); return p ? window.PAGE.positionLabel(p) : null; };
@@ -39,6 +43,47 @@
 
   // --- list -------------------------------------------------------------------------
 
+  // --- one person's card (everyone): tap the name -----------------------------------------
+  function personButton(user) {
+    return el('button', { type: 'button', class: 'person-open', 'data-person': String(user.id), 'aria-label': t('team.person.open', { name: user.name }), onclick: () => openPerson(user.id) },
+      el('span', { text: user.name }), el('span', { class: 'person-chevron', 'aria-hidden': 'true', text: '›' }));
+  }
+
+  async function openPerson(id) {
+    const res = await api(`/api/team/directory/${id}`);
+    if (!res.ok) return;
+    const d = res.body;
+    const u = d.user;
+    const roleOf = (x) => { const c = x.customRoleId ? (d.roles || []).find((r) => r.id === x.customRoleId) : null; return c ? (c.emoji ? `${c.emoji} ${c.name}` : c.name) : window.PAGE.roleLabel(x.role); };
+    const posLabel = (pid) => { const p = d.positions.find((x) => x.id === pid); return p ? window.PAGE.positionLabel(p) : null; };
+    const section = (heading, ...children) => el('section', { class: 'person-section' }, el('h3', { text: heading }), ...children);
+    const when = (a) => `${formatDate(a.eventDate, d.today.slice(0, 4))}${a.startTime ? ` · ${a.startTime}` : ''}`;
+    $('person-body').replaceChildren(
+      el('p', { class: 'team-meta' }, el('span', { class: `pill role-pill role-${u.role}`, text: roleOf(u) }),
+        u.active ? null : el('span', { class: 'pill status-pill status-inactive', text: t('team.person.inactive') })),
+      'email' in u ? section(t('team.person.contactHeading'),
+        el('p', { class: 'person-line' }, el('a', { href: `mailto:${u.email}`, text: u.email })),
+        el('p', { class: 'person-line' }, u.phone ? el('a', { href: `tel:${u.phone.replace(/\s+/g, '')}`, text: u.phone }) : el('span', { class: 'muted', text: t('team.person.noPhone') }))) : null,
+      section(t('team.person.positionsHeading'), u.positionIds.length
+        ? el('p', { class: 'team-positions' }, ...u.positionIds.map(posLabel).filter(Boolean).map((name) => el('span', { class: 'pill position-pill', text: name })))
+        : el('p', { class: 'muted', text: t('team.noPositions') })),
+      section(t('team.person.unavailHeading'), u.unavailability.length
+        ? el('ul', { class: 'person-list' }, ...u.unavailability.map((r) => el('li', { class: 'person-unavail' },
+          el('span', { class: 'person-when', text: rangeText(r) }), r.note ? el('span', { class: 'person-note', text: r.note }) : null)))
+        : el('p', { class: 'muted', text: t('team.person.noUnavail') })),
+      section(t('team.person.upcomingHeading'), d.upcoming.length
+        ? el('ul', { class: 'person-list' }, ...d.upcoming.map((a) => el('li', { class: 'person-event' },
+          el('a', { class: 'person-event-name', href: `/events/${a.eventId}`, text: a.eventName }),
+          el('span', { class: 'muted', text: `${when(a)} · ${window.PAGE.positionLabel({ name: a.positionName, emoji: a.positionEmoji })}` }),
+          el('span', { class: `pill assign-pill assign-${a.status}`, text: t(`assign.status.${a.status}`) }),
+          a.note ? el('span', { class: 'person-note', text: a.note }) : null)))
+        : el('p', { class: 'muted', text: t('team.person.noUpcoming') })));
+    $('person-heading').textContent = u.name;
+    $('person-close').textContent = t('team.person.close');
+    $('person-dialog').showModal();
+  }
+  $('person-close').addEventListener('click', () => $('person-dialog').close());
+
   function render() {
     setTitle('team.pageTitle');
     $('team').replaceChildren(...state.users.map((user) => {
@@ -46,7 +91,7 @@
       const status = statusOf(user);
       return el('li', { class: `team-row${user.active ? '' : ' inactive'}` },
         el('div', { class: 'team-main' },
-          el('p', { class: 'team-name' }, el('span', { text: user.name }),
+          el('p', { class: 'team-name' }, personButton(user),
             user.id === state.meId ? el('span', { class: 'muted', text: ` · ${t('team.you')}` }) : null),
           el('p', { class: 'team-email', text: user.email }),
           el('p', { class: 'team-meta' },
@@ -54,7 +99,7 @@
             owner ? null : el('span', { class: `pill status-pill status-${status}`, text: t(`team.status.${status}`) }),
             el('span', { class: 'muted', text: lastLogin(user.lastLoginAt) })),
           // "Indisponibil" (lib/unavailability.js): the person's upcoming ranges, for the owner.
-          (user.unavailability || []).length ? el('p', { class: 'team-unavail' }, ...user.unavailability.map((r) => el('span', { class: 'pill unavail-pill', text: t('team.unavailable', { when: r.dateFrom === r.dateTo ? formatDate(r.dateFrom, String(new Date().getFullYear())) : t('unavail.range', { from: formatDate(r.dateFrom, String(new Date().getFullYear())), to: formatDate(r.dateTo, String(new Date().getFullYear())) }) }) }))) : null,
+          (user.unavailability || []).length ? el('p', { class: 'team-unavail' }, ...user.unavailability.map((r) => el('span', { class: 'pill unavail-pill', text: unavailText(r) }))) : null,
           // The person's usual positions (lib/positions.js), the pickers' default suggestions.
           el('p', { class: 'team-positions' }, ...((user.positionIds || []).map(positionName).filter(Boolean).length
             ? user.positionIds.map(positionName).filter(Boolean).map((name) => el('span', { class: 'pill position-pill', text: name }))
@@ -358,15 +403,14 @@
   }
 
   function renderDirectory() {
-    const year = String(new Date().getFullYear());
     $('directory').replaceChildren(...state.users.map((user) => el('li', { class: 'team-row directory-row' },
       el('div', { class: 'team-main' },
-        el('p', { class: 'team-name' }, el('span', { text: user.name }), user.me ? el('span', { class: 'muted', text: ` · ${t('team.you')}` }) : null),
+        el('p', { class: 'team-name' }, personButton(user), user.me ? el('span', { class: 'muted', text: ` · ${t('team.you')}` }) : null),
         el('p', { class: 'team-meta' }, el('span', { class: `pill role-pill role-${user.role}`, text: personRole(user) })),
         el('p', { class: 'team-positions' }, ...((user.positionIds || []).map(positionName).filter(Boolean).length
           ? user.positionIds.map(positionName).filter(Boolean).map((name) => el('span', { class: 'pill position-pill', text: name }))
           : [el('span', { class: 'muted', text: t('team.noPositions') })])),
-        (user.unavailability || []).length ? el('p', { class: 'team-unavail' }, ...user.unavailability.map((r) => el('span', { class: 'pill unavail-pill', text: t('team.unavailable', { when: r.dateFrom === r.dateTo ? formatDate(r.dateFrom, year) : t('unavail.range', { from: formatDate(r.dateFrom, year), to: formatDate(r.dateTo, year) }) }) }))) : null))));
+        (user.unavailability || []).length ? el('p', { class: 'team-unavail' }, ...user.unavailability.map((r) => el('span', { class: 'pill unavail-pill', text: unavailText(r) }))) : null))));
   }
 
   (async () => {

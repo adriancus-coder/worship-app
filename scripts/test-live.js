@@ -1729,6 +1729,16 @@ async function main() {
     assert.deepStrictEqual([dup.status, dup.body.ranges.length, dup.body.range.id], [201, 1, again.body.range.id], 'the same dates: the existing range');
     await new Promise((r) => setTimeout(r, 100));
     assert.strictEqual((await notices(owner)).length, o0 + 1, 'no second notice');
+    // the person's card (everyone): the reason of the unavailability, the coming events; an
+    // assignment's note only for those who see notes; email / phone only for the owner
+    const card = (await api('GET', `/api/team/directory/${memberId}`, operator)).body;
+    assert.ok(card.user.unavailability.some((r) => r.dateFrom === '2026-11-01'), 'the ranges');
+    assert.ok(card.upcoming.some((a) => a.eventId === evU.id && a.positionName), 'the coming events with the position');
+    assert.ok(!('email' in card.user) && !('phone' in card.user), 'no email / phone for the team');
+    const asOwner = (await api('GET', `/api/team/directory/${memberId}`, owner)).body;
+    assert.strictEqual(asOwner.user.email, 'membru@x.ro', 'the owner sees the email');
+    assert.strictEqual((await api('GET', '/api/team/directory/999999', member)).status, 404);
+    assert.strictEqual((await api('GET', `/api/team/directory/${memberId}`, other)).status, 404, 'another church');
     await api('DELETE', `/api/me/unavailability/${again.body.range.id}`, member);
     await api('DELETE', `/api/events/${evU.id}`, owner);
     await api('DELETE', `/api/events/${evFree.id}`, owner);

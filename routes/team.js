@@ -9,7 +9,8 @@ const { createPositionStore } = require('../lib/positions');
 const { createUnavailabilityStore } = require('../lib/unavailability');
 const { todayIn } = require('../lib/dates');
 const { createAdminSettings } = require('../lib/admin-settings');
-const { createRoleStore } = require('../lib/roles');
+const { createRoleStore, can, seesAllEvents } = require('../lib/roles');
+const { createAssignmentStore } = require('../lib/assignments');
 
 // The owner manages the admin's team: accounts with temporary passwords (shown once, never
 // logged), role and name changes, deactivation, password resets. Owner only; another admin's
@@ -21,6 +22,7 @@ function createTeamRouter({ db, auth, config, logger, live, email, invites }) {
   const unavailability = createUnavailabilityStore(db);
   const settings = createAdminSettings(db);
   const roles = createRoleStore(db);
+  const assignments = createAssignmentStore(db);
   // A role choice: a built-in role ('member', …) or a role the owner created ('custom:<id>').
   // -> { value: { role, customRoleId } } or { error }
   function roleChoice(req, value) {
@@ -43,6 +45,33 @@ function createTeamRouter({ db, auth, config, logger, live, email, invites }) {
     const users = withPositions(req.adminId, team.list(req.adminId)).filter((u) => u.active)
       .map((u) => ({ id: u.id, name: u.name, role: u.role, customRoleId: u.customRoleId, positionIds: u.positionIds, unavailability: busy.get(u.id) || [], me: u.id === req.user.id }));
     res.json({ users, positions: positions.list(req.adminId), roles: roles.list(req.adminId).map(({ id, name, emoji, base }) => ({ id, name, emoji, base })) });
+  });
+
+  // One person's card (every role): role, positions, upcoming unavailability with its reason,
+  // the coming events they are scheduled for. An assignment's note only for those who see
+  // the event's notes (the events / live / schedule rights) or the person; email and phone
+  // only for the owner.
+  router.get('/api/team/directory/:id', auth.requireUser, (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    const id = /^\d{1,15}$/.test(req.params.id) ? Number(req.params.id) : null;
+    const member = id && team.get(req.adminId, id);
+    if (!member || (!member.active && req.user.role !== 'owner')) return res.status(404).json({ error: req.t('errors.teamUserNotFound') });
+    const day = todayIn(settings.timezone(req.adminId));
+    const self = member.id === req.user.id;
+    const notes = self || seesAllEvents(req.user) || can(req.user, 'schedule');
+    const owner = req.user.role === 'owner';
+    res.json({
+      user: {
+        id: member.id, name: member.name, role: member.role, customRoleId: member.customRoleId, active: member.active, me: self,
+        positionIds: positions.ofUserIds(req.adminId, member.id),
+        unavailability: unavailability.listForUser(req.adminId, member.id, day),
+        ...(owner ? { email: member.email, phone: member.phone } : {}),
+      },
+      upcoming: assignments.upcomingForUser(req.adminId, member.id, day).map((a) => (notes ? a : { ...a, note: null })),
+      positions: positions.list(req.adminId),
+      roles: roles.list(req.adminId).map(({ id: rid, name, emoji, base }) => ({ id: rid, name, emoji, base })),
+      today: day,
+    });
   });
 
   router.use('/api/team', auth.requireUser, requireRole('owner'), (req, res, next) => {
