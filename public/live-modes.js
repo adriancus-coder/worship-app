@@ -87,7 +87,7 @@
     // The holder answers; an owner always may (not their own request).
     const canAnswer = () => Boolean(me && (isHolder() || (me.role === 'owner' && !mine())));
     const secondsLeft = () => Math.max(0, Math.ceil((pending().expiresAt - Date.now()) / 1000));
-    const roleName = (role) => (role ? t(`team.roles.${role}`) : '');
+    const roleName = (role) => (role ? window.PAGE.roleName(role) : '');
     const personLabel = (p) => `${p.name || t('live.modes.someone')} (${roleName(p.role)})`;
     const holderName = () => (holder() ? holder().name || t('live.modes.someone') : t('live.modes.nobody'));
     // The other event-role people connected (from the presence), for "Predă lui …".

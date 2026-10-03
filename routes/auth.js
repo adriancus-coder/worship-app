@@ -6,12 +6,14 @@ const { DUMMY_HASH, verifyPassword } = require('../lib/auth');
 const { createFailureLimiter } = require('../lib/rate-limit');
 const { isLang, setLangCookie } = require('../lib/i18n');
 const { createAdminSettings } = require('../lib/admin-settings');
+const { createRoleStore } = require('../lib/roles');
 const { setThemeCookie, themeCookie } = require('../lib/theme');
 
 function createAuthRouter({ db, auth, config, logger, live }) {
   const router = express.Router();
   const limiter = createFailureLimiter({ maxFailures: 5, windowMs: 15 * 60 * 1000 });
   const settings = createAdminSettings(db);
+  const roleStore = createRoleStore(db);
 
   const findUser = db.prepare(`SELECT u.id, u.admin_id, u.name, u.email, u.role, u.locale, u.theme, u.password_hash,
       a.name AS admin_name
@@ -93,6 +95,7 @@ function createAuthRouter({ db, auth, config, logger, live }) {
       admin: req.admin,
       platformOwner: Boolean(req.platformOwner), // "Mai mult → Platformă"
       platformAccount: Boolean(req.platformAccount), // the account is the platform's owner (even viewing as)
+      roleNames: roleStore.names(req.adminId), // built-in roles the owner renamed: { role: { name, emoji } }
     });
   });
 

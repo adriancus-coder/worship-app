@@ -101,7 +101,7 @@ function createTeamRouter({ db, auth, config, logger, live, email, invites }) {
     const busy = unavailability.byUser(req.adminId, todayIn(settings.timezone(req.adminId)));
     res.json({
       users: withPositions(req.adminId, team.list(req.adminId)).map((u) => ({ ...u, unavailability: busy.get(u.id) || [] })),
-      positions: positions.list(req.adminId), roles: roles.list(req.adminId), baseUrl: config.PUBLIC_BASE_URL, emailEnabled: email.enabled,
+      positions: positions.list(req.adminId), roles: roles.list(req.adminId), builtins: roles.builtins(req.adminId), baseUrl: config.PUBLIC_BASE_URL, emailEnabled: email.enabled,
     });
   });
 

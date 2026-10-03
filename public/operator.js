@@ -116,7 +116,7 @@
   function renderBanner() {
     const mode = !live() ? 'notLive' : state.snap.mode;
     const holder = live() && state.snap.holder;
-    const name = holder ? `${holder.name || t('live.modes.someone')} (${t(`team.roles.${holder.role}`)})` : t('live.modes.nobody');
+    const name = holder ? `${holder.name || t('live.modes.someone')} (${window.PAGE.roleName(holder.role)})` : t('live.modes.nobody');
     $('mode-banner').dataset.mode = mode;
     $('mode-title').textContent = t(`operator.banner.${mode}`, { name });
     $('mode-detail').textContent = t(`operator.banner.${mode}Detail`, { name });

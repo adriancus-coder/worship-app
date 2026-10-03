@@ -69,6 +69,31 @@ module.exports = {
     check(/Membru/.test(await person.locator('.role-pill').textContent()), 'deleted: the person is a member again');
     const me = (await app.api(app.cookies.member, 'GET', '/api/auth/me')).body.user;
     check(me.role === 'member' && me.perms.length === 0 && !me.customRole, 'API: member, no rights', me);
+    // a built-in role, reshaped by the owner: "Membru" -> "Voluntar" with the Ghiduri right
+    await o.click('#tab-roles');
+    await o.click('[data-edit-builtin="member"]');
+    await o.waitForSelector('#role-dialog[open]');
+    check(await o.isHidden('#role-base-choice') && /Membru/.test(await o.textContent('#role-builtin-note')), 'a built-in role: no "Se deschide ca" choice, a note instead');
+    await o.fill('#role-name', 'Voluntar');
+    await o.fill('#role-emoji', '🙋');
+    await o.check('#role-dialog input[name="role-perm"][value="guides"]');
+    await o.click('#role-save');
+    await o.waitForFunction(() => /Voluntar/.test(document.querySelector('[data-builtin="member"]').textContent));
+    check(/🙋 Voluntar · modificat/.test(await o.textContent('[data-builtin="member"]')) && /Ghiduri/.test(await o.textContent('[data-builtin="member"]')), 'the list: the new name, "modificat", the new right');
+    await o.click('#tab-people');
+    await o.waitForFunction(() => [...document.querySelectorAll('#team .role-pill')].some((p) => /🙋 Voluntar/.test(p.textContent)));
+    check(true, 'Echipa: the members show as "🙋 Voluntar"');
+    const mv = await signIn('member', { width: 375, lang: 'ro' });
+    await mv.goto(`${app.url}/guides`);
+    await mv.waitForSelector('#guide-add:not([hidden])');
+    check(true, 'the member now has "Ghid nou" (the Ghiduri right)');
+    await mv.context().close();
+    // back to the default
+    await o.click('#tab-roles');
+    await o.click('[data-edit-builtin="member"]');
+    await o.click('#role-reset');
+    await o.waitForFunction(() => !/Voluntar/.test(document.querySelector('[data-builtin="member"]').textContent));
+    check(/🎵 Membru/.test(await o.textContent('[data-builtin="member"]')), '"Revino la implicit": Membru again');
     await o.context().close();
   },
 };

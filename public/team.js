@@ -132,6 +132,7 @@
     state.users = res.body.users;
     state.positions = res.body.positions || [];
     state.roles = res.body.roles || [];
+    state.builtins = res.body.builtins || [];
     renderRoleOptions();
     state.baseUrl = res.body.baseUrl;
     state.emailEnabled = Boolean(res.body.emailEnabled);
@@ -339,6 +340,14 @@
     select.replaceChildren(...BUILT_IN.map((role) => el('option', { value: role, text: window.PAGE.roleLabel(role) })),
       ...state.roles.map((r) => el('option', { value: `custom:${r.id}`, text: r.emoji ? `${r.emoji} ${r.name}` : r.name })));
     if (current) select.value = current;
+    // the built-in radios of "Persoană nouă": the names / emoji the owner chose, the rights they have
+    for (const role of BUILT_IN) {
+      const option = document.querySelector(`#add-form input[name="add-role"][value="${role}"]`);
+      const box = option && option.parentElement.querySelector('span');
+      if (!box) continue;
+      box.replaceChildren(el('strong', null, el('span', { class: 'role-emoji', 'aria-hidden': 'true', text: window.PAGE.roleEmoji(role) }), ' ', el('span', { text: window.PAGE.roleName(role) })),
+        el('span', { class: 'hint', text: roleHelpOf(role) }));
+    }
     const checked = new FormData($('add-form')).get('add-role');
     $('add-custom-roles').replaceChildren(...state.roles.map((r) => el('label', { class: 'role-option' },
       el('input', { type: 'radio', name: 'add-role', value: `custom:${r.id}`, checked: checked === `custom:${r.id}` ? 'checked' : null }),
@@ -348,6 +357,9 @@
   }
   function roleHelpOf(value) {
     const match = /^custom:(\d+)$/.exec(value);
+    const builtin = (state.builtins || []).find((b) => b.role === value);
+    // a built-in role whose rights the owner changed: say what it can do now
+    if (!match && builtin && builtin.customized) return t('customRoles.help', { perms: builtin.perms.length ? builtin.perms.map((p) => t(`customRoles.permsShort.${p}`)).join(', ') : t('customRoles.noRights') });
     if (!match) return t(`team.roleHelp.${value}`);
     const r = state.roles.find((x) => x.id === Number(match[1]));
     if (!r) return '';

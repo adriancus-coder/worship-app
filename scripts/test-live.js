@@ -2004,6 +2004,33 @@ async function main() {
     await api('DELETE', `/api/events/${evR.id}`, owner);
   });
 
+  await step('built-in roles editable by the owner only: name, emoji, rights; every guard follows at once; the owner never changes; back to the default', async () => {
+    assert.strictEqual((await api('PUT', '/api/roles/builtin/presenter', leader, { perms: [] })).status, 403, 'owner only');
+    assert.strictEqual((await api('PUT', '/api/roles/builtin/owner', owner, { perms: [] })).status, 404, 'never the owner');
+    assert.strictEqual((await api('PUT', '/api/roles/builtin/presenter', owner, { perms: ['root'] })).status, 400);
+    assert.strictEqual((await api('POST', '/api/events', presenter, { name: 'Înainte', eventDate: '2026-12-20' })).status, 201, 'a presenter creates events by default');
+    const out = await api('PUT', '/api/roles/builtin/presenter', owner, { name: 'Moderator', emoji: '🎤', perms: ['library'] });
+    assert.deepStrictEqual([out.status, out.body.builtin.perms, out.body.builtin.customized], [200, ['library'], true]);
+    assert.strictEqual((await api('POST', '/api/events', presenter, { name: 'După', eventDate: '2026-12-21' })).status, 403, 'no events right any more, at once');
+    const me = (await api('GET', '/api/auth/me', presenter)).body;
+    assert.deepStrictEqual([me.user.role, me.user.perms, me.user.liveRole, me.roleNames.presenter], ['presenter', ['library'], 'member', { name: 'Moderator', emoji: '🎤' }]);
+    // a member gets the guides right: writes a guide
+    await api('PUT', '/api/roles/builtin/member', owner, { perms: ['guides'] });
+    const g = await api('POST', '/api/guides', member, { title: 'Primirea oaspeților' });
+    assert.strictEqual(g.status, 201, 'members may write guides now');
+    await api('DELETE', `/api/guides/${g.body.guide.id}`, member);
+    // the owner viewing as a presenter sees the reshaped rights
+    await api('PUT', '/api/me/view-as', owner, { role: 'presenter' });
+    assert.deepStrictEqual((await api('GET', '/api/auth/me', owner)).body.user.perms, ['library']);
+    await api('PUT', '/api/me/view-as', owner, { role: null });
+    // back to the default
+    const reset = await api('DELETE', '/api/roles/builtin/presenter', owner);
+    assert.deepStrictEqual([reset.body.builtin.customized, reset.body.builtin.name], [false, null]);
+    await api('DELETE', '/api/roles/builtin/member', owner);
+    assert.strictEqual((await api('POST', '/api/events', presenter, { name: 'Iar', eventDate: '2026-12-22' })).status, 201, 'the default rights again');
+    assert.deepStrictEqual((await api('GET', '/api/auth/me', presenter)).body.roleNames, {});
+  });
+
   await step('platform: its owner creates and manages churches; everyone else 403', async () => {
     const other2 = await login('alt@x.ro'); // admin 2's owner: an ordinary church
     for (const cookie of [other2, leader, member]) assert.strictEqual((await api('GET', '/api/platform/admins', cookie)).status, 403);

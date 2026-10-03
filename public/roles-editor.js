@@ -25,7 +25,8 @@
   const label = (role) => (role.emoji ? `${role.emoji} ${role.name}` : role.name);
 
   function mount(root, { onChange } = {}) {
-    const state = { roles: [], editing: null, confirming: false };
+    // editing: a custom role (or null for a new one); builtin: the built-in role being edited
+    const state = { roles: [], builtins: [], editing: null, builtin: null, confirming: false };
     const builtIn = el('ul', { class: 'roles-list roles-builtin' });
     const mine = el('ul', { class: 'roles-list', id: 'roles-mine' });
     const empty = el('p', { class: 'muted', id: 'roles-empty', hidden: true });
@@ -57,18 +58,22 @@
     const confirmYes = el('button', { type: 'button', class: 'danger', id: 'role-delete-yes', onclick: () => remove() });
     const confirmNo = el('button', { type: 'button', class: 'secondary', id: 'role-delete-no', onclick: () => { state.confirming = false; renderDialog(); } });
     const confirmBox = el('div', { class: 'role-delete-confirm', hidden: true }, confirmText, el('div', { class: 'form-actions' }, confirmYes, confirmNo));
+    const resetButton = el('button', { type: 'button', class: 'secondary', id: 'role-reset', 'data-icon': 'restart', onclick: () => resetBuiltin() });
+    const builtinNote = el('p', { class: 'hint', id: 'role-builtin-note' });
+    const nameHint = el('p', { class: 'hint', id: 'role-name-hint' });
     const form = el('form', { id: 'role-form', method: 'dialog', novalidate: 'novalidate' },
       dialogHeading,
       el('div', { class: 'field-row role-name-row' },
         el('label', { class: 'field role-name-field' }, nameLabel, nameInput),
         el('label', { class: 'field' }, emojiLabel, emojiInput)),
-      el('fieldset', { class: 'role-choice' }, baseLegend, baseHelp,
+      nameHint, builtinNote,
+      el('fieldset', { class: 'role-choice', id: 'role-base-choice' }, baseLegend, baseHelp,
         ...BASES.map((base, i) => el('label', { class: 'role-option' }, baseInputs[i], el('span', null, el('strong', null, el('span', { class: 'role-emoji', 'aria-hidden': 'true', text: ROLE_EMOJI[base] }), ' ', baseTexts[i]))))),
       el('fieldset', { class: 'positions-choice' }, permsLegend,
         el('div', { class: 'checkbox-list' }, ...PERMS.map((perm, i) => el('label', { class: 'checkbox' }, permInputs[i], permTexts[i]))),
         permsNote),
       dialogMessage,
-      el('div', { class: 'form-actions' }, saveButton, cancelButton, deleteButton),
+      el('div', { class: 'form-actions' }, saveButton, cancelButton, deleteButton, resetButton),
       confirmBox);
     const dialog = el('dialog', { id: 'role-dialog', 'aria-labelledby': 'role-heading' }, form);
 
@@ -102,10 +107,21 @@
       mineHeading.textContent = t('customRoles.mineHeading');
       empty.textContent = t('customRoles.empty');
       addButton.textContent = t('customRoles.add');
-      builtIn.replaceChildren(...['owner', ...BASES].map((role) => el('li', { class: 'role-row builtin', 'data-builtin': role },
-        el('div', { class: 'role-main' },
-          el('p', { class: 'role-name', text: window.PAGE.roleLabel(role) }),
-          el('p', { class: 'role-perms', text: permsText(BUILTIN[role]) })))));
+      // the owner: fixed; the four others: editable (name, emoji, rights)
+      builtIn.replaceChildren(
+        el('li', { class: 'role-row builtin', 'data-builtin': 'owner' },
+          el('div', { class: 'role-main' },
+            el('p', { class: 'role-name', text: window.PAGE.roleLabel('owner') }),
+            el('p', { class: 'role-perms', text: `${permsText(BUILTIN.owner)} · ${t('customRoles.ownerFixed')}` }))),
+        ...BASES.map((role) => {
+          const b = state.builtins.find((x) => x.role === role) || { role, perms: BUILTIN[role], customized: false, users: 0 };
+          return el('li', { class: 'role-row builtin', 'data-builtin': role },
+            el('div', { class: 'role-main' },
+              el('p', { class: 'role-name', text: window.PAGE.roleLabel(role) }, b.customized ? el('span', { class: 'muted', text: ` · ${t('customRoles.customized')}` }) : null),
+              el('p', { class: 'role-meta muted', text: peopleText(b.users || 0) }),
+              el('p', { class: 'role-perms', text: permsText(b.perms) })),
+            el('button', { type: 'button', class: 'secondary', 'data-icon': 'edit', 'data-edit-builtin': role, text: t('customRoles.edit'), 'aria-label': t('customRoles.editLabel', { name: window.PAGE.roleName(role) }), onclick: () => openBuiltin(b) }));
+        }));
       mine.replaceChildren(...state.roles.map(row));
       empty.hidden = state.roles.length > 0;
       renderDialog();
@@ -113,9 +129,21 @@
 
     function renderDialog() {
       const role = state.editing;
-      dialogHeading.textContent = t(role ? 'customRoles.dialogEdit' : 'customRoles.dialogNew');
+      const b = state.builtin;
+      dialogHeading.textContent = t(role || b ? 'customRoles.dialogEdit' : 'customRoles.dialogNew');
       nameLabel.textContent = t('customRoles.nameLabel');
-      nameInput.placeholder = t('customRoles.namePlaceholder');
+      nameInput.placeholder = b ? t(`team.roles.${b.role}`) : t('customRoles.namePlaceholder');
+      emojiInput.placeholder = b ? window.PAGE.ROLE_EMOJI[b.role] : '';
+      nameInput.required = !b;
+      nameHint.hidden = !b;
+      builtinNote.hidden = !b;
+      form.querySelector('#role-base-choice').hidden = Boolean(b);
+      if (b) {
+        nameHint.textContent = t('customRoles.nameDefault', { name: t(`team.roles.${b.role}`) });
+        builtinNote.textContent = t('customRoles.builtinNote', { base: t(`customRoles.bases.${b.role}`) });
+      }
+      resetButton.textContent = t('customRoles.resetDefault');
+      resetButton.hidden = !b || !b.customized;
       emojiLabel.textContent = t('customRoles.emojiLabel');
       baseLegend.textContent = t('customRoles.baseLabel');
       baseHelp.textContent = t('customRoles.baseHelp');
@@ -126,14 +154,40 @@
       saveButton.textContent = t('customRoles.save');
       cancelButton.textContent = t('customRoles.cancel');
       deleteButton.textContent = t('customRoles.delete');
-      deleteButton.hidden = !role || state.confirming;
+      deleteButton.hidden = !role || Boolean(b) || state.confirming;
       confirmBox.hidden = !role || !state.confirming;
       if (role) confirmText.textContent = t('customRoles.deleteConfirm', { name: role.name, people: peopleText(role.users || 0) });
       confirmYes.textContent = t('customRoles.deleteYes');
       confirmNo.textContent = t('customRoles.cancel');
     }
 
+    // A built-in role: its name / emoji (empty = the default) and its rights.
+    function openBuiltin(b) {
+      state.editing = null;
+      state.builtin = b;
+      state.confirming = false;
+      nameInput.value = b.name || '';
+      emojiInput.value = b.emoji || '';
+      permInputs.forEach((input) => { input.checked = b.perms.includes(input.value); });
+      dialogMessage.textContent = '';
+      renderDialog();
+      dialog.showModal();
+      nameInput.focus();
+    }
+
+    // role -> { name, emoji } of the renamed built-in roles, for every label on the page
+    const namesOf = (builtins) => Object.fromEntries(builtins.filter((x) => x.name || x.emoji).map((x) => [x.role, { name: x.name, emoji: x.emoji }]));
+
+    async function resetBuiltin() {
+      const b = state.builtin;
+      const res = await api(`/api/roles/builtin/${b.role}`, { method: 'DELETE' });
+      if (!res.ok) { dialogMessage.textContent = res.body.error || t('common.networkError'); return; }
+      dialog.close();
+      changed(res.body, t('customRoles.resetDone', { name: t(`team.roles.${b.role}`) }));
+    }
+
     function open(role) {
+      state.builtin = null;
       state.editing = role;
       state.confirming = false;
       nameInput.value = role ? role.name : '';
@@ -150,6 +204,10 @@
 
     function changed(body, text) {
       state.roles = body.roles;
+      if (body.builtins) {
+        state.builtins = body.builtins;
+        window.PAGE.setRoleNames(namesOf(state.builtins));
+      }
       render();
       say(text, 'success');
       if (onChange) onChange(state.roles);
@@ -166,6 +224,14 @@
       };
       saveButton.disabled = true;
       try {
+        if (state.builtin) {
+          const b = state.builtin;
+          const res = await api(`/api/roles/builtin/${b.role}`, { method: 'PUT', body: { name: body.name, emoji: body.emoji, perms: body.perms } });
+          if (!res.ok) { dialogMessage.textContent = res.body.error || t('common.networkError'); return; }
+          dialog.close();
+          changed(res.body, t('customRoles.saved', { name: res.body.builtin.name || t(`team.roles.${b.role}`) }));
+          return;
+        }
         const role = state.editing;
         const res = await api(role ? `/api/roles/${role.id}` : '/api/roles', { method: role ? 'PUT' : 'POST', body });
         if (!res.ok) { dialogMessage.textContent = res.body.error || t('common.networkError'); return; }
@@ -195,6 +261,8 @@
       const res = await api('/api/roles');
       if (!res.ok) return say(res.body.error || t('common.networkError'), 'error');
       state.roles = res.body.roles;
+      state.builtins = res.body.builtins || [];
+      window.PAGE.setRoleNames(namesOf(state.builtins));
       render();
       if (onChange) onChange(state.roles);
     }

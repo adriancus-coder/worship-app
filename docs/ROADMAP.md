@@ -50,6 +50,9 @@ never implement a later stage early. Mockups: claude.ai design canvas
   (`role: 'custom:<id>'`). Changes apply at once (the session reads the role on every
   request and socket message). Deleting a role makes its people members (never the base's
   built-in rights). The team, settings, backups, pairing and the platform stay the owner's.
+  The four built-in roles below the owner are editable too (migration 047 `role_settings`,
+  Echipa → Roluri → Editează): a name and emoji of the church's own and their rights; what
+  they open on stays. "Revino la implicit" drops the row. The owner role never changes.
   Built-in roles get a fixed emoji (👑 🎙️ ⭐ 💻 🎵); positions have their own (migration 044).
 - **Ghiduri** (migration 046, `lib/guides.js`, Mai mult → Ghiduri): how-to guides for the team
   and the volunteers (start the sound, the projector PC, the stream). A guide: title, emoji,

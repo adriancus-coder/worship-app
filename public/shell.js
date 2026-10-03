@@ -72,6 +72,8 @@
       }
       return res.ok ? res.json() : null;
     })
+    // the built-in roles the owner renamed (Echipa → Roluri): every page's labels read them
+    .then((me) => { if (me && window.PAGE && window.PAGE.setRoleNames) window.PAGE.setRoleNames(me.roleNames); return me; })
     .catch(() => null);
 
   document.addEventListener('i18n:change', (event) => {
@@ -393,14 +395,14 @@
     for (const p of pageLinks) p.label.textContent = t(p.key);
     if (notationGroup.renderSwitch) notationGroup.renderSwitch();
     viewAsLabel.textContent = t('shell.viewAs');
-    for (const b of viewAsButtons) b.textContent = t(`team.roles.${b.dataset.viewAs}`);
+    for (const b of viewAsButtons) b.textContent = window.PAGE && window.PAGE.roleName ? window.PAGE.roleName(b.dataset.viewAs) : t(`team.roles.${b.dataset.viewAs}`);
     if (me) {
       whoName.textContent = me.user.name;
       // who the account really is (also while "Vezi aplicația ca" shows another role): the
       // platform's owner, or the account's own role
       const who = me.platformAccount
         ? t('shell.platformOwnerRole', { appName: document.documentElement.dataset.appName || '' })
-        : (me.user.customRole ? me.user.customRole.name : t(`roles.${me.user.realRole || me.user.role}`));
+        : (me.user.customRole ? me.user.customRole.name : ((me.roleNames || {})[me.user.realRole || me.user.role] || {}).name || t(`roles.${me.user.realRole || me.user.role}`));
       whoRole.textContent = t('shell.roleAt', { role: who, adminName: me.admin.name });
       const perms = me.user.perms || [];
       for (const p of pageLinks) p.item.hidden = !(p.perm ? perms.includes(p.perm) : p.roles.includes(me.user.role)) || (p.platform && !me.platformOwner);

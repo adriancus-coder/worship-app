@@ -2271,6 +2271,7 @@ testAsync('platform deletion: refused while active, the exact name, pending -> c
     db.prepare("INSERT INTO bridge_connections (event_id, admin_id, sv_base_url, sv_event_id, bridge_token, token_fingerprint, created_at, updated_at) VALUES (?, ?, 'https://dev.sanctuaryvoice.com', 'ev', 'tok', 'fp', 0, 0)").run(eventId, a);
     db.prepare("INSERT INTO bridge_pairings (admin_id, sv_base_url, pairing_token, token_fingerprint, sv_org_id, paired_at) VALUES (?, 'https://dev.sanctuaryvoice.com', 'pt', 'fp', 'org', 0)").run(a);
     db.prepare("INSERT INTO custom_roles (admin_id, name, base, perms, created_at) VALUES (?, 'Sunet', 'member', 'live', 0)").run(a);
+    db.prepare("INSERT INTO role_settings (admin_id, role, name, perms) VALUES (?, 'member', 'Voluntar', 'guides')").run(a);
     const guideId = Number(db.prepare("INSERT INTO guides (admin_id, title, created_at, updated_at) VALUES (?, 'Sunet', 0, 0)").run(a).lastInsertRowid);
     db.prepare('INSERT INTO guide_positions (guide_id, position_id, admin_id) SELECT ?, id, admin_id FROM positions WHERE admin_id = ? LIMIT 1').run(guideId, a);
     db.prepare("INSERT INTO guide_items (guide_id, admin_id, kind, title, created_at) VALUES (?, ?, 'step', 'Pornește mixerul', 0)").run(guideId, a);
