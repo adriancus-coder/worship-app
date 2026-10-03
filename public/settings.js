@@ -42,6 +42,7 @@
     renderTimeFormat(res.body.timeFormat);
     renderEmail(res.body.email);
     renderPexels(res.body.pexels);
+    renderAi(res.body.ai);
     loadPairing();
     renderBackup(res.body.backup);
     renderStorage(res.body.storage);
@@ -288,6 +289,15 @@
     $('pexels-hint').textContent = t(pexelsInfo.enabled ? 'settings.pexelsHintOn' : 'settings.pexelsHintOff');
   }
 
+  // AI for the Ghiduri (lib/ai.js): on / off, this month's calls against the cap.
+  let aiInfo = null;
+  function renderAi(info) {
+    aiInfo = info || aiInfo;
+    if (!aiInfo) return;
+    $('ai-status').textContent = aiInfo.enabled ? t('settings.aiOn', { model: aiInfo.model, used: aiInfo.used, limit: aiInfo.limit }) : t('settings.aiOff');
+    $('ai-hint').textContent = t(aiInfo.enabled ? 'settings.aiHintOn' : 'settings.aiHintOff');
+  }
+
   // Email: "activ (from)" / "dezactivat" with the test button (lib/email.js).
   let emailInfo = null;
   function renderEmail(info) {
@@ -395,6 +405,7 @@
     $('email-message').textContent = '';
     renderEmail(null);
     renderPexels(null);
+    renderAi(null);
     clockPanel.render();
     renderBackup(null);
     renderStorage(null);

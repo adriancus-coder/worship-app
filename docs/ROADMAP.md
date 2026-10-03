@@ -63,6 +63,12 @@ never implement a later stage early. Mockups: claude.ai design canvas
   "Începe din nou". Home links the guides of the position a person serves on at the top event.
   Volunteers = positions (Sunet, Primire, Copii…) plus a custom role (base Membru, the rights
   they need), so they get schedules, notifications and their guides like the musicians.
+- **AI for the Ghiduri** (optional, `lib/ai.js`, `ANTHROPIC_API_KEY`; migration 048 counts the
+  uses): "✨ Scrie pașii cu AI" in "Ghid nou" drafts the summary, steps and problems from a
+  description and up to 5 photos (shown first, stored only on "Creează ghidul"); "✨ Întreabă
+  ghidul" answers a volunteer from that guide only (or says it is not covered). Claude API,
+  structured JSON output, server-side fallbacks; a monthly cap per church (`AI_MONTHLY_CALLS`),
+  30 questions an hour per person. Never in the live path; hidden without a key.
 - **UI:** new design, dark stage theme, phone- and tablet-first; Romanian UI by default.
 - **Chord notation:** letters (C D E) or Romanian solfège (Do Re Mi), chosen per user with a
   church default; songs are always stored with letters (display only).

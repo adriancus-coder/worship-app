@@ -17,6 +17,10 @@ Email (invitations, password resets) is optional: set `RESEND_API_KEY` and `EMAI
 as described in `docs/EMAIL.md`; without them the app hands out temporary passwords.
 Backgrounds can be added by link or searched on Pexels (`PEXELS_API_KEY`, see
 `docs/BACKGROUNDS.md`); without a key the Pexels tab is hidden.
+AI for the Ghiduri (a draft of the steps from a description and photos, "Întreabă ghidul")
+is optional too: set `ANTHROPIC_API_KEY` (and optionally `AI_MODEL`, default
+`claude-opus-5-5`, and `AI_MONTHLY_CALLS`, default 300 per church); without it the AI parts
+are hidden. Setări shows the uses of the month.
 
 ## Versions
 

@@ -24,6 +24,7 @@ module.exports = {
     check(/Niciun ghid încă/.test(await l.textContent('#guides-status')), 'no guide yet: a hint to start');
     await l.click('#guide-add');
     await l.waitForSelector('#guide-dialog[open]');
+    check(await l.isHidden('#g-ai'), 'no AI key on this server: no AI section');
     await l.fill('#g-title', 'Pornirea sunetului');
     await l.fill('#g-emoji', '🎚️');
     await l.fill('#g-summary', 'Duminica, cu 30 de minute înainte.');
@@ -71,6 +72,7 @@ module.exports = {
     await m.click('.now-guide');
     await m.waitForSelector('#steps .guide-step');
     check(await m.isHidden('#guide-edit'), 'a member cannot edit');
+    check(await m.isHidden('#guide-ask'), 'no AI key: no "Ask the guide"');
     await m.locator('#steps .guide-step').first().locator('input[type="checkbox"]').check();
     await m.waitForFunction(() => /1 of 2 steps done/.test(document.getElementById('guide-progress').textContent));
     await m.reload();

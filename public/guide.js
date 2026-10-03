@@ -13,7 +13,7 @@
   const $ = (id) => document.getElementById(id);
   const id = Number((window.location.pathname.match(/^\/guides\/(\d+)/) || [])[1]);
   const DONE_KEY = `guide-done-${id}`;
-  const state = { guide: null, items: [], canEdit: false, positions: [], editing: false, removing: null, deleting: false, done: new Set() };
+  const state = { guide: null, items: [], canEdit: false, ai: false, positions: [], editing: false, removing: null, deleting: false, done: new Set() };
 
   try { state.done = new Set(JSON.parse(window.localStorage.getItem(DONE_KEY) || '[]')); } catch (err) { state.done = new Set(); }
   const saveDone = () => { try { window.localStorage.setItem(DONE_KEY, JSON.stringify([...state.done])); } catch (err) { /* this device only */ } };
@@ -156,6 +156,35 @@
     render();
   });
 
+  // ✨ "Întreabă ghidul": the answer comes from this guide only (lib/ai.js)
+  $('guide-ask').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const question = $('ask-q').value.trim();
+    if (!question) return $('ask-q').focus();
+    $('ask-go').disabled = true;
+    $('ask-status').className = 'message';
+    $('ask-status').textContent = t('guides.askWorking');
+    $('ask-answer').hidden = true;
+    $('ask-note').hidden = true;
+    try {
+      const res = await api(`/api/guides/${id}/ask`, { method: 'POST', body: { question } });
+      if (!res.ok) {
+        $('ask-status').className = 'message error';
+        $('ask-status').textContent = res.body.error || t('common.networkError');
+        return;
+      }
+      $('ask-status').textContent = res.body.covered ? '' : t('guides.askNotCovered');
+      $('ask-answer').textContent = res.body.answer;
+      $('ask-answer').hidden = false;
+      $('ask-note').hidden = false;
+    } catch (err) {
+      $('ask-status').className = 'message error';
+      $('ask-status').textContent = t('common.networkError');
+    } finally {
+      $('ask-go').disabled = false;
+    }
+  });
+
   $('guide-restart').addEventListener('click', () => { state.done.clear(); saveDone(); render(); });
 
   function renderDelete() {
@@ -210,6 +239,8 @@
     }
     $('guide-delete').hidden = !state.editing;
     if (state.editing) renderDelete();
+    $('guide-ask').hidden = !state.ai || state.editing || !state.items.length;
+    $('ask-q').placeholder = t('guides.askPlaceholder');
   }
 
   async function load() {
@@ -222,6 +253,7 @@
     state.guide = res.body.guide;
     state.items = res.body.items;
     state.canEdit = res.body.canEdit;
+    state.ai = Boolean(res.body.ai);
     state.positions = positions.ok ? positions.body.positions : [];
     state.editing = state.canEdit && new URLSearchParams(window.location.search).get('edit') === '1';
     $('guide-status').hidden = true;

@@ -34,3 +34,7 @@ services:
       # Pexels backgrounds (docs/BACKGROUNDS.md). Unset: the tab is hidden.
       - key: PEXELS_API_KEY
         sync: false
+      # AI for the Ghiduri (lib/ai.js): drafts and "Întreabă ghidul". Unset: the AI parts are
+      # hidden. AI_MONTHLY_CALLS caps the uses per church and month (default 300).
+      - key: ANTHROPIC_API_KEY
+        sync: false

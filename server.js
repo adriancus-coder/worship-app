@@ -69,6 +69,10 @@ const auth = createAuth({ db, config });
 const email = createEmail({ config, logger });
 const { createPexels } = require('./lib/pexels');
 const pexels = createPexels({ config, logger });
+// AI for the Ghiduri (optional: off without ANTHROPIC_API_KEY).
+const { createAi } = require('./lib/ai');
+const ai = createAi({ config, db, logger });
+logger.info(ai.enabled ? `AI: enabled (${config.AI_MODEL}, ${config.AI_MONTHLY_CALLS} calls a month per church)` : 'AI: disabled (no ANTHROPIC_API_KEY)');
 logger.info(email.enabled ? `Email: enabled, from ${config.EMAIL_FROM}` : 'Email: disabled (RESEND_API_KEY / EMAIL_FROM not set)');
 const invites = createInviteService({ db, config, logger, email }); // invitation / reset links
 const SESSION_CLEANUP_MS = 60 * 60 * 1000;
@@ -114,8 +118,9 @@ app.use((req, res, next) => shutdown.middleware(req, res, next));
 app.use(compression());
 app.use(createI18nMiddleware());
 const jsonBody = express.json({ limit: '100kb' });
-// The library import route parses its own, larger body (routes/songs.js).
-app.use((req, res, next) => (req.path === '/api/songs/import' ? next() : jsonBody(req, res, next)));
+// The library import and the AI guide draft (photos) parse their own, larger bodies.
+const OWN_BODY = new Set(['/api/songs/import', '/api/guides/ai/draft']);
+app.use((req, res, next) => (OWN_BODY.has(req.path) ? next() : jsonBody(req, res, next)));
 
 // Pages are served only through their routes, never as raw .html files.
 app.use((req, res, next) => (req.path.endsWith('.html') ? res.status(404).end() : next()));
@@ -137,7 +142,7 @@ app.use(createHomeRouter({ db, auth }));
 app.use(createTeamRouter({ db, auth, config, logger, live, email, invites }));
 app.use(createPositionsRouter({ db, auth, logger }));
 app.use(createRolesRouter({ db, auth, logger }));
-app.use(createGuidesRouter({ db, auth, config, logger, storage }));
+app.use(createGuidesRouter({ db, auth, config, logger, storage, ai }));
 const assignmentHooks = {}; // filled by the notifications module (stage 7)
 app.use(createAssignmentsRouter({ db, auth, logger, hooks: assignmentHooks }));
 const unavailabilityHooks = {};
@@ -186,7 +191,7 @@ setInterval(() => notifications.tick().catch((err) => logger.error('reminder tic
 app.use(createPlatformRouter({ db, auth, config, logger, live, screensHub, storage, email, invites }));
 app.use(createInvitesRouter({ db, auth, config, logger, live, email, invites }));
 app.use(createScreensRouter({ db, auth, config, logger, screensHub }));
-app.use(createSettingsRouter({ db, auth, config, logger, screensHub, live, storage, email, pexels }));
+app.use(createSettingsRouter({ db, auth, config, logger, screensHub, live, storage, email, pexels, ai }));
 app.use(createMediaRouter({ db, auth, config, logger, live, storage, pexels }));
 app.use(createBackupRouter({ db, auth, config, logger, storage }));
 app.use(createPagesRouter({ db, auth, sendPage }));

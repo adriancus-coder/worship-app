@@ -37,6 +37,17 @@
           <p class="hint" data-i18n="guides.positionsHint"></p>
           <div id="g-positions" class="checkbox-list"></div>
         </fieldset>
+        <!-- ✨ AI (only when the server has it): a draft of the steps from a description + photos -->
+        <fieldset class="positions-choice guide-ai" id="g-ai" hidden>
+          <legend data-i18n="guides.aiHeading"></legend>
+          <p class="hint" data-i18n="guides.aiIntro"></p>
+          <label><span data-i18n="guides.aiDescLabel"></span><textarea id="g-ai-desc" rows="3" maxlength="2000"></textarea></label>
+          <label class="button secondary guide-photo-pick" data-icon="plus"><input type="file" id="g-ai-photos" class="sr-only" accept="image/*" multiple><span data-i18n="guides.aiPhotos"></span></label>
+          <p id="g-ai-count" class="hint"></p>
+          <div class="form-actions"><button type="button" class="secondary" id="g-ai-draft" data-icon="sparkle" data-i18n="guides.aiDraft"></button></div>
+          <p id="g-ai-status" class="message" role="status" aria-live="polite"></p>
+          <div id="g-ai-preview" class="guide-ai-preview" hidden></div>
+        </fieldset>
         <p id="guide-message" class="message error" role="alert"></p>
         <div class="form-actions">
           <button type="submit" id="g-create" data-icon="check" data-i18n="guides.create"></button>

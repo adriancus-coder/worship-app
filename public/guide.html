@@ -52,6 +52,19 @@
         <div id="add-problem" class="guide-add" hidden></div>
       </section>
 
+      <!-- ✨ AI (only when the server has it): an answer from this guide only -->
+      <form id="guide-ask" class="guide-ask" novalidate hidden>
+        <h2 data-i18n="guides.askHeading"></h2>
+        <label for="ask-q" data-i18n="guides.askLabel"></label>
+        <div class="guide-ask-row">
+          <input type="text" id="ask-q" maxlength="500" autocomplete="off">
+          <button type="submit" class="secondary" id="ask-go" data-icon="sparkle" data-i18n="guides.askButton"></button>
+        </div>
+        <p id="ask-status" class="message" role="status" aria-live="polite"></p>
+        <p id="ask-answer" class="guide-answer" hidden></p>
+        <p id="ask-note" class="hint" hidden data-i18n="guides.askNote"></p>
+      </form>
+
       <div id="guide-delete" class="guide-delete" hidden></div>
     </article>
   </main>

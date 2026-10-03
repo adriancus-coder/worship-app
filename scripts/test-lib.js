@@ -2272,6 +2272,7 @@ testAsync('platform deletion: refused while active, the exact name, pending -> c
     db.prepare("INSERT INTO bridge_pairings (admin_id, sv_base_url, pairing_token, token_fingerprint, sv_org_id, paired_at) VALUES (?, 'https://dev.sanctuaryvoice.com', 'pt', 'fp', 'org', 0)").run(a);
     db.prepare("INSERT INTO custom_roles (admin_id, name, base, perms, created_at) VALUES (?, 'Sunet', 'member', 'live', 0)").run(a);
     db.prepare("INSERT INTO role_settings (admin_id, role, name, perms) VALUES (?, 'member', 'Voluntar', 'guides')").run(a);
+    db.prepare("INSERT INTO ai_usage (admin_id, month, calls) VALUES (?, '2026-10', 3)").run(a);
     const guideId = Number(db.prepare("INSERT INTO guides (admin_id, title, created_at, updated_at) VALUES (?, 'Sunet', 0, 0)").run(a).lastInsertRowid);
     db.prepare('INSERT INTO guide_positions (guide_id, position_id, admin_id) SELECT ?, id, admin_id FROM positions WHERE admin_id = ? LIMIT 1').run(guideId, a);
     db.prepare("INSERT INTO guide_items (guide_id, admin_id, kind, title, created_at) VALUES (?, ?, 'step', 'Pornește mixerul', 0)").run(guideId, a);
@@ -2925,6 +2926,60 @@ test('custom roles (migration 045): rights, the live role, create / change / del
   assert.strictEqual(S.destroy(2, sound.id), false, 'another admin');
   assert.strictEqual(S.destroy(1, sound.id), true);
   assert.deepStrictEqual(userRow(2), { role: 'member', custom_role_id: null }, 'deleted: a member, never the base\'s built-in rights');
+});
+
+testAsync('ai (lib/ai.js): off without a key; a draft and an answer through the SDK shape; usage and the monthly cap; errors and refusals mapped', async () => {
+  const Database = require('better-sqlite3');
+  const { runMigrations } = require('../lib/db');
+  const { createAi, AiError } = require('../lib/ai');
+  const mem = new Database(':memory:');
+  mem.pragma('foreign_keys = ON');
+  runMigrations(mem);
+  mem.prepare("INSERT INTO admins (id, name, created_at) VALUES (1, 'A', 0)").run();
+  const logger = { info() {}, warn() {}, error() {} };
+  const off = createAi({ config: { ANTHROPIC_API_KEY: '', AI_MONTHLY_CALLS: 5 }, db: mem, logger });
+  assert.deepStrictEqual(off.status(1), { enabled: false, model: null, used: 0, limit: 5 });
+  await assert.rejects(off.draftGuide(1, { title: 'x' }), (e) => e instanceof AiError && e.code === 'aiDisabled');
+  // a stand-in for the SDK client
+  const sent = [];
+  let reply = null;
+  class Fake {
+    constructor(opts) { this.opts = opts; this.beta = { messages: { create: async (req) => { sent.push(req); if (reply instanceof Error) throw reply; return reply; } } }; }
+  }
+  Fake.APIError = class extends Error { constructor(status, msg) { super(msg); this.status = status; } };
+  Fake.AuthenticationError = class extends Fake.APIError {};
+  Fake.PermissionDeniedError = class extends Fake.APIError {};
+  Fake.RateLimitError = class extends Fake.APIError {};
+  Fake.APIConnectionError = class extends Fake.APIError {};
+  const ai = createAi({ config: { ANTHROPIC_API_KEY: 'k', AI_MODEL: 'claude-opus-5-5', AI_MONTHLY_CALLS: 3 }, db: mem, logger, Client: Fake });
+  const answer = (obj, extra = {}) => ({ model: 'claude-opus-5-5', stop_reason: 'end_turn', usage: { input_tokens: 1200, output_tokens: 300 }, content: [{ type: 'thinking', thinking: '' }, { type: 'text', text: JSON.stringify(obj) }], ...extra });
+  reply = answer({ summary: 'Pornirea sunetului duminica.', steps: [{ title: '  Pornește   prelungitorul ', body: 'Butonul roșu.' }, { title: '', body: 'x' }], problems: [{ title: 'Nu se aude microfonul', body: 'Bateria.' }] });
+  const draft = await ai.draftGuide(1, { lang: 'ro', title: 'Sunet', description: 'X32', positions: ['Sunet'], images: [{ mediaType: 'image/jpeg', data: 'AAAA' }] });
+  assert.deepStrictEqual(draft, { summary: 'Pornirea sunetului duminica.', steps: [{ title: 'Pornește prelungitorul', body: 'Butonul roșu.' }], problems: [{ title: 'Nu se aude microfonul', body: 'Bateria.' }] }, 'cleaned: titles squeezed, empty ones dropped');
+  const req = sent[0];
+  assert.deepStrictEqual([req.model, req.fallbacks, req.betas, req.output_config.effort, req.output_config.format.type], ['claude-opus-5-5', 'default', ['server-side-fallback-2026-07-01'], 'medium', 'json_schema']);
+  assert.deepStrictEqual(req.messages[0].content.map((c) => c.type), ['image', 'text'], 'the photos first, then the text');
+  assert.ok(/Romanian/.test(req.messages[0].content[1].text) && /X32/.test(req.messages[0].content[1].text));
+  assert.strictEqual(req.thinking, undefined, 'no thinking setting on this model (always on)');
+  // an answer from a guide only
+  reply = answer({ answer: 'Verifică bateria (problema „Nu se aude microfonul”).', covered: true });
+  const ask = await ai.askGuide(1, { lang: 'ro', guide: { title: 'Sunet', summary: '' }, items: [{ kind: 'step', title: 'Pornește', body: '' }, { kind: 'problem', title: 'Nu se aude', body: 'Bateria' }], question: 'nu se aude micul 2' });
+  assert.deepStrictEqual(ask, { answer: 'Verifică bateria (problema „Nu se aude microfonul”).', covered: true });
+  assert.ok(/<guide title="Sunet">/.test(sent[1].messages[0].content[0].text) && sent[1].output_config.effort === 'low');
+  assert.deepStrictEqual(ai.status(1), { enabled: true, model: 'claude-opus-5-5', used: 2, limit: 3 });
+  assert.deepStrictEqual(mem.prepare('SELECT calls, input_tokens, output_tokens FROM ai_usage WHERE admin_id = 1').get(), { calls: 2, input_tokens: 2400, output_tokens: 600 });
+  // a refusal counts and says so; then the cap
+  reply = answer({}, { stop_reason: 'refusal' });
+  await assert.rejects(ai.askGuide(1, { guide: { title: 'x' }, items: [], question: 'q?' }), (e) => e.code === 'aiRefused');
+  await assert.rejects(ai.askGuide(1, { guide: { title: 'x' }, items: [], question: 'q?' }), (e) => e.code === 'aiLimit', 'the monthly cap');
+  // errors mapped (a fresh church under the cap)
+  mem.prepare("INSERT INTO admins (id, name, created_at) VALUES (2, 'B', 0)").run();
+  for (const [err, code] of [[new Fake.AuthenticationError(401, 'bad key'), 'aiKey'], [new Fake.RateLimitError(429, 'slow'), 'aiBusy'], [new Fake.APIConnectionError(0, 'net'), 'aiOffline'], [new Fake.APIError(529, 'overloaded'), 'aiBusy'], [new Fake.APIError(400, 'bad'), 'aiFailed']]) {
+    reply = err;
+    await assert.rejects(ai.askGuide(2, { guide: { title: 'x' }, items: [], question: 'q?' }), (e) => e.code === code, code);
+  }
+  reply = { stop_reason: 'end_turn', usage: {}, content: [{ type: 'text', text: 'not json' }] };
+  await assert.rejects(ai.askGuide(2, { guide: { title: 'x' }, items: [], question: 'q?' }), (e) => e.code === 'aiFailed');
 });
 
 testAsync('guides (migration 046): steps and problems in order, positions, photos resized to WebP, delete takes the photos', async () => {
