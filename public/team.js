@@ -70,7 +70,10 @@
           el('button', { type: 'button', class: 'secondary', 'data-icon': 'key', text: t('team.reset'), 'aria-label': t('team.resetFor', { name: user.name }), onclick: () => openConfirm('reset', user) }),
           user.active
             ? el('button', { type: 'button', class: 'secondary danger-text', 'data-icon': 'close', text: t('team.deactivate'), 'aria-label': t('team.deactivateFor', { name: user.name }), onclick: () => openConfirm('deactivate', user) })
-            : el('button', { type: 'button', class: 'secondary', 'data-icon': 'restart', text: t('team.reactivate'), 'aria-label': t('team.reactivateFor', { name: user.name }), onclick: () => openConfirm('reactivate', user) })));
+            : el('button', { type: 'button', class: 'secondary', 'data-icon': 'restart', text: t('team.reactivate'), 'aria-label': t('team.reactivateFor', { name: user.name }), onclick: () => openConfirm('reactivate', user) }),
+          // a deactivated account only: deleted for good (after a confirmation)
+          user.active ? null
+            : el('button', { type: 'button', class: 'secondary danger-text', 'data-icon': 'close', 'data-action': 'remove', text: t('team.remove'), 'aria-label': t('team.removeFor', { name: user.name }), onclick: () => openConfirm('remove', user) })));
     }));
   }
 
@@ -160,6 +163,7 @@
   function openEdit(user) {
     state.editing = user;
     $('edit-name').value = user.name;
+    $('edit-email').value = user.email;
     $('edit-role').value = roleValue(user);
     renderRoleHelp();
     $('edit-positions').replaceChildren(...state.positions.filter((p) => p.active || (user.positionIds || []).includes(p.id)).map((p) => el('label', { class: 'checkbox' },
@@ -173,7 +177,7 @@
   $('edit-form').addEventListener('submit', async (event) => {
     event.preventDefault();
     const user = state.editing;
-    const res = await api(`/api/team/${user.id}`, { method: 'PATCH', body: { name: $('edit-name').value, role: $('edit-role').value } });
+    const res = await api(`/api/team/${user.id}`, { method: 'PATCH', body: { name: $('edit-name').value, email: $('edit-email').value, role: $('edit-role').value } });
     if (!res.ok) return say('edit-message', res.body.error || t('common.networkError'), 'error');
     const positionIds = [...document.querySelectorAll('#edit-positions input:checked')].map((box) => Number(box.value));
     const pos = await api(`/api/team/${user.id}/positions`, { method: 'PUT', body: { positionIds } });
@@ -189,7 +193,7 @@
     $('confirm-heading').textContent = t(`team.confirm.${action}Heading`, { name: user.name });
     $('confirm-text').textContent = t(`team.confirm.${action}Text`, { name: user.name });
     $('confirm-yes').textContent = t(`team.confirm.${action}Yes`);
-    $('confirm-yes').className = action === 'deactivate' ? 'danger' : '';
+    $('confirm-yes').className = action === 'deactivate' || action === 'remove' ? 'danger' : '';
     say('confirm-message', '', 'error');
     $('confirm-dialog').showModal();
   }
@@ -199,6 +203,16 @@
     const path = action === 'reset' ? 'reset-password' : action;
     $('confirm-yes').disabled = true;
     try {
+      if (action === 'remove') {
+        const res = await api(`/api/team/${user.id}`, { method: 'DELETE' });
+        if (!res.ok) return say('confirm-message', res.body.error || t('common.networkError'), 'error');
+        state.users = state.users.filter((u) => u.id !== user.id);
+        render();
+        $('confirm-dialog').close();
+        say('page-message', t('team.removed', { name: user.name }), 'success');
+        if (rolesEditor) rolesEditor.reload(); // a role's people count
+        return;
+      }
       const res = await api(`/api/team/${user.id}/${path}`, { method: 'POST' });
       if (!res.ok) return say('confirm-message', res.body.error || t('common.networkError'), 'error');
       replaceUser(res.body.user);

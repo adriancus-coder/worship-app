@@ -132,14 +132,28 @@ function createTeamRouter({ db, auth, config, logger, live, email, invites }) {
     const member = target(req, res);
     if (!member) return;
     const body = req.body || {};
-    if (body.name === undefined && body.role === undefined) return res.status(400).json({ error: req.t('errors.badRequest') });
+    if (body.name === undefined && body.role === undefined && body.email === undefined) return res.status(400).json({ error: req.t('errors.badRequest') });
     const name = body.name === undefined ? null : validateName(body.name, req.t);
     if (name && name.error) return res.status(400).json({ error: name.error });
+    const email = body.email === undefined ? null : validateEmail(body.email, req.t);
+    if (email && email.error) return res.status(400).json({ error: email.error });
+    const newEmail = email && email.value !== member.email ? email.value : null;
+    if (newEmail && team.isEmailTaken(newEmail)) return res.status(409).json({ error: req.t('errors.teamEmailTaken') });
     const role = body.role === undefined ? null : roleChoice(req, body.role);
     if (role && role.error) return res.status(400).json({ error: role.error });
     if (name && name.value !== member.name) {
       team.rename(req.adminId, member.id, name.value);
       audit(req, 'renamed', member.id);
+    }
+    // A new sign-in address (the password stays; an invitation or reset link goes to it).
+    if (newEmail) {
+      try {
+        team.changeEmail(req.adminId, member.id, newEmail);
+      } catch (err) {
+        if (err && err.code === 'SQLITE_CONSTRAINT_UNIQUE') return res.status(409).json({ error: req.t('errors.teamEmailTaken') });
+        throw err;
+      }
+      audit(req, 'changed the email of', member.id);
     }
     if (role && (role.value.role !== member.role || role.value.customRoleId !== member.customRoleId)) {
       team.changeRole(req.adminId, member.id, role.value.role, role.value.customRoleId);
@@ -178,6 +192,18 @@ function createTeamRouter({ db, auth, config, logger, live, email, invites }) {
       audit(req, 'reactivated', member.id);
     }
     res.json({ user: team.get(req.adminId, member.id) });
+  });
+
+  // "Șterge definitiv": only a deactivated account (409 while active). Its own rows go with
+  // it; what it created for the church (songs, events, media) stays, without an author.
+  router.delete('/api/team/:id', (req, res) => {
+    const member = target(req, res);
+    if (!member) return;
+    if (member.active) return res.status(409).json({ code: 'stillActive', error: req.t('errors.teamDeleteActive') });
+    if (!team.remove(req.adminId, member.id)) return res.status(404).json({ error: req.t('errors.teamUserNotFound') });
+    live.closeUser(member.id);
+    audit(req, 'deleted', member.id);
+    res.json({ ok: true });
   });
 
   router.post('/api/team/:id/reset-password', asyncRoute(async (req, res) => {

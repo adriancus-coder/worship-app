@@ -1332,6 +1332,33 @@ async function main() {
     assert.strictEqual((await api('POST', '/api/auth/login', null, { email: 'ion@x.ro', password: reset.body.temporaryPassword })).status, 200);
   });
 
+  await step('team: the owner changes a person\'s email (unique, valid; the new one signs in) and deletes a deactivated account for good (active -> 409; its rows go, the church\'s stay)', async () => {
+    const created = await api('POST', '/api/team', owner, { name: 'Vasile', email: 'vasile@x.ro', role: 'member' });
+    const id = created.body.user.id;
+    assert.strictEqual((await api('PATCH', `/api/team/${id}`, owner, { email: 'nu-e-email' })).status, 400);
+    assert.strictEqual((await api('PATCH', `/api/team/${id}`, owner, { email: 'lider@x.ro' })).status, 409, 'taken in this church');
+    assert.strictEqual((await api('PATCH', `/api/team/${id}`, owner, { email: 'alt@x.ro' })).status, 409, 'taken in another church');
+    assert.strictEqual((await api('PATCH', `/api/team/${id}`, leader, { email: 'v@x.ro' })).status, 403);
+    const changed = await api('PATCH', `/api/team/${id}`, owner, { email: 'Vasile.Nou@X.ro' });
+    assert.strictEqual(changed.body.user.email, 'vasile.nou@x.ro', 'lowercased');
+    const signIn = await api('POST', '/api/auth/login', null, { email: 'vasile.nou@x.ro', password: created.body.temporaryPassword });
+    assert.strictEqual(signIn.status, 200, 'the new address signs in');
+    assert.strictEqual((await api('POST', '/api/auth/login', null, { email: 'vasile@x.ro', password: created.body.temporaryPassword })).status, 401, 'the old one not');
+    // delete: only deactivated
+    const positions = (await api('GET', '/api/positions', owner)).body.positions;
+    await api('PUT', `/api/team/${id}/positions`, owner, { positionIds: [positions[0].id] });
+    assert.strictEqual((await api('DELETE', `/api/team/${id}`, owner)).status, 409, 'still active');
+    assert.strictEqual((await api('POST', `/api/team/${id}/deactivate`, owner)).status, 200);
+    assert.strictEqual((await api('DELETE', `/api/team/${id}`, leader)).status, 403);
+    assert.strictEqual((await api('DELETE', `/api/team/${id}`, other)).status, 404, 'another church');
+    const ownerId = (await api('GET', '/api/team', owner)).body.users.find((u) => u.role === 'owner').id;
+    assert.strictEqual((await api('DELETE', `/api/team/${ownerId}`, owner)).status, 403, 'never the owner');
+    assert.strictEqual((await api('DELETE', `/api/team/${id}`, owner)).status, 200);
+    assert.ok(!(await api('GET', '/api/team', owner)).body.users.some((u) => u.id === id), 'gone from the list');
+    assert.strictEqual((await api('DELETE', `/api/team/${id}`, owner)).status, 404);
+    assert.strictEqual((await api('POST', '/api/team', owner, { name: 'Vasile', email: 'vasile.nou@x.ro', role: 'member' })).status, 201, 'the address is free again');
+  });
+
   await step('theme: own choice on every device, church default otherwise, cookie and first paint', async () => {
     const pref = async (cookie) => /data-theme-pref="(\w+)" data-theme="(\w+)"/.exec(await (await fetch(`${base()}/library`, { headers: { Cookie: cookie } })).text()).slice(1).join('/');
     const cookieOf = (res) => (/wa_theme=(\w+)/.exec(res.headers.get('set-cookie') || '') || [])[1];
