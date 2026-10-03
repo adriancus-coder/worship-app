@@ -51,6 +51,15 @@ never implement a later stage early. Mockups: claude.ai design canvas
   request and socket message). Deleting a role makes its people members (never the base's
   built-in rights). The team, settings, backups, pairing and the platform stay the owner's.
   Built-in roles get a fixed emoji (👑 🎙️ ⭐ 💻 🎵); positions have their own (migration 044).
+- **Ghiduri** (migration 046, `lib/guides.js`, Mai mult → Ghiduri): how-to guides for the team
+  and the volunteers (start the sound, the projector PC, the stream). A guide: title, emoji,
+  summary, the positions it is for (none = everyone); numbered steps and "Dacă nu merge"
+  problems, each with text and one photo (any image, resized to WebP ≤ 1600 px, under
+  `uploads/admin-<id>/guides/`). Everyone reads; the `guides` right writes (owner, leader,
+  any custom role that ticks it). Reading has a "Făcut" box per step, kept on the device until
+  "Începe din nou". Home links the guides of the position a person serves on at the top event.
+  Volunteers = positions (Sunet, Primire, Copii…) plus a custom role (base Membru, the rights
+  they need), so they get schedules, notifications and their guides like the musicians.
 - **UI:** new design, dark stage theme, phone- and tablet-first; Romanian UI by default.
 - **Chord notation:** letters (C D E) or Romanian solfège (Do Re Mi), chosen per user with a
   church default; songs are always stored with letters (display only).

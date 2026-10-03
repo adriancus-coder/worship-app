@@ -30,6 +30,7 @@
     install: 'M12 3v12M7 10l5 5 5-5M5 21h14',
     refresh: 'M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5',
     bell: 'M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.9 1.9 0 0 0 3.4 0',
+    book: 'M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5zM4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5M8 7h8M8 11h6',
   };
 
   function icon(name) {
@@ -196,6 +197,7 @@
     // perm: the right that shows the row (lib/roles.js); roles: the roles that see it
     { id: 'media', href: '/media', key: 'shell.media', icon: 'media', perm: 'media' },
     { id: 'screens', href: '/screens', key: 'shell.screens', icon: 'screens', perm: 'screens' },
+    { id: 'guides', href: '/guides', key: 'shell.guides', icon: 'book', roles: ['owner', 'presenter', 'leader', 'operator', 'member'] },
     { id: 'settings', href: '/settings', key: 'shell.settings', icon: 'settings', roles: ['owner'] },
     // The platform owner only (the churches on this server).
     { id: 'platform', href: '/platform', key: 'shell.platform', icon: 'platform', roles: ['owner'], platform: true },

@@ -9,11 +9,11 @@
   const { api, el, ROLE_EMOJI } = window.PAGE;
   const { t } = window.I18N;
 
-  const PERMS = ['library', 'events', 'media', 'live', 'screens', 'schedule']; // lib/roles.js
+  const PERMS = ['library', 'events', 'media', 'live', 'screens', 'schedule', 'guides']; // lib/roles.js
   const BUILTIN = {
     owner: PERMS,
     presenter: ['library', 'events', 'media', 'live'],
-    leader: ['library', 'events', 'media', 'live', 'schedule'],
+    leader: ['library', 'events', 'media', 'live', 'schedule', 'guides'],
     operator: ['library', 'events', 'media', 'live', 'screens'],
     member: [],
   };

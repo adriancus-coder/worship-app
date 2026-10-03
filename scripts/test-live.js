@@ -1927,6 +1927,37 @@ async function main() {
     assert.strictEqual((await api('POST', '/api/me/password', owner, { current: `${PASSWORD}-x`, password: PASSWORD })).status, 200);
   });
 
+  await step('guides: everyone reads, the guides right writes (leader yes, operator no); steps / problems / order; a photo resized to WebP, served to the church only', async () => {
+    assert.strictEqual((await api('POST', '/api/guides', operator, { title: 'X' })).status, 403, 'the operator has no guides right');
+    assert.strictEqual((await api('POST', '/api/guides', leader, { title: '' })).status, 400);
+    const sunet = (await api('GET', '/api/positions', owner)).body.positions[0].id;
+    const made = await api('POST', '/api/guides', leader, { title: 'Pornirea sunetului', emoji: '🎚️', positionIds: [sunet] });
+    assert.strictEqual(made.status, 201);
+    const gid = made.body.guide.id;
+    const s1 = (await api('POST', `/api/guides/${gid}/items`, leader, { kind: 'step', title: 'Pornește prelungitorul' })).body.item;
+    const s2 = (await api('POST', `/api/guides/${gid}/items`, leader, { kind: 'step', title: 'Pornește mixerul' })).body.item;
+    await api('POST', `/api/guides/${gid}/items`, leader, { kind: 'problem', title: 'Nu se aude', body: 'Bateria.' });
+    assert.strictEqual((await api('PUT', `/api/guides/${gid}/order`, leader, { kind: 'step', ids: [s2.id, s1.id] })).status, 200);
+    const read = (await api('GET', `/api/guides/${gid}`, member)).body;
+    assert.deepStrictEqual([read.canEdit, read.items.map((i) => i.title)], [false, ['Pornește mixerul', 'Pornește prelungitorul', 'Nu se aude']], 'a member reads, in the new order');
+    assert.strictEqual((await api('PUT', `/api/guides/${gid}/items/${s1.id}`, member, { title: 'y' })).status, 403);
+    assert.strictEqual((await api('GET', `/api/guides/${gid}`, other)).status, 404, 'another church');
+    // a photo: the raw body
+    const sharp = require('sharp');
+    const png = await sharp({ create: { width: 2400, height: 1200, channels: 3, background: '#336699' } }).png().toBuffer();
+    const put = await fetch(`${base()}/api/guides/${gid}/items/${s1.id}/image`, { method: 'PUT', headers: { Cookie: leader, 'Content-Type': 'image/png' }, body: png });
+    const putBody = await put.json();
+    assert.strictEqual(put.status, 200, JSON.stringify(putBody));
+    const img = putBody.item.image;
+    const got = await fetch(base() + img, { headers: { Cookie: member } });
+    assert.deepStrictEqual([got.status, got.headers.get('content-type')], [200, 'image/webp']);
+    assert.strictEqual((await fetch(base() + img, { headers: { Cookie: other } })).status, 404, 'not to another church');
+    const bad = await fetch(`${base()}/api/guides/${gid}/items/${s1.id}/image`, { method: 'PUT', headers: { Cookie: leader, 'Content-Type': 'image/png' }, body: Buffer.from('nope') });
+    assert.strictEqual(bad.status, 400);
+    assert.strictEqual((await api('DELETE', `/api/guides/${gid}`, leader)).status, 200);
+    assert.strictEqual((await fetch(base() + img, { headers: { Cookie: member } })).status, 404, 'the photo goes with the guide');
+  });
+
   await step('custom roles: the owner creates one with chosen rights, a person gets it, every guard (API, pages, sockets) follows the rights; changes apply at once; delete -> member', async () => {
     const page = (url, cookie) => fetch(base() + url, { headers: { Cookie: cookie }, redirect: 'manual' }).then((r) => r.status);
     assert.strictEqual((await api('GET', '/api/roles', leader)).status, 403, 'owner only');

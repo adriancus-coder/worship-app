@@ -120,6 +120,14 @@ function createPagesRouter({ db, auth, sendPage }) {
     sendPage(req, res, 'media');
   });
 
+  // Ghiduri: everyone reads (the API decides who writes).
+  router.get('/guides', noStore, signedIn, (req, res) => {
+    sendPage(req, res, 'guides');
+  });
+  router.get('/guides/:id(\\d+)', noStore, signedIn, (req, res) => {
+    sendPage(req, res, 'guide');
+  });
+
   // "Profilul meu" (name, phone, positions, later unavailability): everyone.
   router.get('/profile', noStore, signedIn, (req, res) => {
     sendPage(req, res, 'profile');

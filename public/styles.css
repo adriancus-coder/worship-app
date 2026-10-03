@@ -2579,3 +2579,42 @@ dialog.big-lyrics.scrolls .big-body { align-items: flex-start; overflow-y: auto;
   .big-nav > button:last-child { order: 3; flex: 1 0 100%; }
   .big-nav > .big-exit { order: 0; }
 }
+
+/* Ghiduri (public/guides.js, public/guide.js) */
+.guides-filter { margin: 0 0 8px; }
+.guides-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.guide-row { display: flex; align-items: center; gap: 12px; min-height: var(--touch); padding: 10px 12px; color: var(--text); text-decoration: none; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+.guide-row:hover { border-color: var(--accent-fill); }
+.guide-emoji { flex: none; font-size: 1.6rem; line-height: 1; }
+.guide-text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.guide-title { font-weight: 700; overflow-wrap: anywhere; }
+.guide-summary { overflow-wrap: anywhere; }
+.guide-meta { font-size: 0.875rem; color: var(--text-muted); }
+.guide-page h1 { overflow-wrap: anywhere; }
+.guide-lead { margin: 4px 0; font-size: 1.0625rem; overflow-wrap: anywhere; }
+.guide-details { margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+.guide-details h2 { margin: 0 0 8px; font-size: 1.0625rem; }
+.guide-section { margin-top: 20px; }
+.guide-section-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.guide-section h2 { margin: 0; }
+.guide-items { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.guide-item { padding: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); display: flex; flex-direction: column; gap: 6px; }
+.guide-step.done { border-color: var(--success); }
+.guide-step.done .guide-item-title { color: var(--text-muted); text-decoration: line-through; }
+.guide-item-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.guide-step-n { font-size: 0.8125rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--accent-text); }
+.guide-done { min-height: var(--touch); }
+.guide-item-title { margin: 0; font-size: 1.0625rem; overflow-wrap: anywhere; }
+.guide-body { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.guide-photo { display: block; max-width: 100%; height: auto; border-radius: var(--radius); border: 1px solid var(--border); }
+.guide-problem details summary { min-height: var(--touch); display: flex; align-items: center; font-weight: 700; cursor: pointer; overflow-wrap: anywhere; }
+.guide-problem details[open] summary { margin-bottom: 6px; }
+.guide-problem { border-color: var(--error); }
+.guide-edit-title, .guide-edit-body { width: 100%; }
+.guide-edit-tools, .guide-photo-tools { display: flex; flex-wrap: wrap; gap: 6px; }
+.guide-photo-pick { cursor: pointer; }
+.guide-add { margin-top: 10px; }
+.guide-add-form { display: flex; flex-direction: column; gap: 6px; padding: 12px; border: 1px dashed var(--border); border-radius: var(--radius); }
+.guide-add-form input, .guide-add-form textarea { width: 100%; }
+.guide-delete { margin-top: 24px; }
+.now-guide { display: inline-flex; align-items: center; min-height: var(--touch); font-weight: 600; }

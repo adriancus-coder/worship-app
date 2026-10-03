@@ -88,7 +88,9 @@
           ? el('span', { class: 'assign-answer-buttons' },
             el('button', { type: 'button', 'data-icon': 'check', 'data-answer': 'accepted', text: t('assign.yes'), onclick: () => answer(event, a, 'accepted') }),
             el('button', { type: 'button', class: 'secondary', 'data-icon': 'close', 'data-answer': 'declined', text: t('assign.no'), onclick: () => answer(event, a, 'declined') }))
-          : el('span', { class: `pill assign-pill assign-${a.status}`, text: t(`assign.status.${a.status}`) }))),
+          : el('span', { class: `pill assign-pill assign-${a.status}`, text: t(`assign.status.${a.status}`) }),
+        // the guides for this position (Ghiduri): "📘 Ghid: Pornirea sunetului"
+        ...(a.status === 'declined' ? [] : (state.guides || []).filter((g) => g.positionIds.includes(a.positionId)).map((g) => el('a', { class: 'now-guide', href: `/guides/${g.id}`, text: `${g.emoji || '📘'} ${t('guides.homeLink', { title: g.title })}` }))))),
       state.home.proposalsOpen
         ? el('a', { class: 'pill proposals-badge now-proposals', href: eventUrl(event, '/edit'), text: t('proposals.badge', { n: state.home.proposalsOpen }) })
         : null,
@@ -228,6 +230,11 @@
     if (!res.ok) throw new Error('home');
     state.home = res.body;
     state.failed = false;
+    // the guides for my positions on the top event, only when I am scheduled there
+    if ((state.home.assignments || []).length) {
+      const guides = await api('/api/guides').catch(() => null);
+      state.guides = guides && guides.ok ? guides.body.guides : [];
+    }
     render();
   }
 

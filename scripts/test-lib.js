@@ -2271,6 +2271,9 @@ testAsync('platform deletion: refused while active, the exact name, pending -> c
     db.prepare("INSERT INTO bridge_connections (event_id, admin_id, sv_base_url, sv_event_id, bridge_token, token_fingerprint, created_at, updated_at) VALUES (?, ?, 'https://dev.sanctuaryvoice.com', 'ev', 'tok', 'fp', 0, 0)").run(eventId, a);
     db.prepare("INSERT INTO bridge_pairings (admin_id, sv_base_url, pairing_token, token_fingerprint, sv_org_id, paired_at) VALUES (?, 'https://dev.sanctuaryvoice.com', 'pt', 'fp', 'org', 0)").run(a);
     db.prepare("INSERT INTO custom_roles (admin_id, name, base, perms, created_at) VALUES (?, 'Sunet', 'member', 'live', 0)").run(a);
+    const guideId = Number(db.prepare("INSERT INTO guides (admin_id, title, created_at, updated_at) VALUES (?, 'Sunet', 0, 0)").run(a).lastInsertRowid);
+    db.prepare('INSERT INTO guide_positions (guide_id, position_id, admin_id) SELECT ?, id, admin_id FROM positions WHERE admin_id = ? LIMIT 1').run(guideId, a);
+    db.prepare("INSERT INTO guide_items (guide_id, admin_id, kind, title, created_at) VALUES (?, ?, 'step', 'Pornește mixerul', 0)").run(guideId, a);
     fs.mkdirSync(path.join(dataDir, 'uploads', `admin-${a}`, 'media'), { recursive: true });
     fs.writeFileSync(path.join(dataDir, 'uploads', `admin-${a}`, 'media', 'f.bin'), Buffer.alloc(64, 1));
   };
@@ -2921,6 +2924,59 @@ test('custom roles (migration 045): rights, the live role, create / change / del
   assert.strictEqual(S.destroy(2, sound.id), false, 'another admin');
   assert.strictEqual(S.destroy(1, sound.id), true);
   assert.deepStrictEqual(userRow(2), { role: 'member', custom_role_id: null }, 'deleted: a member, never the base\'s built-in rights');
+});
+
+testAsync('guides (migration 046): steps and problems in order, positions, photos resized to WebP, delete takes the photos', async () => {
+  const Database = require('better-sqlite3');
+  const os = require('os');
+  const fs = require('fs');
+  const path = require('path');
+  const { runMigrations } = require('../lib/db');
+  const G = require('../lib/guides');
+  const tt = (k) => k;
+  assert.ok(G.validateGuide({ title: '' }, tt).error);
+  assert.deepStrictEqual(G.validateGuide({ title: '  Pornirea   sunetului ', summary: ' Duminica ', positionIds: [2, 2, 3] }, tt).value, { title: 'Pornirea sunetului', summary: 'Duminica', positionIds: [2, 3] });
+  assert.ok(G.validateItem({ kind: 'other', title: 'x' }, tt).error);
+  assert.ok(G.validateItem({ kind: 'step', title: 'x', body: 'y'.repeat(G.MAX_BODY + 1) }, tt).error);
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'wa-guides-'));
+  const mem = new Database(':memory:');
+  mem.pragma('foreign_keys = ON');
+  runMigrations(mem);
+  mem.prepare("INSERT INTO admins (id, name, created_at) VALUES (1, 'A', 0), (2, 'B', 0)").run();
+  mem.prepare("INSERT INTO positions (id, admin_id, name, sort) VALUES (1, 1, 'Sunet', 0), (2, 2, 'Altul', 0)").run();
+  const S = G.createGuideStore(mem, dataDir);
+  const made = S.create(1, null, { title: 'Pornirea sunetului', emoji: '🎚️', summary: '', positionIds: [1, 2] });
+  assert.deepStrictEqual(made.guide.positionIds, [1], 'only this church\'s positions');
+  const gid = made.guide.id;
+  const a = S.addItem(1, gid, { kind: 'step', title: 'Pornește prelungitorul' });
+  const b = S.addItem(1, gid, { kind: 'step', title: 'Pornește mixerul' });
+  const p = S.addItem(1, gid, { kind: 'problem', title: 'Nu se aude microfonul', body: 'Verifică bateria.\nApoi canalul 3.' });
+  assert.strictEqual(S.addItem(2, gid, { kind: 'step', title: 'x' }), null, 'another church');
+  assert.deepStrictEqual(S.get(1, gid).items.map((i) => i.title), ['Pornește prelungitorul', 'Pornește mixerul', 'Nu se aude microfonul'], 'steps first, then problems');
+  assert.strictEqual(S.reorder(1, gid, 'step', [b.id, a.id]), true);
+  assert.strictEqual(S.reorder(1, gid, 'step', [b.id]), false, 'every id of the kind');
+  assert.deepStrictEqual(S.get(1, gid).items.filter((i) => i.kind === 'step').map((i) => i.id), [b.id, a.id]);
+  assert.deepStrictEqual(S.list(1).map((g) => [g.title, g.steps, g.problems]), [['Pornirea sunetului', 2, 1]]);
+  assert.deepStrictEqual(S.list(2), []);
+  // a photo: any image -> WebP, at most 1600 px
+  const sharp = require('sharp');
+  const big = await sharp({ create: { width: 3000, height: 2000, channels: 3, background: { r: 200, g: 100, b: 50 } } }).jpeg().toBuffer();
+  const webp = await G.toWebp(big);
+  const meta = await sharp(webp).metadata();
+  assert.deepStrictEqual([meta.format, meta.width, meta.height], ['webp', 1600, 1067]);
+  await assert.rejects(G.toWebp(Buffer.from('not an image')));
+  const withPhoto = S.saveImage(1, gid, p.id, webp);
+  const file = withPhoto.image.split('/').pop();
+  assert.ok(G.isImageFile(file) && S.findImage(file).adminId === 1);
+  assert.ok(fs.existsSync(S.findImage(file).path));
+  assert.strictEqual(S.findImage('../../etc/passwd'), null);
+  assert.strictEqual(S.destroy(2, gid), false, 'another church');
+  const where = S.findImage(file).path;
+  assert.strictEqual(S.destroy(1, gid), true);
+  await new Promise((r) => setTimeout(r, 50));
+  assert.ok(!fs.existsSync(where), 'the photo goes with the guide');
+  assert.strictEqual(S.get(1, gid), null);
+  fs.rmSync(dataDir, { recursive: true, force: true });
 });
 
 test('positions (migration 029): seeded once per admin, add / rename / reorder / deactivate, the users\' usual positions', () => {
