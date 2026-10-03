@@ -42,19 +42,36 @@
     return node;
   }
 
-  // Full rights over events (create, edit, templates, live): mirrors EVENT_ROLES in
-  // lib/events.js. The same roles edit the library, media and screens (EDITOR_ROLES):
-  // leader and operator differ only by the page they land on.
+  // The built-in roles with event rights (lib/events.js EVENT_ROLES): the live engine's roles.
   const EVENT_ROLES = ['owner', 'presenter', 'leader', 'operator'];
-  const EDITOR_ROLES = EVENT_ROLES;
 
-  // Library writing (songs, resursecrestine), media and screens.
+  // The user's rights (lib/roles.js PERMS, from /api/auth/me): library, events, media, live,
+  // screens, schedule. The role itself only decides which page an event opens on.
+  function can(me, perm) {
+    return Boolean(me && me.user && Array.isArray(me.user.perms) && me.user.perms.includes(perm));
+  }
+  // Sees every event (unshared ones, templates): the events or the live right.
+  const seesAll = (me) => can(me, 'events') || can(me, 'live');
+
+  // Library writing (songs, a song's key and background).
   function canEdit(me) {
-    return Boolean(me && EDITOR_ROLES.includes(me.user.role));
+    return can(me, 'library');
   }
 
+  // Creating and editing events, setlists and templates.
   function canEditEvents(me) {
-    return Boolean(me && EVENT_ROLES.includes(me.user.role));
+    return can(me, 'events');
+  }
+
+  // The live page this user opens (docs/ROADMAP.md "Roles"): by the role, within the rights -
+  // 'owner' / 'presenter' (the live page), 'leader' (big lyrics), 'operator' (the console);
+  // null without the live right.
+  function liveEntryRole(me) {
+    if (!can(me, 'live')) return null;
+    const role = me.user.role;
+    if (role === 'owner' || role === 'leader') return role;
+    if (role === 'operator') return can(me, 'screens') ? 'operator' : 'presenter';
+    return 'presenter';
   }
 
   function setTitle(key, vars) {
@@ -179,5 +196,5 @@
   const roleLabel = (role) => withEmoji(ROLE_EMOJI[role], window.I18N.t(`team.roles.${role}`));
   const positionLabel = (p) => (p ? withEmoji(p.emoji, p.name) : '');
 
-  window.PAGE = { api, el, ROLE_EMOJI, roleLabel, positionLabel, canEdit, canEditEvents, EVENT_ROLES, setTitle, formatDate, dateBlock, setupTabs, backLink, keepFrom, eventBack, linkBack };
+  window.PAGE = { api, el, ROLE_EMOJI, roleLabel, positionLabel, can, seesAll, liveEntryRole, canEdit, canEditEvents, EVENT_ROLES, setTitle, formatDate, dateBlock, setupTabs, backLink, keepFrom, eventBack, linkBack };
 })();

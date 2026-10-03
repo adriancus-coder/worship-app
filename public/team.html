@@ -19,6 +19,7 @@
     <div class="tabs team-tabs" id="team-tabs" role="tablist" data-i18n-aria-label="team.tabsLabel" hidden>
       <button type="button" role="tab" id="tab-people" aria-controls="people-panel" aria-selected="true" data-tab="people" data-i18n="team.tabs.people"></button>
       <button type="button" role="tab" id="tab-positions" aria-controls="positions-panel" aria-selected="false" tabindex="-1" data-tab="positions" data-i18n="team.tabs.positions"></button>
+      <button type="button" role="tab" id="tab-roles" aria-controls="roles-panel" aria-selected="false" tabindex="-1" data-tab="roles" data-i18n="team.tabs.roles"></button>
       <button type="button" role="tab" id="tab-unavail" aria-controls="unavail-panel" aria-selected="false" tabindex="-1" data-tab="unavail" data-i18n="team.tabs.unavailability"></button>
     </div>
     <p id="page-message" class="message" role="status" aria-live="polite"></p>
@@ -31,6 +32,9 @@
     <div id="positions-panel" role="tabpanel" class="team-panel" data-list-pane="team.tabs.positions" hidden>
       <p class="hint" data-i18n="positions.intro"></p>
       <div id="positions-editor"></div>
+    </div>
+    <div id="roles-panel" role="tabpanel" class="team-panel" data-list-pane="team.tabs.roles" hidden>
+      <div id="roles-editor"></div>
     </div>
     <div id="unavail-panel" role="tabpanel" class="team-panel" data-list-pane="team.tabs.unavailability" hidden>
       <h2 class="team-panel-heading" data-i18n="team.unavailAllHeading"></h2>
@@ -63,6 +67,7 @@
           <label class="role-option"><input type="radio" name="add-role" value="leader"><span><strong><span class="role-emoji" aria-hidden="true">⭐</span> <span data-i18n="team.roles.leader"></span></strong><span class="hint" data-i18n="team.roleHelp.leader"></span></span></label>
           <label class="role-option"><input type="radio" name="add-role" value="operator"><span><strong><span class="role-emoji" aria-hidden="true">💻</span> <span data-i18n="team.roles.operator"></span></strong><span class="hint" data-i18n="team.roleHelp.operator"></span></span></label>
           <label class="role-option"><input type="radio" name="add-role" value="member" checked><span><strong><span class="role-emoji" aria-hidden="true">🎵</span> <span data-i18n="team.roles.member"></span></strong><span class="hint" data-i18n="team.roleHelp.member"></span></span></label>
+          <div id="add-custom-roles" class="role-custom-options"></div>
         </fieldset>
         <p id="add-message" class="message error" role="alert"></p>
         <p id="add-email-hint" class="hint" hidden data-i18n="team.sendInviteHint"></p>
@@ -137,6 +142,7 @@
   <script src="/list-pane.js"></script>
   <script src="/shell.js"></script>
   <script src="/positions-editor.js"></script>
+  <script src="/roles-editor.js"></script>
   <script src="/unavailability.js"></script>
   <script src="/team.js"></script>
 </body>

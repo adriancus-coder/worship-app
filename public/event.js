@@ -7,7 +7,7 @@
 // beforeunload prompt) and a local draft backup restored on the next visit.
 
 (function () {
-  const { api, el, canEdit: canEditLibrary, canEditEvents: canEdit, setTitle, formatDate, backLink, keepFrom } = window.PAGE;
+  const { api, el, can, seesAll, liveEntryRole, canEdit: canEditLibrary, canEditEvents: canEdit, setTitle, formatDate, backLink, keepFrom } = window.PAGE;
   const { t } = window.I18N;
 
   const [, , eventId, editSegment] = window.location.pathname.split('/');
@@ -156,7 +156,7 @@
     renderActions();
     $('details-button').hidden = !state.editing;
     // "Retrage din live": a live event back to planned without ending it (event roles)
-    $('withdraw-button').hidden = !(ev.status === 'live' && !ev.isTemplate && canEdit(state.me));
+    $('withdraw-button').hidden = !(ev.status === 'live' && !ev.isTemplate && can(state.me, 'live'));
     templateButton.hidden = !state.editing;
     templateButton.disabled = isDirty();
     renderToolsMenu();
@@ -207,10 +207,12 @@
 
   function renderActions() {
     const ev = state.event;
-    const editor = canEdit(state.me);
+    // the rights decide what shows: 'events' edits, 'live' starts / enters; the role the order
+    const editor = seesAll(state.me);
     const role = state.me && state.me.user.role;
-    const entry = LIVE_ENTRY[role] || LIVE_ENTRY.presenter;
-    const livePage = keepFrom(`/events/${ev.id}${entry.path}`);
+    const entry = LIVE_ENTRY[liveEntryRole(state.me)] || null;
+    const livePage = entry ? keepFrom(`/events/${ev.id}${entry.path}`) : null;
+    const follow = { key: 'follow.link', icon: 'follow', href: keepFrom(`/events/${ev.id}/follow`) };
     // Rehearsal is the musical team's (owner, presenter, leader, member): the operator never gets it.
     const rehearse = role === 'operator' ? null : { key: 'rehearse.link', icon: 'rehearse', href: keepFrom(`/events/${ev.id}/rehearse`) };
     const actions = [];
@@ -219,16 +221,16 @@
         ? { key: 'follow.link', icon: 'follow', href: keepFrom(`/events/${ev.id}/follow`) }
         : rehearse);
     } else {
-      const edit = state.editing ? null : { key: 'setlist.edit', icon: 'edit', href: keepFrom(`/events/${ev.id}/edit`) };
+      const edit = state.editing || !canEdit(state.me) ? null : { key: 'setlist.edit', icon: 'edit', href: keepFrom(`/events/${ev.id}/edit`) };
       const soon = state.today && [state.today, dayAfter(state.today)].includes(ev.eventDate);
       if (!ev.isTemplate && ev.status === 'live') {
-        actions.push({ key: entry.key, icon: 'play', href: livePage }, rehearse, edit);
+        actions.push(entry ? { key: entry.key, icon: 'play', href: livePage } : follow, rehearse, edit);
         // The leader lands in the big lyrics; the full live page stays a secondary way in.
         if (role === 'leader') actions.push({ key: 'live.fullPage', icon: 'follow', href: keepFrom(`/events/${ev.id}/live?view=full`) });
       } else {
         // Before the start, by role (the same order as the home card): the owner starts first
         // (today / tomorrow), the leader rehearses first, presenter and operator prepare first.
-        const live = ev.isTemplate ? null : { key: soon ? 'home.startLive' : 'live.link', icon: 'play', href: livePage };
+        const live = ev.isTemplate || !entry ? null : { key: soon ? 'home.startLive' : 'live.link', icon: 'play', href: livePage };
         if (role === 'leader') actions.push(rehearse, live, edit);
         else if (role === 'owner') actions.push(...(soon ? [live, rehearse, edit] : [edit, live, rehearse]));
         else actions.push(edit, live, rehearse);
@@ -355,12 +357,11 @@
   // start keeps it (lib/live.js PREPARE_COMMANDS). Event roles, planned or live events.
   function renderProjectorPrep() {
     const ev = state.event;
-    const show = Boolean(ev && !ev.isTemplate && ev.status !== 'finished' && canEdit(state.me));
+    const show = Boolean(ev && !ev.isTemplate && ev.status !== 'finished' && can(state.me, 'live'));
     $('projector-card').hidden = !show;
     setTabAvailable('projector', show);
     if (!show) return;
-    const role = state.me && state.me.user ? state.me.user.role : null;
-    const consoleRole = role === 'owner' || role === 'operator';
+    const consoleRole = can(state.me, 'screens');
     const link = $('projector-prep-link');
     link.href = consoleRole ? `/events/${ev.id}/operator` : `/events/${ev.id}/live?view=full`;
     link.textContent = t(ev.status === 'live' ? 'setlist.projectorOpenLive' : 'setlist.projectorPrepare');
@@ -374,7 +375,7 @@
   const bridgeBox = { ui: null, mounted: false };
   function renderBridge() {
     const ev = state.event;
-    const show = Boolean(ev && !ev.isTemplate && canEdit(state.me));
+    const show = Boolean(ev && !ev.isTemplate && can(state.me, 'live'));
     $('bridge-card').hidden = !show;
     setTabAvailable('bridge', show);
     if (!show || bridgeBox.mounted) return;
@@ -388,7 +389,7 @@
   const proposalsBox = { ui: null, mode: null };
   function renderProposals() {
     const ev = state.event;
-    const editor = canEdit(state.me);
+    const editor = seesAll(state.me);
     const wanted = ev.isTemplate ? null : (editor ? (state.editing && ev.status !== 'finished' ? 'roles' : 'badge') : 'member');
     setTabAvailable('proposals', wanted === 'member' || wanted === 'roles');
     if (proposalsBox.mode === wanted) return;
@@ -421,11 +422,9 @@
   // --- the team (public/team-card.js): the Echipa tab - assigning (owner, leader editing) or
   // the card (everyone else) ---
   const team = { card: null, mode: null, summary: null };
-  const ASSIGN_ROLES = ['owner', 'leader']; // lib/assignments.js
   function renderTeam() {
     const ev = state.event;
-    const role = state.me && state.me.user.role;
-    const wanted = ev.isTemplate && !state.editing ? null : (state.editing && ASSIGN_ROLES.includes(role) ? 'edit' : 'view');
+    const wanted = ev.isTemplate && !state.editing ? null : (can(state.me, 'schedule') && (state.editing || !canEdit(state.me)) ? 'edit' : 'view'); // a scheduler without the events right assigns on the event page
     setTabAvailable('team', Boolean(wanted));
     if (!wanted) {
       $('team-card').replaceChildren();
@@ -450,7 +449,7 @@
   // "5 confirmați · 1 așteaptă · 1 nu poate" in the header (event roles): tap -> the list.
   function renderTeamSummary() {
     const box = $('team-summary');
-    const editor = canEdit(state.me);
+    const editor = seesAll(state.me);
     if (!editor || !team.summary || !team.summary.total || state.event.isTemplate) { box.hidden = true; return; }
     box.hidden = false;
     box.textContent = window.TEAM_CARD.summaryText(team.summary);

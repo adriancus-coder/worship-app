@@ -469,9 +469,9 @@
     button: $('open-projector'), hint: $('projector-permission'), message: $('projector-message'), api, t,
   });
   // Opening the projector window (a paired screen) is the operator's and the owner's; the
-  // leader keeps the preview and the sources (lib/events.js SCREEN_ROLES).
+  // leader keeps the preview and the sources (the 'screens' right, lib/roles.js).
   window.SHELL.me.then((me) => {
-    if (me && !['owner', 'operator'].includes(me.user.role)) {
+    if (me && !window.PAGE.can(me, 'screens')) {
       $('open-projector').hidden = true;
       $('projector-permission').hidden = true;
     }

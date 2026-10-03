@@ -2,7 +2,8 @@
 
 const express = require('express');
 const asyncRoute = require('../lib/async-route');
-const { EVENT_ROLES, createEventStore } = require('../lib/events');
+const { createEventStore } = require('../lib/events');
+const { seesAllEvents } = require('../lib/roles');
 const { createProposalStore } = require('../lib/proposals');
 
 // Song proposals (lib/proposals.js):
@@ -21,7 +22,7 @@ function createProposalsRouter({ db, auth, logger, live, notifications }) {
     res.set('Cache-Control', 'no-store');
     next();
   });
-  const isEditor = (req) => EVENT_ROLES.includes(req.user.role);
+  const isEditor = (req) => seesAllEvents(req.user); // the 'events' or the 'live' right
 
   function load(req, res) {
     const id = /^\d{1,15}$/.test(req.params.id) ? Number(req.params.id) : null;
@@ -80,7 +81,7 @@ function createProposalsRouter({ db, auth, logger, live, notifications }) {
     if (found.event.status === 'finished' || found.event.isTemplate) return res.status(409).json({ code: 'eventFinished', error: req.t('errors.proposalEventClosed') });
     let itemId = null;
     if (liveNow) {
-      const out = live.addItem(req.adminId, found.event.id, { target, position, item: { type: 'song', songId: proposal.songId } }, { role: req.user.role, userId: req.user.id, userName: req.user.name });
+      const out = live.addItem(req.adminId, found.event.id, { target, position, item: { type: 'song', songId: proposal.songId } }, { role: req.user.liveRole, userId: req.user.id, userName: req.user.name });
       if (!out.ok) return res.status(409).json({ code: out.code, error: req.t(`live.errors.${out.code}`) });
       itemId = out.itemId;
     } else {

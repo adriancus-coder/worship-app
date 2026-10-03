@@ -18,7 +18,8 @@
 const express = require('express');
 const asyncRoute = require('../lib/async-route');
 const { requireRole } = require('../lib/auth');
-const { EVENT_ROLES, createEventStore } = require('../lib/events');
+const { createEventStore } = require('../lib/events');
+const { requirePerm } = require('../lib/roles');
 const { BridgeError } = require('../lib/bridge/client');
 
 // BridgeError code -> HTTP status. Everything else is a bad gateway (SV / transport).
@@ -32,7 +33,7 @@ const STATUS_BY_CODE = {
 function createBridgeRouter({ db, auth, logger, bridge }) {
   const router = express.Router();
   const events = createEventStore(db);
-  const canEdit = requireRole(...EVENT_ROLES);
+  const canEdit = requirePerm('live');
   const ownerOnly = requireRole('owner');
 
   function eventId(req) {

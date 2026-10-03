@@ -1,17 +1,17 @@
 'use strict';
 
 const express = require('express');
-const { requireRole } = require('../lib/auth');
+const { requirePerm, can } = require('../lib/roles');
 const { validatePositionName, validatePositionEmoji, createPositionStore } = require('../lib/positions');
 
 // "Poziții în echipă" (Setări, and /positions for the leader): the positions a church uses.
-// Everyone signed in reads them (pickers, the profile); owner and leader edit them.
-const MANAGE_ROLES = ['owner', 'leader'];
+// Everyone signed in reads them (pickers, the profile); the 'schedule' right edits them.
+const MANAGE_ROLES = ['owner', 'leader']; // the built-in roles with it
 
 function createPositionsRouter({ db, auth, logger }) {
   const router = express.Router();
   const positions = createPositionStore(db);
-  const canManage = requireRole(...MANAGE_ROLES);
+  const canManage = requirePerm('schedule');
 
   router.use('/api/positions', auth.requireUser, (req, res, next) => {
     res.set('Cache-Control', 'no-store');
@@ -21,7 +21,7 @@ function createPositionsRouter({ db, auth, logger }) {
   const idOf = (req) => (/^\d{1,15}$/.test(req.params.id) ? Number(req.params.id) : null);
 
   router.get('/api/positions', (req, res) => {
-    res.json({ positions: positions.list(req.adminId), canManage: MANAGE_ROLES.includes(req.user.role) });
+    res.json({ positions: positions.list(req.adminId), canManage: can(req.user, 'schedule') });
   });
 
   router.post('/api/positions', canManage, (req, res) => {

@@ -1,12 +1,11 @@
 'use strict';
 
 const express = require('express');
-const { requireRole } = require('../lib/auth');
+const { requirePerm } = require('../lib/roles');
 const { createFailureLimiter, createRequestLimiter } = require('../lib/rate-limit');
 const { validateScreenName, createScreenStore } = require('../lib/screens');
 const { parseSafeMargin, createAdminSettings } = require('../lib/admin-settings');
 
-const { SCREEN_ROLES } = require('../lib/events');
 const TEN_MINUTES = 10 * 60 * 1000;
 const SCREEN_TOKEN_HEADER = 'x-screen-token';
 const SCREEN_KEY_HEADER = 'x-screen-key';
@@ -24,7 +23,7 @@ function createScreensRouter({ db, auth, config, logger, screensHub }) {
   const router = express.Router();
   const screens = createScreenStore(db);
   const settings = createAdminSettings(db);
-  const canManage = requireRole(...SCREEN_ROLES);
+  const canManage = requirePerm('screens');
   const pairingLimiter = createRequestLimiter({ maxRequests: 10, windowMs: TEN_MINUTES });
   const codeLimiter = createFailureLimiter({ maxFailures: 5, windowMs: TEN_MINUTES });
 

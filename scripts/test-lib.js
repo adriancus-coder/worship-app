@@ -2270,6 +2270,7 @@ testAsync('platform deletion: refused while active, the exact name, pending -> c
     db.prepare("INSERT INTO song_proposals (admin_id, event_id, song_id, proposed_by, created_at) VALUES (?, ?, ?, ?, 0)").run(a, eventId, songId, userId);
     db.prepare("INSERT INTO bridge_connections (event_id, admin_id, sv_base_url, sv_event_id, bridge_token, token_fingerprint, created_at, updated_at) VALUES (?, ?, 'https://dev.sanctuaryvoice.com', 'ev', 'tok', 'fp', 0, 0)").run(eventId, a);
     db.prepare("INSERT INTO bridge_pairings (admin_id, sv_base_url, pairing_token, token_fingerprint, sv_org_id, paired_at) VALUES (?, 'https://dev.sanctuaryvoice.com', 'pt', 'fp', 'org', 0)").run(a);
+    db.prepare("INSERT INTO custom_roles (admin_id, name, base, perms, created_at) VALUES (?, 'Sunet', 'member', 'live', 0)").run(a);
     fs.mkdirSync(path.join(dataDir, 'uploads', `admin-${a}`, 'media'), { recursive: true });
     fs.writeFileSync(path.join(dataDir, 'uploads', `admin-${a}`, 'media', 'f.bin'), Buffer.alloc(64, 1));
   };
@@ -2880,6 +2881,46 @@ test('safe margin: 0-12 % parsed, 5 by default; on every frame; a screen may ove
   assert.strictEqual(screens.list(1)[0].safeMargin, null);
   assert.strictEqual(screens.setSafeMargin(2, 1, 3), false, 'another admin: nothing');
   mem.close();
+});
+
+test('custom roles (migration 045): rights, the live role, create / change / delete, the people follow', () => {
+  const Database = require('better-sqlite3');
+  const { runMigrations } = require('../lib/db');
+  const R = require('../lib/roles');
+  assert.deepStrictEqual(R.normalizePerms(['screens', 'media', 'bogus', 'media']), ['media', 'live', 'screens'], 'screens brings live, order kept, unknown dropped');
+  assert.deepStrictEqual(R.parsePerms('schedule,library'), ['library', 'schedule']);
+  assert.deepStrictEqual(['owner', 'presenter', 'leader', 'operator', 'member'].map((r) => R.liveRoleOf(r, R.BUILTIN_PERMS[r])), ['owner', 'presenter', 'leader', 'operator', 'member'], 'the built-in roles keep their live role');
+  assert.deepStrictEqual([R.liveRoleOf('member', ['live']), R.liveRoleOf('member', ['live', 'screens']), R.liveRoleOf('operator', ['live']), R.liveRoleOf('leader', ['media'])], ['presenter', 'operator', 'presenter', 'member']);
+  assert.strictEqual(R.seesAllEvents({ perms: ['live'] }), true);
+  assert.strictEqual(R.seesAllEvents({ perms: ['media', 'schedule'] }), false);
+  const tt = (k) => k;
+  assert.ok(R.validateRoleInput({ name: 'X', base: 'owner', perms: [] }, tt).error, 'never an owner');
+  assert.ok(R.validateRoleInput({ name: '', base: 'member', perms: [] }, tt).error);
+  assert.ok(R.validateRoleInput({ name: 'X', base: 'member', perms: ['root'] }, tt).error);
+  assert.deepStrictEqual(R.validateRoleInput({ perms: ['screens'] }, tt, { partial: true }).value, { perms: ['live', 'screens'] });
+
+  const mem = new Database(':memory:');
+  mem.pragma('foreign_keys = ON');
+  runMigrations(mem);
+  mem.prepare("INSERT INTO admins (id, name, created_at) VALUES (1, 'A', 0), (2, 'B', 0)").run();
+  mem.prepare("INSERT INTO users (id, admin_id, email, name, password_hash, role, created_at) VALUES (1, 1, 'o@x.ro', 'O', 'x', 'owner', 0), (2, 1, 'm@x.ro', 'M', 'x', 'member', 0), (3, 2, 'b@x.ro', 'B', 'x', 'member', 0)").run();
+  const S = R.createRoleStore(mem);
+  const sound = S.create(1, { name: 'Sunet', emoji: '🎚️', base: 'member', perms: ['media'] });
+  assert.deepStrictEqual([sound.name, sound.emoji, sound.base, sound.perms], ['Sunet', '🎚️', 'member', ['media']]);
+  assert.strictEqual(S.get(2, sound.id), null, 'another admin');
+  assert.strictEqual(S.setUserRole(1, 2, { customRoleId: sound.id }), true);
+  assert.strictEqual(S.setUserRole(2, 3, { customRoleId: sound.id }), false, 'another admin\'s role');
+  assert.strictEqual(S.setUserRole(1, 1, { customRoleId: sound.id }), true);
+  const userRow = (id) => mem.prepare('SELECT role, custom_role_id FROM users WHERE id = ?').get(id);
+  assert.deepStrictEqual(userRow(1), { role: 'owner', custom_role_id: null }, 'the owner never takes a custom role');
+  assert.deepStrictEqual(userRow(2), { role: 'member', custom_role_id: sound.id });
+  assert.strictEqual(S.list(1)[0].users, 1);
+  S.change(1, sound.id, { base: 'operator', perms: ['screens'] });
+  assert.deepStrictEqual(userRow(2), { role: 'operator', custom_role_id: sound.id }, 'the people follow the new base');
+  assert.deepStrictEqual(S.get(1, sound.id).perms, ['live', 'screens']);
+  assert.strictEqual(S.destroy(2, sound.id), false, 'another admin');
+  assert.strictEqual(S.destroy(1, sound.id), true);
+  assert.deepStrictEqual(userRow(2), { role: 'member', custom_role_id: null }, 'deleted: a member, never the base\'s built-in rights');
 });
 
 test('positions (migration 029): seeded once per admin, add / rename / reorder / deactivate, the users\' usual positions', () => {

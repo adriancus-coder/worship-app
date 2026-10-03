@@ -2,14 +2,13 @@
 
 const fs = require('fs');
 const express = require('express');
-const { requireRole } = require('../lib/auth');
+const { requirePerm } = require('../lib/roles');
 const { VARIANTS, sniffVideo, sniffImage, parseVideoUrl, validateTitle, createMediaStore, createMediaSigner } = require('../lib/media');
 const { createScreenStore } = require('../lib/screens');
 const { screenCredential } = require('./screens');
 const { parseReadability, createBackgroundStore } = require('../lib/backgrounds');
 const { createMediaQuota } = require('../lib/platform');
 
-const { EDITOR_ROLES } = require('../lib/events');
 const { MediaFetchError, fetchToTemp } = require('../lib/media-fetch');
 const { PexelsError } = require('../lib/pexels');
 const asyncRoute = require('../lib/async-route');
@@ -50,7 +49,7 @@ function createMediaRouter({ db, auth, config, logger, live, storage, pexels = n
   const signer = createMediaSigner(config.DATA_DIR);
   const screens = createScreenStore(db);
   const backgrounds = createBackgroundStore(db, signer);
-  const canEdit = requireRole(...EDITOR_ROLES);
+  const canEdit = requirePerm('media');
   const adminOf = db.prepare('SELECT admin_id FROM media WHERE id = ?').pluck();
 
   const mediaId = (req) => (/^\d{1,15}$/.test(req.params.id) ? Number(req.params.id) : null);
@@ -88,7 +87,8 @@ function createMediaRouter({ db, auth, config, logger, live, storage, pexels = n
 
   // The list also for the operator (the video panel on the operator console); changes:
   // owner and leader only.
-  router.get('/api/media', requireRole(...EDITOR_ROLES), (req, res) => {
+  router.get('/api/media', requirePerm('media', 'live', 'library'), // the pickers (backgrounds, video) too
+   (req, res) => {
     const used = media.usedBytes(req.adminId);
     res.json({
       media: media.list(req.adminId),

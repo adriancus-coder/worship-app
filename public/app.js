@@ -9,14 +9,13 @@
 // without a reload.
 
 (function () {
-  const { api, el, formatDate, canEdit: canEditLibrary, EVENT_ROLES } = window.PAGE;
+  const { api, el, formatDate, canEdit: canEditLibrary, can, liveEntryRole } = window.PAGE;
   const { t } = window.I18N;
   const $ = (id) => document.getElementById(id);
-  const EDITOR_ROLES = EVENT_ROLES;
 
   const state = { me: null, home: null, failed: false };
 
-  const editor = () => Boolean(state.me) && EDITOR_ROLES.includes(state.me.user.role);
+  const editor = () => can(state.me, 'events'); // creates events
 
   function when(event) {
     const today = state.home.today;
@@ -41,10 +40,10 @@
     operator: { path: '/operator', key: 'home.console' },
   };
 
-  // [primary, secondary?] actions for the card, by role and state.
+  // [primary, secondary?] actions for the card, by role and state, within the rights.
   function actions(event, live) {
     const role = state.me.user.role;
-    const entry = LIVE_ENTRY[role];
+    const entry = LIVE_ENTRY[liveEntryRole(state.me)];
     if (live) {
       if (entry) return [{ text: t(entry.key), href: eventUrl(event, entry.path), icon: 'play' }];
       return [{ text: t('home.follow'), href: eventUrl(event, '/follow'), icon: 'follow' }];
@@ -52,15 +51,15 @@
     // Event roles: "▶ Pornește live" starts it and opens that role's page in one tap. The
     // owner starts first; the presenter and the operator prepare first (primary) and start
     // second; the leader rehearses first. Rehearsal is never the operator's.
+    const prepare = can(state.me, 'events') ? { text: t('home.prepare'), href: eventUrl(event, '/edit'), icon: 'edit' } : null;
+    const rehearse = role === 'operator' ? null : { text: t('home.rehearse'), href: eventUrl(event, '/rehearse'), icon: 'rehearse' };
     if (entry) {
       const start = { text: t('home.startLive'), icon: 'play', run: () => startLive(event, eventUrl(event, entry.path)) };
-      const prepare = { text: t('home.prepare'), href: eventUrl(event, '/edit'), icon: 'edit' };
-      const rehearse = { text: t('home.rehearse'), href: eventUrl(event, '/rehearse'), icon: 'rehearse' };
       if (role === 'owner') return [start, prepare];
       if (role === 'leader') return [rehearse, start];
-      return [prepare, start];
+      return [prepare, start].filter(Boolean);
     }
-    return [{ text: t('home.rehearse'), href: eventUrl(event, '/rehearse'), icon: 'rehearse' }];
+    return [prepare, rehearse || { text: t('home.rehearse'), href: eventUrl(event, '/rehearse'), icon: 'rehearse' }].filter(Boolean);
   }
 
   function card(event, live) {
@@ -99,7 +98,7 @@
       // Live for more than a day (someone forgot to end it): a small hint with "Încheie".
       live && staleLive(event) ? el('p', { class: 'now-stale', id: 'stale-live' },
         el('span', { text: t('home.staleLive') }),
-        EDITOR_ROLES.includes(state.me.user.role)
+        can(state.me, 'live')
           ? el('button', { type: 'button', class: 'secondary danger-text', id: 'end-stale', 'data-icon': 'stop', text: t('home.staleEnd'), onclick: () => endStale(event) })
           : null) : null,
       el('p', { class: 'message error', id: 'start-message', role: 'alert' }));

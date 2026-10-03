@@ -38,6 +38,19 @@ never implement a later stage early. Mockups: claude.ai design canvas
   operator"; member "Repetiție" / "Urmărește live". "Pornește live" starts the event and
   opens that role's own page. Never show the internal role word in the UI (labels through
   `team.roles.*`). The owner can look at the app as any other role ("Vezi aplicația ca").
+- **Rights and custom roles** (migration 045, `lib/roles.js`): every guard reads RIGHTS, never
+  a role list: `library` (songs), `events` (events, setlists, templates, proposals), `media`,
+  `live` (start / run / end / withdraw, live pages, additions, resursecrestine search, the
+  bridge), `screens` (console, screens page; holding the projector = split mode; needs
+  `live`), `schedule` (assignments, positions, everyone's unavailability). The built-in
+  roles have fixed rights (owner: all; presenter: library, events, media, live; leader: +
+  schedule; operator: + screens; member: none). The owner creates roles in Echipa → Roluri:
+  name, emoji, "Se deschide ca" (presenter / leader / operator / member: the page an event
+  opens on = `users.role`) and the rights ticked one by one; a person gets one in Echipa
+  (`role: 'custom:<id>'`). Changes apply at once (the session reads the role on every
+  request and socket message). Deleting a role makes its people members (never the base's
+  built-in rights). The team, settings, backups, pairing and the platform stay the owner's.
+  Built-in roles get a fixed emoji (👑 🎙️ ⭐ 💻 🎵); positions have their own (migration 044).
 - **UI:** new design, dark stage theme, phone- and tablet-first; Romanian UI by default.
 - **Chord notation:** letters (C D E) or Romanian solfège (Do Re Mi), chosen per user with a
   church default; songs are always stored with letters (display only).

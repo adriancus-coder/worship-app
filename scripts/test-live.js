@@ -1848,6 +1848,52 @@ async function main() {
     assert.strictEqual((await api('POST', '/api/me/password', owner, { current: `${PASSWORD}-x`, password: PASSWORD })).status, 200);
   });
 
+  await step('custom roles: the owner creates one with chosen rights, a person gets it, every guard (API, pages, sockets) follows the rights; changes apply at once; delete -> member', async () => {
+    const page = (url, cookie) => fetch(base() + url, { headers: { Cookie: cookie }, redirect: 'manual' }).then((r) => r.status);
+    assert.strictEqual((await api('GET', '/api/roles', leader)).status, 403, 'owner only');
+    assert.strictEqual((await api('POST', '/api/roles', owner, { name: 'X', base: 'owner', perms: [] })).status, 400, 'never an owner');
+    const made = await api('POST', '/api/roles', owner, { name: 'Media', emoji: '🎚️', base: 'member', perms: ['media'] });
+    assert.strictEqual(made.status, 201);
+    const roleId = made.body.role.id;
+    const memberId = (await api('GET', '/api/team', owner)).body.users.find((u) => u.email === 'membru@x.ro').id;
+    assert.strictEqual((await api('PATCH', `/api/team/${memberId}`, owner, { role: 'custom:999' })).status, 400, 'an unknown role');
+    assert.strictEqual((await api('PATCH', `/api/team/${memberId}`, owner, { role: `custom:${roleId}` })).body.user.customRoleId, roleId);
+    let me = (await api('GET', '/api/auth/me', member)).body.user;
+    assert.deepStrictEqual([me.role, me.perms, me.liveRole, me.customRole && me.customRole.name], ['member', ['media'], 'member', 'Media']);
+    assert.strictEqual((await api('GET', '/api/media', member)).status, 200, 'media: yes');
+    assert.strictEqual(await page('/media', member), 200);
+    assert.strictEqual((await api('POST', '/api/events', member, { name: 'X', eventDate: '2026-10-10' })).status, 403, 'events: no');
+    assert.strictEqual((await api('POST', '/api/songs', member, { title: 'X', sections: [{ type: 'verse', content: 'a' }] })).status, 403, 'library: no');
+    assert.strictEqual((await api('GET', '/api/screens', member)).status, 403, 'screens: no');
+    assert.strictEqual((await api('GET', '/api/team', member)).status, 403, 'the team stays the owner\'s');
+    // changed at once: live + screens, opens like an operator
+    const changed = await api('PUT', `/api/roles/${roleId}`, owner, { base: 'operator', perms: ['screens'] });
+    assert.deepStrictEqual(changed.body.role.perms, ['live', 'screens'], 'screens brings live');
+    me = (await api('GET', '/api/auth/me', member)).body.user;
+    assert.deepStrictEqual([me.role, me.perms, me.liveRole], ['operator', ['live', 'screens'], 'operator']);
+    assert.strictEqual((await api('GET', '/api/screens', member)).status, 200, 'screens: yes');
+    assert.strictEqual((await api('GET', '/api/media', member)).status, 200, 'the media list for the pickers (live)');
+    assert.strictEqual((await api('POST', '/api/media/url', member, { url: 'https://example.org/a.mp4', title: 'x' })).status, 403, 'media writes: no');
+    const evR = (await api('POST', '/api/events', owner, { name: 'Roluri', eventDate: '2026-10-11' })).body.event;
+    assert.strictEqual(await page(`/events/${evR.id}/operator`, member), 200, 'the console opens');
+    assert.strictEqual(await page(`/events/${evR.id}/edit`, member), 302, 'no events right: no editor');
+    assert.strictEqual((await api('POST', `/api/events/${evR.id}/start`, member)).status, 200, 'live: starts the event');
+    const sock = await joined(member, evR.id);
+    const reply = await emit(sock.socket, 'live:command', { eventId: evR.id, type: 'clock.set', show: false, expectedVersion: sock.state.version });
+    assert.ok(reply.ok, `live commands: yes (${JSON.stringify(reply)})`);
+    sock.socket.close();
+    assert.strictEqual((await api('POST', `/api/events/${evR.id}/end`, member)).status, 200);
+    // the directory names the role for everyone
+    const dir = (await api('GET', '/api/team/directory', leader)).body;
+    assert.ok(dir.roles.some((r) => r.id === roleId && r.name === 'Media') && dir.users.find((u) => u.id === memberId).customRoleId === roleId);
+    // deleted: back to member
+    assert.strictEqual((await api('DELETE', `/api/roles/${roleId}`, owner)).status, 200);
+    me = (await api('GET', '/api/auth/me', member)).body.user;
+    assert.deepStrictEqual([me.role, me.perms, me.customRole], ['member', [], null]);
+    assert.strictEqual((await api('GET', '/api/screens', member)).status, 403);
+    await api('DELETE', `/api/events/${evR.id}`, owner);
+  });
+
   await step('platform: its owner creates and manages churches; everyone else 403', async () => {
     const other2 = await login('alt@x.ro'); // admin 2's owner: an ordinary church
     for (const cookie of [other2, leader, member]) assert.strictEqual((await api('GET', '/api/platform/admins', cookie)).status, 403);

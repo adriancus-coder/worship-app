@@ -9,6 +9,7 @@ const { createPositionStore } = require('../lib/positions');
 const { createUnavailabilityStore } = require('../lib/unavailability');
 const { todayIn } = require('../lib/dates');
 const { createAdminSettings } = require('../lib/admin-settings');
+const { createRoleStore } = require('../lib/roles');
 
 // The owner manages the admin's team: accounts with temporary passwords (shown once, never
 // logged), role and name changes, deactivation, password resets. Owner only; another admin's
@@ -19,6 +20,18 @@ function createTeamRouter({ db, auth, config, logger, live, email, invites }) {
   const positions = createPositionStore(db);
   const unavailability = createUnavailabilityStore(db);
   const settings = createAdminSettings(db);
+  const roles = createRoleStore(db);
+  // A role choice: a built-in role ('member', …) or a role the owner created ('custom:<id>').
+  // -> { value: { role, customRoleId } } or { error }
+  function roleChoice(req, value) {
+    const match = /^custom:(\d{1,15})$/.exec(String(value || ''));
+    if (match) {
+      const custom = roles.get(req.adminId, Number(match[1]));
+      return custom ? { value: { role: custom.base, customRoleId: custom.id } } : { error: req.t('errors.teamRoleInvalid') };
+    }
+    const role = validateRole(value, req.t);
+    return role.error ? role : { value: { role: role.value, customRoleId: null } };
+  }
   const withPositions = (adminId, users) => { const by = positions.byUser(adminId); return users.map((u) => ({ ...u, positionIds: by.get(u.id) || [] })); };
   const baseUrl = (req) => config.PUBLIC_BASE_URL || `${req.protocol}://${req.get('host')}`;
 
@@ -28,8 +41,8 @@ function createTeamRouter({ db, auth, config, logger, live, email, invites }) {
     res.set('Cache-Control', 'no-store');
     const busy = unavailability.byUser(req.adminId, todayIn(settings.timezone(req.adminId)));
     const users = withPositions(req.adminId, team.list(req.adminId)).filter((u) => u.active)
-      .map((u) => ({ id: u.id, name: u.name, role: u.role, positionIds: u.positionIds, unavailability: busy.get(u.id) || [], me: u.id === req.user.id }));
-    res.json({ users, positions: positions.list(req.adminId) });
+      .map((u) => ({ id: u.id, name: u.name, role: u.role, customRoleId: u.customRoleId, positionIds: u.positionIds, unavailability: busy.get(u.id) || [], me: u.id === req.user.id }));
+    res.json({ users, positions: positions.list(req.adminId), roles: roles.list(req.adminId).map(({ id, name, emoji, base }) => ({ id, name, emoji, base })) });
   });
 
   router.use('/api/team', auth.requireUser, requireRole('owner'), (req, res, next) => {
@@ -59,7 +72,7 @@ function createTeamRouter({ db, auth, config, logger, live, email, invites }) {
     const busy = unavailability.byUser(req.adminId, todayIn(settings.timezone(req.adminId)));
     res.json({
       users: withPositions(req.adminId, team.list(req.adminId)).map((u) => ({ ...u, unavailability: busy.get(u.id) || [] })),
-      positions: positions.list(req.adminId), baseUrl: config.PUBLIC_BASE_URL, emailEnabled: email.enabled,
+      positions: positions.list(req.adminId), roles: roles.list(req.adminId), baseUrl: config.PUBLIC_BASE_URL, emailEnabled: email.enabled,
     });
   });
 
@@ -98,19 +111,19 @@ function createTeamRouter({ db, auth, config, logger, live, email, invites }) {
     if (name.error) return res.status(400).json({ error: name.error });
     const email = validateEmail(body.email, req.t);
     if (email.error) return res.status(400).json({ error: email.error });
-    const role = validateRole(body.role, req.t);
+    const role = roleChoice(req, body.role);
     if (role.error) return res.status(400).json({ error: role.error });
     if (team.isEmailTaken(email.value)) return res.status(409).json({ error: req.t('errors.teamEmailTaken') });
     const password = temporaryPassword();
     const hash = await hashPassword(password);
     let id;
     try {
-      id = team.create(req.adminId, req.user.id, { name: name.value, email: email.value, role: role.value }, hash);
+      id = team.create(req.adminId, req.user.id, { name: name.value, email: email.value, ...role.value }, hash);
     } catch (err) {
       if (err && err.code === 'SQLITE_CONSTRAINT_UNIQUE') return res.status(409).json({ error: req.t('errors.teamEmailTaken') });
       throw err;
     }
-    audit(req, `created (${role.value})`, id);
+    audit(req, `created (${role.value.role}${role.value.customRoleId ? ` / custom role #${role.value.customRoleId}` : ''})`, id);
     // The temporary password is returned this once; only its hash is stored.
     res.status(201).json({ user: team.get(req.adminId, id), temporaryPassword: password });
   }));
@@ -122,15 +135,15 @@ function createTeamRouter({ db, auth, config, logger, live, email, invites }) {
     if (body.name === undefined && body.role === undefined) return res.status(400).json({ error: req.t('errors.badRequest') });
     const name = body.name === undefined ? null : validateName(body.name, req.t);
     if (name && name.error) return res.status(400).json({ error: name.error });
-    const role = body.role === undefined ? null : validateRole(body.role, req.t);
+    const role = body.role === undefined ? null : roleChoice(req, body.role);
     if (role && role.error) return res.status(400).json({ error: role.error });
     if (name && name.value !== member.name) {
       team.rename(req.adminId, member.id, name.value);
       audit(req, 'renamed', member.id);
     }
-    if (role && role.value !== member.role) {
-      team.changeRole(req.adminId, member.id, role.value);
-      audit(req, `role ${member.role} -> ${role.value} for`, member.id);
+    if (role && (role.value.role !== member.role || role.value.customRoleId !== member.customRoleId)) {
+      team.changeRole(req.adminId, member.id, role.value.role, role.value.customRoleId);
+      audit(req, `role ${member.role}${member.customRoleId ? `/#${member.customRoleId}` : ''} -> ${role.value.role}${role.value.customRoleId ? `/#${role.value.customRoleId}` : ''} for`, member.id);
     }
     res.json({ user: team.get(req.adminId, member.id) });
   });

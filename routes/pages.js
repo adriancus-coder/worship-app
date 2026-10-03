@@ -1,7 +1,7 @@
 'use strict';
 
 const express = require('express');
-const { EVENT_ROLES, EDITOR_ROLES, SCREEN_ROLES } = require('../lib/events');
+const { can } = require('../lib/roles');
 
 // Library, media and screens pages: owner and leader.
 
@@ -62,8 +62,8 @@ function createPagesRouter({ db, auth, sendPage }) {
   router.get('/change-password', noStore, signedIn, (req, res) => {
     sendPage(req, res, 'change-password');
   });
-  const canEdit = (req) => EDITOR_ROLES.includes(req.session.user.role);
-  const eventRights = (req) => EVENT_ROLES.includes(req.session.user.role);
+  // The rights (lib/roles.js): the page is served only to those who may use it.
+  const has = (req, perm) => can(req.session.user, perm);
 
   router.get('/library', noStore, signedIn, (req, res) => {
     sendPage(req, res, 'library');
@@ -91,32 +91,32 @@ function createPagesRouter({ db, auth, sendPage }) {
 
   // Live control: the event roles; the team follows the event page instead.
   router.get('/events/:id(\\d+)/live', noStore, signedIn, (req, res) => {
-    if (!eventRights(req)) return res.redirect(`/events/${req.params.id}`);
+    if (!has(req, 'live')) return res.redirect(`/events/${req.params.id}`);
     sendPage(req, res, 'live');
   });
 
-  // Operator console: the owner and the operator (SCREEN_ROLES). The presenter and the leader
-  // are sent to their live page; the team follows the event instead.
+  // Operator console: the 'screens' right (owner, operator). Live rights without it -> the
+  // live page; the team follows the event instead.
   router.get('/events/:id(\\d+)/operator', noStore, signedIn, (req, res) => {
-    if (!eventRights(req)) return res.redirect(`/events/${req.params.id}`);
-    if (!SCREEN_ROLES.includes(req.session.user.role)) return res.redirect(`/events/${req.params.id}/live`);
+    if (!has(req, 'live')) return res.redirect(`/events/${req.params.id}`);
+    if (!has(req, 'screens')) return res.redirect(`/events/${req.params.id}/live`);
     sendPage(req, res, 'operator');
   });
 
   router.get('/events/:id(\\d+)/edit', noStore, signedIn, (req, res) => {
-    if (!eventRights(req)) return res.redirect(`/events/${req.params.id}`);
+    if (!has(req, 'events')) return res.redirect(`/events/${req.params.id}`);
     sendPage(req, res, 'event');
   });
 
   // Projector screens: pairing and management (owner / operator).
   router.get('/screens', noStore, signedIn, (req, res) => {
-    if (!SCREEN_ROLES.includes(req.session.user.role)) return res.redirect('/app');
+    if (!has(req, 'screens')) return res.redirect('/app');
     sendPage(req, res, 'screens');
   });
 
-  // Media library (videos for the projector): owner and leader.
+  // Media library (videos, backgrounds): the 'media' right.
   router.get('/media', noStore, signedIn, (req, res) => {
-    if (!canEdit(req)) return res.redirect('/app');
+    if (!has(req, 'media')) return res.redirect('/app');
     sendPage(req, res, 'media');
   });
 
@@ -159,7 +159,7 @@ function createPagesRouter({ db, auth, sendPage }) {
   });
 
   router.get('/songs/new', noStore, signedIn, (req, res) => {
-    if (!canEdit(req)) return res.redirect('/library');
+    if (!has(req, 'library')) return res.redirect('/library');
     sendPage(req, res, 'song-edit');
   });
 
@@ -168,7 +168,7 @@ function createPagesRouter({ db, auth, sendPage }) {
   });
 
   router.get('/songs/:id(\\d+)/edit', noStore, signedIn, (req, res) => {
-    if (!canEdit(req)) return res.redirect(`/songs/${req.params.id}`);
+    if (!has(req, 'library')) return res.redirect(`/songs/${req.params.id}`);
     sendPage(req, res, 'song-edit');
   });
 

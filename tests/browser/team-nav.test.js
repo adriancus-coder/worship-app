@@ -48,7 +48,7 @@ module.exports = {
         tabs: [...document.querySelectorAll('#team-tabs [role="tab"]')].map((b) => b.textContent), add: !document.getElementById('add-person').hidden,
         emails: document.querySelectorAll('#team .team-email').length,
       }));
-      check(head.current === 'team' && head.tabs.length === 3 && head.add && head.emails > 0, `${tag} owner: Echipa marked in the nav, tabs ${head.tabs.join(' · ')}, accounts with emails`, head);
+      check(head.current === 'team' && head.tabs.length === 4 && head.add && head.emails > 0, `${tag} owner: Echipa marked in the nav, tabs ${head.tabs.join(' · ')}, accounts with emails`, head);
       await o.click('#tab-positions');
       await o.waitForSelector('#positions-panel:not([hidden]) .position-row');
       await o.fill('.positions-add input', 'Vioară');

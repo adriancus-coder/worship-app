@@ -1,25 +1,26 @@
 'use strict';
 
 const express = require('express');
-const { requireRole } = require('../lib/auth');
+const { requirePerm, seesAllEvents } = require('../lib/roles');
 const { todayIn, nowTimeIn, nextServiceDate } = require('../lib/dates');
 const { createAdminSettings } = require('../lib/admin-settings');
-const { EVENT_ROLES, validateEventMeta, validateItems, createEventStore } = require('../lib/events');
+const { validateEventMeta, validateItems, createEventStore } = require('../lib/events');
 const { createAssignmentStore } = require('../lib/assignments');
 
 const WHEN = ['upcoming', 'past', 'templates'];
 
-// Events and setlists, scoped to req.adminId. Writes: the event roles (owner, leader,
-// operator). Members see every event as soon as it exists, never templates.
+// Events and setlists, scoped to req.adminId. Writes: the 'events' right; start / end /
+// withdraw: the 'live' right (lib/roles.js). Members see every event as soon as it exists, never templates.
 // Another admin's event does not exist here: 404.
 function createEventsRouter({ db, auth, logger, live }) {
   const router = express.Router();
   const events = createEventStore(db);
   const assignments = createAssignmentStore(db); // a copy of an event / template copies its team (pending)
   const settings = createAdminSettings(db);
-  const canEdit = requireRole(...EVENT_ROLES);
+  const canEdit = requirePerm('events');
+  const canLive = requirePerm('live');
 
-  const isEditor = (req) => EVENT_ROLES.includes(req.user.role);
+  const isEditor = (req) => seesAllEvents(req.user);
   const today = (req) => todayIn(settings.timezone(req.adminId));
 
   function eventId(req) {
@@ -141,10 +142,10 @@ function createEventsRouter({ db, auth, logger, live }) {
 
   // "▶ Pornește live" from Acasă: starts the event in one tap (the page then opens the live
   // page or the console). Another event live: 409 with its name, unless { endOther: true }.
-  router.post('/api/events/:id/start', canEdit, (req, res) => {
+  router.post('/api/events/:id/start', canLive, (req, res) => {
     const found = load(req, res);
     if (!found) return;
-    const out = live.startEvent(req.adminId, found.event.id, { role: req.user.role, userId: req.user.id, endOther: (req.body || {}).endOther === true });
+    const out = live.startEvent(req.adminId, found.event.id, { role: req.user.liveRole, userId: req.user.id, endOther: (req.body || {}).endOther === true });
     if (out.ok) return respond(req, res, found.event.id);
     if (out.code === 'anotherLive') {
       const other = events.get(req.adminId, out.liveEventId);
@@ -156,20 +157,20 @@ function createEventsRouter({ db, auth, logger, live }) {
 
   // "Încheie" on the home card (a live event forgotten since yesterday): ends it. 409 when
   // it is not live.
-  router.post('/api/events/:id/end', canEdit, (req, res) => {
+  router.post('/api/events/:id/end', canLive, (req, res) => {
     const found = load(req, res);
     if (!found) return;
-    const out = live.endEvent(req.adminId, found.event.id, { role: req.user.role, userId: req.user.id });
+    const out = live.endEvent(req.adminId, found.event.id, { role: req.user.liveRole, userId: req.user.id });
     if (out.ok) return respond(req, res, found.event.id);
     const key = `live.errors.${out.code}`;
     res.status(409).json({ code: out.code, error: req.t(key) === key ? req.t('errors.internal') : req.t(key) });
   });
 
   // "Retrage din live" (the event page): back to planned without ending it. 409 when not live.
-  router.post('/api/events/:id/withdraw', canEdit, (req, res) => {
+  router.post('/api/events/:id/withdraw', canLive, (req, res) => {
     const found = load(req, res);
     if (!found) return;
-    const out = live.endEvent(req.adminId, found.event.id, { role: req.user.role, userId: req.user.id, withdraw: true });
+    const out = live.endEvent(req.adminId, found.event.id, { role: req.user.liveRole, userId: req.user.id, withdraw: true });
     if (out.ok) return respond(req, res, found.event.id);
     const key = `live.errors.${out.code}`;
     res.status(409).json({ code: out.code, error: req.t(key) === key ? req.t('errors.internal') : req.t(key) });

@@ -12,7 +12,6 @@
 
 (function () {
   const { t } = window.I18N;
-  const EDITOR_ROLES = ['owner', 'presenter', 'leader', 'operator']; // mirrors lib/events.js EDITOR_ROLES
   const NOTATION_KEY = 'wa_chord_notation';
 
   const ICONS = {
@@ -194,8 +193,9 @@
   };
 
   const navLinks = [
-    { id: 'media', href: '/media', key: 'shell.media', icon: 'media', roles: EDITOR_ROLES },
-    { id: 'screens', href: '/screens', key: 'shell.screens', icon: 'screens', roles: ['owner', 'operator'] }, // lib/events.js SCREEN_ROLES
+    // perm: the right that shows the row (lib/roles.js); roles: the roles that see it
+    { id: 'media', href: '/media', key: 'shell.media', icon: 'media', perm: 'media' },
+    { id: 'screens', href: '/screens', key: 'shell.screens', icon: 'screens', perm: 'screens' },
     { id: 'settings', href: '/settings', key: 'shell.settings', icon: 'settings', roles: ['owner'] },
     // The platform owner only (the churches on this server).
     { id: 'platform', href: '/platform', key: 'shell.platform', icon: 'platform', roles: ['owner'], platform: true },
@@ -398,9 +398,10 @@
       // platform's owner, or the account's own role
       const who = me.platformAccount
         ? t('shell.platformOwnerRole', { appName: document.documentElement.dataset.appName || '' })
-        : t(`roles.${me.user.realRole || me.user.role}`);
+        : (me.user.customRole ? me.user.customRole.name : t(`roles.${me.user.realRole || me.user.role}`));
       whoRole.textContent = t('shell.roleAt', { role: who, adminName: me.admin.name });
-      for (const p of pageLinks) p.item.hidden = !p.roles.includes(me.user.role) || (p.platform && !me.platformOwner);
+      const perms = me.user.perms || [];
+      for (const p of pageLinks) p.item.hidden = !(p.perm ? perms.includes(p.perm) : p.roles.includes(me.user.role)) || (p.platform && !me.platformOwner);
       // a real owner (also while viewing as someone else) may switch the view
       viewAsRow.hidden = me.user.realRole !== 'owner';
       const current = me.user.viewAs || 'owner';

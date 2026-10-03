@@ -13,7 +13,7 @@
   const { api, el, setTitle, formatDate } = window.PAGE;
   const { t } = window.I18N;
   const $ = (id) => document.getElementById(id);
-  const state = { users: [], positions: [], baseUrl: null, emailEnabled: false, meId: null, editing: null, confirm: null, result: null };
+  const state = { users: [], positions: [], roles: [], baseUrl: null, emailEnabled: false, meId: null, editing: null, confirm: null, result: null };
   const positionName = (id) => { const p = state.positions.find((x) => x.id === id); return p ? window.PAGE.positionLabel(p) : null; };
 
   const baseUrl = () => state.baseUrl || window.location.origin;
@@ -50,7 +50,7 @@
             user.id === state.meId ? el('span', { class: 'muted', text: ` · ${t('team.you')}` }) : null),
           el('p', { class: 'team-email', text: user.email }),
           el('p', { class: 'team-meta' },
-            el('span', { class: `pill role-pill role-${user.role}`, text: window.PAGE.roleLabel(owner ? 'owner' : user.role) }),
+            el('span', { class: `pill role-pill role-${user.role}`, text: owner ? window.PAGE.roleLabel('owner') : personRole(user) }),
             owner ? null : el('span', { class: `pill status-pill status-${status}`, text: t(`team.status.${status}`) }),
             el('span', { class: 'muted', text: lastLogin(user.lastLoginAt) })),
           // "Indisponibil" (lib/unavailability.js): the person's upcoming ranges, for the owner.
@@ -83,6 +83,8 @@
     }
     state.users = res.body.users;
     state.positions = res.body.positions || [];
+    state.roles = res.body.roles || [];
+    renderRoleOptions();
     state.baseUrl = res.body.baseUrl;
     state.emailEnabled = Boolean(res.body.emailEnabled);
     $('status').hidden = true;
@@ -137,6 +139,7 @@
       const res = await api('/api/team', { method: 'POST', body: { name: $('add-name').value, email: $('add-email').value, role } });
       if (!res.ok) return say('add-message', res.body.error || t('common.networkError'), 'error');
       await load();
+      if (rolesEditor) rolesEditor.reload();
       $('add-dialog').close();
       if (byEmail && await sendLink('invite', res.body.user)) return;
       // No email (or it failed: the page message says so): the card with the temporary password.
@@ -150,14 +153,14 @@
   });
 
   function renderRoleHelp() {
-    $('edit-role-help').textContent = t(`team.roleHelp.${$('edit-role').value}`);
+    $('edit-role-help').textContent = roleHelpOf($('edit-role').value);
   }
   $('edit-role').addEventListener('change', renderRoleHelp);
 
   function openEdit(user) {
     state.editing = user;
     $('edit-name').value = user.name;
-    $('edit-role').value = user.role;
+    $('edit-role').value = roleValue(user);
     renderRoleHelp();
     $('edit-positions').replaceChildren(...state.positions.filter((p) => p.active || (user.positionIds || []).includes(p.id)).map((p) => el('label', { class: 'checkbox' },
       el('input', { type: 'checkbox', name: 'edit-position', value: String(p.id), checked: (user.positionIds || []).includes(p.id) ? 'checked' : null }),
@@ -176,6 +179,7 @@
     const pos = await api(`/api/team/${user.id}/positions`, { method: 'PUT', body: { positionIds } });
     if (!pos.ok) return say('edit-message', pos.body.error || t('common.networkError'), 'error');
     replaceUser(pos.body.user);
+    if (rolesEditor) rolesEditor.reload();
     $('edit-dialog').close();
     say('page-message', t('team.saved', { name: res.body.user.name }), 'success');
   });
@@ -261,9 +265,35 @@
     $('result-message').value = '';
   });
 
-  // The role select: the emoji before each name (PAGE.roleLabel), after the i18n texts.
+  // A person's role as shown: a role the owner created (its emoji and name) or a built-in one.
+  const customOf = (user) => (user.customRoleId ? state.roles.find((r) => r.id === user.customRoleId) : null);
+  const personRole = (user) => { const c = customOf(user); return c ? (c.emoji ? `${c.emoji} ${c.name}` : c.name) : window.PAGE.roleLabel(user.role); };
+  const roleValue = (user) => (user.customRoleId ? `custom:${user.customRoleId}` : user.role);
+
+  // The role choices: the built-in ones (the emoji before each name, PAGE.roleLabel) and the
+  // roles the owner created (Echipa → Roluri) after them.
+  const BUILT_IN = ['presenter', 'leader', 'operator', 'member'];
+  let rolesEditor = null; // Echipa → Roluri (the owner): its counts follow the people's roles
   function renderRoleOptions() {
-    for (const option of $('edit-role').options) option.textContent = window.PAGE.roleLabel(option.value);
+    const select = $('edit-role');
+    const current = select.value;
+    select.replaceChildren(...BUILT_IN.map((role) => el('option', { value: role, text: window.PAGE.roleLabel(role) })),
+      ...state.roles.map((r) => el('option', { value: `custom:${r.id}`, text: r.emoji ? `${r.emoji} ${r.name}` : r.name })));
+    if (current) select.value = current;
+    const checked = new FormData($('add-form')).get('add-role');
+    $('add-custom-roles').replaceChildren(...state.roles.map((r) => el('label', { class: 'role-option' },
+      el('input', { type: 'radio', name: 'add-role', value: `custom:${r.id}`, checked: checked === `custom:${r.id}` ? 'checked' : null }),
+      el('span', null,
+        el('strong', null, el('span', { class: 'role-emoji', 'aria-hidden': 'true', text: r.emoji || '' }), r.emoji ? ' ' : '', el('span', { text: r.name })),
+        el('span', { class: 'hint', text: roleHelpOf(`custom:${r.id}`) })))));
+  }
+  function roleHelpOf(value) {
+    const match = /^custom:(\d+)$/.exec(value);
+    if (!match) return t(`team.roleHelp.${value}`);
+    const r = state.roles.find((x) => x.id === Number(match[1]));
+    if (!r) return '';
+    const perms = r.perms.length ? r.perms.map((p) => t(`customRoles.permsShort.${p}`)).join(', ') : t('customRoles.noRights');
+    return `${t(`customRoles.bases.${r.base}`)}. ${t('customRoles.help', { perms })}`;
   }
   renderRoleOptions();
 
@@ -276,7 +306,7 @@
 
   // --- the owner's tabs: Persoane · Poziții · Indisponibilități ------------------------------
 
-  const TABS = ['people', 'positions', 'unavail'];
+  const TABS = ['people', 'positions', 'roles', 'unavail'];
   const tabButtons = [...document.querySelectorAll('#team-tabs [role="tab"]')];
   function showTab(name) {
     for (const tab of TABS) $(`${tab}-panel`).hidden = tab !== name;
@@ -308,6 +338,7 @@
     }
     state.users = res.body.users;
     state.positions = res.body.positions || [];
+    state.roles = res.body.roles || [];
     $('status').hidden = true;
     renderDirectory();
   }
@@ -317,7 +348,7 @@
     $('directory').replaceChildren(...state.users.map((user) => el('li', { class: 'team-row directory-row' },
       el('div', { class: 'team-main' },
         el('p', { class: 'team-name' }, el('span', { text: user.name }), user.me ? el('span', { class: 'muted', text: ` · ${t('team.you')}` }) : null),
-        el('p', { class: 'team-meta' }, el('span', { class: `pill role-pill role-${user.role}`, text: window.PAGE.roleLabel(user.role) })),
+        el('p', { class: 'team-meta' }, el('span', { class: `pill role-pill role-${user.role}`, text: personRole(user) })),
         el('p', { class: 'team-positions' }, ...((user.positionIds || []).map(positionName).filter(Boolean).length
           ? user.positionIds.map(positionName).filter(Boolean).map((name) => el('span', { class: 'pill position-pill', text: name }))
           : [el('span', { class: 'muted', text: t('team.noPositions') })])),
@@ -341,6 +372,8 @@
       return;
     }
     window.POSITIONS_EDITOR.mount($('positions-editor'));
+    // a role changed or deleted: the people's roles may have changed too (reload the list)
+    rolesEditor = window.ROLES_EDITOR.mount($('roles-editor'), { onChange: (roles) => { state.roles = roles; renderRoleOptions(); load(); } });
     await load();
     const asked = new URLSearchParams(window.location.search).get('tab');
     if (TABS.includes(asked) && asked !== 'people') {

@@ -102,7 +102,7 @@ function createLiveHub({ db, auth, logger, screensHub, hooks = {} }) {
       socket.disconnect(true);
       return false;
     }
-    socket.data.role = session.user.role;
+    socket.data.role = session.user.liveRole;
     socket.data.mustChangePassword = session.user.mustChangePassword;
     return true;
   }
@@ -293,7 +293,7 @@ function createLiveHub({ db, auth, logger, screensHub, hooks = {} }) {
         userId: session.user.id,
         userName: session.user.name,
         adminId: session.admin.id,
-        role: session.user.role,
+        role: session.user.liveRole,
         lang: resolveLang(socket.request),
         mustChangePassword: session.user.mustChangePassword,
         eventId: null,

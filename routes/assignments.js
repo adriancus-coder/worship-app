@@ -1,8 +1,9 @@
 'use strict';
 
 const express = require('express');
-const { EVENT_ROLES, createEventStore } = require('../lib/events');
-const { createAssignmentStore, ASSIGN_ROLES, MAX_NOTE } = require('../lib/assignments');
+const { createEventStore } = require('../lib/events');
+const { can, seesAllEvents } = require('../lib/roles');
+const { createAssignmentStore, MAX_NOTE } = require('../lib/assignments');
 const { createPositionStore } = require('../lib/positions');
 const { createTeamStore } = require('../lib/team');
 const { createUnavailabilityStore } = require('../lib/unavailability');
@@ -27,8 +28,8 @@ function createAssignmentsRouter({ db, auth, logger, hooks = {} }) {
     next();
   });
 
-  const canAssign = (req) => ASSIGN_ROLES.includes(req.user.role);
-  const isEditor = (req) => EVENT_ROLES.includes(req.user.role);
+  const canAssign = (req) => can(req.user, 'schedule');
+  const isEditor = (req) => seesAllEvents(req.user) || canAssign(req);
 
   // The event, as this role may see it (members never see templates), or a 404.
   function load(req, res) {

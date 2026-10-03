@@ -4,7 +4,7 @@ const express = require('express');
 const { todayIn } = require('../lib/dates');
 const { createAdminSettings } = require('../lib/admin-settings');
 const { validateRange, createUnavailabilityStore } = require('../lib/unavailability');
-const { ASSIGN_ROLES } = require('../lib/assignments');
+const { can } = require('../lib/roles');
 
 // "Indisponibil" (lib/unavailability.js):
 //   GET / POST /api/me/unavailability, DELETE /api/me/unavailability/:id   one's own ranges
@@ -37,7 +37,7 @@ function createUnavailabilityRouter({ db, auth, logger }) {
 
   // Everyone's upcoming ranges: the owner and the leader (scheduling); never the others.
   router.get('/api/unavailability', auth.requireUser, noStore, (req, res) => {
-    if (!ASSIGN_ROLES.includes(req.user.role)) return res.status(403).json({ error: req.t('errors.forbidden') });
+    if (!can(req.user, 'schedule')) return res.status(403).json({ error: req.t('errors.forbidden') });
     const by = store.byUser(req.adminId, today(req));
     res.json({ byUser: Object.fromEntries([...by.entries()].map(([userId, ranges]) => [String(userId), ranges])), today: today(req) });
   });

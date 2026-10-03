@@ -7,7 +7,7 @@
 // header (public/library-import.js).
 
 (function () {
-  const { api, canEdit, canEditEvents } = window.PAGE;
+  const { api, canEdit, can } = window.PAGE;
   const { t } = window.I18N;
   const $ = (id) => document.getElementById(id);
 
@@ -49,7 +49,7 @@
     menu.hidden = !canEdit(me);
     search.setMe(me);
     // resursecrestine.ro: the event roles (operators import, but never write songs by hand).
-    search.setOnline(canEditEvents(me));
+    search.setOnline(['library', 'events', 'live'].some((p) => can(me, p))); // routes/resurse.js
     search.reload();
   })().catch(() => {
     $('status').removeAttribute('data-i18n');

@@ -29,6 +29,7 @@ const createBackupRouter = require('./routes/backup');
 const { createHomeRouter } = require('./routes/home');
 const { createTeamRouter } = require('./routes/team');
 const { createPositionsRouter } = require('./routes/positions');
+const { createRolesRouter } = require('./routes/roles');
 const { createAssignmentsRouter } = require('./routes/assignments');
 const { createUnavailabilityRouter } = require('./routes/unavailability');
 const { createPushRouter } = require('./routes/push');
@@ -134,6 +135,7 @@ app.use(createBridgeRouter({ db, auth, logger, bridge }));
 app.use(createHomeRouter({ db, auth }));
 app.use(createTeamRouter({ db, auth, config, logger, live, email, invites }));
 app.use(createPositionsRouter({ db, auth, logger }));
+app.use(createRolesRouter({ db, auth, logger }));
 const assignmentHooks = {}; // filled by the notifications module (stage 7)
 app.use(createAssignmentsRouter({ db, auth, logger, hooks: assignmentHooks }));
 app.use(createUnavailabilityRouter({ db, auth, logger }));

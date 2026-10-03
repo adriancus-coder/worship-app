@@ -1,12 +1,12 @@
 'use strict';
 
 const express = require('express');
-const { requireRole } = require('../lib/auth');
+const { requirePerm } = require('../lib/roles');
 const { LIMITS, KEYS, SORT_MODES, DuplicateTitleError, validateSong, createSongStore } = require('../lib/songs');
 const { parseChoice, createBackgroundStore } = require('../lib/backgrounds');
 const { createMediaSigner } = require('../lib/media');
 const { MAX_SONGS, LibraryFileError, parseLibraryFile, planImport } = require('../lib/library-import');
-const { EDITOR_ROLES, createEventStore } = require('../lib/events');
+const { createEventStore } = require('../lib/events');
 const { createAdminSettings } = require('../lib/admin-settings');
 const { todayIn } = require('../lib/dates');
 
@@ -21,7 +21,7 @@ function createSongsRouter({ db, auth, config, logger, live }) {
   const songs = createSongStore(db);
   const events = createEventStore(db);
   const settings = createAdminSettings(db);
-  const canEdit = requireRole(...EDITOR_ROLES);
+  const canEdit = requirePerm('library');
   const today = (req) => todayIn(settings.timezone(req.adminId));
 
   function songId(req) {
