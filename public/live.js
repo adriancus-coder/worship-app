@@ -640,7 +640,10 @@
     $('end-dialog').showModal();
   });
   $('end-dialog').addEventListener('close', () => {
-    if ($('end-dialog').returnValue !== 'end') return;
+    const choice = $('end-dialog').returnValue;
+    // "Retrage din live": back to planned, this page stays (it shows "Pornește" again)
+    if (choice === 'withdraw') send('event.withdraw');
+    if (choice !== 'end') return;
     send('event.end').then((reply) => { if (reply && reply.ok) window.location.assign('/app'); });
   });
 

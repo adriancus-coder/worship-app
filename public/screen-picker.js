@@ -33,6 +33,9 @@
       const current = selected();
       const next = current.includes(id) ? current.filter((x) => x !== id) : [...current, id].sort((a, b) => a - b);
       const all = list.every((s) => next.includes(s.id));
+      // shown at once (two quick taps build on each other); the next snapshot confirms it
+      snap = { ...snap, screens: all ? null : next };
+      render();
       send('projector.screens', { screenIds: all ? null : next });
     }
 

@@ -248,6 +248,14 @@ never implement a later stage early. Mockups: claude.ai design canvas
 
 ## Event preparation
 
+- **"Retrage din live"** (`event.withdraw`, event roles; the live page's and the console's end
+  dialog next to "Încheie evenimentul", and the event page's tools): a live event goes back
+  to *planned* without ending. The screens go idle, nobody holds the projector, the clock /
+  background / screens / prepared video stay as preparation; the next start begins at the
+  first item. `POST /api/events/:id/withdraw` for pages without a live socket.
+- **"Detalii"** (name, date, time, notes, where the Program starts from) is a form opened by the
+  header's "Detalii" button (and after "+ Eveniment nou"), never a summary row repeating the
+  header.
 - **The event page's tabs:** "Program" holds only the setlist; "Echipa", "Propuneri",
   "Proiector" and "Traducere" are tabs of their own, each shown only to whoever has that
   panel (a member: Program, Echipa, Propuneri; the event roles editing: all five). The tab

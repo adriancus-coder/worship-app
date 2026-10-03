@@ -12,7 +12,7 @@ const ROLES = ['owner', 'presenter', 'leader', 'operator', 'member'];
 const PRESENCE_DEBOUNCE_MS = 1000;
 const SESSION_SWEEP_MS = 30 * 1000;
 
-const COMMANDS = ['event.start', 'event.end', 'worship.next', 'worship.prev', 'worship.goto', 'worship.endItem',
+const COMMANDS = ['event.start', 'event.end', 'event.withdraw', 'worship.next', 'worship.prev', 'worship.goto', 'worship.endItem',
   'projector.request', 'projector.handover', 'team.mode', 'background.set',
   'projector.next', 'projector.prev', 'projector.goto', 'projector.syncToWorship', 'projector.source', 'projector.screens',
   'video.prepare', 'video.play', 'video.pause', 'video.restart', 'video.stop', 'video.volume',
@@ -220,8 +220,8 @@ function createLiveHub({ db, auth, logger, screensHub, hooks = {} }) {
       if (err.code === 'stale') return fail(socket, ack, 'stale', { state: fullSnapshot(adminId, cmd.eventId, role, socket.data.lang) });
       return fail(socket, ack, err.code);
     }
-    if (cmd.type === 'event.start' || cmd.type === 'event.end') {
-      logger.info(`Event #${cmd.eventId} ${cmd.type === 'event.start' ? 'started' : 'ended'} by user #${userId} (admin #${adminId})`);
+    if (['event.start', 'event.end', 'event.withdraw'].includes(cmd.type)) {
+      logger.info(`Event #${cmd.eventId} ${{ 'event.start': 'started', 'event.end': 'ended', 'event.withdraw': 'withdrawn from live' }[cmd.type]} by user #${userId} (admin #${adminId})`);
     }
     if (result.changed) broadcast(adminId, cmd.eventId);
     if (result.notice) notice(adminId, cmd.eventId, { ...result.notice, by: socket.data.userName, byUserId: userId }, socket.id);
@@ -230,7 +230,7 @@ function createLiveHub({ db, auth, logger, screensHub, hooks = {} }) {
       handoverNotice(adminId, cmd.eventId, ev);
       logger.info(`Handover ${ev.type} by user #${userId} (event #${cmd.eventId}, admin #${adminId})`);
     }
-    if (result.changed && (cmd.type === 'event.start' || cmd.type === 'event.end')) notifyHome(adminId, cmd.eventId);
+    if (result.changed && ['event.start', 'event.end', 'event.withdraw'].includes(cmd.type)) notifyHome(adminId, cmd.eventId);
     if (result.changed && cmd.type === 'event.start') fire('onLiveStarted', adminId, cmd.eventId);
     // A leader's switch that became a request: the page shows "Cerere trimisă…", not the switch.
     const pending = result.handoverEvent && result.handoverEvent.type === 'requested' ? { handover: 'requested', expiresAt: result.handoverEvent.expiresAt } : {};
@@ -372,10 +372,12 @@ function createLiveHub({ db, auth, logger, screensHub, hooks = {} }) {
   }
 
   // "Încheie" from Acasă (routes/events.js): ends the live event without a live page open.
-  function endEvent(adminId, eventId, { role, userId }) {
+  // "Încheie" (event.end) or "Retrage din live" (event.withdraw) from a page without a live
+  // socket (Acasă, the event page).
+  function endEvent(adminId, eventId, { role, userId, withdraw = false }) {
     try {
-      const result = store.command(adminId, eventId, { type: 'event.end' }, undefined, role);
-      logger.info(`Event #${eventId} ended by user #${userId} (admin #${adminId}) from the home page`);
+      const result = store.command(adminId, eventId, { type: withdraw ? 'event.withdraw' : 'event.end' }, undefined, role);
+      logger.info(`Event #${eventId} ${withdraw ? 'withdrawn from live' : 'ended'} by user #${userId} (admin #${adminId}) from a page`);
       if (io && result.changed) {
         broadcast(adminId, eventId);
         notifyHome(adminId, eventId);

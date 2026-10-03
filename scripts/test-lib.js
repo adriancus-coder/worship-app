@@ -1242,6 +1242,30 @@ test('live store: projector preparation before the start (migration 043): clock,
   mem.close();
 });
 
+test('live store: "Retrage din live" (event.withdraw): back to planned, not finished; the preparation stays for the next start, which begins at the first item', () => {
+  const { mem, live, eventId } = liveFixture();
+  const cmd = (c, role = 'leader', ctx = {}) => live.command(1, eventId, c, undefined, role, ctx);
+  const code = (c, role) => { try { cmd(c, role); return 'ok'; } catch (err) { return err.code; } };
+  const snap = () => live.snapshot(1, eventId);
+  assert.strictEqual(code({ type: 'event.withdraw' }), 'notLive', 'only a live event');
+  cmd({ type: 'event.start' }, 'operator', { userId: 7, online: [{ userId: 7, role: 'operator' }] });
+  cmd({ type: 'clock.set', show: false });
+  cmd({ type: 'worship.next' });
+  cmd({ type: 'projector.source', source: 'logo' });
+  assert.strictEqual(code({ type: 'event.withdraw' }, 'member'), 'forbidden');
+  cmd({ type: 'event.withdraw' }, 'presenter');
+  let s = snap();
+  assert.deepStrictEqual([s.status, s.prepared, s.holder, s.handover, s.projector.source, s.clock.show], ['planned', true, null, null, 'content', false], 'planned again, nobody holds the projector, the clock kept as preparation');
+  assert.strictEqual(require('../lib/events').createEventStore(mem).get(1, eventId).event.status, 'planned', 'the event row too');
+  assert.strictEqual(code({ type: 'worship.next' }), 'notLive', 'nothing moves while planned');
+  cmd({ type: 'event.start' }, 'leader', { userId: 5, online: [{ userId: 5, role: 'leader' }] });
+  s = snap();
+  assert.deepStrictEqual([s.status, s.worship.step, s.clock.show, s.holder.role], ['live', 0, false, 'leader'], 'started again: the first item, the clock as left');
+  cmd({ type: 'event.end' });
+  assert.strictEqual(code({ type: 'event.withdraw' }), 'notLive', 'a finished event cannot be withdrawn');
+  mem.close();
+});
+
 test('live store: both positions clamp on their own after a setlist change; persisted', () => {
   const { mem, live, eventId, items, save } = liveFixture();
   const [song, v1, v2] = items.map((it) => it.id);

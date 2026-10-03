@@ -38,6 +38,36 @@ module.exports = {
       check(!(await p.isHidden('#items')) && await p.isHidden('#bridge-panel'), `[${width}] back to Program`);
       await p.context().close();
     }
+    // "Detalii" never repeats the header as a collapsed row: only the "Detalii" button opens it
+    const o = await signIn('owner', { width: 1280 });
+    await o.goto(`${app.url}/events/${E}/edit`);
+    await o.waitForSelector('#editor-tabs:not([hidden])');
+    check(await o.isHidden('#quick-details'), 'no "Detalii · name · date" row under Program');
+    await o.click('#details-button');
+    await o.waitForSelector('#quick-details[open]:not([hidden])');
+    await o.evaluate(() => { document.getElementById('quick-details').open = false; });
+    await o.waitForFunction(() => document.getElementById('quick-details').hidden);
+    check(true, '"Detalii" opens the form; closed again, it goes');
+    // "Retrage din live": the event page's tool, back to planned (not finished)
+    check((await app.command({ type: 'event.start' })).ok, 'the event is live');
+    await o.reload();
+    await o.waitForSelector('#withdraw-button:not([hidden])');
+    o.once('dialog', (d) => d.accept());
+    await o.click('#withdraw-button');
+    await o.waitForFunction(() => /planificat|Planificat/.test(document.getElementById('event-status').textContent), null, { timeout: 5000 });
+    check((await app.state()).status === 'planned' && /retras din live/.test(await o.textContent('#action-message')) && await o.isHidden('#withdraw-button'), 'the event page: "Retrage din live" -> planned again, said so, the tool goes');
+    // the live page's end dialog offers it too
+    check((await app.command({ type: 'event.start' })).ok, 'live again');
+    await o.goto(`${app.url}/events/${E}/live`);
+    await o.waitForSelector('#end-button:not([hidden])');
+    await o.click('#end-button');
+    await o.waitForSelector('#end-dialog[open]');
+    check(/Retrage din live/.test(await o.textContent('#end-dialog')), 'the end dialog: "Încheie evenimentul" or "Retrage din live"');
+    await o.click('#end-dialog button[value="withdraw"]');
+    await o.waitForSelector('#start-button:not([hidden])', { timeout: 5000 });
+    check((await app.state()).status === 'planned' && new URL(o.url()).pathname.endsWith('/live'), 'withdrawn from the live page: it stays, "Pornește" is back');
+    await o.context().close();
+
     const m = await signIn('member', { width: 375 });
     await m.goto(`${app.url}/events/${E}`);
     await m.waitForSelector('#editor-tabs:not([hidden])');

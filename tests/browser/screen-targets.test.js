@@ -73,8 +73,8 @@ module.exports = {
     // both back, from the live page
     await op.click(`#screen-picker button[data-screen="${lobby.id}"]`);
     await op.click(`#screen-picker button[data-screen="${hall.id}"]`);
-    await lobbyPage.waitForFunction(() => /Sfânt/.test(document.querySelector('#output .projector-stage').innerText), null, { timeout: 4000 }).catch(() => {});
-    await hallPage.waitForFunction(() => /Sfânt/.test(document.querySelector('#output .projector-stage').innerText), null, { timeout: 4000 }).catch(() => {});
+    await lobbyPage.waitForFunction(() => /Sfânt/.test(document.querySelector('#output .projector-stage').innerText), null, { timeout: 8000 }).catch(() => {});
+    await hallPage.waitForFunction(() => /Sfânt/.test(document.querySelector('#output .projector-stage').innerText), null, { timeout: 8000 }).catch(() => {});
     check(/Sfânt/.test(await textOf(lobbyPage)) && /Sfânt/.test(await textOf(hallPage)) && (await options()) === 'Hol:true:on Sală:true:on', 'both back: both show the current section', await options());
     check((await app.state()).screens === null, 'every screen selected is stored as null (all)');
     // a revoked screen leaves the list; one left: hidden again

@@ -155,6 +155,8 @@
     window.PAGE.linkBack($('back-link'));
     renderActions();
     $('details-button').hidden = !state.editing;
+    // "Retrage din live": a live event back to planned without ending it (event roles)
+    $('withdraw-button').hidden = !(ev.status === 'live' && !ev.isTemplate && canEdit(state.me));
     templateButton.hidden = !state.editing;
     templateButton.disabled = isDirty();
     renderToolsMenu();
@@ -949,7 +951,7 @@
   // "+ Eveniment nou"), Copie a evenimentului (a past event's items, new ids) or Gol; when the
   // Program was edited (or would be emptied) a confirmation comes first.
 
-  const quick = { templates: null, past: null, templateId: null, copyId: null, source: null };
+  const quick = { templates: null, past: null, templateId: null, copyId: null, source: null, opened: false };
 
   function quickSay(text, kind) {
     $('quick-message').className = `message${kind ? ` ${kind}` : ''}`;
@@ -958,7 +960,9 @@
 
   function renderQuickDetails() {
     const ev = state.event;
-    const shown = state.editing && !ev.isTemplate;
+    // The card is the form behind "Detalii" (and open after "+ Eveniment nou"): never a summary
+    // row repeating the header above.
+    const shown = state.editing && !ev.isTemplate && quick.opened;
     $('quick-details').hidden = !shown;
     if (!shown) return;
     const year = state.today ? state.today.slice(0, 4) : '';
@@ -1085,7 +1089,9 @@
   // "Detalii" in the header (or the ⋯ menu): the card opens and gets the focus.
   function openQuickDetails() {
     const box = $('quick-details');
-    if (box.hidden) return;
+    if (!state.editing || state.event.isTemplate) return;
+    quick.opened = true;
+    renderQuickDetails();
     box.open = true;
     box.scrollIntoView({ block: 'start', behavior: 'smooth' });
     $('q-name').focus({ preventScroll: true });
@@ -1111,6 +1117,22 @@
   ['template-dialog', 'replace-dialog'].forEach((id) => wireDialog($(id)));
 
   $('details-button').addEventListener('click', openQuickDetails);
+  // Closed again: the card goes (the header already shows the name, date and time).
+  $('quick-details').addEventListener('toggle', () => {
+    if ($('quick-details').open) return;
+    quick.opened = false;
+    renderQuickDetails();
+  });
+
+  $('withdraw-button').addEventListener('click', async () => {
+    if (!window.confirm(t('live.withdrawConfirm'))) return;
+    const res = await api(`/api/events/${state.event.id}/withdraw`, { method: 'POST' }).catch(() => ({ ok: false, body: {} }));
+    if (!res.ok) return showAction(res.body.error || t('common.networkError'));
+    const fresh = await api(`/api/events/${state.event.id}`).catch(() => null);
+    if (fresh && fresh.ok && !isDirty()) applyEvent(fresh.body, true);
+    else if (fresh && fresh.ok) { state.event = fresh.body.event; renderAll(); }
+    showAction(t('live.withdrawn'));
+  });
 
   templateButton.addEventListener('click', () => {
     $('t-name').value = state.event.name;
@@ -1422,6 +1444,8 @@
       const params = new URLSearchParams(window.location.search);
       if (params.has('new')) {
         quick.templateId = Number(params.get('template')) || null;
+        quick.opened = true;
+        renderQuickDetails();
         $('quick-details').open = true;
         params.delete('new');
         params.delete('template');
