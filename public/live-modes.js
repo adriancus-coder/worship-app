@@ -12,7 +12,7 @@
 // additions made by someone else ("<name> a adăugat …"): it hides after 5 s and never takes
 // clicks.
 //
-//   const modes = LIVE_MODES.controls(container, { send, t, el });
+//   const modes = LIVE_MODES.controls(container, { send, t, el, positionLabel });
 //   modes.setMe(user);                       // who this page is (role, id)
 //   modes.update(snap);                      // hidden until the event is live (snap.holder, snap.presence.people)
 //   modes.handover(event);                   // socket 'live:handover'
@@ -25,14 +25,18 @@
 // aici apare pe proiector" - the same when the holder hands it over or someone takes it with
 // the holder away. Holder: a toast "<X> cere controlul proiectorului" with Acceptă (primary,
 // Enter when focused) / Refuză that never covers the step grid, and a badge on the row.
+// When the projector leaves an operator, the projection continues where it was (the screen
+// never jumps); the one who got it is asked: "Continui de aici" (primary, keeps it) or
+// "Încep de unde eram: <their place>" (worship.goto back to where they were).
 
 (function () {
   const TOAST_MS = 5000;
   const ANSWER_MS = 5000;
   const NOTICE_MS = 8000; // "ce schimbi aici apare pe proiector"
 
-  function controls(container, { send, t, el }) {
+  function controls(container, { send, t, el, positionLabel }) {
     let snap = null;
+    let choice = null; // { previous, continued } after getting the projector from an operator
     let me = null;
     let pickOpen = false;
     const hand = { answer: null, timer: null, askedBy: null }; // answer: { type, until, name }
@@ -63,8 +67,18 @@
     const lineText = el('p');
     const cancel = el('button', { type: 'button', class: 'secondary', onclick: () => send('handover.cancel') });
     const line = el('div', { class: 'handover-line', role: 'status', 'aria-live': 'polite', hidden: true }, lineText, cancel);
+    // The receiver's choice: continue where the projection is, or start from their own place.
+    const choiceText = el('p');
+    const keep = el('button', { type: 'button', 'data-icon': 'check', id: 'handover-keep', onclick: () => { choice = null; render(); } });
+    const restart = el('button', { type: 'button', class: 'secondary', 'data-icon': 'play', id: 'handover-restart', onclick: () => {
+      const back = choice && choice.previous;
+      choice = null;
+      render();
+      if (back) send('worship.goto', { itemId: back.itemId, step: back.step });
+    } });
+    const choiceBox = el('div', { class: 'handover-line handover-choice', role: 'group', 'aria-live': 'polite', hidden: true }, choiceText, keep, restart);
     container.classList.add('mode-controls');
-    container.replaceChildren(holderRow, pick, teamMode.row, hint, line);
+    container.replaceChildren(holderRow, pick, teamMode.row, hint, line, choiceBox);
     // The holder's toast, on the page body so it floats over nothing important.
     const toastText = el('p');
     const accept = el('button', { type: 'button', 'data-icon': 'check', onclick: () => send('handover.accept') });
@@ -91,6 +105,7 @@
     const personLabel = (p) => `${p.name || t('live.modes.someone')} (${roleName(p.role)})`;
     const holderName = () => (holder() ? holder().name || t('live.modes.someone') : t('live.modes.nobody'));
     // The other event-role people connected (from the presence), for "Predă lui …".
+    const label = (pos) => (pos && positionLabel ? positionLabel(pos) : '') || '—';
     const others = () => (((snap && snap.presence && snap.presence.people) || []).filter((p) => !me || p.userId !== me.id));
 
     function onAction() {
@@ -132,6 +147,13 @@
     function render() {
       container.hidden = !live();
       toast.hidden = true;
+      if (!live()) choice = null;
+      choiceBox.hidden = !choice;
+      if (choice) {
+        choiceText.textContent = t('live.modes.choiceAsk', { at: label(choice.continued) });
+        keep.textContent = t('live.modes.choiceKeep');
+        restart.textContent = t('live.modes.choiceRestart', { at: label(choice.previous) });
+      }
       if (!live()) {
         line.hidden = true;
         pick.hidden = true;
@@ -212,6 +234,8 @@
         const actor = Boolean(me && event.byUserId === me.id);
         const receiver = Boolean(me && event.toUserId !== undefined && event.toUserId === me.id);
         const notice = (type, name) => { hand.answer = { type, name: name || null, until: Date.now() + NOTICE_MS }; };
+        const got = (event.type === 'taken' && actor) || ((event.type === 'accepted' || event.type === 'handedOver') && receiver);
+        choice = got && event.previous && event.continued ? { previous: event.previous, continued: event.continued } : null;
         if (event.type === 'requested') {
           hand.askedBy = event.by || null;
           hand.answer = null;
@@ -233,6 +257,7 @@
           if (actor) notice('taken', null);
           else notice('takenBy', event.by);
         } else if (event.type === 'cancelled') hand.answer = null;
+        if (choice) hand.answer = null; // the choice says it all
         render();
       },
       statusText,

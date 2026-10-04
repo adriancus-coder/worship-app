@@ -338,7 +338,7 @@
   window.PROJECTOR_WINDOW.setup({ button: $('open-projector'), hint: $('projector-permission'), message: $('projector-message'), api, t });
   // "Pe ce ecrane": which screens show the projection (hidden with fewer than two screens).
   const screenPicker = window.SCREEN_PICKER.create($('screen-picker'), { send, t, el });
-  const modes = window.LIVE_MODES.controls($('mode-controls'), { send, t, el });
+  const modes = window.LIVE_MODES.controls($('mode-controls'), { send, t, el, positionLabel });
   window.SHELL.me.then((me) => { if (me) modes.setMe(me.user); }); // the handover flow depends on who this page is
   const backgroundButton = window.BG_PICKER.liveButton($('bg-live'), { send });
   // The corner clock (clock.set: show / corner / size; key K toggles it).

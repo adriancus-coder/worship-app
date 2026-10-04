@@ -786,10 +786,19 @@ async function main() {
     await send(lead.socket, { type: 'projector.source', source: 'content' });
     await frameWhere(screen, (f) => f.version === version);
     // back to together: the leader asks (the operator holds it and is in the room), the
-    // operator accepts, and the projector shows the main position at once
+    // operator accepts; the one position continues from where the projector was (the screen
+    // does not jump: still the verse), the leader's own place travels with the event
     const asked = await send(lead.socket, { type: 'projector.request' });
     assert.strictEqual(asked.handover, 'requested', 'the leader\'s request waits for the operator');
+    const accepted = new Promise((resolve) => lead.socket.once('live:handover', resolve));
     await opSend({ type: 'handover.accept' });
+    snap = await memberAt(version);
+    assert.deepStrictEqual([snap.mode, snap.worship.itemId, snap.worship.step], ['together', i2, 0], 'continues from the projector');
+    const told = await accepted;
+    assert.deepStrictEqual([told.type, told.previous, told.continued], ['accepted', { itemId: i3, step: 1 }, { itemId: i2, step: 0 }]);
+    assert.strictEqual(screen.frames[screen.frames.length - 1].kind, 'verse', 'the screen stays on the verse');
+    // "Începe de unde erai": the leader goes back to their place, the screen follows
+    await send(lead.socket, { type: 'worship.goto', itemId: i3, step: 1 });
     frame = await frameWhere(screen, (f) => f.version === version);
     assert.deepStrictEqual([frame.kind, frame.lines], ['lyrics', ['chorus']]);
     assert.strictEqual(await opCode({ type: 'projector.next' }), 'notSplitMode');

@@ -123,6 +123,10 @@ never implement a later stage early. Mockups: claude.ai design canvas
   church where only the operator drives still gets the lyrics). The projector choice follows
   the projector's position while it is on a shared item and stays put on a projector-only one.
   Together there is one position and no choice.
+- **The projector leaving an operator** (split -> together): the one position continues from
+  where the projector was, so the screen never jumps to the new holder's place. The one who got
+  it is asked: "Ai proiectorul. Proiecția continuă de unde a rămas: <X>" with *Continui de aici*
+  (keeps it) or *Încep de unde eram: <Y>* (back to their own place; the screen follows).
 - **Team mode** (`team.mode`, any event role; a new start is *follow*):
   - *Urmărește live* (follow) — phones follow the main position. Someone who moves away on
     their own phone (swipe, ← / →) keeps their place with a floating "Revino la live";

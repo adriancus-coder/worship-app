@@ -83,6 +83,14 @@
     return item.title || (item.body ? item.body.split('\n')[0].slice(0, 80) : '') || t(`setlist.types.${item.type}`);
   }
 
+  // "Isaia 40 · Refren": where a position is, for the handover choice.
+  function positionLabel(pos) {
+    const item = state.items.find((it) => it.id === pos.itemId);
+    if (!item) return '';
+    const steps = item.arrangementResolved;
+    return steps && steps[pos.step] && item.type === 'song' ? `${itemTitle(item)} · ${steps[pos.step].label}` : itemTitle(item);
+  }
+
   function current() {
     const snap = state.snap;
     const pos = snap && snap.worship;
@@ -481,7 +489,7 @@
   });
 
   // Together / separate and the team mode; the info toast for additions from the console.
-  const modes = window.LIVE_MODES.controls($('mode-controls'), { send, t, el });
+  const modes = window.LIVE_MODES.controls($('mode-controls'), { send, t, el, positionLabel });
   // "Propuneri (n)" in the aside (public/proposals-ui.js): the same decisions as the toast.
   window.PROPOSALS_UI.roles($('proposals'), { eventId, live: () => Boolean(state.snap && state.snap.status === 'live'), position: 'afterCurrent' });
   // The bridge to Sanctuary Voice (stage 8): the same shared panel as the event page and the

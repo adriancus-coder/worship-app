@@ -1128,9 +1128,15 @@ test('live store: together and split; switching keeps positions; team mode', () 
   cmd({ type: 'worship.goto', itemId: song, step: 0 });
   cmd({ type: 'projector.goto', itemId: v1, step: 0 }, 'operator');
   assert.strictEqual(projectorFrame(snap(), events.get(1, eventId), new Map()).reference, 'Ps 1');
-  // the leader takes it back: together, the projector shows the main position at once; the position is kept
-  cmd({ type: 'projector.request' }, 'leader');
-  assert.deepStrictEqual([snap().mode, ...pos(snap().worship)], ['together', song, 0]);
+  // the leader takes it back: together, and the one position continues from where the
+  // projector was (the screen does not jump); the leader's own place comes back with the
+  // event, for "Începe de unde erai"
+  const back = cmd({ type: 'projector.request' }, 'leader');
+  assert.deepStrictEqual([snap().mode, ...pos(snap().worship)], ['together', v1, 0]);
+  assert.strictEqual(projectorFrame(snap(), events.get(1, eventId), new Map()).reference, 'Ps 1', 'the screen stays on Ps 1');
+  assert.deepStrictEqual([back.handoverEvent.type, back.handoverEvent.previous, back.handoverEvent.continued], ['taken', { itemId: song, step: 0 }, { itemId: v1, step: 0 }]);
+  cmd({ type: 'worship.goto', itemId: song, step: 0 }, 'leader'); // "Începe de unde erai"
+  assert.deepStrictEqual(pos(snap().worship), [song, 0]);
   assert.strictEqual(projectorFrame(snap(), events.get(1, eventId), new Map()).kind, 'title', 'the song item (no song map here)');
   assert.strictEqual(code({ type: 'projector.next' }, 'operator'), 'notSplitMode');
   // team mode: any event role; same mode = no-op
