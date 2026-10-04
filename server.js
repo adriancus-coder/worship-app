@@ -33,6 +33,8 @@ const { createRolesRouter } = require('./routes/roles');
 const { createGuidesRouter } = require('./routes/guides');
 const { createAssignmentsRouter } = require('./routes/assignments');
 const { createTeamMail } = require('./lib/team-mail');
+const { createAnswerLinks } = require('./lib/answer-links');
+const { createAnswerRouter } = require('./routes/answer');
 const { createUnavailabilityRouter } = require('./routes/unavailability');
 const { createPushRouter } = require('./routes/push');
 const { createPush } = require('./lib/push');
@@ -166,7 +168,8 @@ assignmentHooks.onAttendance = ({ req, event, status, note }) => notifications.o
 // "Trimite programarea" / "Trimite invitația": a notification (+ push) to each person; those
 // without push get an email with the same text and the event link when email is enabled.
 const teamMail = createTeamMail({ db, config, logger, email, push });
-const eventMail = (req, event, extra) => (user, lang, baseUrl) => ({ appName: config.APP_NAME, churchName: req.admin.name, url: `${baseUrl}/events/${event.id}`, name: event.name, date: event.eventDate, time: event.startTime || '', by: req.user.name, email: user.email, ...extra(user) });
+const eventMail = (req, event, extra) => (user, lang, baseUrl) => ({ appName: config.APP_NAME, churchName: req.admin.name, url: `${baseUrl}/events/${event.id}`, name: event.name, date: event.eventDate, time: event.startTime || '', by: req.user.name, email: user.email, ...extra(user, baseUrl) });
+const answerLinks = createAnswerLinks(db);
 assignmentHooks.onSent = async ({ req, event, rows }) => {
   const out = await notifications.onAssigned(req.adminId, event, rows, req.user.name);
   const vars = eventMail(req, event, (user) => ({ positions: rows.filter((r) => r.userId === user.id).map((r) => r.positionName).join(', ') }));
@@ -175,11 +178,16 @@ assignmentHooks.onSent = async ({ req, event, rows }) => {
 };
 assignmentHooks.onInvited = async ({ req, event, userIds }) => {
   const out = await notifications.onInvited(req.adminId, event, userIds, req.user.name);
-  const vars = eventMail(req, event, () => ({}));
+  // "Vin" / "Poate" / "Nu pot" in the email: a link each to the answer page (routes/answer.js)
+  const vars = eventMail(req, event, (user, baseUrl) => {
+    const token = answerLinks.create(req.adminId, user.id, event.id, event.eventDate);
+    return { answerUrl: (status) => `${baseUrl}/answer/${token}?a=${status}` };
+  });
   const emailed = out.withoutPush ? await teamMail.withoutPush(req, out.userIds, 'invitation', (user, lang, baseUrl) => email.templates.invitation(lang, vars(user, lang, baseUrl))) : 0;
   return { sent: out.sent, withoutPush: out.withoutPush, emailed };
 };
 app.use(createNotificationsRouter({ auth, config, notifications }));
+app.use(createAnswerRouter({ db, logger, notifications }));
 app.use(createProposalsRouter({ db, auth, logger, live, notifications }));
 setInterval(() => notifications.tick().catch((err) => logger.error('reminder tick failed', err)), 60 * 1000).unref();
 app.use(createPlatformRouter({ db, auth, config, logger, live, screensHub, storage, email, invites }));

@@ -2280,6 +2280,7 @@ testAsync('platform deletion: refused while active, the exact name, pending -> c
     db.prepare("INSERT INTO role_settings (admin_id, role, name, perms) VALUES (?, 'member', 'Voluntar', 'guides')").run(a);
     db.prepare("INSERT INTO ai_usage (admin_id, month, calls) VALUES (?, '2026-10', 3)").run(a);
     db.prepare('INSERT INTO event_attendance (event_id, admin_id, user_id, created_at) VALUES (?, ?, ?, 0)').run(eventId, a, userId);
+    db.prepare("INSERT INTO answer_links (admin_id, user_id, event_id, token_hash, created_at, expires_at) VALUES (?, ?, ?, ?, 0, 1)").run(a, userId, eventId, `al${a}`);
     const guideId = Number(db.prepare("INSERT INTO guides (admin_id, title, created_at, updated_at) VALUES (?, 'Sunet', 0, 0)").run(a).lastInsertRowid);
     db.prepare('INSERT INTO guide_positions (guide_id, position_id, admin_id) SELECT ?, id, admin_id FROM positions WHERE admin_id = ? LIMIT 1').run(guideId, a);
     db.prepare("INSERT INTO guide_items (guide_id, admin_id, kind, title, created_at) VALUES (?, ?, 'step', 'Pornește mixerul', 0)").run(guideId, a);
@@ -3151,6 +3152,31 @@ test('attendance (migration 049): the invitation reaches every active person onc
   const A = createAssignmentStore(mem);
   A.replace(1, 1, [{ userId: 2, positionId: voce }, { userId: 1, positionId: voce }], 1);
   assert.deepStrictEqual(A.list(1, 1).map((r) => [r.userName, r.status]), [['Ana', 'pending'], ['Bob', 'accepted']]);
+  mem.close();
+});
+
+test('answer links (migration 050): one per event and person, replaced by a new email, valid until two days after the event', () => {
+  const Database = require('better-sqlite3');
+  const { runMigrations } = require('../lib/db');
+  const { createAnswerLinks } = require('../lib/answer-links');
+  const mem = new Database(':memory:');
+  mem.pragma('foreign_keys = ON');
+  runMigrations(mem);
+  mem.prepare("INSERT INTO admins (id, name, created_at) VALUES (1, 'A', 0)").run();
+  mem.prepare("INSERT INTO users (id, admin_id, email, name, password_hash, role, created_at, active) VALUES (1, 1, 'a@x.ro', 'Ana', 'x', 'member', 0, 1)").run();
+  mem.prepare("INSERT INTO events (id, admin_id, name, event_date, status, created_at, updated_at) VALUES (1, 1, 'E', '2026-10-11', 'planned', 0, 0)").run();
+  const L = createAnswerLinks(mem);
+  const first = L.create(1, 1, 1, '2026-10-11', 0);
+  assert.match(first, /^[0-9a-f]{64}$/);
+  assert.deepStrictEqual(L.find(first, Date.parse('2026-10-12T00:00:00Z')), { adminId: 1, userId: 1, eventId: 1, state: 'valid' });
+  assert.strictEqual(L.find(first, Date.parse('2026-10-14T00:00:00Z')).state, 'expired', 'two days after the event');
+  const second = L.create(1, 1, 1, '2026-10-11', 0);
+  assert.strictEqual(L.find(first), null, 'a new email replaces the link');
+  assert.ok(L.find(second, 0));
+  assert.strictEqual(L.find('nope'), null);
+  assert.strictEqual(mem.prepare('SELECT COUNT(*) FROM answer_links').pluck().get(), 1);
+  mem.prepare('UPDATE users SET active = 0').run();
+  assert.strictEqual(L.find(second, 0), null, 'a deactivated person');
   mem.close();
 });
 

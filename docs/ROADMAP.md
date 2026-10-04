@@ -363,6 +363,12 @@ never implement a later stage early. Mockups: claude.ai design canvas
     never on live / follow / projector): what waits for the person's answer (an invitation, a
     sent position; `GET /api/my-invitations`) opens as a dialog, one at a time, with the
     answers right there (+ a note); "Mai târziu" hides one until the next session.
+  - *Answer links in the email* (`answer_links`, migration 050, `routes/answer.js`): the
+    invitation email (people without push) carries "Vin" / "Poate" / "Nu pot" buttons to
+    `/answer/<token>?a=…`, a page that needs no sign-in: the answer from the email is chosen
+    and one tap on "Trimite răspunsul" saves it (a link alone never answers: mail scanners
+    open links). One link per event and person, replaced by a new email, valid until two days
+    after the event.
 - Rehearsal view on phones: event key, arrangement, leader note, lyrics+chords, reference.
 
 ## Stages

@@ -2672,3 +2672,6 @@ dialog.answer-popup[open] { display: flex; }
 .answer-popup-choice { display: flex; }
 .answer-popup-choice > button { flex: 1 1 0; }
 .answer-popup .assign-note { width: 100%; }
+.answer-page { display: flex; flex-direction: column; gap: 10px; max-width: 520px; }
+.answer-page h1 { margin: 0; }
+.answer-page form { display: flex; flex-direction: column; gap: 12px; }
