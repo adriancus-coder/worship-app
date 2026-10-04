@@ -1637,6 +1637,37 @@ async function main() {
     await api('PUT', '/api/me/profile', member, { name: 'Membru', phone: '', positionIds: [voce] });
   });
 
+  await step('attendance: "Trimite invitația" asks the whole team once; Vin / Poate / Nu pot, changeable; the leader is told; "Vin" starts confirmed on a position', async () => {
+    const ev3 = (await api('POST', '/api/events', owner, { name: 'Invitație', eventDate: '2026-11-08' })).body.event;
+    assert.strictEqual((await api('POST', `/api/events/${ev3.id}/attendance/send`, member)).status, 403, 'members do not invite');
+    let got = await api('GET', `/api/events/${ev3.id}/assignments`, member);
+    assert.deepStrictEqual([got.body.attendance.invitedCount, got.body.attendance.me], [0, null], 'not invited yet');
+    const sent = await api('POST', `/api/events/${ev3.id}/attendance/send`, leader);
+    const people = (await api('GET', '/api/team', owner)).body.users.filter((u) => u.active).length;
+    assert.deepStrictEqual([sent.status, sent.body.invited.sent, sent.body.attendance.invitedCount], [200, people, people], 'everyone active');
+    assert.strictEqual((await api('POST', `/api/events/${ev3.id}/attendance/send`, leader)).body.invited.sent, 0, 'once');
+    const invitedRow = (await api('GET', '/api/notifications', member)).body.notifications.find((n) => n.kind === 'invited' && n.eventId === ev3.id);
+    assert.ok(invitedRow && /Invitație: Invitație/.test(invitedRow.title), 'the member got the invitation');
+    assert.strictEqual((await api('POST', `/api/events/${ev3.id}/attendance/respond`, member, { status: 'pending' })).status, 400);
+    got = await api('POST', `/api/events/${ev3.id}/attendance/respond`, member, { status: 'maybe', note: 'Poate întârzii' });
+    assert.deepStrictEqual([got.status, got.body.attendance.me.status, got.body.attendance.summary.maybe], [200, 'maybe', 1]);
+    got = await api('POST', `/api/events/${ev3.id}/attendance/respond`, member, { status: 'accepted' });
+    assert.strictEqual(got.body.attendance.me.status, 'accepted', 'changeable');
+    await new Promise((r) => setTimeout(r, 100));
+    const told = (await api('GET', '/api/notifications', leader)).body.notifications.filter((n) => n.kind === 'attendance' && n.eventId === ev3.id);
+    assert.ok(told.length >= 2 && told.some((n) => /Membru: Vin/.test(n.title)), 'the leader hears each answer', JSON.stringify(told.map((n) => n.title)));
+    assert.strictEqual((await api('POST', `/api/events/${ev3.id}/attendance/send`, leader, { reminder: true })).body.invited.sent, people - 1, 'a reminder: the ones without an answer');
+    const others = (await api('GET', `/api/events/${ev3.id}/assignments`, operator)).body.attendance.rows.find((r) => r.status === 'accepted');
+    assert.strictEqual(others.note, null, 'notes stay with the editors');
+    // on a position: confirmed at once
+    const voce = (await api('GET', '/api/positions', owner)).body.positions.find((p) => p.name === 'Voce').id;
+    const memberId = (await api('GET', '/api/team', owner)).body.users.find((u) => u.email === 'membru@x.ro').id;
+    const put = await api('PUT', `/api/events/${ev3.id}/assignments`, leader, { assignments: [{ userId: memberId, positionId: voce }] });
+    assert.strictEqual(put.body.assignments[0].status, 'accepted');
+    assert.strictEqual((await api('GET', '/api/home', member)).body.attendance === null || typeof (await api('GET', '/api/home', member)).body.attendance === 'object', true);
+    await api('DELETE', `/api/events/${ev3.id}`, owner);
+  });
+
   await step('assignments: owner / leader assign, others read, the assigned person answers; a copy carries the team; templates keep the "usual team"', async () => {
     const posList = (await api('GET', '/api/positions', owner)).body.positions;
     const voce = posList.find((p) => p.name === 'Voce').id;

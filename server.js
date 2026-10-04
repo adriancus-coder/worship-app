@@ -32,6 +32,7 @@ const { createPositionsRouter } = require('./routes/positions');
 const { createRolesRouter } = require('./routes/roles');
 const { createGuidesRouter } = require('./routes/guides');
 const { createAssignmentsRouter } = require('./routes/assignments');
+const { createTeamMail } = require('./lib/team-mail');
 const { createUnavailabilityRouter } = require('./routes/unavailability');
 const { createPushRouter } = require('./routes/push');
 const { createPush } = require('./lib/push');
@@ -161,29 +162,22 @@ unavailabilityHooks.onAdded = ({ req, range }) => notifications.onUnavailable(re
 assignmentHooks.onRemoved = ({ req, event, rows }) => notifications.onRemoved(req.adminId, event, rows).catch((err) => logger.error('removed notification failed', err));
 assignmentHooks.onAccepted = ({ req, event, row }) => notifications.onAccepted(req.adminId, event, row).catch((err) => logger.error('accepted notification failed', err));
 assignmentHooks.onDeclined = ({ req, event, row }) => notifications.onDeclined(req.adminId, event, row).catch((err) => logger.error('declined notification failed', err));
-// "Trimite programarea": a notification (+ push) to every pending person not yet told; those
+assignmentHooks.onAttendance = ({ req, event, status, note }) => notifications.onAttendance(req.adminId, event, req.user, status, note).catch((err) => logger.error('attendance notification failed', err));
+// "Trimite programarea" / "Trimite invitația": a notification (+ push) to each person; those
 // without push get an email with the same text and the event link when email is enabled.
+const teamMail = createTeamMail({ db, config, logger, email, push });
+const eventMail = (req, event, extra) => (user, lang, baseUrl) => ({ appName: config.APP_NAME, churchName: req.admin.name, url: `${baseUrl}/events/${event.id}`, name: event.name, date: event.eventDate, time: event.startTime || '', by: req.user.name, email: user.email, ...extra(user) });
 assignmentHooks.onSent = async ({ req, event, rows }) => {
   const out = await notifications.onAssigned(req.adminId, event, rows, req.user.name);
-  const result = { sent: out.sent, withoutPush: out.withoutPush, emailed: 0 };
-  if (!email.enabled || !out.withoutPush) return result;
-  const baseUrl = config.PUBLIC_BASE_URL || `${req.protocol}://${req.get('host')}`;
-  const selectUser = db.prepare('SELECT id, name, email, locale FROM users WHERE id = ? AND admin_id = ? AND active = 1');
-  for (const userId of out.userIds) {
-    if (push.enabled && push.hasSubscription(req.adminId, userId)) continue;
-    const user = selectUser.get(userId, req.adminId);
-    if (!user) continue;
-    const lang = user.locale === 'en' ? 'en' : 'ro';
-    const positions = rows.filter((r) => r.userId === userId).map((r) => r.positionName).join(', ');
-    const message = email.templates.schedule(lang, { appName: config.APP_NAME, churchName: req.admin.name, url: `${baseUrl}/events/${event.id}`, name: event.name, date: event.eventDate, time: event.startTime || '', positions, by: req.user.name, email: user.email });
-    try {
-      await email.send(req.adminId, { ...message, to: user.email, kind: 'schedule', userId });
-      result.emailed += 1;
-    } catch (err) {
-      logger.warn(`Schedule email to user #${userId} not sent: ${err.code || err.message}`);
-    }
-  }
-  return result;
+  const vars = eventMail(req, event, (user) => ({ positions: rows.filter((r) => r.userId === user.id).map((r) => r.positionName).join(', ') }));
+  const emailed = out.withoutPush ? await teamMail.withoutPush(req, out.userIds, 'schedule', (user, lang, baseUrl) => email.templates.schedule(lang, vars(user, lang, baseUrl))) : 0;
+  return { sent: out.sent, withoutPush: out.withoutPush, emailed };
+};
+assignmentHooks.onInvited = async ({ req, event, userIds }) => {
+  const out = await notifications.onInvited(req.adminId, event, userIds, req.user.name);
+  const vars = eventMail(req, event, () => ({}));
+  const emailed = out.withoutPush ? await teamMail.withoutPush(req, out.userIds, 'invitation', (user, lang, baseUrl) => email.templates.invitation(lang, vars(user, lang, baseUrl))) : 0;
+  return { sent: out.sent, withoutPush: out.withoutPush, emailed };
 };
 app.use(createNotificationsRouter({ auth, config, notifications }));
 app.use(createProposalsRouter({ db, auth, logger, live, notifications }));

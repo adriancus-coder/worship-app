@@ -348,6 +348,13 @@ never implement a later stage early. Mockups: claude.ai design canvas
     list with an unread badge on "Mai mult", per-kind switches, plus a push when subscribed.
   - *"Trimite programarea"*: notifies every pending person not yet told; re-sending reaches
     only new rows; with email enabled, people without push get an email with the same text.
+  - *Participation* (`event_attendance`, migration 049, `lib/attendance.js`): "Trimite
+    invitația" asks the whole team (every active person, once; then "Reamintește celor fără
+    răspuns"); each answers Vin / Poate / Nu pot (+ a note), changeable, on the home card or the
+    event's Echipa tab; the owner and the leaders are told each answer (kinds invited,
+    attendance). The answers are selection controls (the chosen one filled with the accent and
+    checked). The position picker lists first the ones who come; a person who said "Vin" starts
+    confirmed on a position.
 - Rehearsal view on phones: event key, arrangement, leader note, lyrics+chords, reference.
 
 ## Stages

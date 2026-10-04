@@ -82,13 +82,13 @@
           : el('a', { class: 'button secondary', href: secondary.href, 'data-icon': secondary.icon, text: secondary.text })),
       // Stage 7: this person's assignments on the event ("Ești programat: Chitară", Vin / Nu pot
       // while pending) and, for the event roles, the team summary.
+      // the invitation: "Participi?" Vin / Poate / Nu pot (the chosen one filled), changeable
+      state.home.attendance ? el('div', { class: 'now-assignment now-attend' },
+        el('span', { class: 'now-assignment-text', text: t('attend.question') }),
+        window.TEAM_CARD.answers(['accepted', 'maybe', 'declined'], state.home.attendance.status, (status) => attend(event, status), (v) => t(`attend.answers.${v}`), t('attend.question'))) : null,
       ...(state.home.assignments || []).map((a) => el('div', { class: `now-assignment now-assignment-${a.status}` },
         el('span', { class: 'now-assignment-text', text: t('assign.youAre', { position: window.PAGE.positionLabel({ name: a.positionName, emoji: a.positionEmoji }) }) }),
-        a.status === 'pending'
-          ? el('span', { class: 'assign-answer-buttons' },
-            el('button', { type: 'button', 'data-icon': 'check', 'data-answer': 'accepted', text: t('assign.yes'), onclick: () => answer(event, a, 'accepted') }),
-            el('button', { type: 'button', class: 'secondary', 'data-icon': 'close', 'data-answer': 'declined', text: t('assign.no'), onclick: () => answer(event, a, 'declined') }))
-          : el('span', { class: `pill assign-pill assign-${a.status}`, text: t(`assign.status.${a.status}`) }),
+        window.TEAM_CARD.answers(['accepted', 'declined'], a.status, (status) => answer(event, a, status), (v) => t(v === 'accepted' ? 'assign.yes' : 'assign.no'), t('assign.youAre', { position: a.positionName })),
         // the guides for this position (Ghiduri): "📘 Ghid: Pornirea sunetului"
         ...(a.status === 'declined' ? [] : (state.guides || []).filter((g) => g.positionIds.includes(a.positionId)).map((g) => el('a', { class: 'now-guide', href: `/guides/${g.id}`, text: `${g.emoji || '📘'} ${t('guides.homeLink', { title: g.title })}` }))))),
       state.home.proposalsOpen
@@ -108,7 +108,14 @@
 
   // Vin / Nu pot from the home card (the note is for the event page).
   async function answer(event, a, status) {
-    const res = await api(`/api/events/${event.id}/assignments/${a.id}/respond`, { method: 'POST', body: { status } }).catch(() => ({ ok: false, body: {} }));
+    const res = await api(`/api/events/${event.id}/assignments/${a.id}/respond`, { method: 'POST', body: { status, note: a.note || '' } }).catch(() => ({ ok: false, body: {} }));
+    if (!res.ok) { $('start-message').textContent = res.body.error || t('common.networkError'); return; }
+    await load().catch(() => {});
+  }
+
+  // Vin / Poate / Nu pot to the invitation, from the home card (the note is for the event page).
+  async function attend(event, status) {
+    const res = await api(`/api/events/${event.id}/attendance/respond`, { method: 'POST', body: { status, note: (state.home.attendance && state.home.attendance.note) || '' } }).catch(() => ({ ok: false, body: {} }));
     if (!res.ok) { $('start-message').textContent = res.body.error || t('common.networkError'); return; }
     await load().catch(() => {});
   }

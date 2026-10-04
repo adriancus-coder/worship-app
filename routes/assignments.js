@@ -7,6 +7,7 @@ const { createAssignmentStore, MAX_NOTE } = require('../lib/assignments');
 const { createPositionStore } = require('../lib/positions');
 const { createTeamStore } = require('../lib/team');
 const { createUnavailabilityStore } = require('../lib/unavailability');
+const { createAttendanceStore } = require('../lib/attendance');
 
 // The team of an event (lib/assignments.js).
 //   GET  /api/events/:id/assignments            everyone of the admin (members: no notes but their own)
@@ -15,6 +16,10 @@ const { createUnavailabilityStore } = require('../lib/unavailability');
 //                                               { ids: [aid] }: just these pending rows (sent before too:
 //                                               a reminder)
 //   POST /api/events/:id/assignments/:aid/respond  the assigned person: { status: accepted|declined, note? }
+// Participation (lib/attendance.js), in the same payload (attendance):
+//   POST /api/events/:id/attendance/send        schedule right: "Trimite invitația" to everyone not yet
+//                                               invited; { reminder: true }: also the ones without an answer
+//   POST /api/events/:id/attendance/respond     anyone: { status: accepted|maybe|declined, note? }
 // hooks (set later by the notifications module): onAccepted(...), onDeclined(...), onRemoved(...), onSent(...).
 function createAssignmentsRouter({ db, auth, logger, hooks = {} }) {
   const router = express.Router();
@@ -23,8 +28,9 @@ function createAssignmentsRouter({ db, auth, logger, hooks = {} }) {
   const positions = createPositionStore(db);
   const team = createTeamStore(db);
   const unavailability = createUnavailabilityStore(db);
+  const attendance = createAttendanceStore(db);
 
-  router.use('/api/events/:id/assignments', auth.requireUser, (req, res, next) => {
+  router.use(['/api/events/:id/assignments', '/api/events/:id/attendance'], auth.requireUser, (req, res, next) => {
     res.set('Cache-Control', 'no-store');
     next();
   });
@@ -51,6 +57,15 @@ function createAssignmentsRouter({ db, auth, logger, hooks = {} }) {
       canAssign: canAssign(req),
       positions: positions.list(req.adminId),
     };
+    if (!found.event.isTemplate) {
+      const people = attendance.list(req.adminId, found.event.id);
+      body.attendance = {
+        rows: people.map((r) => (editor || r.userId === req.user.id ? r : { ...r, note: null })),
+        summary: attendance.summary(people),
+        me: attendance.mine(req.adminId, found.event.id, req.user.id),
+        invitedCount: people.filter((r) => r.invitedAt).length,
+      };
+    }
     if (canAssign(req)) {
       // The picker: every active person with their usual positions (unavailability: commit 3).
       const by = positions.byUser(req.adminId);
@@ -108,6 +123,37 @@ function createAssignmentsRouter({ db, auth, logger, hooks = {} }) {
     } catch (err) {
       next(err);
     }
+  });
+
+  // "Trimite invitația": the whole team; the hook notifies (push, else email).
+  router.post('/api/events/:id/attendance/send', async (req, res, next) => {
+    try {
+      if (!canAssign(req)) return res.status(403).json({ error: req.t('errors.forbidden') });
+      const found = load(req, res);
+      if (!found) return;
+      if (found.event.isTemplate || found.event.status === 'finished') return res.status(400).json({ error: req.t('errors.badRequest') });
+      const userIds = attendance.send(req.adminId, found.event.id, req.user.id, { reminder: (req.body || {}).reminder === true });
+      const result = hooks.onInvited && userIds.length ? await hooks.onInvited({ req, event: found.event, userIds }) : { sent: userIds.length, withoutPush: 0, emailed: 0 };
+      logger.info(`Event #${found.event.id}: invitation sent to ${userIds.length} person(s) by user #${req.user.id} (admin #${req.adminId})`);
+      res.json({ ...payload(req, found), invited: result });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // Vin / Poate / Nu pot: one's own answer, changeable.
+  router.post('/api/events/:id/attendance/respond', (req, res) => {
+    const found = load(req, res);
+    if (!found) return;
+    if (found.event.isTemplate) return res.status(400).json({ error: req.t('errors.badRequest') });
+    const body = req.body || {};
+    const note = typeof body.note === 'string' ? body.note.trim().slice(0, MAX_NOTE) : '';
+    const before = attendance.mine(req.adminId, found.event.id, req.user.id);
+    const row = attendance.answer(req.adminId, found.event.id, req.user.id, body.status, note);
+    if (!row) return res.status(400).json({ error: req.t('errors.badRequest') });
+    logger.info(`Event #${found.event.id}: user #${req.user.id} attendance ${body.status} (admin #${req.adminId})`);
+    if (hooks.onAttendance && (!before || before.status !== row.status)) hooks.onAttendance({ req, event: found.event, status: row.status, note: row.note });
+    res.json(payload(req, found));
   });
 
   router.post('/api/events/:id/assignments/:aid/respond', (req, res) => {

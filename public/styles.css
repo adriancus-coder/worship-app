@@ -1714,6 +1714,14 @@ button.op-step:disabled { opacity: 1; cursor: default; }
 .assign-answer-buttons { display: flex; gap: 8px; }
 .assign-answer-buttons button { padding: 8px 14px; }
 .assign-note { flex: 1 1 160px; min-height: var(--touch); }
+.answer-choice { flex: 0 1 auto; }
+.answer-choice > button { padding: 8px 14px; }
+.attend { display: flex; flex-direction: column; gap: 8px; margin: 0 0 12px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+.attend h2, .attend h3, .attend .hint { margin: 0; }
+.attend-question { margin: 0 0 4px; font-weight: 600; }
+.attend-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.attend-group { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
+.attend-names { flex: 1 1 12rem; min-width: 0; overflow-wrap: anywhere; }
 .assign-remove { margin-left: auto; }
 .assign-remove-confirm { flex: 1 1 100%; padding: 8px 10px; border: 1px solid var(--error); border-radius: var(--radius); }
 .assign-remove-confirm p { margin: 0 0 6px; }

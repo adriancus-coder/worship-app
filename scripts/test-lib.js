@@ -2279,6 +2279,7 @@ testAsync('platform deletion: refused while active, the exact name, pending -> c
     db.prepare("INSERT INTO custom_roles (admin_id, name, base, perms, created_at) VALUES (?, 'Sunet', 'member', 'live', 0)").run(a);
     db.prepare("INSERT INTO role_settings (admin_id, role, name, perms) VALUES (?, 'member', 'Voluntar', 'guides')").run(a);
     db.prepare("INSERT INTO ai_usage (admin_id, month, calls) VALUES (?, '2026-10', 3)").run(a);
+    db.prepare('INSERT INTO event_attendance (event_id, admin_id, user_id, created_at) VALUES (?, ?, ?, 0)').run(eventId, a, userId);
     const guideId = Number(db.prepare("INSERT INTO guides (admin_id, title, created_at, updated_at) VALUES (?, 'Sunet', 0, 0)").run(a).lastInsertRowid);
     db.prepare('INSERT INTO guide_positions (guide_id, position_id, admin_id) SELECT ?, id, admin_id FROM positions WHERE admin_id = ? LIMIT 1').run(guideId, a);
     db.prepare("INSERT INTO guide_items (guide_id, admin_id, kind, title, created_at) VALUES (?, ?, 'step', 'Pornește mixerul', 0)").run(guideId, a);
@@ -3121,6 +3122,35 @@ test('assignments (migration 030): replace keeps answers, answers are the person
   // a copy: pending, not sent
   assert.strictEqual(A.copyFrom(1, 1, 2, 1), 2);
   assert.deepStrictEqual(A.list(1, 2).map((r) => [r.status, r.notifiedAt, r.note]), [['pending', null, null], ['pending', null, null]]);
+  mem.close();
+});
+
+test('attendance (migration 049): the invitation reaches every active person once, answers change, "Vin" starts confirmed on a position', () => {
+  const Database = require('better-sqlite3');
+  const { runMigrations } = require('../lib/db');
+  const { createAttendanceStore } = require('../lib/attendance');
+  const { createAssignmentStore } = require('../lib/assignments');
+  const { createPositionStore } = require('../lib/positions');
+  const mem = new Database(':memory:');
+  mem.pragma('foreign_keys = ON');
+  runMigrations(mem);
+  mem.prepare("INSERT INTO admins (id, name, created_at) VALUES (1, 'A', 0), (2, 'B', 0)").run();
+  mem.prepare("INSERT INTO users (id, admin_id, email, name, password_hash, role, created_at, active) VALUES (1, 1, 'a@x.ro', 'Ana', 'x', 'owner', 0, 1), (2, 1, 'b@x.ro', 'Bob', 'x', 'member', 0, 1), (3, 1, 'c@x.ro', 'Cezar', 'x', 'member', 0, 0), (4, 2, 'd@x.ro', 'Dan', 'x', 'member', 0, 1)").run();
+  mem.prepare("INSERT INTO events (id, admin_id, name, event_date, status, created_at, updated_at) VALUES (1, 1, 'E', '2026-10-04', 'planned', 0, 0)").run();
+  const T = createAttendanceStore(mem);
+  assert.deepStrictEqual(T.send(1, 1, 1, {}, 10), [1, 2], 'every active person of the admin');
+  assert.deepStrictEqual(T.send(1, 1, 1, {}, 11), [], 'once');
+  assert.deepStrictEqual(T.list(1, 1).map((r) => [r.userName, r.status, r.invitedAt]), [['Ana', 'pending', 10], ['Bob', 'pending', 10]]);
+  assert.strictEqual(T.answer(1, 1, 2, 'pending', ''), null);
+  assert.deepStrictEqual([T.answer(1, 1, 2, 'maybe', 'Poate întârzii').status, T.mine(1, 1, 2).note], ['maybe', 'Poate întârzii']);
+  assert.deepStrictEqual(T.send(1, 1, 1, { reminder: true }, 12), [1], 'a reminder: only the ones without an answer');
+  assert.strictEqual(T.answer(1, 1, 2, 'accepted', '').status, 'accepted', 'an answer can change');
+  assert.deepStrictEqual(T.summary(T.list(1, 1)), { accepted: 1, maybe: 0, declined: 0, pending: 1, total: 2 });
+  // positions: Bob said "Vin" -> confirmed at once; Ana (no answer) -> pending
+  const [voce] = createPositionStore(mem).list(1).map((p) => p.id);
+  const A = createAssignmentStore(mem);
+  A.replace(1, 1, [{ userId: 2, positionId: voce }, { userId: 1, positionId: voce }], 1);
+  assert.deepStrictEqual(A.list(1, 1).map((r) => [r.userName, r.status]), [['Ana', 'pending'], ['Bob', 'accepted']]);
   mem.close();
 });
 
