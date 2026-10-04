@@ -1358,6 +1358,10 @@
         newSongExistingAdd: 'Adaugă cântarea existentă',
       },
       follow: {
+        sourceLabel: 'Urmăresc:',
+        sourceTeam: '{leader} / {presenter}',
+        sourceProjector: 'Proiectorul ({name})',
+        sourceProjectorNobody: 'Proiectorul',
         link: 'Urmărește live',
         pageTitle: 'Urmărește: {name} — {appName}',
         position: 'Elementul {n} din {total}',
@@ -3270,6 +3274,10 @@
         newSongExistingAdd: 'Add the existing song',
       },
       follow: {
+        sourceLabel: 'Following:',
+        sourceTeam: '{leader} / {presenter}',
+        sourceProjector: 'The projector ({name})',
+        sourceProjectorNobody: 'The projector',
         link: 'Follow live',
         pageTitle: 'Follow: {name} — {appName}',
         position: 'Item {n} of {total}',

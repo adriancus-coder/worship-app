@@ -29,6 +29,15 @@
         <button type="button" class="secondary" id="wake-hint-close" data-i18n="follow.wakeHintClose"></button>
       </p>
 
+      <!-- split (the operator runs the projector on its own): whom this phone follows -->
+      <div id="follow-source-row" class="follow-source-row" hidden>
+        <span id="follow-source-label" class="follow-source-label" data-i18n="follow.sourceLabel"></span>
+        <div class="choice-group follow-source" id="follow-source" role="group" aria-labelledby="follow-source-label">
+          <button type="button" data-source="worship" aria-pressed="false"></button>
+          <button type="button" data-source="projector" aria-pressed="false"></button>
+        </div>
+      </div>
+
       <div class="rehearse-bar">
         <p id="position" class="rehearse-position" aria-live="polite"></p>
         <div class="rehearse-tools">

@@ -118,6 +118,11 @@ never implement a later stage early. Mockups: claude.ai design canvas
     ("<X> a acceptat: ai proiectorul" / "<X> ți-a predat proiectorul" / "ai preluat
     proiectorul"); the others see "<X> are acum proiectorul"; the hints say whose it is and
     what the projector follows. A restart clears pending requests; the end of the event too.
+- **Whom a team phone follows** (split only, the follow page): "Urmăresc: Liderul / Prezentatorul ·
+  Proiectorul (<operator>)", chosen on each phone and kept there (default: the projector, so a
+  church where only the operator drives still gets the lyrics). The projector choice follows
+  the projector's position while it is on a shared item and stays put on a projector-only one.
+  Together there is one position and no choice.
 - **Team mode** (`team.mode`, any event role; a new start is *follow*):
   - *Urmărește live* (follow) — phones follow the main position. Someone who moves away on
     their own phone (swipe, ← / →) keeps their place with a floating "Revino la live";

@@ -32,7 +32,10 @@
   // manual: the place while offline; away: the person's own place online (moved away in
   // follow mode, or anywhere in free mode); null = live.
   const state = { event: null, items: [], loadedKey: null, loading: null, songs: new Map(), snap: null, textOnly: false, scale: 1, renderId: 0,
-    manual: null, away: null, reattach: null };
+    manual: null, away: null, reattach: null,
+    // split mode (the operator runs the projector on its own): whom this phone follows -
+    // 'projector' (what the operator shows) or 'worship' (the leader / presenter); kept on the device
+    source: null };
 
   function stored(key) {
     try {
@@ -178,7 +181,7 @@
 
     // "■ Sfârșit" on the live position (followed, not while scrolling on one's own): the item
     // is over; what comes next.
-    if (pos === state.snap.worship && pos.ended) {
+    if (pos === livePos() && pos.ended) {
       slide.replaceChildren(head,
         el('p', { class: 'live-note item-ended', text: t(item.type === 'song' ? 'follow.songEnded' : 'follow.itemEnded') }),
         upNext(pos));
@@ -212,13 +215,55 @@
       upNext(pos));
   }
 
+  // --- whom this phone follows (split mode) ------------------------------------------------
+  const SOURCE_KEY = 'wa_follow_source';
+  state.source = stored(SOURCE_KEY) === 'worship' ? 'worship' : 'projector';
+  const split = () => Boolean(state.snap) && state.snap.status === 'live' && state.snap.mode === 'split';
+  // The live position this phone follows. Split + "Proiectorul": the projector's, while it
+  // shows an item of the shared setlist; on a projector-only item (the team never sees those)
+  // it stays where it was. Otherwise the main position (the leader / presenter).
+  const followed = { snap: null, source: null, items: null, pos: null, lastProjector: null };
+  function livePos() {
+    const snap = state.snap;
+    if (followed.snap === snap && followed.source === state.source && followed.items === state.items) return followed.pos;
+    let pos = snap.worship;
+    if (split() && state.source === 'projector') {
+      const p = snap.projector;
+      if (state.items.some((it) => it.id === p.itemId)) followed.lastProjector = { itemId: p.itemId, step: p.step, ended: p.ended };
+      pos = followed.lastProjector || snap.worship;
+    }
+    Object.assign(followed, { snap, source: state.source, items: state.items, pos });
+    return pos;
+  }
+
+  function renderSource() {
+    $('follow-source-row').hidden = !split();
+    if (!split()) return;
+    const holder = state.snap.holder;
+    for (const b of $('follow-source').querySelectorAll('[data-source]')) {
+      b.setAttribute('aria-pressed', String(b.dataset.source === state.source));
+      b.textContent = b.dataset.source === 'worship'
+        ? t('follow.sourceTeam', { leader: window.PAGE.roleName('leader'), presenter: window.PAGE.roleName('presenter') })
+        : (holder && holder.name ? t('follow.sourceProjector', { name: holder.name }) : t('follow.sourceProjectorNobody'));
+    }
+  }
+  for (const b of $('follow-source').querySelectorAll('[data-source]')) {
+    b.addEventListener('click', () => {
+      if (state.source === b.dataset.source) return;
+      state.source = b.dataset.source;
+      store(SOURCE_KEY, state.source);
+      if (!free()) state.away = null; // follow mode: straight to the chosen position
+      render();
+    });
+  }
+
   const live = () => Boolean(state.snap) && state.snap.status === 'live';
   const free = () => live() && state.snap.teamMode === 'free';
   // What this phone shows: offline its own place, else the person's place, else live.
-  const shownPosition = () => state.manual || state.away || state.snap.worship;
+  const shownPosition = () => state.manual || state.away || livePos();
 
   function liveLabel() {
-    const pos = state.snap.worship;
+    const pos = livePos();
     const item = state.items.find((it) => it.id === pos.itemId);
     if (!item) return '—';
     const entry = item.type === 'song' && item.arrangementResolved ? item.arrangementResolved[pos.step] : null;
@@ -242,7 +287,7 @@
     if (online && free()) {
       $('live-bar-text').textContent = t('follow.liveBar', { label: liveLabel() });
       const at = shownPosition();
-      $('go-live').disabled = POS.samePosition(at, state.snap.worship);
+      $('go-live').disabled = POS.samePosition(at, livePos());
     }
     $('back-live').hidden = !(online && !free() && state.away);
     $('jump-nav').hidden = !(live() && (free() || manual));
@@ -256,13 +301,14 @@
       },
       el('span', { class: `type-badge type-${item.type}`, text: t(`setlist.types.${item.type}`) }),
       el('span', { class: 'follow-setlist-title', text: itemTitle(item) }),
-      item.id === state.snap.worship.itemId ? el('span', { class: 'live-badge', text: t('live.liveBadge') }) : null))));
+      item.id === livePos().itemId ? el('span', { class: 'live-badge', text: t('live.liveBadge') }) : null))));
     }
   }
 
   function render() {
     if (!state.event || !state.snap) return;
     renderHead();
+    renderSource();
     renderNav();
     renderSlide();
     mountProposals();
@@ -325,7 +371,7 @@
 
   function backToLive() {
     stopReattach();
-    if (free()) state.away = { ...state.snap.worship }; // free: go there, stay free
+    if (free()) state.away = { ...livePos() }; // free: go there, stay free
     else state.away = null;
     render();
   }
@@ -356,7 +402,7 @@
       stopReattach();
     } else if (isFree && !wasFree) {
       // Free now: everyone stays where they are.
-      state.away = state.away || (previous && previous.status === 'live' ? { ...previous.worship } : { ...snap.worship });
+      state.away = state.away || (previous && previous.status === 'live' && followed.pos ? { ...followed.pos } : { ...snap.worship });
       stopReattach();
     } else if (!isFree && wasFree) {
       state.away = null; // follow again: straight to live
@@ -367,7 +413,7 @@
   // The person's place no longer exists (the setlist changed): back to live.
   function checkAway() {
     if (state.away && !state.items.some((it) => it.id === state.away.itemId)) {
-      state.away = free() ? { ...state.snap.worship } : null;
+      state.away = free() ? { ...livePos() } : null;
       stopReattach();
     }
   }
@@ -375,7 +421,7 @@
   // Offline for a while: the team member moves on their own (from where the team was).
   function goOffline(offline) {
     if (offline && state.snap && state.snap.status === 'live' && state.event) {
-      state.manual = state.manual || { ...state.snap.worship };
+      state.manual = state.manual || { ...livePos() };
     } else if (!offline) {
       return; // manual mode ends with the first snapshot of the new connection
     }
