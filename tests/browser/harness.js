@@ -223,4 +223,15 @@ function layoutAudit(page, scope = 'body') {
   }), scope);
 }
 
-module.exports = { ROOT, PASSWORD, USERS, FIXTURES, wait, startApp, launch, signIn, layoutAudit };
+// The invitations pop-up (public/answer-popup.js): "Mai târziu" on each one that opens, for
+// tests about something else.
+async function laterAnswers(page) {
+  for (let i = 0; i < 10; i++) {
+    const open = await page.waitForSelector('#answer-popup[open]', { timeout: 2500 }).then(() => true, () => false);
+    if (!open) return;
+    await page.click('#answer-popup-later');
+    await wait(150);
+  }
+}
+
+module.exports = { ROOT, PASSWORD, USERS, FIXTURES, wait, startApp, launch, signIn, layoutAudit, laterAnswers };

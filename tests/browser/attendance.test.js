@@ -6,7 +6,7 @@
 // changes to Yes with a note on the event page; the leader's picker lists first the ones who
 // come, and a person who said "Vin" starts confirmed on the position.
 
-const { layoutAudit } = require('./harness');
+const { layoutAudit, laterAnswers } = require('./harness');
 
 module.exports = {
   name: 'attendance',
@@ -28,6 +28,7 @@ module.exports = {
     // the leader invites (RO 375)
     const l = await signIn('leader', { width: 375, lang: 'ro' });
     await l.goto(`${app.url}/events/${E}/edit`);
+    await laterAnswers(l);
     await l.waitForSelector('#editor-tabs:not([hidden])');
     await l.click('#tab-team');
     await l.waitForSelector('#team-panel:not([hidden]) .attend');
@@ -42,6 +43,7 @@ module.exports = {
     // the member answers (EN 1024): home card "Maybe", then "Yes" with a note on the event page
     const m = await signIn('member', { width: 1024, lang: 'en' });
     await m.goto(`${app.url}/app`);
+    await laterAnswers(m); // (the pop-up: answer-popup.test.js)
     await m.waitForSelector('.now-attend');
     check(/Are you coming/.test(await m.textContent('.now-attend')) && await m.locator('.now-attend [aria-pressed="true"]').count() === 0, 'home card: "Are you coming?" Yes / Maybe / No, nothing chosen yet');
     await m.click('.now-attend [data-answer="maybe"]');
@@ -50,6 +52,7 @@ module.exports = {
     const other = await chosen(m, '.now-attend [data-answer="accepted"]');
     check(maybe.accent && maybe.check && maybe.bold && !other.accent && other.pressed === 'false', 'the chosen answer is filled with the accent, checked and bold; the others are flat', { maybe, other });
     await m.goto(`${app.url}/events/${E}`);
+    await laterAnswers(m);
     await m.click('#tab-team');
     await m.waitForSelector('#team-card .attend-me [data-answer="maybe"][aria-pressed="true"]');
     await m.fill('#attend-note', 'Until 11');
@@ -63,6 +66,7 @@ module.exports = {
     // the leader's picker: the ones who come first; on the position they start confirmed
     const l2 = await signIn('leader', { width: 1024, lang: 'ro' });
     await l2.goto(`${app.url}/events/${E}/edit`);
+    await laterAnswers(l2);
     await l2.click('#tab-team');
     await l2.waitForSelector('#team-panel:not([hidden]) .team-position');
     const group = l2.locator('.team-position:has(h3:text-matches("(^| )Voce$"))');

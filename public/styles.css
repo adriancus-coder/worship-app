@@ -2661,3 +2661,14 @@ dialog.plan-dialog { width: min(440px, calc(100vw - 24px)); padding: 12px; }
 .plan-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--worship); }
 .plan-day[aria-pressed="true"] .plan-dot { background: currentColor; }
 .plan-count { font-weight: 600; }
+
+/* --- The invitations pop-up (public/answer-popup.js) ---------------------------------------- */
+dialog.answer-popup { display: none; flex-direction: column; gap: 10px; }
+dialog.answer-popup[open] { display: flex; }
+.answer-popup h2 { margin: 0; }
+.answer-popup-kicker { font-size: 0.8125rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent-text); }
+.answer-popup-when { color: var(--text-muted); }
+.answer-popup-position, .answer-popup-question { font-weight: 600; }
+.answer-popup-choice { display: flex; }
+.answer-popup-choice > button { flex: 1 1 0; }
+.answer-popup .assign-note { width: 100%; }

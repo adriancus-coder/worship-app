@@ -496,6 +496,13 @@
         cancel: 'Anulează',
         done: 'Am creat {n} evenimente.',
       },
+      answerPopup: {
+        invited: 'Invitație',
+        scheduled: 'Ești programat',
+        open: 'Vezi evenimentul',
+        later: 'Mai târziu',
+        laterMore: 'Mai târziu ({n} încă)',
+      },
       attend: {
         heading: 'Participare',
         question: 'Participi la acest eveniment?',
@@ -2473,6 +2480,13 @@
         createOne: 'Create 1 event',
         cancel: 'Cancel',
         done: '{n} events created.',
+      },
+      answerPopup: {
+        invited: 'Invitation',
+        scheduled: 'You are scheduled',
+        open: 'See the event',
+        later: 'Later',
+        laterMore: 'Later ({n} more)',
       },
       attend: {
         heading: 'Attendance',

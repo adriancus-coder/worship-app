@@ -359,6 +359,10 @@ never implement a later stage early. Mockups: claude.ai design canvas
     attendance). The answers are selection controls (the chosen one filled with the accent and
     checked). The position picker lists first the ones who come; a person who said "Vin" starts
     confirmed on a position.
+  - *The answers pop-up* (`public/answer-popup.js`, loaded by the menu on every menu page,
+    never on live / follow / projector): what waits for the person's answer (an invitation, a
+    sent position; `GET /api/my-invitations`) opens as a dialog, one at a time, with the
+    answers right there (+ a note); "Mai târziu" hides one until the next session.
 - Rehearsal view on phones: event key, arrangement, leader note, lyrics+chords, reference.
 
 ## Stages

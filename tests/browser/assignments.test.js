@@ -5,7 +5,7 @@
 // home card, one accepts, one declines with a note; the leader's summary and the declined row
 // stand out; the operator sees the card but has no Echipa tab. RO 375 / EN 1024.
 
-const { layoutAudit, wait } = require('./harness');
+const { layoutAudit, wait, laterAnswers } = require('./harness');
 
 module.exports = {
   name: 'assignments',
@@ -24,6 +24,7 @@ module.exports = {
     // the leader assigns (RO 375)
     const l = await signIn('leader', { width: 375, lang: 'ro' });
     await l.goto(`${app.url}/events/${E}/edit`);
+    await laterAnswers(l);
     await l.waitForSelector('#editor-tabs:not([hidden])');
     await l.click('#tab-team');
     await l.waitForSelector('#team-panel:not([hidden]) .team-position');
@@ -51,9 +52,11 @@ module.exports = {
     // the member: home card + event page (EN 1024)
     const m = await signIn('member', { width: 1024, lang: 'en' });
     await m.goto(`${app.url}/app`);
+    await laterAnswers(m); // (the pop-up: answer-popup.test.js)
     await m.waitForSelector('.now-assignment');
     check(/You are scheduled: 🎸 Chitară/.test(await m.textContent('.now-assignment')) && await m.locator('.now-assignment button[data-answer]').count() === 2, 'home card: "You are scheduled: Chitară" with I’m in / I can’t');
     await m.goto(`${app.url}/events/${E}`);
+    await laterAnswers(m);
     await m.waitForSelector('#tab-team:not([hidden])');
     await m.click('#tab-team');
     await m.waitForSelector('#team-card .team-card');
@@ -68,6 +71,7 @@ module.exports = {
     // the presenter declines with a note from the home card + event page
     const pr = await signIn('presenter', { width: 375, lang: 'ro' });
     await pr.goto(`${app.url}/events/${E}`);
+    await laterAnswers(pr);
     await pr.click('#tab-team');
     await pr.waitForSelector('#team-card .assign-row.mine');
     await pr.locator('#team-card .assign-row.mine .assign-note').fill('Sunt plecat');
@@ -77,6 +81,7 @@ module.exports = {
     // the operator: the card, the summary, no tab
     const op = await signIn('operator', { width: 1024 });
     await op.goto(`${app.url}/events/${E}/edit`);
+    await laterAnswers(op);
     await op.waitForSelector('#team-summary:not([hidden])');
     await op.click('#team-summary'); // the summary opens the Echipa tab
     await op.waitForSelector('#team-card .team-card');
@@ -107,6 +112,7 @@ module.exports = {
     const told = (await app.api(app.cookies.member, 'GET', '/api/notifications')).body.notifications.find((n) => n.kind === 'unassigned');
     check(Boolean(told) && /No longer scheduled|no longer scheduled/.test(told.title), 'Scoate: the row is gone; the member is told (in their language)', told);
     await l.goto(`${app.url}/app`);
+    await laterAnswers(l);
     await l.waitForSelector('.now-team-summary');
     check(/0 confirmați · 1 așteaptă · 1 nu poate/.test(await l.textContent('.now-team-summary')), 'home card (leader): the team summary (the confirmed member was taken off)');
   },

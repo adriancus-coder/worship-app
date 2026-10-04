@@ -273,6 +273,7 @@
     }
 
     document.addEventListener('i18n:change', render);
+    document.addEventListener('answers:changed', () => { load().catch(() => {}); }); // the pop-up answered
     return { load, render, get data() { return state.data; } };
   }
 

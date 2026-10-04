@@ -121,6 +121,9 @@
     await load().catch(() => {});
   }
 
+  // An answer given in the pop-up (public/answer-popup.js): the card again.
+  document.addEventListener('answers:changed', () => { load().catch(() => {}); });
+
   const STALE_LIVE_MS = 24 * 60 * 60 * 1000;
   const staleLive = (event) => Boolean(event.startedAt) && Date.now() - event.startedAt >= STALE_LIVE_MS;
 

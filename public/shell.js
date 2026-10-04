@@ -545,4 +545,8 @@
   body.append(backdrop, panel);
 
   window.SHELL = { me: mePromise, open, setUnread, refreshUnread };
+
+  // What waits for this person's answer (invitations, positions) opens as a pop-up
+  // (public/answer-popup.js); never on the full-screen work pages (above, they return early).
+  if (window.PAGE) document.head.append(Object.assign(document.createElement('script'), { src: '/answer-popup.js', defer: true }));
 })();

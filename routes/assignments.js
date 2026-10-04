@@ -8,6 +8,8 @@ const { createPositionStore } = require('../lib/positions');
 const { createTeamStore } = require('../lib/team');
 const { createUnavailabilityStore } = require('../lib/unavailability');
 const { createAttendanceStore } = require('../lib/attendance');
+const { createAdminSettings } = require('../lib/admin-settings');
+const { todayIn } = require('../lib/dates');
 
 // The team of an event (lib/assignments.js).
 //   GET  /api/events/:id/assignments            everyone of the admin (members: no notes but their own)
@@ -20,6 +22,8 @@ const { createAttendanceStore } = require('../lib/attendance');
 //   POST /api/events/:id/attendance/send        schedule right: "Trimite invitația" to everyone not yet
 //                                               invited; { reminder: true }: also the ones without an answer
 //   POST /api/events/:id/attendance/respond     anyone: { status: accepted|maybe|declined, note? }
+//   GET  /api/my-invitations                    what waits for this person's answer: invitations and
+//                                               positions (the app's pop-up, public/answer-popup.js)
 // hooks (set later by the notifications module): onAccepted(...), onDeclined(...), onRemoved(...), onSent(...).
 function createAssignmentsRouter({ db, auth, logger, hooks = {} }) {
   const router = express.Router();
@@ -29,6 +33,7 @@ function createAssignmentsRouter({ db, auth, logger, hooks = {} }) {
   const team = createTeamStore(db);
   const unavailability = createUnavailabilityStore(db);
   const attendance = createAttendanceStore(db);
+  const settings = createAdminSettings(db);
 
   router.use(['/api/events/:id/assignments', '/api/events/:id/attendance'], auth.requireUser, (req, res, next) => {
     res.set('Cache-Control', 'no-store');
@@ -154,6 +159,16 @@ function createAssignmentsRouter({ db, auth, logger, hooks = {} }) {
     logger.info(`Event #${found.event.id}: user #${req.user.id} attendance ${body.status} (admin #${req.adminId})`);
     if (hooks.onAttendance && (!before || before.status !== row.status)) hooks.onAttendance({ req, event: found.event, status: row.status, note: row.note });
     res.json(payload(req, found));
+  });
+
+  router.get('/api/my-invitations', auth.requireUser, (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    const today = todayIn(settings.timezone(req.adminId));
+    const invitations = attendance.pendingForUser(req.adminId, req.user.id, today).map((r) => ({ kind: 'attendance', ...r }));
+    const positions = assignments.upcomingForUser(req.adminId, req.user.id, today)
+      .filter((r) => r.status === 'pending' && r.notifiedAt !== null)
+      .map((r) => ({ kind: 'assignment', id: r.id, eventId: r.eventId, eventName: r.eventName, eventDate: r.eventDate, startTime: r.startTime, positionName: r.positionName, positionEmoji: r.positionEmoji }));
+    res.json({ items: [...invitations, ...positions].sort((a, b) => (a.eventDate + (a.startTime || '')).localeCompare(b.eventDate + (b.startTime || ''))) });
   });
 
   router.post('/api/events/:id/assignments/:aid/respond', (req, res) => {
