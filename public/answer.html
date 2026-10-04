@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="{{LANG}}" data-app-name="{{APP_NAME}}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#141318">
+  <meta name="robots" content="noindex">
+  <title data-i18n="answerPage.pageTitle">{{APP_NAME}}</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="lang-switch" role="group" aria-label="Limbă / Language">
+      <button type="button" data-lang="ro" lang="ro" aria-pressed="false">RO</button>
+      <button type="button" data-lang="en" lang="en" aria-pressed="false">EN</button>
+    </div>
+  </header>
+  <main class="answer-page">
+    <p id="church" class="answer-popup-kicker"></p>
+    <h1 id="heading"></h1>
+    <p id="when" class="muted"></p>
+    <p id="event-notes" class="event-note" hidden></p>
+    <p id="status" class="muted" role="status" aria-live="polite" data-i18n="app.loading"></p>
+
+    <form id="answer-form" novalidate hidden>
+      <p id="question" class="answer-popup-question"></p>
+      <div id="choices" class="choice-group answer-choice answer-popup-choice" role="group" aria-labelledby="question">
+        <button type="button" data-answer="accepted" aria-pressed="false"></button>
+        <button type="button" data-answer="maybe" aria-pressed="false"></button>
+        <button type="button" data-answer="declined" aria-pressed="false"></button>
+      </div>
+      <label><span data-i18n="attend.noteLabel"></span><input type="text" id="note" maxlength="200" autocomplete="off"></label>
+      <button type="submit" id="send" data-icon="check"></button>
+      <p class="message" id="message" role="status" aria-live="polite"></p>
+    </form>
+
+    <div id="problem" hidden>
+      <p class="message error" id="problem-text" role="alert"></p>
+      <div class="form-actions"><a class="button secondary" href="/login" data-icon="login" data-i18n="answerPage.toApp"></a></div>
+    </div>
+  </main>
+  <script src="/i18n.js"></script>
+  <script src="/answer.js"></script>
+</body>
+</html>

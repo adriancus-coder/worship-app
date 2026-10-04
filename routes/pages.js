@@ -1,0 +1,191 @@
+'use strict';
+
+const express = require('express');
+const { can } = require('../lib/roles');
+
+// Library, media and screens pages: owner and leader.
+
+function createPagesRouter({ db, auth, sendPage }) {
+  const router = express.Router();
+  const selectAnyAdmin = db.prepare('SELECT 1 FROM admins LIMIT 1');
+  const hasAdmin = () => selectAnyAdmin.get() !== undefined;
+
+  // Page responses depend on the session, so never cache them.
+  const noStore = (req, res, next) => {
+    res.set('Cache-Control', 'no-store');
+    next();
+  };
+
+  router.get('/', noStore, (req, res) => {
+    if (!hasAdmin()) return res.redirect('/setup');
+    res.redirect(auth.getSession(req) ? '/app' : '/login');
+  });
+
+  router.get('/login', noStore, (req, res) => {
+    if (!hasAdmin()) return res.redirect('/setup');
+    if (auth.getSession(req)) return res.redirect('/app');
+    sendPage(req, res, 'login');
+  });
+
+
+  // The projector screen: no user session. /screen pairs with a code; /screen/<key> is a
+  // screen's static link (the page reads the key from its address).
+  router.get(['/screen', '/screen/:key([a-z0-9]{12})'], noStore, (req, res) => {
+    sendPage(req, res, 'screen');
+  });
+
+  // The email links: no session needed (the token decides; the page signs the person in).
+  router.get(['/invite/:token', '/reset/:token'], noStore, (req, res) => {
+    sendPage(req, res, 'invite');
+  });
+
+  // The answer links of the invitation email (routes/answer.js): no session needed.
+  router.get('/answer/:token', noStore, (req, res) => {
+    sendPage(req, res, 'answer');
+  });
+
+  // Help for an internet outage during a service: no session needed (nothing private).
+  router.get('/help/emergency', (req, res) => {
+    sendPage(req, res, 'help-emergency');
+  });
+
+  // Signed-in pages. Editing pages are only served to roles that may edit;
+  // the API enforces the same rules.
+  // A temporary password must be changed first: every page leads to /change-password.
+  const signedIn = (req, res, next) => {
+    req.session = auth.getSession(req);
+    if (!req.session) return res.redirect('/login');
+    if (req.session.user.mustChangePassword && req.path !== '/change-password') return res.redirect('/change-password');
+    next();
+  };
+
+  router.get('/app', noStore, signedIn, (req, res) => {
+    sendPage(req, res, 'app');
+  });
+
+  // Forced after a temporary password; later from "Mai mult" → "Schimbă parola".
+  router.get('/change-password', noStore, signedIn, (req, res) => {
+    sendPage(req, res, 'change-password');
+  });
+  // The rights (lib/roles.js): the page is served only to those who may use it.
+  const has = (req, perm) => can(req.session.user, perm);
+
+  router.get('/library', noStore, signedIn, (req, res) => {
+    sendPage(req, res, 'library');
+  });
+
+  router.get('/events', noStore, signedIn, (req, res) => {
+    sendPage(req, res, 'events');
+  });
+
+  // The API decides what the user may see; the edit page is only served to editors.
+  router.get('/events/:id(\\d+)', noStore, signedIn, (req, res) => {
+    sendPage(req, res, 'event');
+  });
+
+  // Rehearsal is the musical team's: the operator is sent to the event page.
+  router.get('/events/:id(\\d+)/rehearse', noStore, signedIn, (req, res) => {
+    if (req.session.user.role === 'operator') return res.redirect(`/events/${req.params.id}`);
+    sendPage(req, res, 'rehearse');
+  });
+
+  // Team phones follow the live position; the live room decides what the user may see.
+  router.get('/events/:id(\\d+)/follow', noStore, signedIn, (req, res) => {
+    sendPage(req, res, 'follow');
+  });
+
+  // Live control: the event roles; the team follows the event page instead.
+  router.get('/events/:id(\\d+)/live', noStore, signedIn, (req, res) => {
+    if (!has(req, 'live')) return res.redirect(`/events/${req.params.id}`);
+    sendPage(req, res, 'live');
+  });
+
+  // Operator console: the 'screens' right (owner, operator). Live rights without it -> the
+  // live page; the team follows the event instead.
+  router.get('/events/:id(\\d+)/operator', noStore, signedIn, (req, res) => {
+    if (!has(req, 'live')) return res.redirect(`/events/${req.params.id}`);
+    if (!has(req, 'screens')) return res.redirect(`/events/${req.params.id}/live`);
+    sendPage(req, res, 'operator');
+  });
+
+  router.get('/events/:id(\\d+)/edit', noStore, signedIn, (req, res) => {
+    if (!has(req, 'events')) return res.redirect(`/events/${req.params.id}`);
+    sendPage(req, res, 'event');
+  });
+
+  // Projector screens: pairing and management (owner / operator).
+  router.get('/screens', noStore, signedIn, (req, res) => {
+    if (!has(req, 'screens')) return res.redirect('/app');
+    sendPage(req, res, 'screens');
+  });
+
+  // Media library (videos, backgrounds): the 'media' right.
+  router.get('/media', noStore, signedIn, (req, res) => {
+    if (!has(req, 'media')) return res.redirect('/app');
+    sendPage(req, res, 'media');
+  });
+
+  // Ghiduri: everyone reads (the API decides who writes).
+  router.get('/guides', noStore, signedIn, (req, res) => {
+    sendPage(req, res, 'guides');
+  });
+  router.get('/guides/:id(\\d+)', noStore, signedIn, (req, res) => {
+    sendPage(req, res, 'guide');
+  });
+
+  // "Profilul meu" (name, phone, positions, later unavailability): everyone.
+  router.get('/profile', noStore, signedIn, (req, res) => {
+    sendPage(req, res, 'profile');
+  });
+
+  // "Notificări": everyone (the push toggle; the in-app list comes with the notifications module).
+  router.get('/notifications', noStore, signedIn, (req, res) => {
+    sendPage(req, res, 'notifications');
+  });
+
+  // "Poziții în echipă" moved into Echipa (the owner's Poziții tab).
+  router.get('/positions', noStore, signedIn, (req, res) => {
+    res.redirect(req.session.user.role === 'owner' ? '/team?tab=positions' : '/team');
+  });
+
+  // Echipa: the owner manages accounts, positions and sees everyone's unavailability; every
+  // other role gets a read-only directory (no emails / phones).
+  router.get('/team', noStore, signedIn, (req, res) => {
+    sendPage(req, res, 'team');
+  });
+
+  // The platform page (churches on this server): the platform owner only.
+  router.get('/platform', noStore, signedIn, (req, res) => {
+    if (!req.session.platformOwner) return res.redirect('/app');
+    sendPage(req, res, 'platform');
+  });
+  // One church on the platform page (its counts, team and screens).
+  router.get('/platform/:id(\\d+)', noStore, signedIn, (req, res) => {
+    if (!req.session.platformOwner) return res.redirect('/app');
+    sendPage(req, res, 'platform-church');
+  });
+
+  // Admin settings (the church logo): owner only.
+  router.get('/settings', noStore, signedIn, (req, res) => {
+    if (req.session.user.role !== 'owner') return res.redirect('/app');
+    sendPage(req, res, 'settings');
+  });
+
+  router.get('/songs/new', noStore, signedIn, (req, res) => {
+    if (!has(req, 'library')) return res.redirect('/library');
+    sendPage(req, res, 'song-edit');
+  });
+
+  router.get('/songs/:id(\\d+)', noStore, signedIn, (req, res) => {
+    sendPage(req, res, 'song');
+  });
+
+  router.get('/songs/:id(\\d+)/edit', noStore, signedIn, (req, res) => {
+    if (!has(req, 'library')) return res.redirect(`/songs/${req.params.id}`);
+    sendPage(req, res, 'song-edit');
+  });
+
+  return router;
+}
+
+module.exports = createPagesRouter;

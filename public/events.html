@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="{{LANG}}" data-app-name="{{APP_NAME}}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#141318">
+  <title data-i18n="events.pageTitle">{{APP_NAME}}</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body data-shell="events" class="list-page">
+  <main class="wide">
+    <div class="page-head">
+      <h1 data-i18n="events.heading"></h1>
+      <div class="page-head-actions">
+        <button type="button" id="new-event" hidden data-icon="plus" data-i18n="events.newEvent"></button>
+        <button type="button" id="plan-events" class="secondary" hidden data-icon="calendar" data-i18n="plan.open"></button>
+      </div>
+    </div>
+
+    <p id="plan-done" class="message success" role="status" aria-live="polite" hidden></p>
+    <div class="tabs" role="tablist" data-i18n-aria-label="events.tabsLabel">
+      <button type="button" role="tab" id="tab-upcoming" aria-controls="events-panel" aria-selected="true" data-i18n="events.tabUpcoming"></button>
+      <button type="button" role="tab" id="tab-past" aria-controls="events-panel" aria-selected="false" tabindex="-1" data-i18n="events.tabPast"></button>
+      <button type="button" role="tab" id="tab-templates" aria-controls="events-panel" aria-selected="false" tabindex="-1" hidden data-i18n="events.tabTemplates"></button>
+    </div>
+
+    <div id="events-panel" role="tabpanel" data-list-pane="events.listPane">
+      <p id="status" class="muted pane-state" role="status" aria-live="polite" data-i18n="events.loading"></p>
+      <ul id="events" class="event-list"></ul>
+    </div>
+
+    <!-- "Planifică": pick days on a month calendar, one event per day (public/events-plan.js) -->
+    <dialog id="plan-dialog" class="plan-dialog" aria-labelledby="plan-heading">
+      <form id="plan-form" method="dialog" novalidate>
+        <h2 id="plan-heading" data-i18n="plan.heading"></h2>
+        <p class="hint" data-i18n="plan.hint"></p>
+        <div class="plan-month-row">
+          <button type="button" class="secondary" id="plan-prev" data-i18n-aria-label="plan.prev"><span aria-hidden="true">‹</span></button>
+          <strong id="plan-month" aria-live="polite"></strong>
+          <button type="button" class="secondary" id="plan-next" data-i18n-aria-label="plan.next"><span aria-hidden="true">›</span></button>
+        </div>
+        <div id="plan-grid" class="plan-grid choice-group" role="group" aria-labelledby="plan-month"></div>
+        <p id="plan-count" class="plan-count" role="status" aria-live="polite"></p>
+        <label><span data-i18n="plan.templateLabel"></span><select id="plan-template"></select></label>
+        <div class="field-row">
+          <label class="field"><span data-i18n="plan.nameLabel"></span><input type="text" id="plan-name" maxlength="120" autocomplete="off"></label>
+          <label class="field"><span data-i18n="plan.timeLabel"></span><input type="time" id="plan-time"></label>
+        </div>
+        <label><span data-i18n="plan.notesLabel"></span><textarea id="plan-notes" rows="2" maxlength="2000"></textarea></label>
+        <p id="plan-message" class="message error" role="alert"></p>
+        <div class="form-actions">
+          <button type="submit" id="plan-create" data-icon="check"></button>
+          <button type="button" class="secondary" data-close data-i18n="plan.cancel"></button>
+        </div>
+      </form>
+    </dialog>
+  </main>
+  <script src="/i18n.js"></script>
+  <script src="/page.js"></script>
+  <script src="/list-pane.js"></script>
+  <script src="/shell.js"></script>
+  <script src="/events.js"></script>
+  <script src="/events-plan.js"></script>
+</body>
+</html>

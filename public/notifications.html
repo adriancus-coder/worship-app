@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="{{LANG}}" data-app-name="{{APP_NAME}}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#141318">
+  <title data-i18n="notif.pageTitle">{{APP_NAME}}</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body data-shell="more">
+  <main>
+    <h1 data-i18n="notif.heading"></h1>
+
+    <!-- Push: what it is, the state on this device, one switch. -->
+    <section class="push-card" id="push-card" aria-labelledby="push-heading">
+      <h2 id="push-heading" data-i18n="notif.pushHeading"></h2>
+      <p class="hint" data-i18n="notif.pushIntro"></p>
+      <p id="push-state" class="push-state" role="status" aria-live="polite"></p>
+      <p id="push-ios" class="hint push-ios" hidden data-i18n="notif.pushIos"></p>
+      <div class="form-actions">
+        <button type="button" id="push-on" hidden data-icon="check" data-i18n="notif.pushOn"></button>
+        <button type="button" class="secondary" id="push-off" hidden data-icon="close" data-i18n="notif.pushOff"></button>
+        <button type="button" class="secondary" id="push-test" hidden data-icon="mail" data-i18n="notif.pushTest"></button>
+      </div>
+      <p id="push-message" class="message" role="status" aria-live="polite"></p>
+    </section>
+
+    <section class="notif-section" aria-labelledby="notif-list-heading">
+      <div class="notif-list-head">
+        <h2 id="notif-list-heading" data-i18n="notif.listHeading"></h2>
+        <button type="button" class="secondary" id="notif-read-all" hidden data-icon="check" data-i18n="notif.markAll"></button>
+      </div>
+      <p id="notif-status" class="muted" role="status" aria-live="polite" data-i18n="app.loading"></p>
+      <ul id="notif-list" class="notif-list"></ul>
+    </section>
+
+    <section class="notif-section" aria-labelledby="notif-prefs-heading">
+      <h2 id="notif-prefs-heading" data-i18n="notif.prefsHeading"></h2>
+      <p class="hint" data-i18n="notif.prefsHint"></p>
+      <div id="notif-prefs" class="checkbox-list notif-prefs"></div>
+      <p id="prefs-message" class="message" role="status" aria-live="polite"></p>
+    </section>
+  </main>
+  <script src="/i18n.js"></script>
+  <script src="/page.js"></script>
+  <script src="/shell.js"></script>
+  <script src="/push-client.js"></script>
+  <script src="/notifications.js"></script>
+</body>
+</html>
