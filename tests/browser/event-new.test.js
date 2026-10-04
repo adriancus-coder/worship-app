@@ -32,12 +32,13 @@ module.exports = {
       await p.goto(`${app.url}/events`);
       await p.waitForSelector('#new-event:not([hidden])');
       const head = await p.evaluate(() => ({
-        buttons: [...document.querySelectorAll('.page-head-actions button')].map((b) => b.textContent.trim()),
+        buttons: [...document.querySelectorAll('.page-head-actions button:not(.secondary)')].map((b) => b.textContent.trim()),
+        plan: Boolean(document.querySelector('.page-head-actions #plan-events.secondary:not([hidden])')),
         width: document.getElementById('new-event').getBoundingClientRect().width,
         main: document.querySelector('main').getBoundingClientRect().width,
         dialog: Boolean(document.getElementById('create-dialog')),
       }));
-      check(head.buttons.length === 1 && !head.dialog && (width > 600 || head.width > head.main * 0.8), `${tag} /events: only "+ Eveniment nou"${width < 600 ? ', full width' : ''}`, head);
+      check(head.buttons.length === 1 && head.plan && !head.dialog && (width > 600 || head.width > head.main * 0.8), `${tag} /events: one primary "+ Eveniment nou" (+ the secondary "Planifică")${width < 600 ? ', full width' : ''}`, head);
       await p.click('#new-event');
       await p.waitForURL(/\/events\/\d+\/edit$/);
       await p.waitForSelector('#quick-details[open]:not([hidden])');

@@ -348,6 +348,10 @@ never implement a later stage early. Mockups: claude.ai design canvas
     list with an unread badge on "Mai mult", per-kind switches, plus a push when subscribed.
   - *"Trimite programarea"*: notifies every pending person not yet told; re-sending reaches
     only new rows; with email enabled, people without push get an email with the same text.
+  - *"Planifică"* (Evenimente, the 'events' right): a month calendar; tap days (or a weekday
+    name for every such day of the month), pick a template (its items, team, name, time) or a
+    name / time, a note for all; "Creează N evenimente" (`POST /api/events/plan`, max 60, all
+    or nothing). Days that already hold an event carry a dot. The note shows on the event cards.
   - *Participation* (`event_attendance`, migration 049, `lib/attendance.js`): "Trimite
     invitația" asks the whole team (every active person, once; then "Reamintește celor fără
     răspuns"); each answers Vin / Poate / Nu pot (+ a note), changeable, on the home card or the

@@ -2028,6 +2028,7 @@ button, .button { gap: 0.5em; }
 [data-icon="close"] { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 6l12 12M18 6L6 18'/%3E%3C/svg%3E"); }
 [data-icon="expand"] { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 4h6v6M20 4l-7 7M10 20H4v-6M4 20l7-7'/%3E%3C/svg%3E"); }
 [data-icon="next"] { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 6l6 6-6 6'/%3E%3C/svg%3E"); }
+[data-icon="calendar"] { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='4' y='5' width='16' height='15' rx='2'/%3E%3Cpath d='M4 10h16M9 3v4M15 3v4'/%3E%3C/svg%3E"); }
 
 /* Secondary action */
 button.secondary,
@@ -2645,3 +2646,18 @@ dialog.big-lyrics.scrolls .big-body { align-items: flex-start; overflow-y: auto;
 .follow-source-label { font-weight: 600; }
 .follow-source { flex: 1 1 260px; }
 .follow-source button { flex: 1 1 0; min-width: 0; overflow-wrap: anywhere; }
+
+/* --- "Planifică": many events from a month calendar (public/events-plan.js) ---------------- */
+dialog.plan-dialog { width: min(440px, calc(100vw - 24px)); padding: 12px; }
+.plan-month-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.plan-month-row strong { flex: 1; text-align: center; font-size: 1.05rem; }
+.plan-month-row button { min-width: var(--touch); min-height: var(--touch); padding: 0; }
+.plan-grid { display: grid; grid-template-columns: repeat(7, minmax(var(--touch), 1fr)); gap: 2px; padding: 3px; }
+.plan-grid > .plan-wd { min-height: var(--touch); padding: 0; font-size: 0.8125rem; font-weight: 700; color: var(--text-muted); background: transparent; border: 0; text-transform: uppercase; }
+.plan-grid > button.plan-day { position: relative; flex-direction: column; justify-content: center; gap: 0; min-height: var(--touch); padding: 0; font-variant-numeric: tabular-nums; }
+.plan-grid > button.plan-day::before { position: absolute; top: 3px; right: 3px; width: 0.7em; height: 0.7em; }
+.plan-grid > button.plan-day:disabled { opacity: 0.35; }
+.plan-day.today { outline: 1px dashed var(--accent-fill); outline-offset: -3px; }
+.plan-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--worship); }
+.plan-day[aria-pressed="true"] .plan-dot { background: currentColor; }
+.plan-count { font-weight: 600; }

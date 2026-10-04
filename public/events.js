@@ -108,6 +108,14 @@
   newButton.addEventListener('click', quickCreate);
 
   document.addEventListener('i18n:change', render);
+  // "Planifică" (public/events-plan.js) made events: the list again, with how many.
+  document.addEventListener('events:planned', async (event) => {
+    if (state.when !== 'upcoming') tabs.select(0, false);
+    else await load();
+    const note = document.getElementById('plan-done');
+    note.textContent = t('plan.done', { n: event.detail.created });
+    note.hidden = false;
+  });
 
   // --- start ------------------------------------------------------------------
 

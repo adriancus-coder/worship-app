@@ -8,6 +8,9 @@ const { validateEventMeta, validateItems, createEventStore } = require('../lib/e
 const { createAssignmentStore } = require('../lib/assignments');
 
 const WHEN = ['upcoming', 'past', 'templates'];
+const PLAN_MAX = 60; // "Planifică": events per request
+// "2026-10-11" and a real day of the calendar
+const realDate = (d) => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d) && !Number.isNaN(Date.parse(`${d}T00:00:00Z`)) && new Date(`${d}T00:00:00Z`).toISOString().slice(0, 10) === d;
 
 // Events and setlists, scoped to req.adminId. Writes: the 'events' right; start / end /
 // withdraw: the 'live' right (lib/roles.js). Members see every event as soon as it exists, never templates.
@@ -138,6 +141,47 @@ function createEventsRouter({ db, auth, logger, live }) {
     logger.info(`Event #${id} quick-created by user #${req.user.id} (admin #${req.adminId})${template ? ` from template #${template.id}` : ''}`);
     live.eventChanged(req.adminId, id);
     res.status(201).json({ ...events.get(req.adminId, id, { t: req.t }), today: today(req), templateId: template ? template.id : null });
+  });
+
+  // "Planifică": many events at once from the calendar. { dates: ['YYYY-MM-DD', ...] (max
+  // PLAN_MAX), templateId?, name?, startTime?, notes? }: one event per date (the template's
+  // items and team, its name and time unless given; no template: "Serviciu de <ziua>" at the
+  // church's usual time). All or nothing. -> 201 { created, events: [{ id, name, eventDate }] }
+  router.post('/api/events/plan', canEdit, (req, res) => {
+    const body = req.body || {};
+    const dates = Array.isArray(body.dates) ? [...new Set(body.dates)].sort() : [];
+    if (!dates.length || dates.length > PLAN_MAX || !dates.every(realDate)) return res.status(400).json({ error: req.t('errors.badRequest') });
+    let template = null;
+    if (body.templateId !== undefined && body.templateId !== null) {
+      const found = Number.isInteger(body.templateId) ? events.get(req.adminId, body.templateId) : null;
+      if (!found || !found.event.isTemplate) return res.status(400).json({ error: req.t('errors.eventSourceInvalid') });
+      template = found.event;
+    }
+    const service = settings.service(req.adminId);
+    const name = typeof body.name === 'string' ? body.name.trim() : '';
+    const startTime = typeof body.startTime === 'string' && body.startTime ? body.startTime : null;
+    const metas = [];
+    for (const eventDate of dates) {
+      const weekday = new Intl.DateTimeFormat(req.lang === 'en' ? 'en' : 'ro', { weekday: 'long', timeZone: 'UTC' }).format(new Date(`${eventDate}T12:00:00Z`));
+      const day = req.lang === 'en' ? weekday : weekday.toLowerCase();
+      const { error, value } = validateEventMeta({
+        name: name || (template ? template.name : req.t('events.quickName', { day })),
+        eventDate,
+        startTime: startTime || (template && template.startTime) || service.time,
+        notes: typeof body.notes === 'string' ? body.notes : '',
+      }, req.t);
+      if (error) return res.status(400).json({ error });
+      metas.push(value);
+    }
+    const created = db.transaction(() => metas.map((value) => {
+      const id = events.create(req.adminId, req.user.id, value, { sourceId: template ? template.id : null });
+      if (template) assignments.copyFrom(req.adminId, template.id, id, req.user.id);
+      return { id, name: value.name, eventDate: value.eventDate };
+    }))();
+    if (template) rememberTemplate(req.adminId, template.id);
+    logger.info(`${created.length} event(s) planned by user #${req.user.id} (admin #${req.adminId})${template ? ` from template #${template.id}` : ''}`);
+    for (const ev of created) live.eventChanged(req.adminId, ev.id);
+    res.status(201).json({ created: created.length, events: created });
   });
 
   // "▶ Pornește live" from Acasă: starts the event in one tap (the page then opens the live
