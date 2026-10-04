@@ -123,6 +123,10 @@ never implement a later stage early. Mockups: claude.ai design canvas
   church where only the operator drives still gets the lyrics). The projector choice follows
   the projector's position while it is on a shared item and stays put on a projector-only one.
   Together there is one position and no choice.
+  The leader / presenter live page has the same choice ("Urmăresc: Echipa · Operatorul", kept on
+  the device): following the operator, the page shows the projector's position and its moves
+  (steps, ← →, "■ Sfârșit", the big lyrics) move the projector, the team stays put; the card
+  says where the team is, with "Adu echipa aici".
 - **The projector leaving an operator** (split -> together): the one position continues from
   where the projector was, so the screen never jumps to the new holder's place. The one who got
   it is asked: "Ai proiectorul. Proiecția continuă de unde a rămas: <X>" with *Continui de aici*

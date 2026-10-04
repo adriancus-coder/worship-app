@@ -57,9 +57,17 @@
 
         <aside class="live-info" aria-labelledby="info-heading">
           <!-- "Doar operatorul" (split): the operator owns the projector; only this card stays of the panel. -->
+          <!-- split: whom this page follows (the team's position or the operator's projector) -->
+          <div id="live-follow-row" class="follow-source-row" hidden>
+            <span id="live-follow-label" class="follow-source-label" data-i18n="live.follow.label"></span>
+            <div class="choice-group follow-source" id="live-follow" role="group" aria-labelledby="live-follow-label">
+              <button type="button" data-follow="team" aria-pressed="false"></button>
+              <button type="button" data-follow="projector" aria-pressed="false"></button>
+            </div>
+          </div>
           <div id="cross" class="cross-line" hidden>
             <p id="cross-text"></p>
-            <button type="button" class="secondary" id="cross-jump" data-icon="jump" data-i18n="live.modes.jump"></button>
+            <button type="button" class="secondary" id="cross-jump" data-icon="jump"></button>
           </div>
           <p id="split-keys-hint" class="hint split-keys-hint" hidden data-i18n="live.modes.splitKeysHint"></p>
           <section class="projector-panel" aria-labelledby="projector-heading">

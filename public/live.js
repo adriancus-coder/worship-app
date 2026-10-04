@@ -9,6 +9,9 @@
 // there. "Cere / Predă controlul proiectorului" change hands. "Echipa: Urmărește live ·
 // Derulează liber" sets how team phones follow. Additions made from the console show a short
 // info toast.
+// In split mode the page chooses whom it follows ("Urmăresc: Echipa · Operatorul", kept on
+// this device): following the operator, the page shows the projector's position and its
+// moves (steps, ← →, "■ Sfârșit", the big lyrics) move the projector; the team stays put.
 
 (function () {
   const { api, el, setTitle } = window.PAGE;
@@ -24,6 +27,9 @@
   const view = new URLSearchParams(window.location.search).get('view');
   const state = { event: null, items: [], loadedKey: null, loading: null, songs: new Map(), snap: null, seq: 0, client: null, queue: Promise.resolve(), cached: null,
     openLyrics: view === 'lyrics', view, leader: false, pageMode: view === 'full' };
+  const FOLLOW_KEY = 'wa_live_follow';
+  const readFollow = () => { try { return localStorage.getItem(FOLLOW_KEY) === 'projector' ? 'projector' : 'team'; } catch { return 'team'; } };
+  state.follow = readFollow();
   const eventPage = () => `/events/${eventId}${new URLSearchParams(window.location.search).get('from') === 'home' ? '?from=home' : ''}`;
 
   // --- data -------------------------------------------------------------------------
@@ -91,10 +97,22 @@
     return steps && steps[pos.step] && item.type === 'song' ? `${itemTitle(item)} · ${steps[pos.step].label}` : itemTitle(item);
   }
 
+  // Following the operator (split only, never in emergency mode): the projector's position.
+  const followsProjector = () => isSplit() && state.follow === 'projector' && !emergency.active;
+  const viewPos = () => {
+    const snap = state.snap;
+    if (!snap) return null;
+    return followsProjector() ? { itemId: snap.projector.itemId, step: snap.projector.step, ended: Boolean(snap.projector.ended) } : snap.worship;
+  };
+  // The commands of the followed position.
+  const move = (dir, extra) => send(followsProjector() ? `projector.${dir}` : `worship.${dir}`, extra);
+  const endItem = () => send('worship.endItem', followsProjector() ? { target: 'projector' } : undefined);
+
   function current() {
     const snap = state.snap;
-    const pos = snap && snap.worship;
-    const item = pos && state.items.find((it) => it.id === pos.itemId);
+    const pos = viewPos();
+    // (a projector-only item is in the snapshot, not in the setlist)
+    const item = pos && (state.items.find((it) => it.id === pos.itemId) || (followsProjector() && (snap.items || []).find((it) => it.id === pos.itemId)));
     return { pos, item: item || null };
   }
 
@@ -134,7 +152,7 @@
     $('start-button').hidden = status !== 'planned';
     $('end-button').hidden = status !== 'live';
     renderPresence();
-    liveClock.update(snap, snap.worship);
+    liveClock.update(snap, viewPos());
   }
 
   // The time and "Live de hh:mm" / "pe elementul curent de mm:ss" in the status line.
@@ -159,7 +177,7 @@
     $('setlist').replaceChildren(...state.items.map((item, i) => {
       const isCurrent = live && pos.itemId === item.id;
       const canArrange = live && arrangeable(item);
-      const goThere = () => send('worship.goto', { itemId: item.id, step: 0 });
+      const goThere = () => move('goto', { itemId: item.id, step: 0 });
       const main = el('button', {
         type: 'button',
         class: `live-item${isCurrent ? ' current' : ''}`,
@@ -263,7 +281,7 @@
           'aria-label': entry.firstLine ? `${label}: ${entry.firstLine}` : label,
           title: entry.firstLine || null,
           // The current step opens the big lyrics; any other moves there.
-          onclick: () => (isCurrent && !pos.ended ? big.open() : send('worship.goto', { itemId: item.id, step })),
+          onclick: () => (isCurrent && !pos.ended ? big.open() : move('goto', { itemId: item.id, step })),
         },
         el('span', { class: 'step-head' },
           el('span', { class: 'step-code', text: entry.code }),
@@ -288,7 +306,7 @@
   // "■ Sfârșit" (worship.endItem, key E): ends the item on screen in place (black); "✓ Terminat"
   // until the next move. The team's position (in split mode the projector is not this page's).
   function renderEndItem(item) {
-    window.LIVE.renderEndButton($('end-item-button'), { ended: Boolean(state.snap.worship.ended), hasItem: Boolean(item) });
+    window.LIVE.renderEndButton($('end-item-button'), { ended: Boolean(viewPos().ended), hasItem: Boolean(item) });
   }
 
   function renderInfo() {
@@ -334,8 +352,9 @@
   // "⤢ Versuri mari" (public/big-lyrics.js): the team's position, the page's own commands.
   const big = window.BIG_LYRICS.create({
     api, eventId,
-    position: () => (state.snap && state.snap.status === 'live' ? state.snap.worship : null),
-    commands: { prev: () => send('worship.prev'), next: () => send('worship.next'), end: () => send('worship.endItem'), toggleBlack: () => toggleSource('black') },
+    position: () => (state.snap && state.snap.status === 'live' ? viewPos() : null),
+    commands: { prev: () => move('prev'), next: () => move('next'), end: endItem, toggleBlack: () => toggleSource('black') },
+    drivesProjector: followsProjector, // the status line then says where the team is
     connection: () => (state.client ? state.client.connection : 'connecting'),
     extraStatus: () => modes.statusText(), // the handover request / answer
     // The leader's way out is the event page; "Pagina completă" reveals this page instead.
@@ -423,7 +442,17 @@
     document.body.classList.toggle('split-mode', split);
     $('split-keys-hint').hidden = !split;
     $('cross').hidden = !split;
-    if (split) {
+    renderFollow(split);
+    if (split && followsProjector()) {
+      // following the operator: where the team is, with "Adu echipa aici"
+      const label = positionLabel(snap.worship) || '—';
+      $('cross-text').textContent = t('live.modes.teamAt', { label });
+      const shared = state.items.some((it) => it.id === snap.projector.itemId);
+      const here = snap.worship.itemId === snap.projector.itemId && snap.worship.step === snap.projector.step;
+      $('cross-jump').textContent = t('live.modes.bringTeam');
+      $('cross-jump').disabled = !shared || here;
+    } else if (split) {
+      $('cross-jump').textContent = t('live.modes.jump');
       const at = { itemId: snap.projector.itemId, step: snap.projector.step };
       // (shared items from the setlist loaded in the page language; projector-only ones from the snapshot)
       const shared = state.items.find((it) => it.id === at.itemId);
@@ -436,6 +465,28 @@
       const here = snap.worship.itemId === at.itemId && snap.worship.step === at.step;
       $('cross-jump').disabled = !shared || here; // the team cannot go to a projector-only item
     }
+  }
+
+  // "Urmăresc: Echipa (Lider / Prezentator) · Operatorul (<name>)" - split only.
+  function renderFollow(split) {
+    $('live-follow-row').hidden = !split;
+    if (!split) return;
+    const holder = state.snap.holder;
+    for (const b of $('live-follow').querySelectorAll('[data-follow]')) {
+      b.setAttribute('aria-pressed', String(b.dataset.follow === state.follow));
+      b.textContent = b.dataset.follow === 'team'
+        ? t('live.follow.team', { leader: window.PAGE.roleName('leader'), presenter: window.PAGE.roleName('presenter') })
+        : (holder && holder.name ? t('live.follow.operator', { name: holder.name }) : t('live.follow.operatorNobody'));
+    }
+  }
+  for (const b of $('live-follow').querySelectorAll('[data-follow]')) {
+    b.addEventListener('click', () => {
+      if (state.follow === b.dataset.follow) return;
+      state.follow = b.dataset.follow;
+      try { localStorage.setItem(FOLLOW_KEY, state.follow); } catch { /* this session only */ }
+      render();
+      renderProjector();
+    });
   }
 
   $('cross-jump').addEventListener('click', () => {
@@ -639,9 +690,9 @@
 
   // --- controls ---------------------------------------------------------------------
 
-  $('prev-button').addEventListener('click', () => send('worship.prev'));
-  $('next-button').addEventListener('click', () => send('worship.next'));
-  $('end-item-button').addEventListener('click', () => send('worship.endItem'));
+  $('prev-button').addEventListener('click', () => move('prev'));
+  $('next-button').addEventListener('click', () => move('next'));
+  $('end-item-button').addEventListener('click', endItem);
   $('start-button').addEventListener('click', () => send('event.start'));
   $('end-button').addEventListener('click', () => {
     $('end-dialog').returnValue = '';
@@ -662,12 +713,12 @@
     if (event.key === ' ' && event.target.closest('button, a')) return;
     if (event.key === 'ArrowRight' || event.key === ' ') {
       event.preventDefault();
-      send('worship.next');
+      move('next');
     } else if (event.key === 'ArrowLeft') {
       event.preventDefault();
-      send('worship.prev');
+      move('prev');
     } else if (event.key === 'e' || event.key === 'E') {
-      if (!$('end-item-button').disabled) send('worship.endItem'); // end of the item
+      if (!$('end-item-button').disabled) endItem(); // end of the item
     } else if (event.key === 'f' || event.key === 'F') {
       big.open(); // full-screen lyrics
     } else if (event.key === 'b' || event.key === 'B') {

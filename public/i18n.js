@@ -1384,6 +1384,12 @@
       },
       live: {
         link: 'Live',
+        follow: {
+          label: 'Urmăresc:',
+          team: 'Echipa ({leader} / {presenter})',
+          operator: 'Operatorul ({name})',
+          operatorNobody: 'Operatorul',
+        },
         fullPage: 'Pagina Live completă',
         pageTitle: 'Live: {name} — {appName}',
         start: 'Pornește evenimentul',
@@ -1433,6 +1439,7 @@
           projectorAt: 'Proiectorul e la {label}',
           teamAt: 'Echipa e la {label}',
           jump: 'Sari acolo',
+          bringTeam: 'Adu echipa aici',
           projectorOnlyNote: 'Proiectorul arată un element doar pentru proiector.',
           splitKeysHint: 'Proiectorul e la operator și îl mută de pe consolă: B, L și K nu fac nimic aici.',
           itemAdded: '{name} a adăugat în setlist: {title}',
@@ -3303,6 +3310,12 @@
       },
       live: {
         link: 'Live',
+        follow: {
+          label: 'Following:',
+          team: 'The team ({leader} / {presenter})',
+          operator: 'The operator ({name})',
+          operatorNobody: 'The operator',
+        },
         fullPage: 'Full Live page',
         pageTitle: 'Live: {name} — {appName}',
         start: 'Start the event',
@@ -3352,6 +3365,7 @@
           projectorAt: 'The projector is at {label}',
           teamAt: 'The team is at {label}',
           jump: 'Jump there',
+          bringTeam: 'Bring the team here',
           projectorOnlyNote: 'The projector shows a projector-only item.',
           splitKeysHint: 'The projector is with the operator, who moves it from the console: B, L and K do nothing here.',
           itemAdded: '{name} added to the setlist: {title}',
