@@ -73,6 +73,7 @@
         el('span', { text: when(event) }),
         el('span', { text: itemCount(event.itemCount) }),
         el('span', { class: `pill pill-${event.status}`, text: t(`events.status.${event.status}`) })),
+      event.notes ? el('p', { class: 'event-note now-note', text: event.notes }) : null,
       el('div', { class: 'now-actions' },
         primary.run
           ? el('button', { type: 'button', class: 'now-primary', id: 'start-live', 'data-icon': primary.icon, text: primary.text, onclick: primary.run })
@@ -199,7 +200,8 @@
       el('a', { class: 'home-row', href: eventUrl(event) },
         el('span', { class: 'home-row-text' },
           el('span', { class: 'home-row-name', text: event.name }),
-          el('span', { class: 'home-row-when', text: when(event) })),
+          el('span', { class: 'home-row-when', text: when(event) }),
+          event.notes ? el('span', { class: 'event-note', text: event.notes }) : null),
         el('span', { class: `pill pill-${event.status}`, text: t(`events.status.${event.status}`) })))));
     renderBackupCard();
     $('quick-section').hidden = !editor() || !top;

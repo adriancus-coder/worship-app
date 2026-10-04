@@ -41,7 +41,9 @@
           el('span', { class: 'event-name', text: event.name }),
           // The date block is visual only; screen readers get the full date here.
           event.isTemplate ? null : el('span', { class: 'sr-only', text: formatDate(event.eventDate, today.slice(0, 4)) }),
-          el('span', { class: 'event-meta', text: meta })),
+          el('span', { class: 'event-meta', text: meta }),
+          // the event's note, when there is one (two lines at most)
+          event.notes ? el('span', { class: 'event-note', text: event.notes }) : null),
         event.isTemplate
           ? el('span', { class: 'pill pill-template', text: t('events.template') })
           : el('span', { class: `pill pill-${event.status}`, text: t(`events.status.${event.status}`) })));

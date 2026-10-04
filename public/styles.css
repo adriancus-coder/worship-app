@@ -579,6 +579,7 @@ dialog .choice { margin: 4px 0; }
 .event-text { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
 .event-name { font-weight: 600; overflow-wrap: anywhere; }
 .event-meta { font-size: 0.875rem; color: var(--text-muted); }
+.event-note { font-size: 0.875rem; color: var(--text-muted); font-style: italic; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; white-space: pre-line; overflow-wrap: anywhere; }
 
 .pill {
   flex: none;
@@ -1459,6 +1460,7 @@ body.has-view-as.list-page > .view-as-bar { flex: 0 0 auto; }
 .now-title a { display: inline-flex; align-items: center; min-height: var(--touch); color: inherit; text-decoration: none; }
 .now-title a:hover { text-decoration: underline; }
 .now-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin: 0 0 12px; color: var(--text-muted); }
+.now-note { margin: -6px 0 12px; }
 .now-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
 /* A live event forgotten since yesterday: the hint and "Încheie" (never automatic). */
 .now-stale { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin: 12px 0 0; font-size: 0.9rem; color: var(--text-muted); }
