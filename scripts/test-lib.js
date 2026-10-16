@@ -1060,6 +1060,36 @@ function liveFixture() {
   return { mem, evs, live, eventId, items, save };
 }
 
+test('item lyrics (migration 051): a song item\'s own sections replace the library\'s for that event only; the setlist key follows; a copy keeps them', () => {
+  const { mem, evs, live, eventId, items } = liveFixture();
+  const { validateSections } = require('../lib/songs');
+  const { setlistKey } = require('../lib/live');
+  const song = items[0].id;
+  const tro = (k, v) => t(k, v, 'ro');
+  assert.ok(validateSections([], tro).error && validateSections([{ type: 'x', content: 'a' }], tro).error && validateSections([{ type: 'verse', content: ' ' }], tro).error, 'the same checks as a library song');
+  const { value } = validateSections([{ type: 'verse', content: '[G]Strofa nouă' }, { type: 'chorus', content: 'Refren\n[C]nou', note: 'mai rar' }], tro);
+  assert.strictEqual(evs.setItemLyrics(1, eventId, items[1].id, value), false, 'a verse item has no lyrics');
+  const keyBefore = setlistKey(evs.get(1, eventId).items);
+  assert.strictEqual(evs.setItemLyrics(1, eventId, song, value), true);
+  const it = evs.get(1, eventId).items[0];
+  assert.deepStrictEqual([it.lyricsEdited, typeof it.lyricsKey, it.arrangementResolved.map((r) => r.code)], [true, 'string', ['V1', 'C', 'V1']], 'the arrangement still resolves by code');
+  assert.ok(it.arrangementResolved.every((r) => r.sectionId < 0), 'own sections carry their own ids');
+  assert.notStrictEqual(setlistKey(evs.get(1, eventId).items), keyBefore, 'the live pages reload');
+  const ready = evs.itemSong(1, eventId, song, tro);
+  assert.deepStrictEqual([ready.song.lyricsEdited, ready.song.sections.map((x) => x.content), ready.song.sections.map((x) => x.id)], [true, ['[G]Strofa nouă', 'Refren\n[C]nou'], [-(song * 100 + 1), -(song * 100 + 2)]]);
+  assert.strictEqual(ready.song.arrangement[0].sectionId, ready.song.sections[0].id, 'the frames find the section');
+  const lyrics = evs.itemLyrics(1, eventId, song);
+  assert.deepStrictEqual([lyrics.title, lyrics.lyricsEdited, lyrics.sections[1].note], ['Sfânt', true, 'mai rar']);
+  assert.deepStrictEqual(mem.prepare('SELECT content FROM song_sections WHERE song_id = 1 ORDER BY position').pluck().all(), ['[G]Strofa', '[C]Refren'], 'the library is untouched');
+  // a copy of the event keeps the item's own lyrics; back to the library's: the flag goes
+  const copy = evs.create(1, 1, { name: 'Copie', eventDate: '2026-10-11', startTime: null, notes: null }, { sourceId: eventId });
+  assert.strictEqual(evs.get(1, copy).items[0].lyricsEdited, true);
+  assert.strictEqual(evs.setItemLyrics(1, eventId, song, null), true);
+  assert.deepStrictEqual([evs.get(1, eventId).items[0].lyricsEdited, evs.itemLyrics(1, eventId, song).sections[0].content, evs.itemSong(1, eventId, song, tro).song.sections[0].id > 0], [false, '[G]Strofa', true]);
+  void live;
+  mem.close();
+});
+
 test('live permissions: the event roles alike in both modes; member nothing', () => {
   const { permission } = require('../lib/live');
   const E = ['owner', 'presenter', 'leader', 'operator'];

@@ -262,7 +262,11 @@
         ? el('button', { type: 'button', class: 'title-button', id: 'arrange-current', 'aria-label': t('arrange.buttonLabel', { title: itemTitle(item) }), onclick: () => arrange(item) },
           itemTitle(item), el('span', { class: 'title-button-hint', 'data-icon': 'edit', text: t('arrange.button') }))
         : itemTitle(item)),
-      item.type === 'song' && item.displayKey ? el('span', { class: 'key-badge', text: t('rehearse.key', { key: window.NOTATION.chord(item.displayKey) }) }) : null);
+      item.type === 'song' && item.displayKey ? el('span', { class: 'key-badge', text: t('rehearse.key', { key: window.NOTATION.chord(item.displayKey) }) }) : null,
+      // "✎ Versuri": the song's text edited now (public/live-lyrics-edit.js); a pill while the
+      // item carries its own text
+      item.lyricsEdited ? el('span', { class: 'pill pill-edited', text: t('lyricsEdit.editedPill') }) : null,
+      arrangeable(item) ? el('button', { type: 'button', class: 'secondary edit-lyrics', id: 'edit-lyrics', 'data-icon': 'edit', 'aria-label': t('lyricsEdit.buttonLabel', { title: itemTitle(item) }), text: t('lyricsEdit.button'), onclick: () => lyricsSheet.open(item) }) : null);
 
     if (item.type !== 'song' || !item.songId) {
       box.replaceChildren(head, ...(item.type === 'song' ? [el('p', { class: 'muted', text: t('setlist.songDeletedHint') })] : textOf(item)));
@@ -535,12 +539,25 @@
       $('projector-permission').hidden = true;
     }
     if (me) modes.setMe(me.user); // the handover flow depends on who this page is
+    state.me = me; // the lyrics sheet: "Salvează în bibliotecă" needs the library right
     state.leader = Boolean(me && me.user.role === 'leader');
     if (state.leader && state.view !== 'full') state.openLyrics = true;
   });
 
   // Together / separate and the team mode; the info toast for additions from the console.
   const modes = window.LIVE_MODES.controls($('mode-controls'), { send, t, el, positionLabel });
+  // "✎ Versuri": the song on screen edited now, for this event or for the library. A live
+  // event reloads on its own (the setlist key changes); a planned one is reloaded here.
+  const lyricsSheet = window.LIVE_LYRICS_EDIT.create({
+    api, t, el, eventId,
+    canLibrary: () => Boolean(state.me && window.PAGE.can(state.me, 'library')),
+    onSaved: (text) => {
+      showMessage(text);
+      state.loadedKey = null;
+      state.songs.clear();
+      if (state.snap) syncSetlist(state.snap).then(render).catch(() => {});
+    },
+  });
   // "Propuneri (n)" in the aside (public/proposals-ui.js): the same decisions as the toast.
   window.PROPOSALS_UI.roles($('proposals'), { eventId, live: () => Boolean(state.snap && state.snap.status === 'live'), position: 'afterCurrent' });
   // The bridge to Sanctuary Voice (stage 8): the same shared panel as the event page and the

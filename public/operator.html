@@ -63,6 +63,9 @@
           <header class="op-item-head">
             <span id="op-item-type" class="type-badge"></span>
             <h2 id="op-item-title" class="op-item-title"></h2>
+            <!-- "✎ Versuri": the song's text edited now (live-lyrics-edit.js); a pill while the item carries its own text -->
+            <span id="op-lyrics-edited" class="pill pill-edited" hidden data-i18n="lyricsEdit.editedPill"></span>
+            <button type="button" class="secondary edit-lyrics" id="op-edit-lyrics" hidden data-icon="edit" data-i18n="lyricsEdit.button"></button>
           </header>
           <ol id="op-steps" class="op-steps" data-i18n-aria-label="operator.stepsLabel"></ol>
           <p class="big-open-row"><button type="button" class="secondary big-open" id="op-big-open" hidden data-icon="expand" aria-keyshortcuts="F" data-i18n="big.open"></button></p>
@@ -126,6 +129,7 @@
   <script src="/song-search.js"></script>
   <script src="/song-editor.js"></script>
   <script src="/live-new-song.js"></script>
+  <script src="/live-lyrics-edit.js"></script>
   <script src="/clock.js"></script>
   <script src="/lyrics-fit.js"></script>
   <script src="/projector-render.js"></script>

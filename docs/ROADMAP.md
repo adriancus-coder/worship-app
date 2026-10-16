@@ -373,6 +373,15 @@ never implement a later stage early. Mockups: claude.ai design canvas
     and one tap on "Trimite răspunsul" saves it (a link alone never answers: mail scanners
     open links). One link per event and person, replaced by a new email, valid until two days
     after the event.
+- **Lyrics edited during the service** ("✎ Versuri" on the leader live page and the console,
+  `public/live-lyrics-edit.js`): the song on screen in the same section editor as the library,
+  in a non-modal sheet. "Salvează doar pentru acest eveniment" keeps the text on the item
+  (`setlist_items.sections_json`, migration 051: own sections with ids of their own, the
+  arrangement still resolves by code; a copy of the event keeps them; the live setlist key
+  changes so the projector, the phones and the bridge refresh at once); "Salvează în
+  bibliotecă" (the 'library' right) changes the song for good through `PUT /api/songs/:id`
+  and clears the item's own text; "Revino la textul din bibliotecă" drops it. A pill marks an
+  item with its own text.
 - Rehearsal view on phones: event key, arrangement, leader note, lyrics+chords, reference.
 
 ## Stages

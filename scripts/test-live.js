@@ -749,6 +749,40 @@ async function main() {
     op.socket.close();
   });
 
+  await step('lyrics edited during the service: for this event only (the screen and the phones change at once, the library not) or for the library; back to the library text', async () => {
+    await send(lead.socket, { type: 'worship.goto', itemId: i1, step: 0 });
+    await frameWhere(screen, (f) => f.version === version || (f.kind === 'lyrics' && f.lines[0] === 'verse'));
+    assert.strictEqual((await api('GET', `/api/events/${ev.id}/items/${i1}/lyrics`, member)).status, 403, 'editors only');
+    const lyrics = await api('GET', `/api/events/${ev.id}/items/${i1}/lyrics`, operator);
+    assert.deepStrictEqual([lyrics.status, lyrics.body.title, lyrics.body.lyricsEdited, lyrics.body.sections.map((x) => x.content)], [200, 'Sfânt', false, ['[G]verse', '[G]chorus', '[G]verse', '[G]bridge']], 'the library text, original key');
+    assert.strictEqual((await api('PUT', `/api/events/${ev.id}/items/${i1}/lyrics`, operator, { sections: [{ type: 'verse', content: '' }] })).status, 400);
+    assert.strictEqual((await api('PUT', `/api/events/${ev.id}/items/${i2}/lyrics`, operator, { sections: [{ type: 'verse', content: 'x' }] })).status, 404, 'not a song item');
+    const edited = lyrics.body.sections.map((x, i) => (i === 0 ? { ...x, content: '[G]verse edited' } : x));
+    const put = await api('PUT', `/api/events/${ev.id}/items/${i1}/lyrics`, operator, { sections: edited });
+    assert.deepStrictEqual([put.status, put.body.lyricsEdited], [200, true]);
+    const frame = await frameWhere(screen, (f) => f.kind === 'lyrics' && f.lines[0] === 'verse edited');
+    assert.ok(frame.version > version, 'a new version: every page reloads');
+    version = frame.version;
+    const ready = (await api('GET', `/api/events/${ev.id}/items/${i1}/song`, member)).body;
+    assert.deepStrictEqual([ready.song.lyricsEdited, ready.song.sections[0].content, ready.song.arrangement.length], [true, '[G]verse edited', 6], 'the phones get the edited text, the arrangement stays');
+    assert.strictEqual((await api('GET', `/api/songs/${s1.id}`, owner)).body.song.sections[0].content, '[G]verse', 'the library is untouched');
+    assert.strictEqual((await api('GET', `/api/events/${ev.id}`, member)).body.items[0].lyricsEdited, true);
+    // the library: the existing song update refreshes the live event too; the item's own text
+    // would hide it, so the page clears it (DELETE)
+    const libSections = lyrics.body.sections.map((x, i) => (i === 0 ? { ...x, content: '[G]verse lib' } : x));
+    assert.strictEqual((await api('PUT', `/api/songs/${s1.id}`, owner, { title: 'Sfânt', song_key: 'G', sections: libSections })).status, 200);
+    const back = await api('DELETE', `/api/events/${ev.id}/items/${i1}/lyrics`, operator);
+    assert.deepStrictEqual([back.status, back.body.lyricsEdited], [200, false]);
+    const libFrame = await frameWhere(screen, (f) => f.kind === 'lyrics' && f.lines[0] === 'verse lib');
+    assert.ok(libFrame.version > version);
+    version = libFrame.version;
+    // the original text again (the later steps expect it)
+    await api('PUT', `/api/songs/${s1.id}`, owner, { title: 'Sfânt', song_key: 'G', sections: lyrics.body.sections });
+    const orig = await frameWhere(screen, (f) => f.kind === 'lyrics' && f.lines[0] === 'verse' && f.version > version);
+    version = orig.version;
+    await memberAt(version);
+  });
+
   await step('split: team and projector positions apart; back to together shows the main position', async () => {
     const op = await joined(operator, ev.id);
     const opCode = async (cmd) => (await emit(op.socket, 'live:command', { eventId: ev.id, ...cmd })).code || 'ok';

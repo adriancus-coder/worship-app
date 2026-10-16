@@ -2698,3 +2698,10 @@ dialog.answer-popup[open] { display: flex; }
 .answer-page { display: flex; flex-direction: column; gap: 10px; max-width: 520px; }
 .answer-page h1 { margin: 0; }
 .answer-page form { display: flex; flex-direction: column; gap: 12px; }
+
+/* --- "Versuri": the lyrics edited during the service (public/live-lyrics-edit.js) ----------- */
+.lyrics-sheet .editor-details { display: none; } /* the title, author and key stay as they are */
+.lyrics-sheet .lyrics-hint { margin: 0 0 8px; }
+.pill-edited { color: var(--accent-text); border-color: var(--accent-fill); }
+.current-head .edit-lyrics, .op-item-head .edit-lyrics { min-height: var(--touch); }
+

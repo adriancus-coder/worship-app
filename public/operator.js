@@ -232,6 +232,10 @@
       $('op-item-type').textContent = t(`setlist.types.${item.type}`);
     }
     const titleText = item ? itemTitle(item) : t(live() ? 'setlist.empty' : 'operator.notLiveShort');
+    state.currentItem = item || null; // for "✎ Versuri"
+    $('op-edit-lyrics').hidden = !(item && item.type === 'song' && item.songId && enabled);
+    if (item) $('op-edit-lyrics').setAttribute('aria-label', t('lyricsEdit.buttonLabel', { title: titleText }));
+    $('op-lyrics-edited').hidden = !(item && item.lyricsEdited);
     $('op-item-title').replaceChildren(item && arrangeable(item) && enabled
       ? el('button', { type: 'button', class: 'title-button', id: 'op-arrange-current', 'aria-label': t('arrange.buttonLabel', { title: titleText }), onclick: () => arrange(item) },
         titleText, el('span', { class: 'title-button-hint', 'data-icon': 'edit', text: t('arrange.button') }))
@@ -339,7 +343,15 @@
   // "Pe ce ecrane": which screens show the projection (hidden with fewer than two screens).
   const screenPicker = window.SCREEN_PICKER.create($('screen-picker'), { send, t, el });
   const modes = window.LIVE_MODES.controls($('mode-controls'), { send, t, el, positionLabel });
-  window.SHELL.me.then((me) => { if (me) modes.setMe(me.user); }); // the handover flow depends on who this page is
+  window.SHELL.me.then((me) => { if (me) modes.setMe(me.user); state.me = me; }); // the handover flow depends on who this page is
+  // "✎ Versuri": the song on screen edited now, for this event or for the library (the
+  // snapshot carries the items: the console refreshes on its own after a save).
+  const lyricsSheet = window.LIVE_LYRICS_EDIT.create({
+    api, t, el, eventId,
+    canLibrary: () => Boolean(state.me && window.PAGE.can(state.me, 'library')),
+    onSaved: (text) => message('op-message', text, 'success'),
+  });
+  $('op-edit-lyrics').addEventListener('click', () => { if (state.currentItem) lyricsSheet.open(state.currentItem); });
   const backgroundButton = window.BG_PICKER.liveButton($('bg-live'), { send });
   // The corner clock (clock.set: show / corner / size; key K toggles it).
   const clockPanel = window.CLOCK_PANEL.create($('clock-panel'), { t, el, onChange: (patch) => send('clock.set', patch) });

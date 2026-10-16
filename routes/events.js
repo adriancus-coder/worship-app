@@ -5,6 +5,7 @@ const { requirePerm, seesAllEvents } = require('../lib/roles');
 const { todayIn, nowTimeIn, nextServiceDate } = require('../lib/dates');
 const { createAdminSettings } = require('../lib/admin-settings');
 const { validateEventMeta, validateItems, createEventStore } = require('../lib/events');
+const { validateSections } = require('../lib/songs');
 const { createAssignmentStore } = require('../lib/assignments');
 
 const WHEN = ['upcoming', 'past', 'templates'];
@@ -142,6 +143,37 @@ function createEventsRouter({ db, auth, logger, live }) {
     live.eventChanged(req.adminId, id);
     res.status(201).json({ ...events.get(req.adminId, id, { t: req.t }), today: today(req), templateId: template ? template.id : null });
   });
+
+  // A song item's lyrics as edited during the service (lib/events.js itemLyrics, the live
+  // pages' "Versuri"): GET the sections in the song's original key (the item's own, else the
+  // library's); PUT { sections } keeps them for this event only; DELETE goes back to the
+  // library's. (Saving to the library is PUT /api/songs/:id; the page then clears the item's
+  // own.) The live event refreshes at once (the setlist key changes).
+  router.get('/api/events/:id/items/:itemId/lyrics', canEdit, (req, res) => {
+    const found = load(req, res);
+    if (!found) return;
+    const itemId = /^\d{1,15}$/.test(req.params.itemId) ? Number(req.params.itemId) : null;
+    const lyrics = itemId && events.itemLyrics(req.adminId, found.event.id, itemId);
+    if (!lyrics) return res.status(404).json({ error: req.t('errors.songNotFound') });
+    res.json(lyrics);
+  });
+
+  const setLyrics = (req, res, sections) => {
+    const found = load(req, res);
+    if (!found) return;
+    const itemId = /^\d{1,15}$/.test(req.params.itemId) ? Number(req.params.itemId) : null;
+    const before = live.setlistBefore(req.adminId, found.event.id);
+    if (!itemId || !events.setItemLyrics(req.adminId, found.event.id, itemId, sections)) return res.status(404).json({ error: req.t('errors.songNotFound') });
+    live.setlistChanged(req.adminId, found.event.id, before);
+    logger.info(`Event #${found.event.id} item #${itemId}: lyrics ${sections ? 'edited for this event' : 'back to the library'} by user #${req.user.id} (admin #${req.adminId})`);
+    res.json(events.itemLyrics(req.adminId, found.event.id, itemId));
+  };
+  router.put('/api/events/:id/items/:itemId/lyrics', canEdit, (req, res) => {
+    const { error, value } = validateSections((req.body || {}).sections, req.t);
+    if (error) return res.status(400).json({ error });
+    setLyrics(req, res, value);
+  });
+  router.delete('/api/events/:id/items/:itemId/lyrics', canEdit, (req, res) => setLyrics(req, res, null));
 
   // "Planifică": many events at once from the calendar. { dates: ['YYYY-MM-DD', ...] (max
   // PLAN_MAX), templateId?, name?, startTime?, notes? }: one event per date (the template's
