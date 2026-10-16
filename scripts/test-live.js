@@ -163,12 +163,16 @@ async function main() {
   const operator = await login('operator@x.ro');
   const presenter = await login('prezentator@x.ro');
   const other = await login('alt@x.ro');
+  // Dates relative to the church's today (today = day(0)): every event the steps make stays
+  // upcoming whatever the real date is.
+  const today = (await api('GET', '/api/home', owner)).body.today;
+  const day = (n) => new Date(Date.parse(`${today}T12:00:00Z`) + n * 86400000).toISOString().slice(0, 10);
 
   // Event: a song V1 C V2 C B C (6 steps), a verse, a song with 2 sections (2 steps).
   const song = async (title, sections) => (await api('POST', '/api/songs', owner, { title, sections })).body.song;
   const s1 = await song('Sfânt', ['verse', 'chorus', 'verse', 'bridge'].map((type) => ({ type, content: `[G]${type}` })));
   const s2 = await song('Mare ești', ['verse', 'chorus'].map((type) => ({ type, content: `[D]${type}` })));
-  const ev = (await api('POST', '/api/events', owner, { name: 'Duminică', eventDate: '2026-10-04' })).body.event;
+  const ev = (await api('POST', '/api/events', owner, { name: 'Duminică', eventDate: day(0) })).body.event;
   const saved = await api('PUT', `/api/events/${ev.id}/items`, owner, { items: [
     { type: 'song', songId: s1.id, arrangement: 'V1 C V2 C B C' },
     { type: 'verse', reference: 'Psalmul 23' },
@@ -196,12 +200,12 @@ async function main() {
   });
 
   await step('operator: full event rights (create, edit, templates, delete); member none', async () => {
-    const created = await api('POST', '/api/events', operator, { name: 'Repetiție', eventDate: '2026-10-06' });
+    const created = await api('POST', '/api/events', operator, { name: 'Repetiție', eventDate: day(2) });
     assert.strictEqual(created.status, 201, JSON.stringify(created.body));
     const id = created.body.event.id;
     assert.strictEqual((await api('GET', `/api/events/${id}`, operator)).status, 200);
     assert.strictEqual((await api('GET', `/api/events/${id}`, member)).status, 200, 'the member sees it at once');
-    assert.strictEqual((await api('PUT', `/api/events/${id}`, operator, { name: 'Repetiție mare', eventDate: '2026-10-06' })).status, 200);
+    assert.strictEqual((await api('PUT', `/api/events/${id}`, operator, { name: 'Repetiție mare', eventDate: day(2) })).status, 200);
     assert.strictEqual((await api('PUT', `/api/events/${id}/items`, operator, { items: [{ type: 'verse', reference: 'Ps 1' }] })).status, 200);
     for (const action of ['publish', 'unpublish']) assert.strictEqual((await api('POST', `/api/events/${id}/${action}`, operator)).status, 404, `no ${action}`);
     const tpl = await api('POST', `/api/events/${id}/save-as-template`, operator, { name: 'Șablon op' });
@@ -211,8 +215,8 @@ async function main() {
     assert.ok((await api('GET', '/api/events?when=upcoming', member)).body.events.some((e) => e.id === id), 'the member lists it');
     assert.strictEqual((await api('GET', `/api/events/${tpl.body.event.id}`, member)).status, 404, 'templates stay hidden from the team');
     for (const [method, url, body] of [
-      ['POST', '/api/events', { name: 'X', eventDate: '2026-10-06' }],
-      ['PUT', `/api/events/${id}`, { name: 'X', eventDate: '2026-10-06' }],
+      ['POST', '/api/events', { name: 'X', eventDate: day(2) }],
+      ['PUT', `/api/events/${id}`, { name: 'X', eventDate: day(2) }],
       ['PUT', `/api/events/${id}/items`, { items: [] }],
       ['POST', `/api/events/${id}/save-as-template`, { name: 'Y' }],
       ['DELETE', `/api/events/${id}`],
@@ -278,7 +282,7 @@ async function main() {
     const prSong = await api('POST', '/api/songs', presenter, { title: 'A prezentatorului', sections: [{ type: 'verse', content: 'x' }] });
     assert.strictEqual(prSong.status, 201, 'presenter: the library');
     assert.strictEqual((await api('DELETE', `/api/songs/${prSong.body.song.id}`, presenter)).status, 200);
-    const prEvent = await api('POST', '/api/events', presenter, { name: 'A prezentatorului', eventDate: '2026-10-11' });
+    const prEvent = await api('POST', '/api/events', presenter, { name: 'A prezentatorului', eventDate: day(7) });
     assert.strictEqual(prEvent.status, 201, 'presenter: events');
     assert.strictEqual((await api('GET', '/api/events?when=templates', presenter)).status, 200, 'presenter: templates');
     assert.strictEqual((await api('GET', '/api/media', presenter)).status, 200, 'presenter: media');
@@ -1123,7 +1127,7 @@ async function main() {
     const add = async (title, sections) => (await api('POST', '/api/songs', other, { title, songKey: 'G', sections })).body.song;
     const a = await add('Cânt', [{ type: 'verse', content: '[G]Cânt [D/F#]azi\n[Em]pentru [C]Tine\n' }, { type: 'chorus', content: '\n[C]Sfânt [G]ești' }]);
     const gone = await add('Șters', [{ type: 'verse', content: '[A]x' }]);
-    const e2 = (await api('POST', '/api/events', other, { name: 'Seara', eventDate: '2026-10-05' })).body.event;
+    const e2 = (await api('POST', '/api/events', other, { name: 'Seara', eventDate: day(1) })).body.event;
     const put = await api('PUT', `/api/events/${e2.id}/items`, other, { items: [
       { type: 'song', songId: a.id, arrangement: 'V1 C V1', transpose: 2 },
       { type: 'verse', reference: 'Ioan 3:16', body: 'Fiindcă atât de mult\na iubit' },
@@ -1182,7 +1186,7 @@ async function main() {
   });
 
   await step('a second event cannot start while one is live', async () => {
-    const ev2 = (await api('POST', '/api/events', owner, { name: 'Seara', eventDate: '2026-10-04' })).body.event;
+    const ev2 = (await api('POST', '/api/events', owner, { name: 'Seara', eventDate: day(0) })).body.event;
     const { socket } = await joined(leader, ev2.id);
     assert.strictEqual((await emit(socket, 'live:command', { type: 'event.start', eventId: ev2.id })).code, 'anotherLive');
     socket.emit('live:leave', {});
@@ -1638,7 +1642,7 @@ async function main() {
   });
 
   await step('attendance: "Trimite invitația" asks the whole team once; Vin / Poate / Nu pot, changeable; the leader is told; "Vin" starts confirmed on a position', async () => {
-    const ev3 = (await api('POST', '/api/events', owner, { name: 'Invitație', eventDate: '2026-11-08' })).body.event;
+    const ev3 = (await api('POST', '/api/events', owner, { name: 'Invitație', eventDate: day(35) })).body.event;
     assert.strictEqual((await api('POST', `/api/events/${ev3.id}/attendance/send`, member)).status, 403, 'members do not invite');
     let got = await api('GET', `/api/events/${ev3.id}/assignments`, member);
     assert.deepStrictEqual([got.body.attendance.invitedCount, got.body.attendance.me], [0, null], 'not invited yet');
@@ -1676,7 +1680,7 @@ async function main() {
     const memberId = (await api('GET', '/api/team', owner)).body.users.find((u) => u.email === 'membru@x.ro').id;
     const operatorId = (await api('GET', '/api/team', owner)).body.users.find((u) => u.email === 'operator@x.ro').id;
     void me;
-    const ev2 = (await api('POST', '/api/events', owner, { name: 'Programare', eventDate: '2026-11-01' })).body.event;
+    const ev2 = (await api('POST', '/api/events', owner, { name: 'Programare', eventDate: day(28) })).body.event;
     for (const cookie of [operator, presenter, member]) {
       assert.strictEqual((await api('PUT', `/api/events/${ev2.id}/assignments`, cookie, { assignments: [] })).status, 403, 'assign: owner and leader only');
     }
@@ -1722,21 +1726,21 @@ async function main() {
     assert.strictEqual((await api('POST', `/api/events/${ev2.id}/assignments/send`, leader, { ids: ['x'] })).status, 400);
     assert.strictEqual((await api('POST', `/api/events/${ev2.id}/assignments/send`, leader, { ids: [999999] })).status, 409, 'not a pending row of this event');
     // a copy of the event carries the team as pending; a template keeps the usual team
-    const copy = (await api('POST', '/api/events', owner, { name: 'Copie', eventDate: '2026-11-08', fromEventId: ev2.id })).body.event;
+    const copy = (await api('POST', '/api/events', owner, { name: 'Copie', eventDate: day(35), fromEventId: ev2.id })).body.event;
     const copied = (await api('GET', `/api/events/${copy.id}/assignments`, owner)).body.assignments;
     assert.deepStrictEqual([copied.length, copied.every((r) => r.status === 'pending' && !r.notifiedAt && !r.note)], [3, true]);
     const tpl = (await api('POST', `/api/events/${ev2.id}/save-as-template`, owner, { name: 'Șablon echipă' })).body.event;
     assert.strictEqual((await api('GET', `/api/events/${tpl.id}/assignments`, owner)).body.assignments.length, 3, 'the template keeps the usual team');
     assert.strictEqual((await api('GET', `/api/events/${tpl.id}/assignments`, member)).status, 404, 'members never see templates');
-    const fromTpl = (await api('POST', '/api/events', owner, { name: 'Din șablon', eventDate: '2026-11-15', fromTemplateId: tpl.id })).body.event;
+    const fromTpl = (await api('POST', '/api/events', owner, { name: 'Din șablon', eventDate: day(42), fromTemplateId: tpl.id })).body.event;
     assert.strictEqual((await api('GET', `/api/events/${fromTpl.id}/assignments`, owner)).body.assignments.length, 3, 'an event from the template starts with its team');
     for (const id of [copy.id, tpl.id, fromTpl.id]) await api('DELETE', `/api/events/${id}`, owner);
   });
 
   await step('unavailability: own ranges; owner / leader read everyone\'s, others not; the picker greys the person out on the event day', async () => {
-    const added = await api('POST', '/api/me/unavailability', member, { dateFrom: '2026-11-01', dateTo: '2026-11-03', note: 'Plecat' });
+    const added = await api('POST', '/api/me/unavailability', member, { dateFrom: day(28), dateTo: day(30), note: 'Plecat' });
     assert.deepStrictEqual([added.status, added.body.ranges.length, added.body.range.note], [201, 1, 'Plecat']);
-    assert.strictEqual((await api('POST', '/api/me/unavailability', member, { dateFrom: '2026-11-05', dateTo: '2026-11-04' })).status, 400);
+    assert.strictEqual((await api('POST', '/api/me/unavailability', member, { dateFrom: day(32), dateTo: day(31) })).status, 400);
     assert.strictEqual((await api('GET', '/api/me/unavailability', member)).body.ranges.length, 1);
     assert.strictEqual((await api('GET', '/api/unavailability', member)).status, 403, 'members never see others\' ranges');
     assert.strictEqual((await api('GET', '/api/unavailability', operator)).status, 403);
@@ -1746,10 +1750,10 @@ async function main() {
     assert.deepStrictEqual([all.status, all.body.byUser[String(memberId)].length], [200, 1]);
     assert.strictEqual((await api('GET', '/api/team', owner)).body.users.find((u) => u.id === memberId).unavailability.length, 1, 'Echipa carries the ranges');
     // the picker on an event in the period
-    const evU = (await api('POST', '/api/events', owner, { name: 'În concediu', eventDate: '2026-11-02' })).body.event;
+    const evU = (await api('POST', '/api/events', owner, { name: 'În concediu', eventDate: day(29) })).body.event;
     const picker = (await api('GET', `/api/events/${evU.id}/assignments`, leader)).body.people.find((p) => p.id === memberId);
-    assert.deepStrictEqual(picker.unavailable, { dateFrom: '2026-11-01', dateTo: '2026-11-03', note: 'Plecat' });
-    const evFree = (await api('POST', '/api/events', owner, { name: 'Liber', eventDate: '2026-11-04' })).body.event;
+    assert.deepStrictEqual(picker.unavailable, { dateFrom: day(28), dateTo: day(30), note: 'Plecat' });
+    const evFree = (await api('POST', '/api/events', owner, { name: 'Liber', eventDate: day(31) })).body.event;
     assert.strictEqual((await api('GET', `/api/events/${evFree.id}/assignments`, leader)).body.people.find((p) => p.id === memberId).unavailable, null);
     assert.strictEqual((await api('DELETE', `/api/me/unavailability/${added.body.range.id}`, leader)).status, 404, 'not theirs');
     assert.deepStrictEqual((await api('DELETE', `/api/me/unavailability/${added.body.range.id}`, member)).body.ranges, []);
@@ -1759,20 +1763,21 @@ async function main() {
     await api('PUT', `/api/events/${evU.id}/assignments`, leader, { assignments: [{ userId: memberId, positionId: voce }] });
     const notices = async (cookie) => (await api('GET', '/api/notifications', cookie)).body.notifications.filter((n) => n.kind === 'unavailable');
     const [o0, l0, m0] = [(await notices(owner)).length, (await notices(leader)).length, (await notices(member)).length];
-    const again = await api('POST', '/api/me/unavailability', member, { dateFrom: '2026-11-01', dateTo: '2026-11-03' });
+    const again = await api('POST', '/api/me/unavailability', member, { dateFrom: day(28), dateTo: day(30) });
     assert.strictEqual(again.status, 201);
     await new Promise((r) => setTimeout(r, 100));
     const ownerNotice = (await notices(owner))[0];
     assert.deepStrictEqual([(await notices(owner)).length, (await notices(leader)).length, (await notices(member)).length], [o0 + 1, l0 + 1, m0], 'owner and leader told, not the person');
-    assert.ok(/Membru e indisponibil: 01\.11\.2026 – 03\.11\.2026/.test(ownerNotice.title) && /Programat la: .*În concediu \(02\.11\.2026\)/.test(ownerNotice.body) && /\/events\/\d+\/edit$/.test(ownerNotice.url), JSON.stringify(ownerNotice));
-    const dup = await api('POST', '/api/me/unavailability', member, { dateFrom: '2026-11-01', dateTo: '2026-11-03' });
+    const ro = (d) => d.split('-').reverse().join('.'); // "2026-11-01" -> "01.11.2026" (the notice's RO dates)
+    assert.ok(ownerNotice.title === `Membru e indisponibil: ${ro(day(28))} – ${ro(day(30))}` && ownerNotice.body.includes(`În concediu (${ro(day(29))})`) && /^Programat la: /.test(ownerNotice.body) && /\/events\/\d+\/edit$/.test(ownerNotice.url), JSON.stringify(ownerNotice));
+    const dup = await api('POST', '/api/me/unavailability', member, { dateFrom: day(28), dateTo: day(30) });
     assert.deepStrictEqual([dup.status, dup.body.ranges.length, dup.body.range.id], [201, 1, again.body.range.id], 'the same dates: the existing range');
     await new Promise((r) => setTimeout(r, 100));
     assert.strictEqual((await notices(owner)).length, o0 + 1, 'no second notice');
     // the person's card (everyone): the reason of the unavailability, the coming events; an
     // assignment's note only for those who see notes; email / phone only for the owner
     const card = (await api('GET', `/api/team/directory/${memberId}`, operator)).body;
-    assert.ok(card.user.unavailability.some((r) => r.dateFrom === '2026-11-01'), 'the ranges');
+    assert.ok(card.user.unavailability.some((r) => r.dateFrom === day(28)), 'the ranges');
     assert.ok(card.upcoming.some((a) => a.eventId === evU.id && a.positionName), 'the coming events with the position');
     assert.ok(!('email' in card.user) && !('phone' in card.user), 'no email / phone for the team');
     const asOwner = (await api('GET', `/api/team/directory/${memberId}`, owner)).body;
@@ -1797,7 +1802,7 @@ async function main() {
     const posList = (await api('GET', '/api/positions', owner)).body.positions;
     const memberId = (await api('GET', '/api/team', owner)).body.users.find((u) => u.email === 'membru@x.ro').id;
     const voceId = posList.find((p) => p.name === 'Voce').id;
-    const evN = (await api('POST', '/api/events', owner, { name: 'Notificări', eventDate: '2026-12-06', startTime: '10:00' })).body.event;
+    const evN = (await api('POST', '/api/events', owner, { name: 'Notificări', eventDate: day(63), startTime: '10:00' })).body.event;
     await api('PUT', `/api/events/${evN.id}/assignments`, leader, { assignments: [{ userId: memberId, positionId: voceId }] });
     const before = (await api('GET', '/api/notifications', member)).body;
     // taken off before being told: no "unassigned" notice (they never knew); told: one
@@ -1855,17 +1860,17 @@ async function main() {
     // the reminder tick (test hook): tomorrow's event at 18:00 church time, once
     const tz = (await api('GET', '/api/settings', owner)).body;
     void tz;
-    const evT = (await api('POST', '/api/events', owner, { name: 'Mâine', eventDate: '2026-12-07', startTime: '10:00' })).body.event;
+    const evT = (await api('POST', '/api/events', owner, { name: 'Mâine', eventDate: day(64), startTime: '10:00' })).body.event;
     await api('PUT', `/api/events/${evT.id}/assignments`, leader, { assignments: [{ userId: memberId, positionId: voceId }] });
-    assert.strictEqual((await api('POST', '/api/notifications/tick', owner, { now: '2026-12-06T12:00:00Z' })).body.sent, 0, 'before 18:00 (Europe/Oslo): nothing');
-    assert.strictEqual((await api('POST', '/api/notifications/tick', owner, { now: '2026-12-06T17:30:00Z' })).body.sent, 1, '18:30 church time: one reminder');
-    assert.strictEqual((await api('POST', '/api/notifications/tick', owner, { now: '2026-12-06T17:31:00Z' })).body.sent, 0, 'the next minute: nothing (idempotent, as after a restart)');
+    assert.strictEqual((await api('POST', '/api/notifications/tick', owner, { now: `${day(63)}T12:00:00Z` })).body.sent, 0, 'before 18:00 (Europe/Oslo): nothing');
+    assert.strictEqual((await api('POST', '/api/notifications/tick', owner, { now: `${day(63)}T17:30:00Z` })).body.sent, 1, '18:30 church time: one reminder');
+    assert.strictEqual((await api('POST', '/api/notifications/tick', owner, { now: `${day(63)}T17:31:00Z` })).body.sent, 0, 'the next minute: nothing (idempotent, as after a restart)');
     assert.ok((await api('GET', '/api/notifications', member)).body.notifications.some((n) => n.kind === 'reminder' && n.eventId === evT.id));
     for (const id of [evN.id, evT.id]) await api('DELETE', `/api/events/${id}`, owner);
   });
 
   await step('song proposals: members propose (limits), event roles decide; add -> the item appears (end / projector-only while live); notifications; finished -> 409', async () => {
-    const evP = (await api('POST', '/api/events', owner, { name: 'Propuneri', eventDate: '2026-12-13', startTime: '10:00' })).body.event;
+    const evP = (await api('POST', '/api/events', owner, { name: 'Propuneri', eventDate: day(70), startTime: '10:00' })).body.event;
     await api('PUT', `/api/events/${evP.id}/items`, owner, { items: [{ type: 'song', songId: s1.id }] });
     const songs = [];
     for (let i = 0; i < 7; i++) songs.push((await api('POST', '/api/songs', owner, { title: `Propusă ${i}`, sections: [{ type: 'verse', content: 'x' }] })).body.song.id);
@@ -1935,7 +1940,7 @@ async function main() {
     assert.strictEqual((await viewAs(owner, 'member')).status, 200);
     let me = (await api('GET', '/api/auth/me', owner)).body;
     assert.deepStrictEqual([me.user.role, me.user.realRole, me.user.viewAs, me.platformOwner], ['member', 'owner', 'member', false], 'the effective role is member');
-    assert.strictEqual((await api('POST', '/api/events', owner, { name: 'X', eventDate: '2026-10-10' })).status, 403, 'member: no event writes');
+    assert.strictEqual((await api('POST', '/api/events', owner, { name: 'X', eventDate: day(6) })).status, 403, 'member: no event writes');
     assert.strictEqual((await api('GET', '/api/events?when=templates', owner)).status, 403, 'member: no templates');
     assert.strictEqual((await api('GET', '/api/team', owner)).status, 403, 'member: no team');
     assert.strictEqual((await api('GET', '/api/platform/admins', owner)).status, 403, 'platform routes refuse while viewing as');
@@ -2012,7 +2017,7 @@ async function main() {
     assert.deepStrictEqual([me.role, me.perms, me.liveRole, me.customRole && me.customRole.name], ['member', ['media'], 'member', 'Media']);
     assert.strictEqual((await api('GET', '/api/media', member)).status, 200, 'media: yes');
     assert.strictEqual(await page('/media', member), 200);
-    assert.strictEqual((await api('POST', '/api/events', member, { name: 'X', eventDate: '2026-10-10' })).status, 403, 'events: no');
+    assert.strictEqual((await api('POST', '/api/events', member, { name: 'X', eventDate: day(6) })).status, 403, 'events: no');
     assert.strictEqual((await api('POST', '/api/songs', member, { title: 'X', sections: [{ type: 'verse', content: 'a' }] })).status, 403, 'library: no');
     assert.strictEqual((await api('GET', '/api/screens', member)).status, 403, 'screens: no');
     assert.strictEqual((await api('GET', '/api/team', member)).status, 403, 'the team stays the owner\'s');
@@ -2024,7 +2029,7 @@ async function main() {
     assert.strictEqual((await api('GET', '/api/screens', member)).status, 200, 'screens: yes');
     assert.strictEqual((await api('GET', '/api/media', member)).status, 200, 'the media list for the pickers (live)');
     assert.strictEqual((await api('POST', '/api/media/url', member, { url: 'https://example.org/a.mp4', title: 'x' })).status, 403, 'media writes: no');
-    const evR = (await api('POST', '/api/events', owner, { name: 'Roluri', eventDate: '2026-10-11' })).body.event;
+    const evR = (await api('POST', '/api/events', owner, { name: 'Roluri', eventDate: day(7) })).body.event;
     assert.strictEqual(await page(`/events/${evR.id}/operator`, member), 200, 'the console opens');
     assert.strictEqual(await page(`/events/${evR.id}/edit`, member), 302, 'no events right: no editor');
     assert.strictEqual((await api('POST', `/api/events/${evR.id}/start`, member)).status, 200, 'live: starts the event');
@@ -2048,10 +2053,10 @@ async function main() {
     assert.strictEqual((await api('PUT', '/api/roles/builtin/presenter', leader, { perms: [] })).status, 403, 'owner only');
     assert.strictEqual((await api('PUT', '/api/roles/builtin/owner', owner, { perms: [] })).status, 404, 'never the owner');
     assert.strictEqual((await api('PUT', '/api/roles/builtin/presenter', owner, { perms: ['root'] })).status, 400);
-    assert.strictEqual((await api('POST', '/api/events', presenter, { name: 'Înainte', eventDate: '2026-12-20' })).status, 201, 'a presenter creates events by default');
+    assert.strictEqual((await api('POST', '/api/events', presenter, { name: 'Înainte', eventDate: day(77) })).status, 201, 'a presenter creates events by default');
     const out = await api('PUT', '/api/roles/builtin/presenter', owner, { name: 'Moderator', emoji: '🎤', perms: ['library'] });
     assert.deepStrictEqual([out.status, out.body.builtin.perms, out.body.builtin.customized], [200, ['library'], true]);
-    assert.strictEqual((await api('POST', '/api/events', presenter, { name: 'După', eventDate: '2026-12-21' })).status, 403, 'no events right any more, at once');
+    assert.strictEqual((await api('POST', '/api/events', presenter, { name: 'După', eventDate: day(78) })).status, 403, 'no events right any more, at once');
     const me = (await api('GET', '/api/auth/me', presenter)).body;
     assert.deepStrictEqual([me.user.role, me.user.perms, me.user.liveRole, me.roleNames.presenter], ['presenter', ['library'], 'member', { name: 'Moderator', emoji: '🎤' }]);
     // a member gets the guides right: writes a guide
@@ -2067,7 +2072,7 @@ async function main() {
     const reset = await api('DELETE', '/api/roles/builtin/presenter', owner);
     assert.deepStrictEqual([reset.body.builtin.customized, reset.body.builtin.name], [false, null]);
     await api('DELETE', '/api/roles/builtin/member', owner);
-    assert.strictEqual((await api('POST', '/api/events', presenter, { name: 'Iar', eventDate: '2026-12-22' })).status, 201, 'the default rights again');
+    assert.strictEqual((await api('POST', '/api/events', presenter, { name: 'Iar', eventDate: day(79) })).status, 201, 'the default rights again');
     assert.deepStrictEqual((await api('GET', '/api/auth/me', presenter)).body.roleNames, {});
   });
 
