@@ -51,6 +51,13 @@ module.exports = {
       check(fields.every(Boolean), `${tag} name, date, time and notes on the card`);
       const a = await layoutAudit(p, '#quick-details');
       check(!a.overflow && !a.small.length, `${tag} the card: no overflow, targets >= 44 px`, a);
+      // the date and time inputs stay in their own columns (an iPad: the card is half the page)
+      const cols = await p.evaluate(() => {
+        const r = (i) => document.getElementById(i).getBoundingClientRect();
+        const [d, t, n] = [r('q-date'), r('q-time'), r('q-notes')];
+        return { dateEnd: Math.round(d.right), timeStart: Math.round(t.left), timeEnd: Math.round(t.right), notesStart: Math.round(n.left), sameRow: Math.abs(d.top - t.top) < 4 };
+      });
+      check(cols.sameRow && cols.dateEnd <= cols.timeStart && (cols.notesStart >= cols.timeEnd || cols.notesStart <= cols.dateEnd - 1), `${tag} date and time side by side, never overlapping`, cols);
       // template switch: the items are replaced (E2's template has 1 item, E's 5)
       const current = await p.inputValue('#q-template');
       const other = current === String(tpl.id) ? tpl2 : tpl;

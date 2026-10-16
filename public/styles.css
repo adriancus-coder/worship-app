@@ -2492,7 +2492,13 @@ dialog.song-pick-dialog .song-pick > .ss-results { flex: 1 1 0; height: 0; --pan
 .quick-picker { display: block; margin: 0; }
 .quick-source .hint { margin: 0; }
 .quick-details .message:empty { display: none; }
-@media (min-width: 900px) { .quick-fields { grid-template-columns: 2fr 1fr 1fr 2fr; } .quick-name, .quick-template { grid-column: auto; } }
+/* Four columns (name · date · time · notes) only when the card itself is wide: from 900 px
+   the page is two columns, so the card may be half the screen (an iPad) and date / time
+   would not fit; the inputs shrink to their column (iOS date / time inputs have a wide
+   intrinsic size). */
+.quick-details { container-type: inline-size; }
+.quick-fields input, .quick-fields select { min-width: 0; }
+@container (min-width: 700px) { .quick-fields { grid-template-columns: 2fr minmax(9.5rem, 1fr) minmax(8.5rem, 1fr) 2fr; } .quick-name, .quick-template { grid-column: auto; } }
 .service-row .field { min-width: 0; }
 
 /* One church on the platform (/platform/:id): header card, usage cards, settings, backup. */
