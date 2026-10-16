@@ -346,6 +346,10 @@ never implement a later stage early. Mockups: claude.ai design canvas
     reminder (day before at 18:00 church time; a minute tick idempotent per event and person),
     setlist_changed (max one per 10 minutes), declined (owner + leaders), live_started. In-app
     list with an unread badge on "Mai mult", per-kind switches, plus a push when subscribed.
+    The page is a list page: the push state in one row (the explanation only while push is
+    off here), the list by day with sticky "Azi / Ieri / date" headings, an icon per kind, the
+    time on the right; the same news repeated for one event folds into one row ("×4"); "Ce
+    primești" folded at the end.
   - *"Trimite programarea"*: notifies every pending person not yet told; re-sending reaches
     only new rows; with email enabled, people without push get an email with the same text.
   - *"Planifică"* (Evenimente, the 'events' right): a month calendar; tap days (or a weekday

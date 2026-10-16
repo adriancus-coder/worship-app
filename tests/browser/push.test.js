@@ -52,11 +52,11 @@ module.exports = {
       await p.context().grantPermissions(['notifications']);
       await p.goto(`${app.url}/notifications`);
       await p.waitForFunction(() => /\S/.test(document.getElementById('push-state').textContent));
-      const state = await p.evaluate(() => ({ text: document.getElementById('push-state').textContent, state: document.getElementById('push-state').dataset.state, on: !document.getElementById('push-on').hidden, ios: !document.getElementById('push-ios').hidden, intro: document.querySelector('#push-card .hint').textContent.length > 80 }));
+      const state = await p.evaluate(() => ({ text: document.getElementById('push-state').textContent, state: document.getElementById('push-state').dataset.state, on: !document.getElementById('push-on').hidden, ios: !document.getElementById('push-ios').hidden, intro: !document.getElementById('push-intro').hidden && document.getElementById('push-intro').textContent.length > 80 }));
       // Headless Chromium reports the permission as denied (no push service): the page says so
       // and hides the switch; a browser that allows it shows "not on" with the enable button.
       check((state.state === 'off' && state.on) || (state.state === 'denied' && !state.on && /(blocat|blocked)/.test(state.text)), `${tag} Notificări: a clear explanation and the state of this device (${state.state})`, state);
-      check(state.intro && !state.ios, `${tag} the intro text, no iPhone hint on a desktop browser`);
+      check((state.state === 'denied' || state.intro) && !state.ios, `${tag} the intro text while push is off, no iPhone hint on a desktop browser`);
       const a = await layoutAudit(p, '#push-card');
       check(!a.overflow && !a.small.length, `${tag} push card: no overflow, targets >= 44 px`, a);
       if (state.on) {

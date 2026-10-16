@@ -7,42 +7,46 @@
   <title data-i18n="notif.pageTitle">{{APP_NAME}}</title>
   <link rel="stylesheet" href="/styles.css">
 </head>
-<body data-shell="more">
+<body data-shell="more" class="list-page">
   <main>
-    <h1 data-i18n="notif.heading"></h1>
+    <div class="page-head">
+      <h1 data-i18n="notif.heading"></h1>
+      <div class="page-head-actions">
+        <button type="button" class="secondary" id="notif-read-all" hidden data-icon="check" data-i18n="notif.markAll"></button>
+      </div>
+    </div>
 
-    <!-- Push: what it is, the state on this device, one switch. -->
-    <section class="push-card" id="push-card" aria-labelledby="push-heading">
-      <h2 id="push-heading" data-i18n="notif.pushHeading"></h2>
-      <p class="hint" data-i18n="notif.pushIntro"></p>
+    <!-- Push on this device: one row - the state, and the one action it needs (on / off,
+         plus a test while on). The explanation and the iPhone "install first" hint show only
+         while push is not on here. -->
+    <div class="push-row" id="push-card">
       <p id="push-state" class="push-state" role="status" aria-live="polite"></p>
-      <p id="push-ios" class="hint push-ios" hidden data-i18n="notif.pushIos"></p>
-      <div class="form-actions">
+      <div class="push-actions">
         <button type="button" id="push-on" hidden data-icon="check" data-i18n="notif.pushOn"></button>
         <button type="button" class="secondary" id="push-off" hidden data-icon="close" data-i18n="notif.pushOff"></button>
         <button type="button" class="secondary" id="push-test" hidden data-icon="mail" data-i18n="notif.pushTest"></button>
       </div>
+      <p id="push-ios" class="hint push-ios" hidden data-i18n="notif.pushIos"></p>
+      <p id="push-intro" class="hint push-intro" hidden data-i18n="notif.pushIntro"></p>
       <p id="push-message" class="message" role="status" aria-live="polite"></p>
-    </section>
+    </div>
 
-    <section class="notif-section" aria-labelledby="notif-list-heading">
-      <div class="notif-list-head">
-        <h2 id="notif-list-heading" data-i18n="notif.listHeading"></h2>
-        <button type="button" class="secondary" id="notif-read-all" hidden data-icon="check" data-i18n="notif.markAll"></button>
-      </div>
-      <p id="notif-status" class="muted" role="status" aria-live="polite" data-i18n="app.loading"></p>
-      <ul id="notif-list" class="notif-list"></ul>
-    </section>
-
-    <section class="notif-section" aria-labelledby="notif-prefs-heading">
-      <h2 id="notif-prefs-heading" data-i18n="notif.prefsHeading"></h2>
-      <p class="hint" data-i18n="notif.prefsHint"></p>
-      <div id="notif-prefs" class="checkbox-list notif-prefs"></div>
-      <p id="prefs-message" class="message" role="status" aria-live="polite"></p>
-    </section>
+    <!-- The list, by day (today, yesterday, a date), newest first; the same news repeated
+         for one event folds into one row. "Ce primești" (the per-kind switches) at its end. -->
+    <div id="notif-pane" data-list-pane="notif.listHeading">
+      <p id="notif-status" class="muted pane-state" role="status" aria-live="polite" data-i18n="app.loading"></p>
+      <div id="notif-list" class="notif-days"></div>
+      <details id="notif-prefs-details" class="notif-prefs-box">
+        <summary><span data-i18n="notif.prefsHeading"></span></summary>
+        <p class="hint" data-i18n="notif.prefsHint"></p>
+        <div id="notif-prefs" class="checkbox-list notif-prefs"></div>
+        <p id="prefs-message" class="message" role="status" aria-live="polite"></p>
+      </details>
+    </div>
   </main>
   <script src="/i18n.js"></script>
   <script src="/page.js"></script>
+  <script src="/list-pane.js"></script>
   <script src="/shell.js"></script>
   <script src="/push-client.js"></script>
   <script src="/notifications.js"></script>

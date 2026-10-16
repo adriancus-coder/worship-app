@@ -43,7 +43,12 @@ module.exports = {
       check(row && expectTitle.test(row.title) && row.unread, `${tag} the list: "${row && row.title}" unread, in the person's language`, rows);
       const a = await layoutAudit(p, 'main');
       check(!a.overflow && !a.small.length, `${tag} notifications page: no overflow, targets >= 44 px`, a);
-      // per-kind switches
+      // the day heading and the time on the row
+      const shape = await p.evaluate(() => ({ day: document.querySelector('.notif-day-head') && document.querySelector('.notif-day-head').textContent, time: document.querySelector('.notif-row .notif-time').textContent, icon: document.querySelector('.notif-row .notif-icon').textContent }));
+      check(/^(Azi|Today)$/.test(shape.day) && /^\d{1,2}:\d{2}$/.test(shape.time) && shape.icon.length > 0, `${tag} the list by day: "${shape.day}", the time and an icon on the row`, shape);
+      // per-kind switches, folded under "Ce primești"
+      check(!(await p.evaluate(() => document.getElementById('notif-prefs-details').open)), `${tag} "Ce primești" starts folded`);
+      await p.click('#notif-prefs-details summary');
       const kinds = await p.evaluate(() => [...document.querySelectorAll('#notif-prefs input')].map((i) => `${i.dataset.kind}:${i.checked}`));
       check(kinds.length === 12 && kinds.every((k) => k.endsWith(':true')), `${tag} twelve kinds, all on`, kinds);
       await p.click('#notif-prefs input[data-kind="reminder"]');
