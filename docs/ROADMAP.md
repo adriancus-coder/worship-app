@@ -373,6 +373,11 @@ never implement a later stage early. Mockups: claude.ai design canvas
     and one tap on "Trimite răspunsul" saves it (a link alone never answers: mail scanners
     open links). One link per event and person, replaced by a new email, valid until two days
     after the event.
+- **"Ce e nou" after an update** (`lib/whats-new.js`, `routes/whats-new.js`, `public/whats-new.js`,
+  loaded by the menu): the releases newer than the last one seen on the device open as a
+  pop-up (date, title, a short list; "Am înțeles"); a device that saw none sees the newest
+  once; never over the invitations pop-up. "Mai mult → Ce e nou" reopens the whole list.
+  Add an entry on top of `lib/whats-new.js` RELEASES with every deploy worth telling.
 - **Lyrics edited during the service** ("✎ Versuri" on the leader live page and the console,
   `public/live-lyrics-edit.js`): the song on screen in the same section editor as the library,
   in a non-modal sheet. "Salvează doar pentru acest eveniment" keeps the text on the item

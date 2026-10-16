@@ -2705,3 +2705,12 @@ dialog.answer-popup[open] { display: flex; }
 .pill-edited { color: var(--accent-text); border-color: var(--accent-fill); }
 .current-head .edit-lyrics, .op-item-head .edit-lyrics { min-height: var(--touch); }
 
+/* --- "Ce e nou" after an update (public/whats-new.js) ---------------------------------------- */
+dialog.whats-new { display: none; flex-direction: column; gap: 10px; width: min(560px, calc(100vw - 32px)); max-height: 85dvh; overflow-y: auto; }
+dialog.whats-new[open] { display: flex; }
+.whats-new h2, .whats-new h3 { margin: 0; }
+.whats-new h3 { font-size: 1.05rem; margin-top: 8px; }
+.whats-new-date { margin: 0; font-size: 0.875rem; color: var(--text-muted); }
+.whats-new-list { margin: 4px 0 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 6px; }
+.whats-new-release { display: flex; flex-direction: column; gap: 4px; }
+.whats-new .form-actions { margin-top: 6px; }

@@ -185,10 +185,17 @@ function loadPlaywright() {
   }
 }
 
+// "Ce e nou" (public/whats-new.js) stays out of the way in every context of the browser: the
+// device has seen everything (whats-new.test.js sets wa_test_news to test the pop-up itself).
+const QUIET_NEWS = () => { try { if (!localStorage.getItem('wa_test_news') && !localStorage.getItem('wa_whats_new_seen')) localStorage.setItem('wa_whats_new_seen', '9999-12-31'); } catch (err) { /* no storage */ } };
+
 async function launch() {
   const { chromium } = loadPlaywright();
   // CHROMIUM_PATH: a Chromium already on the machine instead of Playwright's download.
-  return chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
+  const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
+  const create = browser.newContext.bind(browser);
+  browser.newContext = async (options) => { const context = await create(options); await context.addInitScript(QUIET_NEWS); return context; };
+  return browser;
 }
 
 // A signed-in page. width < 600 is a phone (touch); lang 'ro' | 'en' (saved on the user).

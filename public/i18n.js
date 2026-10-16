@@ -514,6 +514,12 @@
         expired: 'Linkul nu mai e valabil: evenimentul a trecut. Deschide aplicația.',
         toApp: 'Deschide aplicația',
       },
+      whatsNew: {
+        kicker: 'Ce e nou',
+        allTitle: 'Ce e nou în aplicație',
+        ok: 'Am înțeles',
+        menu: 'Ce e nou',
+      },
       attend: {
         heading: 'Participare',
         question: 'Participi la acest eveniment?',
@@ -2531,6 +2537,12 @@
         current: 'You already answered: {answer}. You can change it.',
         expired: 'This link is no longer valid: the event is over. Open the app.',
         toApp: 'Open the app',
+      },
+      whatsNew: {
+        kicker: 'What’s new',
+        allTitle: 'What’s new in the app',
+        ok: 'Got it',
+        menu: 'What’s new',
       },
       attend: {
         heading: 'Attendance',

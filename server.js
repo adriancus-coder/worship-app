@@ -35,6 +35,7 @@ const { createAssignmentsRouter } = require('./routes/assignments');
 const { createTeamMail } = require('./lib/team-mail');
 const { createAnswerLinks } = require('./lib/answer-links');
 const { createAnswerRouter } = require('./routes/answer');
+const { createWhatsNewRouter } = require('./routes/whats-new');
 const { createUnavailabilityRouter } = require('./routes/unavailability');
 const { createPushRouter } = require('./routes/push');
 const { createPush } = require('./lib/push');
@@ -188,6 +189,7 @@ assignmentHooks.onInvited = async ({ req, event, userIds }) => {
 };
 app.use(createNotificationsRouter({ auth, config, notifications }));
 app.use(createAnswerRouter({ db, logger, notifications }));
+app.use(createWhatsNewRouter({ auth }));
 app.use(createProposalsRouter({ db, auth, logger, live, notifications }));
 setInterval(() => notifications.tick().catch((err) => logger.error('reminder tick failed', err)), 60 * 1000).unref();
 app.use(createPlatformRouter({ db, auth, config, logger, live, screensHub, storage, email, invites }));

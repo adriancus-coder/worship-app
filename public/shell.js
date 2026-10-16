@@ -30,6 +30,7 @@
     install: 'M12 3v12M7 10l5 5 5-5M5 21h14',
     refresh: 'M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5',
     bell: 'M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.9 1.9 0 0 0 3.4 0',
+    sparkle: 'M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z',
     book: 'M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5zM4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5M8 7h8M8 11h6',
   };
 
@@ -285,6 +286,17 @@
     },
   }, icon('install'), installLabel, icon('chevron'));
 
+  // "Ce e nou": the releases list (public/whats-new.js, loaded on the menu pages).
+  const newsLabel = el('span', { class: 'shell-row-label' });
+  const newsRow = el('button', {
+    type: 'button',
+    class: 'shell-row shell-whats-new',
+    onclick: () => {
+      open(false);
+      if (window.WHATS_NEW) window.WHATS_NEW.open();
+    },
+  }, icon('sparkle'), newsLabel, icon('chevron'));
+
   // "Versiune 0.1.0 · 569a1ad": the build this page runs (lib/version.js); a tap checks for
   // a newer deploy and offers the reload (public/pwa.js).
   const versionText = el('span', { class: 'shell-row-label shell-version-text' });
@@ -323,6 +335,7 @@
         viewAsRow),
       section('shell.sections.account',
         installRow,
+        newsRow,
         el('ul', { class: 'shell-rows' }, ...accountLinks.map((p) => p.item)),
         logout,
         versionRow)));
@@ -391,6 +404,7 @@
     renderTheme();
     logoutLabel.textContent = t('app.logout');
     installLabel.textContent = t('pwa.install');
+    newsLabel.textContent = t('whatsNew.menu');
     renderVersion();
     for (const p of pageLinks) p.label.textContent = t(p.key);
     if (notationGroup.renderSwitch) notationGroup.renderSwitch();
@@ -547,6 +561,9 @@
   window.SHELL = { me: mePromise, open, setUnread, refreshUnread };
 
   // What waits for this person's answer (invitations, positions) opens as a pop-up
-  // (public/answer-popup.js); never on the full-screen work pages (above, they return early).
-  if (window.PAGE) document.head.append(Object.assign(document.createElement('script'), { src: '/answer-popup.js', defer: true }));
+  // (public/answer-popup.js), and "Ce e nou" after an update (public/whats-new.js); never on
+  // the full-screen work pages (above, they return early).
+  if (window.PAGE) {
+    for (const src of ['/whats-new.js', '/answer-popup.js']) document.head.append(Object.assign(document.createElement('script'), { src, defer: true }));
+  }
 })();

@@ -3210,6 +3210,16 @@ test('answer links (migration 050): one per event and person, replaced by a new 
   mem.close();
 });
 
+test('whats-new: releases newest first with RO / EN texts; releasesSince gives the newer ones (the newest only for a device that saw none)', () => {
+  const { RELEASES, releasesSince, latest } = require('../lib/whats-new');
+  assert.ok(RELEASES.length >= 1 && RELEASES.every((r) => /^\d{4}-\d{2}-\d{2}$/.test(r.id) && r.ro.title && r.en.title && r.ro.items.length && r.ro.items.length === r.en.items.length));
+  assert.ok(RELEASES.every((r, i) => i === 0 || RELEASES[i - 1].id > r.id), 'newest first');
+  assert.strictEqual(latest(), RELEASES[0].id);
+  assert.deepStrictEqual(releasesSince(null).map((r) => r.id), [RELEASES[0].id]);
+  assert.deepStrictEqual(releasesSince('0000-01-01').map((r) => r.id), RELEASES.map((r) => r.id));
+  assert.deepStrictEqual(releasesSince(RELEASES[0].id), []);
+});
+
 test('unavailability (migration 031): own ranges, validation, who is busy on a date, upcoming per user', () => {
   const Database = require('better-sqlite3');
   const { runMigrations } = require('../lib/db');

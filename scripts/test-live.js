@@ -1675,6 +1675,13 @@ async function main() {
     await api('PUT', '/api/me/profile', member, { name: 'Membru', phone: '', positionIds: [voce] });
   });
 
+  await step('"Ce e nou": the releases in the person\'s language, signed in only', async () => {
+    assert.strictEqual((await api('GET', '/api/whats-new', null)).status, 401);
+    const news = await api('GET', '/api/whats-new', member);
+    assert.deepStrictEqual([news.status, typeof news.body.latest, news.body.releases[0].id, Array.isArray(news.body.releases[0].items)], [200, 'string', news.body.latest, true]);
+    assert.ok(news.body.releases.every((r, i, all) => i === 0 || all[i - 1].id > r.id), 'newest first');
+  });
+
   await step('attendance: "Trimite invitația" asks the whole team once; Vin / Poate / Nu pot, changeable; the leader is told; "Vin" starts confirmed on a position', async () => {
     const ev3 = (await api('POST', '/api/events', owner, { name: 'Invitație', eventDate: day(35) })).body.event;
     assert.strictEqual((await api('POST', `/api/events/${ev3.id}/attendance/send`, member)).status, 403, 'members do not invite');

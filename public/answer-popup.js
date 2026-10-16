@@ -11,6 +11,7 @@
   const { api, el, formatDate, positionLabel } = window.PAGE;
   const { t } = window.I18N;
   const LATER_KEY = 'wa_answer_later';
+  const gate = window.POPUP_GATE = window.POPUP_GATE || { busy: false }; // one pop-up at a time (public/whats-new.js)
   let dialog = null;
   let busy = false;
 
@@ -39,10 +40,12 @@
       busy = false;
       if (!res.ok) { message.textContent = res.body.error || t('common.networkError'); return; }
       dialog.close();
+      gate.busy = false;
       document.dispatchEvent(new CustomEvent('answers:changed'));
       check();
     };
-    const close = () => { putOff(item); dialog.close(); check(); };
+    const close = () => { putOff(item); dialog.close(); gate.busy = false; check(); };
+    gate.busy = true;
     dialog.onkeydown = (event) => { if (event.key === 'Escape') close(); };
     dialog.replaceChildren(
       el('p', { class: 'answer-popup-kicker', text: item.kind === 'assignment' ? t('answerPopup.scheduled') : t('answerPopup.invited') }),
@@ -60,14 +63,20 @@
     if (!dialog.open) dialog.showModal();
   }
 
-  async function check() {
+  async function check(tries = 0) {
     if (dialog && dialog.open) return;
-    if (document.querySelector('dialog[open]')) return; // never over another dialog
+    if (window.WHATS_NEW && window.WHATS_NEW.ready) await window.WHATS_NEW.ready; // "Ce e nou" first
     const res = await api('/api/my-invitations').catch(() => null);
     if (!res || !res.ok) return;
     const skip = new Set(later());
     const items = res.body.items.filter((item) => !skip.has(keyOf(item)));
-    if (items.length) show(items[0], items.length);
+    if (!items.length) return;
+    // never over another pop-up or a dialog of the page: after it
+    if (gate.busy || document.querySelector('dialog[open]')) {
+      if (tries < 120) setTimeout(() => check(tries + 1), 1000);
+      return;
+    }
+    show(items[0], items.length);
   }
 
   check();
