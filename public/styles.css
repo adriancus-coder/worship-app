@@ -2721,3 +2721,28 @@ dialog.whats-new[open] { display: flex; }
 .whats-new-release { display: flex; flex-direction: column; gap: 4px; }
 .whats-new .form-actions { margin-top: 6px; }
 
+/* --- Event page on phones: the Program gets the room ---------------------------------------
+   The head is one compact block (title, date · status · note on short lines, one row of
+   44 px actions), the "Program" heading is left to the tab, the save bar is one line: the
+   list pane (the Program, the open item's form) takes what is left of the screen. */
+@media (max-width: 899px) {
+  body.list-page .event-page > .back { margin: 0; font-size: 0.875rem; }
+  body.list-page .event-head h1 { font-size: 1.35rem; line-height: 1.2; margin: 0; }
+  body.list-page .event-when, body.list-page .event-summary { display: inline-flex; align-items: center; gap: 6px 10px; margin: 2px 12px 2px 0; font-size: 0.875rem; }
+  body.list-page .event-summary .pill { padding-top: 2px; padding-bottom: 2px; }
+  body.list-page .event-notes { margin: 0 0 4px; font-size: 0.875rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  body.list-page .event-actions-row { margin: 6px 0 6px; }
+  body.list-page .event-actions > .button { flex-direction: row; gap: 0.4em; min-height: var(--touch); padding: 6px 8px; font-size: 0.9375rem; line-height: 1.2; }
+  body.list-page .event-actions > .primary-action { flex-grow: 1.6; } /* "Pornește live" on one line next to "Repetiție" */
+  body.list-page .event-actions > .button { font-size: 0.875rem; white-space: nowrap; }
+  /* the selected row already shows the badge and the title: no second head under it */
+  body.list-page .setlist-item .item-detail > .detail-head { display: none; }
+  body.list-page .editor-tabs { margin-bottom: 6px; }
+  /* the tab bar already says "Program": no second heading above the pane */
+  body.list-page .editor-tabs:not([hidden]) ~ .editor-grid .setlist-pane > h2 { display: none; }
+  body.list-page .setlist-pane > h2 { margin: 4px 0; }
+  body.list-page .save-bar { gap: 8px; margin-top: 4px; padding: 6px 12px calc(6px + env(safe-area-inset-bottom)); }
+  body.list-page .save-state { font-size: 0.8125rem; line-height: 1.25; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  body.list-page .save-bar button { min-width: 0; }
+  body.list-page .item-detail { padding: 10px; }
+}

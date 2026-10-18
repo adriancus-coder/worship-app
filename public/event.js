@@ -265,7 +265,7 @@
     saveButton.textContent = state.saving ? t('setlist.saving') : t('setlist.save');
     saveState.className = `save-state${state.lastSaveError ? ' error' : ''}`;
     saveState.textContent = state.lastSaveError
-      || (dirty ? `${t('setlist.unsaved')}. ${t('setlist.saveFirst')}` : (state.justSaved ? t('setlist.saved') : ''));
+      || (dirty ? t('setlist.unsaved') : (state.justSaved ? t('setlist.saved') : ''));
   }
 
   // --- setlist ------------------------------------------------------------------
@@ -324,7 +324,7 @@
   function showPressHint() {
     if (!state.editing || $('press-hint-editor') || !state.items.some((it) => it.type === 'song' && it.songId)) return;
     const node = window.PRESS.hint('editor', 'press.hintEditor');
-    if (node) $('reorder-hint').after(node);
+    if (node) $('items').before(node); // inside the pane: it scrolls away with the list
   }
 
   // Long press on a song: select it (its details) and open the arrange sheet.
