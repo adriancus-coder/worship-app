@@ -192,7 +192,8 @@
           el('span', { class: `type-badge type-${item.type}`, text: t(`setlist.types.${item.type}`) }),
           isCurrent ? el('span', { class: 'op-markers' }, el('span', { class: 'live-badge', text: t('live.liveBadge') })) : null),
         el('span', { class: 'item-title', text: itemTitle(item) }),
-        item.type === 'song' && item.displayKey ? el('span', { class: 'item-sub', text: t('options.songKeyShort', { key: window.NOTATION.chord(item.displayKey) }) }) : null));
+        item.type === 'song' && item.displayKey ? el('span', { class: 'item-sub', text: t('options.songKeyShort', { key: window.NOTATION.chord(item.displayKey) }) }) : null,
+        item.who ? el('span', { class: 'item-sub', text: item.who }) : null));
       // Short tap: the team goes there; long press (or "Aranjează"): the arrange sheet.
       window.PRESS.bind(main, { tap: goThere, hold: canArrange ? () => arrange(item, goThere) : null });
       return el('li', { class: canArrange ? 'has-arrange' : null }, main, canArrange ? arrangeButton(item, () => arrange(item, goThere)) : null);

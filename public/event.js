@@ -62,6 +62,7 @@
         body: body || '',
         reference: reference || '',
         url: url || '',
+        who: item.who || '', // "Cine" (sermon / prayer / other)
         durationMin: durationMin === '' || durationMin === null || durationMin === undefined ? null : Number(durationMin),
       };
       // The item's own background (null = inherit, 'none', a media id); videos have none.
@@ -112,6 +113,8 @@
       parts.push(t('setlist.mediaFromLibrary'));
     } else if (item.type === 'video' && item.url) {
       try { parts.push(new URL(item.url).hostname); } catch (err) { parts.push(item.url); }
+    } else if (item.who) {
+      parts.push(item.who); // "Cine": the person of a sermon / prayer / other item
     }
     if (item.durationMin) parts.push(t('setlist.minutes', { n: item.durationMin }));
     return parts.join(' · ');
@@ -554,7 +557,7 @@
   }
 
   function addItem(type) {
-    state.items.push({ key: nextKey++, type, songId: null, title: '', body: '', reference: '', url: '', durationMin: null, song: null, songDeleted: false });
+    state.items.push({ key: nextKey++, type, songId: null, title: '', body: '', reference: '', url: '', who: '', durationMin: null, song: null, songDeleted: false });
     changed();
     select(state.items.length - 1, true);
   }
@@ -821,6 +824,7 @@
         return [
           typeSelect,
           field('it-title', t('setlist.titleLabel'), input(item, 'title', 'it-title', { type: 'text', maxlength: '200' })),
+          field('it-who', t('setlist.whoLabel'), input(item, 'who', 'it-who', { type: 'text', maxlength: '100', autocomplete: 'off' })),
           field('it-body', t('setlist.bodyLabel'), textarea(item, 'body', 'it-body', 4)),
           durationField(item),
         ];
@@ -882,7 +886,7 @@
         if (item.media) return [readOnlyText(t('setlist.mediaLabel'), item.media.title), duration];
         return [item.url ? el('p', null, el('a', { class: 'button secondary video-link', href: item.url, target: '_blank', rel: 'noopener noreferrer', text: item.url })) : null, duration];
       default:
-        return [readOnlyText(t('setlist.bodyLabel'), item.body), duration];
+        return [item.who ? readOnlyText(t('setlist.whoLabel'), item.who) : null, readOnlyText(t('setlist.bodyLabel'), item.body), duration];
     }
   }
 

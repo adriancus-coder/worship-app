@@ -1116,6 +1116,7 @@ button.live-item:disabled { opacity: 1; cursor: default; }
 /* Bridge translation (SV -> worship): the final text reads like lyrics; a partial is lighter. */
 .projector-translation.is-partial { opacity: 0.6; }
 .projector-title { font-weight: 800; }
+.projector-who { margin-top: 0.4em; font-size: 0.55em; font-weight: 600; opacity: 0.85; }
 .projector-logo { max-width: 60%; max-height: 60%; object-fit: contain; }
 /* The corner clock (public/clock.js), as in Sanctuary Voice: --clock-base is clamp(1.1rem,
    2vw, 1.7rem) on a full screen (set by projector-render.js, scaled down in a preview),

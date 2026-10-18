@@ -575,7 +575,7 @@ test('validateItems: song options (transpose, arrangement, team note, reference 
   const findSong = (id) => (id === 5 ? { id: 5, title: 'Sfânt', sections } : null);
   const ok = evs.validateItems([{ type: 'song', songId: 5, transpose: -3, arrangement: 'v1, c c1 B', teamNote: ' încet ', referenceUrl: 'https://youtu.be/x' }], tro, findSong);
   assert.deepStrictEqual(ok.value[0], {
-    id: null, type: 'song', songId: 5, mediaId: null, title: 'Sfânt', body: null, reference: null, url: null, durationMin: null,
+    id: null, type: 'song', songId: 5, mediaId: null, title: 'Sfânt', body: null, reference: null, url: null, who: null, durationMin: null,
     transpose: -3, arrangement: 'V1 C C B', teamNote: 'încet', referenceUrl: 'https://youtu.be/x', backgroundMediaId: null, backgroundNone: 0,
   });
   assert.deepStrictEqual(evs.validateItems([{ type: 'song', songId: 5 }], tro, findSong).value[0].transpose, 0);
@@ -1065,15 +1065,19 @@ test('item type prayer (migrations 052 + 053, "Îndemn la rugăciune"): validate
   const { ITEM_TYPES } = require('../lib/events');
   const { projectorFrame } = require('../lib/projector');
   assert.deepStrictEqual(ITEM_TYPES, ['song', 'verse', 'video', 'announcement', 'sermon', 'prayer', 'other']);
-  const items = save([{ type: 'prayer', title: 'Rugăciune pentru bolnavi' }, { type: 'prayer', body: 'Fiți tari!\nȘi curajoși.' }, { type: 'sermon', title: 'Predica' }]);
-  assert.deepStrictEqual(items.map((it) => [it.type, it.title, it.body]), [['prayer', 'Rugăciune pentru bolnavi', null], ['prayer', null, 'Fiți tari!\nȘi curajoși.'], ['sermon', 'Predica', null]]);
   const tro = (k, v) => t(k, v, 'ro');
+  const items = save([{ type: 'prayer', title: 'Rugăciune pentru bolnavi', who: 'Fratele Ion' }, { type: 'prayer', body: 'Fiți tari!\nȘi curajoși.' }, { type: 'sermon', title: 'Predica', who: ' Ovidiu Haidemak ' }]);
+  assert.deepStrictEqual(items.map((it) => [it.type, it.title, it.body, it.who]), [['prayer', 'Rugăciune pentru bolnavi', null, 'Fratele Ion'], ['prayer', null, 'Fiți tari!\nȘi curajoși.', null], ['sermon', 'Predica', null, 'Ovidiu Haidemak']], '"Cine" (migration 054) is kept and trimmed');
+  assert.ok(require('../lib/events').validateItems([{ type: 'sermon', who: 'x'.repeat(101) }], tro, () => null).error, '"Cine" has a limit');
+  assert.ok(!require('../lib/events').validateItems([{ type: 'sermon', who: 'Doar cine' }], tro, () => null).error, '"Cine" alone is enough');
   const { error } = require('../lib/events').validateItems([{ type: 'exhortation', title: 'x' }], tro, () => null);
   assert.ok(error, 'exhortation (052) is no type any more');
   // a title frame on the projector (the text's first line when there is no title)
   const state = { status: 'live', version: 1, eventId, projector: { source: 'content', itemId: items[1].id, step: 0 }, worship: { itemId: items[1].id, step: 0 }, mode: 'together', clock: null };
   const frame = projectorFrame(state, { items: evs.get(1, eventId).items }, new Map(), {});
-  assert.deepStrictEqual([frame.kind, frame.title], ['title', 'Fiți tari!']);
+  assert.deepStrictEqual([frame.kind, frame.title, frame.who], ['title', 'Fiți tari!', undefined]);
+  const withWho = projectorFrame({ ...state, projector: { ...state.projector, itemId: items[2].id }, worship: { itemId: items[2].id, step: 0 } }, { items: evs.get(1, eventId).items }, new Map(), {});
+  assert.deepStrictEqual([withWho.kind, withWho.title, withWho.who], ['title', 'Predica', 'Ovidiu Haidemak'], 'the person under the title on the projector');
   void ITEM_TYPES;
 });
 

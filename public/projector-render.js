@@ -306,6 +306,7 @@
           break;
         default:
           box.append(el('div', 'projector-title', frame.title || ''));
+          if (frame.who) box.append(el('div', 'projector-who', frame.who)); // "Cine": the person, under the title
       }
       return box;
     }

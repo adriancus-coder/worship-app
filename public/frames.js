@@ -12,7 +12,7 @@
 //   { kind: 'lyrics', lines }          the current section of a song, without chords
 //   { kind: 'verse', reference, text }
 //   { kind: 'announcement', title, body }
-//   { kind: 'title', title }           sermon / other items, a song deleted from the library
+//   { kind: 'title', title, who? }     sermon / prayer / other items (who: the person), a song deleted from the library
 //   { kind: 'video' }                  the prepared video, playing or paused (source video)
 // While a video is prepared (any source), frames also carry
 //   video: { state, seq, volume, position, media: { type: 'upload'|'file'|'youtube'|'vimeo'|'local', ... } }
@@ -68,7 +68,7 @@
       case 'video':
         return { kind: 'black' }; // played only through the video commands
       default:
-        return { kind: 'title', title: item.title || firstLine(item.body) };
+        return { kind: 'title', title: item.title || firstLine(item.body), ...(item.who ? { who: item.who } : {}) };
     }
   }
 
