@@ -674,7 +674,12 @@ main.wide.event-page { max-width: 1200px; }
 .type-other { color: var(--type-other); }
 
 .add-bar { display: flex; flex-wrap: wrap; gap: 8px; }
-.add-bar button { flex: 1 1 140px; }
+.add-bar > button, .add-bar > .menu { flex: 1 1 96px; min-width: 0; } /* "+ Cântare · + Verset · + Altele" on one row, from 320 */
+.add-bar > button, .add-bar > .menu > button { white-space: nowrap; }
+.add-bar > .menu > button { width: 100%; }
+.add-more-caret { margin-left: 0.3em; font-size: 0.8em; opacity: 0.8; }
+.add-more .menu-list { right: 0; } /* the button ends the row: the list hangs under its right edge, inside the pane (no sideways scroll) */
+.add-more .menu-item[data-add]::before { content: "+"; margin-right: 0.5em; font-weight: 700; }
 
 .item-detail { padding: 12px; }
 .setlist-item .item-detail { border-top: 1px solid var(--border); }

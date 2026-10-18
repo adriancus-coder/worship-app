@@ -1406,9 +1406,33 @@
     if (picked.last >= 0 && picked.last < state.items.length) focusItem(picked.last, null);
   });
 
+  // "+ Altele": the other item types, in a menu under the button (the pane scrolls to show it)
+  const addMore = $('add-more');
+  const addMoreButton = $('add-more-button');
+  const addMoreList = $('add-more-list');
+  function openAddMore(open) {
+    addMoreList.hidden = !open;
+    addMoreButton.setAttribute('aria-expanded', String(open));
+    if (open) {
+      addMoreList.scrollIntoView({ block: 'nearest' });
+      addMoreList.querySelector('button').focus();
+    }
+  }
+  addMoreButton.addEventListener('click', () => openAddMore(addMoreList.hidden));
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && !addMoreList.hidden) {
+      openAddMore(false);
+      addMoreButton.focus();
+    }
+  });
+  document.addEventListener('pointerdown', (event) => {
+    if (!addMoreList.hidden && !addMore.contains(event.target)) openAddMore(false);
+  });
+
   $('add-bar').addEventListener('click', (event) => {
     const button = event.target.closest('[data-add]');
     if (!button) return;
+    if (!addMoreList.hidden) openAddMore(false);
     if (button.dataset.add === 'song') {
       picked.ids.clear();
       picked.count = 0;

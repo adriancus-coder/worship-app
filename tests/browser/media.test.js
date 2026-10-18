@@ -46,6 +46,7 @@ module.exports = {
       if (width === 1024) {
         await p.goto(`${app.url}/events/${E}/edit`);
         await p.waitForSelector('#event:not([hidden])');
+        await p.click('#add-more-button'); // the other types are in the "+ Altele" menu
         await p.click('[data-add=video]');
         await p.waitForSelector('#it-media');
         await p.selectOption('#it-media', { label: 'clip' });

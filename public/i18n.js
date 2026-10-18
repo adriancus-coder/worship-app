@@ -1714,6 +1714,8 @@
         addSermon: 'Predică',
         addPrayer: 'Rugăciune',
         addOther: 'Altceva',
+        addMore: 'Altele',
+        addMoreLabel: 'Alte tipuri de elemente',
         types: {
           song: 'Cântare',
           verse: 'Verset',
@@ -3743,6 +3745,8 @@
         addSermon: 'Sermon',
         addPrayer: 'Prayer',
         addOther: 'Other',
+        addMore: 'More',
+        addMoreLabel: 'Other item types',
         types: {
           song: 'Song',
           verse: 'Verse',

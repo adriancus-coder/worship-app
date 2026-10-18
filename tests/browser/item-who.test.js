@@ -11,7 +11,8 @@ module.exports = {
     const E = app.seed.eventId;
     const p = await signIn('leader', { width: 375, lang: 'ro' });
     await p.goto(`${app.url}/events/${E}/edit`);
-    await p.waitForSelector('[data-add="prayer"]');
+    await p.waitForSelector('#add-more-button');
+    await p.click('#add-more-button'); // the other types are in the "+ Altele" menu
     await p.click('[data-add="prayer"]');
     await p.waitForSelector('#it-who');
     const labels = await p.$$eval('#it-type option', (os) => os.map((o) => o.textContent));
