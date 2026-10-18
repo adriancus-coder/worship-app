@@ -87,6 +87,7 @@ function createScreensHub({ db, logger, config }) {
       safeMargin,
       fitMin,
       logoUrl: logoUrl(adminId),
+      songKey: settings.keyShow(adminId) ? settings.chordNotationDefault(adminId) : null, // "Gama pe proiector"
       videoMedia: videoMedia(adminId, state.video, found ? found.items : []),
       backgrounds: backgrounds.forEvent(adminId, eventId, state.backgroundOverride),
       // The live translated text when the projector source is "Traducere · <limbă>" (bridge).

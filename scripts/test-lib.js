@@ -829,6 +829,10 @@ test('projector frames: sources, items, no chords, idle', () => {
   assert.strictEqual(frame(99, 0).kind, 'black', 'no item at the position');
   assert.deepStrictEqual(projectorFrame(null, null, null, { logoUrl: '/api/logo/x.png' }), { kind: 'idle', logoUrl: '/api/logo/x.png', version: 0, eventId: null, background: null, clock: null, safeMargin: 5, fitMin: 60 });
   assert.strictEqual(projectorFrame({ ...state(1, 0), status: 'finished' }, { items }, new Map()).kind, 'idle');
+  // "Gama pe proiector": the key on the first screen of a song only, in the asked notation
+  const keyed = new Map([[1, { ...song, key: 'D' }]]);
+  const withKey = (step, songKey) => projectorFrame(state(1, step), { items }, keyed, { songKey });
+  assert.deepStrictEqual([withKey(0, 'solfege').key, withKey(0, 'letters').key, withKey(1, 'letters').key, withKey(0, null).key, frame(1, 0).key], ['Re', 'D', undefined, undefined, undefined], 'the key: step 0 only, in the notation, never without the setting');
 });
 
 test('projector frames: translation source (bridge SV -> worship)', () => {

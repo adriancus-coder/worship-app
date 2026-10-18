@@ -40,6 +40,7 @@
     renderClock(res.body.clock);
     renderMargin(res.body.safeMargin);
     renderTimeFormat(res.body.timeFormat);
+    renderKeyShow(res.body.keyShow);
     renderEmail(res.body.email);
     renderPexels(res.body.pexels);
     renderAi(res.body.ai);
@@ -334,6 +335,22 @@
       out.className = `message ${res.ok ? 'success' : 'error'}`;
       out.textContent = res.ok ? t('settings.timeFormatSaved') : res.body.error || t('common.networkError');
       if (res.ok) renderTimeFormat(res.body.timeFormat);
+    });
+  }
+
+  // "Gama pe proiector": the song's key on the first screen of each song, or not.
+  function renderKeyShow(show) {
+    for (const button of document.querySelectorAll('[data-key-show]')) {
+      button.setAttribute('aria-pressed', String((button.dataset.keyShow === '1') === Boolean(show)));
+    }
+  }
+  for (const button of document.querySelectorAll('[data-key-show]')) {
+    button.addEventListener('click', async () => {
+      const res = await api('/api/settings/key-show', { method: 'PUT', body: { show: button.dataset.keyShow === '1' } });
+      const out = $('key-show-message');
+      out.className = `message ${res.ok ? 'success' : 'error'}`;
+      out.textContent = res.ok ? t(res.body.keyShow ? 'settings.keyShowSavedOn' : 'settings.keyShowSavedOff') : res.body.error || t('common.networkError');
+      if (res.ok) renderKeyShow(res.body.keyShow);
     });
   }
 

@@ -44,6 +44,7 @@ function createSettingsRouter({ db, auth, config, logger, screensHub, live, stor
       service: settings.service(req.adminId),
       clock: settings.clock(req.adminId),
       timeFormat: settings.timeFormat(req.adminId),
+      keyShow: settings.keyShow(req.adminId),
       safeMargin: settings.safeMargin(req.adminId),
       backgroundDefaults: backgrounds.defaults(req.adminId),
       backup: backups.lastBackup(req.adminId),
@@ -131,6 +132,15 @@ function createSettingsRouter({ db, auth, config, logger, screensHub, live, stor
     settings.set(req.adminId, 'time_format', format);
     live.settingsChanged(req.adminId); // live pages and screens re-read it at once
     res.json({ timeFormat: format });
+  });
+
+  // "Gama pe proiector": { show: boolean }. The screens re-render at once.
+  router.put('/api/settings/key-show', (req, res) => {
+    const show = (req.body || {}).show;
+    if (typeof show !== 'boolean') return res.status(400).json({ error: req.t('errors.badRequest') });
+    settings.set(req.adminId, 'key_show', show ? '1' : '0');
+    live.settingsChanged(req.adminId);
+    res.json({ keyShow: show });
   });
 
   // The church default chord notation, for users without their own preference.

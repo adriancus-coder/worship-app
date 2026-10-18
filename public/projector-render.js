@@ -51,11 +51,17 @@
     clockNode.className = 'display-clock';
     clockNode.setAttribute('aria-hidden', 'true');
     clockNode.hidden = true;
+    // The song's key (frame.key, "Gama pe proiector"): its own small layer, top left, sized
+    // like the clock (which never shows on a lyrics frame, so they never meet).
+    const keyNode = document.createElement('div');
+    keyNode.className = 'display-clock display-key top-left';
+    keyNode.setAttribute('aria-hidden', 'true');
+    keyNode.hidden = true;
     const guideNode = document.createElement('div');
     guideNode.className = 'projector-safe-guide';
     guideNode.setAttribute('aria-hidden', 'true');
     guideNode.hidden = !guide;
-    container.replaceChildren(backdrop, stage, guideNode, clockNode);
+    container.replaceChildren(backdrop, stage, guideNode, clockNode, keyNode);
     let margin = DEFAULT_SAFE_MARGIN; // % of each edge
 
     // The margin in px of this container (CSS variables for the stage, the clock and the guide).
@@ -122,6 +128,13 @@
       tick();
     }
     document.addEventListener('visibilitychange', () => { if (clock && document.visibilityState === 'visible') tick(); });
+
+    function applyKey(key) {
+      const text = key ? String(key) : '';
+      keyNode.hidden = !text;
+      if (keyNode.textContent !== text) keyNode.textContent = text;
+      if (text) sizeClock();
+    }
 
     function el(tag, className, text) {
       const node = document.createElement(tag);
@@ -363,7 +376,7 @@
 
     // The same picture: the version, a prepared video (its own layer), the background and the
     // clock (their own layers) do not count, except for the preview's video placeholder.
-    const picture = (f) => JSON.stringify({ ...f, version: 0, background: undefined, nextBackground: undefined, clock: undefined,
+    const picture = (f) => JSON.stringify({ ...f, version: 0, background: undefined, nextBackground: undefined, clock: undefined, key: undefined,
       // A translation frame keeps the same picture as its text streams in (kind + lang); the
       // lines are updated in place (no re-fade). Every other kind keeps its lines in the picture.
       lines: f.kind === 'translation' ? undefined : f.lines,
@@ -385,6 +398,7 @@
       applyMargin(frame.safeMargin);
       if (Number.isInteger(frame.fitMin) && frame.fitMin >= 30 && frame.fitMin <= 100 && frame.fitMin !== fitMin) { fitMin = frame.fitMin; if (current && sameFrame(frame, current)) fit(); }
       applyClock(frame.clock || null);
+      applyKey(frame.key || null);
       setBackground(frame.background || null, frame.kind === 'black');
       if (frame.nextBackground) load(frame.nextBackground);
       if (sameFrame(frame, current)) {
@@ -414,7 +428,7 @@
       sizeMargin();
       fit();
       if (shown) style(shown.layer, shown.bg);
-      if (clock) sizeClock();
+      if (clock || !keyNode.hidden) sizeClock();
     }
     if ('ResizeObserver' in window) new ResizeObserver(resized).observe(container);
     else window.addEventListener('resize', resized);

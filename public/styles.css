@@ -1144,6 +1144,9 @@ button.live-item:disabled { opacity: 1; cursor: default; }
   white-space: nowrap;
 }
 .display-clock[hidden] { display: none; }
+/* The song's key ("Gama pe proiector"): the clock's look at the clock's base size (its own
+   size is not the clock's chosen scale), top left, lighter than the lyrics. */
+.display-key { font-size: calc(var(--clock-base, 1.7rem) * 1.1); opacity: 0.8; }
 .display-clock.top-left { top: calc(var(--safe-y, 0px) + 20px * var(--clock-ratio, 1)); left: calc(var(--safe-x, 0px) + 24px * var(--clock-ratio, 1)); }
 .display-clock.top-right { top: calc(var(--safe-y, 0px) + 20px * var(--clock-ratio, 1)); right: calc(var(--safe-x, 0px) + 24px * var(--clock-ratio, 1)); }
 .display-clock.bottom-left { bottom: calc(var(--safe-y, 0px) + 20px * var(--clock-ratio, 1)); left: calc(var(--safe-x, 0px) + 24px * var(--clock-ratio, 1)); }

@@ -717,6 +717,30 @@ async function main() {
     await back;
   });
 
+  await step('"Gama pe proiector" (key_show): owner only; the key on the first screen of a song only, in the church notation; the screens re-render at once', async () => {
+    assert.strictEqual((await api('PUT', `/api/songs/${s1.id}`, leader, { song_key: 'G' })).status, 200);
+    assert.strictEqual((await api('PUT', '/api/settings/key-show', member, { show: true })).status, 403);
+    assert.strictEqual((await api('PUT', '/api/settings/key-show', owner, { show: 'yes' })).status, 400);
+    assert.strictEqual((await api('GET', '/api/settings', owner)).body.keyShow, false, 'off by default');
+    await send(lead.socket, { type: 'worship.goto', itemId: i1, step: 0 });
+    let frame = await frameWhere(screen, (f) => f.version === version);
+    assert.deepStrictEqual([frame.kind, frame.key], ['lyrics', undefined], 'no key while the setting is off');
+    assert.deepStrictEqual((await api('PUT', '/api/settings/key-show', owner, { show: true })).body, { keyShow: true });
+    frame = await frameWhere(screen, (f) => f.key === 'G');
+    assert.deepStrictEqual([frame.kind, frame.version, frame.clock.show], ['lyrics', version, false], 'the screen gets the key at once, on the same version; still no clock over the lyrics');
+    await send(lead.socket, { type: 'worship.goto', itemId: i1, step: 1 });
+    assert.strictEqual((await frameWhere(screen, (f) => f.version === version)).key, undefined, 'the second screen of the song: no key');
+    await api('PUT', '/api/settings/chord-notation', owner, { notation: 'solfege' });
+    await send(lead.socket, { type: 'worship.goto', itemId: i1, step: 0 });
+    assert.strictEqual((await frameWhere(screen, (f) => f.version === version)).key, 'Sol', 'in the church notation');
+    await api('PUT', '/api/settings/chord-notation', owner, { notation: 'letters' });
+    await api('PUT', '/api/settings/key-show', owner, { show: false });
+    await send(lead.socket, { type: 'worship.goto', itemId: i2, step: 0 });
+    await send(lead.socket, { type: 'worship.goto', itemId: i1, step: 0 });
+    assert.strictEqual((await frameWhere(screen, (f) => f.version === version)).key, undefined, 'off again');
+    assert.strictEqual((await api('PUT', `/api/songs/${s1.id}`, leader, { song_key: '' })).status, 200);
+  });
+
   await step('together: leader and operator move ONE position, applied in order with versions', async () => {
     const op = await joined(operator, ev.id);
     const opStates = [];
