@@ -65,6 +65,8 @@ const PAIRS = [
   ['type-video', 'surface', TEXT, 'badge: video'],
   ['type-announcement', 'surface', TEXT, 'badge: announcement'],
   ['type-sermon', 'surface', TEXT, 'badge: sermon'],
+  ['type-prayer', 'surface', TEXT, 'badge: prayer'],
+  ['type-exhortation', 'surface', TEXT, 'badge: exhortation'],
   ['type-other', 'surface', TEXT, 'badge: other'],
   ['on-live', 'live-fill', TEXT, 'LIVE badge'],
   ['on-danger', 'danger-fill', TEXT, 'danger button'],

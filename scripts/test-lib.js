@@ -1060,6 +1060,23 @@ function liveFixture() {
   return { mem, evs, live, eventId, items, save };
 }
 
+test('item types (migration 052): prayer and exhortation validate, store and render as a title like a sermon', () => {
+  const { evs, eventId, save } = liveFixture();
+  const { ITEM_TYPES } = require('../lib/events');
+  const { projectorFrame } = require('../lib/projector');
+  assert.deepStrictEqual(ITEM_TYPES, ['song', 'verse', 'video', 'announcement', 'sermon', 'prayer', 'exhortation', 'other']);
+  const items = save([{ type: 'prayer', title: 'Rugăciune pentru bolnavi' }, { type: 'exhortation', body: 'Fiți tari!\nȘi curajoși.' }, { type: 'sermon', title: 'Predica' }]);
+  assert.deepStrictEqual(items.map((it) => [it.type, it.title, it.body]), [['prayer', 'Rugăciune pentru bolnavi', null], ['exhortation', null, 'Fiți tari!\nȘi curajoși.'], ['sermon', 'Predica', null]]);
+  const tro = (k, v) => t(k, v, 'ro');
+  const { error } = require('../lib/events').validateItems([{ type: 'blessing', title: 'x' }], tro, () => null);
+  assert.ok(error, 'an unknown type is refused');
+  // a title frame on the projector (the text's first line when there is no title)
+  const state = { status: 'live', version: 1, eventId, projector: { source: 'content', itemId: items[1].id, step: 0 }, worship: { itemId: items[1].id, step: 0 }, mode: 'together', clock: null };
+  const frame = projectorFrame(state, { items: evs.get(1, eventId).items }, new Map(), {});
+  assert.deepStrictEqual([frame.kind, frame.title], ['title', 'Fiți tari!']);
+  void ITEM_TYPES;
+});
+
 test('item lyrics (migration 051): a song item\'s own sections replace the library\'s for that event only; the setlist key follows; a copy keeps them', () => {
   const { mem, evs, live, eventId, items } = liveFixture();
   const { validateSections } = require('../lib/songs');

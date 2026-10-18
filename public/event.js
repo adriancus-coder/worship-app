@@ -788,10 +788,11 @@
   }
 
   function editFields(item) {
-    const typeSelect = item.type === 'sermon' || item.type === 'other'
+    const TITLE_TYPES = ['sermon', 'prayer', 'exhortation', 'other']; // a title (+ text) on the projector
+    const typeSelect = TITLE_TYPES.includes(item.type)
       ? field('it-type', t('setlist.typeLabel'), bind(item, 'type', (() => {
         const s = el('select', { id: 'it-type' },
-          ['sermon', 'other'].map((type) => el('option', { value: type, text: t(`setlist.types.${type}`) })));
+          TITLE_TYPES.map((type) => el('option', { value: type, text: t(`setlist.types.${type}`) })));
         s.value = item.type;
         return s;
       })(), () => {
