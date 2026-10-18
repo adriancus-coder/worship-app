@@ -1,16 +1,17 @@
 'use strict';
 
 const express = require('express');
-const { RELEASES, latest } = require('../lib/whats-new');
+const { releasesFor, latest } = require('../lib/whats-new');
 
 // GET /api/whats-new  { latest, releases: [{ id, title, items }] } in the request language,
-// newest first (the last 10): what public/whats-new.js shows after an update.
+// newest first (the last 10), only what is new for this person's role / rights: what
+// public/whats-new.js shows after an update. `latest` is the newest release of all, so a
+// device is "up to date" even when nothing in it was for this person.
 function createWhatsNewRouter({ auth }) {
   const router = express.Router();
   router.get('/api/whats-new', auth.requireUser, (req, res) => {
     res.set('Cache-Control', 'no-store');
-    const lang = req.lang === 'en' ? 'en' : 'ro';
-    res.json({ latest: latest(), releases: RELEASES.slice(0, 10).map((r) => ({ id: r.id, title: r[lang].title, items: r[lang].items })) });
+    res.json({ latest: latest(), releases: releasesFor(req.user, req.lang) });
   });
   return router;
 }

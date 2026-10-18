@@ -57,7 +57,10 @@ Working name: `worship-app`. The public name may change — keep it in ONE place
 - `npm run check` must pass before every commit.
 - Diagnostic/debug tools are never removed unless Adrian explicitly confirms.
 - With every change a person notices, add an entry on top of `lib/whats-new.js` (RO + EN):
-  the app shows it as "Ce e nou" after the update.
+  the app shows it as "Ce e nou" after the update. Every item says whom it is for (`for`:
+  `'all'`, or rights / roles): each person sees only what is new for their role.
+- Before implementing a feature, ask Adrian whom it is for (which roles / pages), unless the
+  request already says so, so the same thing is not built twice for different roles.
 
 ## UI rules
 Actions and selection must never look alike (styles in `public/styles.css`, "UI rules").

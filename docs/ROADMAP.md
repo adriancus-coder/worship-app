@@ -377,7 +377,9 @@ never implement a later stage early. Mockups: claude.ai design canvas
   loaded by the menu): the releases newer than the last one seen on the device open as a
   pop-up (date, title, a short list; "Am înțeles"); a device that saw none sees the newest
   once; never over the invitations pop-up. "Mai mult → Ce e nou" reopens the whole list.
-  Add an entry on top of `lib/whats-new.js` RELEASES with every deploy worth telling.
+  Add an entry on top of `lib/whats-new.js` RELEASES with every deploy worth telling; every
+  item says whom it is for (`for`: `'all'`, or rights / roles), and `GET /api/whats-new`
+  returns only what is for this person (never an empty release).
 - **Lyrics edited during the service** ("✎ Versuri" on the leader live page and the console,
   `public/live-lyrics-edit.js`): the song on screen in the same section editor as the library,
   in a non-modal sheet. "Salvează doar pentru acest eveniment" keeps the text on the item

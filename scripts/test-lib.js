@@ -3238,9 +3238,23 @@ test('answer links (migration 050): one per event and person, replaced by a new 
   mem.close();
 });
 
-test('whats-new: releases newest first with RO / EN texts; releasesSince gives the newer ones (the newest only for a device that saw none)', () => {
-  const { RELEASES, releasesSince, latest } = require('../lib/whats-new');
-  assert.ok(RELEASES.length >= 1 && RELEASES.every((r) => /^\d{4}-\d{2}-\d{2}$/.test(r.id) && r.ro.title && r.en.title && r.ro.items.length && r.ro.items.length === r.en.items.length));
+test('whats-new: releases newest first with RO / EN texts, every item says whom it is for; releasesFor filters by role / rights; releasesSince gives the newer ones (the newest only for a device that saw none)', () => {
+  const { RELEASES, releasesFor, releasesSince, isFor, latest } = require('../lib/whats-new');
+  const { PERMS } = require('../lib/roles');
+  const ROLES = ['owner', 'presenter', 'leader', 'operator', 'member'];
+  assert.ok(RELEASES.length >= 1 && RELEASES.every((r) => /^\d{4}-\d{2}-\d{2}$/.test(r.id) && r.title.ro && r.title.en && r.items.length
+    && r.items.every((it) => it.ro && it.en && (it.for === 'all' || (Array.isArray(it.for) && it.for.length && it.for.every((f) => PERMS.includes(f) || ROLES.includes(f)))))));
+  const owner = { role: 'owner', perms: [...PERMS] };
+  const member = { role: 'member', perms: [] };
+  assert.deepStrictEqual(isFor({ for: 'all' }, member), true);
+  assert.deepStrictEqual([isFor({ for: ['events'] }, member), isFor({ for: ['events'] }, { role: 'leader', perms: ['events'] }), isFor({ for: ['owner'] }, owner), isFor({ for: ['owner'] }, { role: 'leader', perms: ['events'] })], [false, true, true, false]);
+  const forOwner = releasesFor(owner, 'ro');
+  const forMember = releasesFor(member, 'en');
+  assert.deepStrictEqual(forOwner.map((r) => r.id), RELEASES.map((r) => r.id), 'the owner (every right) gets every release');
+  assert.deepStrictEqual(forOwner.map((r) => r.items.length), RELEASES.map((r) => r.items.length), 'and every item');
+  assert.ok(forMember.every((r) => r.items.length) && forMember.reduce((n, r) => n + r.items.length, 0) < forOwner.reduce((n, r) => n + r.items.length, 0), 'a member gets fewer items, never an empty release');
+  assert.strictEqual(forMember[0].title, RELEASES.find((r) => r.id === forMember[0].id).title.en, 'in the asked language');
+  assert.deepStrictEqual(releasesFor({ role: 'member', perms: [] }, 'ro', 1).length, 1, 'limit');
   assert.ok(RELEASES.every((r, i) => i === 0 || RELEASES[i - 1].id > r.id), 'newest first');
   assert.strictEqual(latest(), RELEASES[0].id);
   assert.deepStrictEqual(releasesSince(null).map((r) => r.id), [RELEASES[0].id]);
