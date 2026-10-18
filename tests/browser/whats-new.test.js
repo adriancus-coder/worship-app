@@ -14,14 +14,16 @@ module.exports = {
   async run({ app, signIn, check }) {
     const E = app.seed.eventId;
     await app.api(app.cookies.leader, 'POST', `/api/events/${E}/attendance/send`, {}); // an invitation for everyone
-    const latest = (await app.api(app.cookies.member, 'GET', '/api/whats-new')).body.latest;
+    const news = (await app.api(app.cookies.member, 'GET', '/api/whats-new')).body;
+    const latest = news.latest;
+    const newest = news.releases[0].items.length; // whatever the newest release lists
 
     const p = await signIn('member', { width: 375, lang: 'ro' });
     await p.evaluate(() => { localStorage.setItem('wa_test_news', '1'); localStorage.removeItem('wa_whats_new_seen'); });
     await p.goto(`${app.url}/app`);
     await p.waitForSelector('#whats-new[open]');
     const shape = await p.evaluate(() => ({ kicker: document.querySelector('#whats-new .answer-popup-kicker').textContent, items: document.querySelectorAll('#whats-new li').length, titles: document.querySelectorAll('#whats-new h3').length, invite: Boolean(document.querySelector('#answer-popup[open]')) }));
-    check(shape.kicker === 'Ce e nou' && shape.items >= 3 && shape.titles === 0 && !shape.invite, 'a device that saw none: the newest release, before the invitation pop-up', shape);
+    check(shape.kicker === 'Ce e nou' && shape.items === newest && shape.titles === 0 && !shape.invite, 'a device that saw none: the newest release, before the invitation pop-up', shape);
     const a = await layoutAudit(p, '#whats-new');
     check(!a.overflow && !a.small.length, 'the pop-up 375: no overflow, targets >= 44 px', a);
     await p.click('#whats-new-ok');
