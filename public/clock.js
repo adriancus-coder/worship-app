@@ -16,23 +16,27 @@
   const SCALE_MAX = 1.8;
   const SCALE_STEP = 0.1;
   const DEFAULTS = Object.freeze({ show: true, position: 'bottom-right', scale: 1.8 });
+  // The song's key on the projector ("Gama pe proiector") shares the model: off, top left, 100 %.
+  const KEY_DEFAULTS = Object.freeze({ show: false, position: 'top-left', scale: 1 });
 
   // A scale kept inside the range, on the 0.1 grid; NaN -> the default.
-  function clampScale(value) {
+  function clampScale(value, fallback = DEFAULTS.scale) {
     const n = Number(value);
-    if (!Number.isFinite(n)) return DEFAULTS.scale;
+    if (!Number.isFinite(n)) return fallback;
     return Math.round(Math.min(SCALE_MAX, Math.max(SCALE_MIN, n)) * 10) / 10;
   }
 
-  // Settings with every field valid (unknown values fall back to the defaults).
-  function normalize(clock) {
+  // Settings with every field valid (unknown values fall back to the defaults: the clock's,
+  // or KEY_DEFAULTS for the song's key).
+  function normalize(clock, defaults = DEFAULTS) {
     const c = clock && typeof clock === 'object' ? clock : {};
     return {
-      show: c.show === undefined ? DEFAULTS.show : Boolean(c.show),
-      position: POSITIONS.includes(c.position) ? c.position : DEFAULTS.position,
-      scale: clampScale(c.scale === undefined ? DEFAULTS.scale : c.scale),
+      show: c.show === undefined ? defaults.show : Boolean(c.show),
+      position: POSITIONS.includes(c.position) ? c.position : defaults.position,
+      scale: clampScale(c.scale === undefined ? defaults.scale : c.scale, defaults.scale),
     };
   }
+  const normalizeKey = (key) => normalize(key, KEY_DEFAULTS);
 
   // A change request ({ show?, position?, scale? }) -> the same with only valid, known fields,
   // or null when it holds nothing usable.
@@ -77,7 +81,7 @@
     return h > 0 ? `${h}:${two(m)}:${two(s)}` : `${two(m)}:${two(s)}`;
   }
 
-  const CLOCK = { POSITIONS, TIME_FORMATS, SCALE_MIN, SCALE_MAX, SCALE_STEP, DEFAULTS, clampScale, normalize, parsePatch, formatTime, formatDuration };
+  const CLOCK = { POSITIONS, TIME_FORMATS, SCALE_MIN, SCALE_MAX, SCALE_STEP, DEFAULTS, KEY_DEFAULTS, clampScale, normalize, normalizeKey, parsePatch, formatTime, formatDuration };
 
   if (typeof module === 'object' && module.exports) module.exports = CLOCK;
   else root.CLOCK = CLOCK;

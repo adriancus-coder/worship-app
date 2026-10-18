@@ -40,7 +40,7 @@
     renderClock(res.body.clock);
     renderMargin(res.body.safeMargin);
     renderTimeFormat(res.body.timeFormat);
-    renderKeyShow(res.body.keyShow);
+    renderSongKey(res.body.songKey);
     renderEmail(res.body.email);
     renderPexels(res.body.pexels);
     renderAi(res.body.ai);
@@ -338,20 +338,21 @@
     });
   }
 
-  // "Gama pe proiector": the song's key on the first screen of each song, or not.
-  function renderKeyShow(show) {
-    for (const button of document.querySelectorAll('[data-key-show]')) {
-      button.setAttribute('aria-pressed', String((button.dataset.keyShow === '1') === Boolean(show)));
-    }
-  }
-  for (const button of document.querySelectorAll('[data-key-show]')) {
-    button.addEventListener('click', async () => {
-      const res = await api('/api/settings/key-show', { method: 'PUT', body: { show: button.dataset.keyShow === '1' } });
-      const out = $('key-show-message');
+  // "Gama pe proiector" a new event starts with (the same controls as the clock's).
+  let songKey = null;
+  const keyPanel = window.CLOCK_PANEL.create($('key-panel'), {
+    t, el, kind: 'key', prefix: 'key-default',
+    onChange: async (patch) => {
+      const res = await api('/api/settings/song-key', { method: 'PUT', body: patch });
+      const out = $('key-message');
       out.className = `message ${res.ok ? 'success' : 'error'}`;
-      out.textContent = res.ok ? t(res.body.keyShow ? 'settings.keyShowSavedOn' : 'settings.keyShowSavedOff') : res.body.error || t('common.networkError');
-      if (res.ok) renderKeyShow(res.body.keyShow);
-    });
+      out.textContent = res.ok ? t('settings.keySaved') : res.body.error || t('common.networkError');
+      if (res.ok) renderSongKey(res.body.songKey);
+    },
+  });
+  function renderSongKey(value) {
+    if (value) songKey = value;
+    if (songKey) keyPanel.update({ clock: songKey, enabled: true });
   }
 
   function renderThemeDefault(theme) {
@@ -424,6 +425,7 @@
     renderPexels(null);
     renderAi(null);
     clockPanel.render();
+    keyPanel.render();
     renderBackup(null);
     renderStorage(null);
     renderBackgrounds(bg.defaults).catch(() => {});

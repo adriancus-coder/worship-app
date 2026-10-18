@@ -420,6 +420,8 @@
   const backgroundButton = window.BG_PICKER.liveButton($('bg-live'), { send });
   // The corner clock (clock.set: show / corner / size; key K toggles it).
   const clockPanel = window.CLOCK_PANEL.create($('clock-panel'), { t, el, onChange: (patch) => send('clock.set', patch) });
+  // "Gama pe proiector" (key.set: show / corner / size; key G toggles it).
+  const keyPanel = window.CLOCK_PANEL.create($('key-panel'), { t, el, kind: 'key', prefix: 'key', onChange: (patch) => send('key.set', patch) });
 
   function renderProjector() {
     const snap = state.snap;
@@ -440,6 +442,7 @@
     const planned = Boolean(snap) && snap.status === 'planned';
     $('prep-hint').hidden = !planned;
     clockPanel.update({ clock: snap && snap.clock, enabled: (live || planned) && !emergency.active });
+    keyPanel.update({ clock: snap && snap.songKey, enabled: (live || planned) && !emergency.active });
     // Separate: the operator owns the projector. The whole panel goes (preview, sources,
     // background, clock, video, screens); only "Proiectorul e la … · Sari acolo" and the
     // switches stay, and the step grid takes the width. B / L / K do nothing here then.
@@ -745,6 +748,8 @@
       toggleSource('logo'); // logo <-> content
     } else if (event.key === 'k' || event.key === 'K') {
       if (!isSplit()) clockPanel.toggle(); // the corner clock on / off
+    } else if (event.key === 'g' || event.key === 'G') {
+      if (!isSplit()) keyPanel.toggle(); // "Gama pe proiector" on / off
     }
   });
 
@@ -760,6 +765,7 @@
     videoPanel.render();
     modes.render();
     clockPanel.render();
+    keyPanel.render();
     liveClock.render();
     // Section labels come from the server in the page language: reload.
     const key = state.loadedKey;

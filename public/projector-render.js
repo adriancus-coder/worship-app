@@ -51,8 +51,8 @@
     clockNode.className = 'display-clock';
     clockNode.setAttribute('aria-hidden', 'true');
     clockNode.hidden = true;
-    // The song's key (frame.key, "Gama pe proiector"): its own small layer, top left, sized
-    // like the clock (which never shows on a lyrics frame, so they never meet).
+    // The song's key (frame.key: { text, position, scale }, "Gama pe proiector"): its own small
+    // layer in a corner, sized like the clock (which never shows on a lyrics frame).
     const keyNode = document.createElement('div');
     keyNode.className = 'display-clock display-key top-left';
     keyNode.setAttribute('aria-hidden', 'true');
@@ -130,10 +130,13 @@
     document.addEventListener('visibilitychange', () => { if (clock && document.visibilityState === 'visible') tick(); });
 
     function applyKey(key) {
-      const text = key ? String(key) : '';
+      const text = key && key.text ? String(key.text) : '';
       keyNode.hidden = !text;
+      if (!text) return;
       if (keyNode.textContent !== text) keyNode.textContent = text;
-      if (text) sizeClock();
+      keyNode.className = `display-clock display-key ${key.position || 'top-left'}`;
+      container.style.setProperty('--key-scale', String(key.scale || 1));
+      sizeClock();
     }
 
     function el(tag, className, text) {

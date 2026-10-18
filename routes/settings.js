@@ -44,7 +44,7 @@ function createSettingsRouter({ db, auth, config, logger, screensHub, live, stor
       service: settings.service(req.adminId),
       clock: settings.clock(req.adminId),
       timeFormat: settings.timeFormat(req.adminId),
-      keyShow: settings.keyShow(req.adminId),
+      songKey: settings.songKey(req.adminId),
       safeMargin: settings.safeMargin(req.adminId),
       backgroundDefaults: backgrounds.defaults(req.adminId),
       backup: backups.lastBackup(req.adminId),
@@ -134,13 +134,11 @@ function createSettingsRouter({ db, auth, config, logger, screensHub, live, stor
     res.json({ timeFormat: format });
   });
 
-  // "Gama pe proiector": { show: boolean }. The screens re-render at once.
-  router.put('/api/settings/key-show', (req, res) => {
-    const show = (req.body || {}).show;
-    if (typeof show !== 'boolean') return res.status(400).json({ error: req.t('errors.badRequest') });
-    settings.set(req.adminId, 'key_show', show ? '1' : '0');
-    live.settingsChanged(req.adminId);
-    res.json({ keyShow: show });
+  // "Gama pe proiector", what a new event starts with: { show?, position?, scale? }.
+  router.put('/api/settings/song-key', (req, res) => {
+    const patch = parseClockPatch(req.body);
+    if (!patch) return res.status(400).json({ error: req.t('errors.keyInvalid') });
+    res.json({ songKey: settings.setSongKey(req.adminId, patch) });
   });
 
   // The church default chord notation, for users without their own preference.

@@ -305,6 +305,7 @@
     const planned = state.snap.status === 'planned';
     $('prep-hint').hidden = !planned;
     clockPanel.update({ clock: state.snap.clock, enabled: live() || planned });
+    keyPanel.update({ clock: state.snap.songKey, enabled: live() || planned });
     $('op-new-song').disabled = !live();
     addSearch.render(); // its actions follow live()
     videoPanel.setSetlist(items());
@@ -355,6 +356,8 @@
   const backgroundButton = window.BG_PICKER.liveButton($('bg-live'), { send });
   // The corner clock (clock.set: show / corner / size; key K toggles it).
   const clockPanel = window.CLOCK_PANEL.create($('clock-panel'), { t, el, onChange: (patch) => send('clock.set', patch) });
+  // "Gama pe proiector" (key.set: show / corner / size; key G toggles it).
+  const keyPanel = window.CLOCK_PANEL.create($('key-panel'), { t, el, kind: 'key', prefix: 'key', onChange: (patch) => send('key.set', patch) });
   // "Propuneri (n)" under the add panel (public/proposals-ui.js).
   window.PROPOSALS_UI.roles($('proposals'), { eventId, live: () => Boolean(state.snap && state.snap.status === 'live'), position: 'afterCurrent' });
   // The bridge to Sanctuary Voice (stage 8): connect a code, the two switches, revoke,
@@ -431,6 +434,7 @@
       b: () => toggleSource('black'),
       l: () => toggleSource('logo'),
       k: () => clockPanel.toggle(),
+      g: () => keyPanel.toggle(),
       w: () => { if (split()) send('projector.syncToWorship'); },
     };
     const action = keys[event.key.length === 1 ? event.key.toLowerCase() : event.key];
@@ -476,6 +480,7 @@
     render();
     videoPanel.render();
     clockPanel.render();
+    keyPanel.render();
     liveClock.render();
     // Section labels come from the server in the connection's language: reconnect.
     state.client.socket.disconnect().connect();

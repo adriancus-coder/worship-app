@@ -28,9 +28,10 @@
 //   clock: { show, position, scale, timeZone, format } | null
 // from the live state (state.clock) or, idle, the church defaults (the `clock` option);
 // `show` is false on a video frame (never over a video). The screens tick it themselves.
-// And the song's key ("Gama pe proiector", the church setting key_show): a lyrics frame on
-// the first screen of a song carries `key` ('Re', in the church notation), small, top left
-// (public/projector-render.js); no `key` field otherwise.
+// And the song's key ("Gama pe proiector", state.songKey / the church defaults): a lyrics
+// frame on the first screen of a song carries
+//   key: { text: 'Re' (in the church notation), position, scale }
+// its own small layer (public/projector-render.js); no `key` field otherwise.
 
 (function (root) {
   const shared = typeof module === 'object' && module.exports;
@@ -54,8 +55,8 @@
     return String(text || '').split('\n').find((line) => line.trim()) || '';
   }
 
-  // Content of the item at a position -> frame fields. songKey: the notation to show the
-  // song's key in on its first screen ('letters' | 'solfege'), or null for no key.
+  // Content of the item at a position -> frame fields. songKey: { notation, position, scale }
+  // to show the song's key on its first screen, or null for no key.
   function contentFrame(item, step, song, songKey = null) {
     if (!item) return { kind: 'black' };
     switch (item.type) {
@@ -64,7 +65,7 @@
         const entry = song.arrangement[step];
         const section = entry && song.sections.find((s) => s.id === entry.sectionId);
         if (!section) return { kind: 'black' };
-        const key = songKey && step === 0 && song.key ? { key: toNotation(song.key, songKey) } : {};
+        const key = songKey && step === 0 && song.key ? { key: { text: toNotation(song.key, songKey.notation), position: songKey.position, scale: songKey.scale } } : {};
         return { kind: 'lyrics', lines: lyricLines(section.content), ...key };
       }
       case 'verse':
@@ -115,7 +116,8 @@
   // clock: the church default clock (+ timeZone) for the idle screen; live frames use state.clock.
   // safeMargin: % of each edge kept free of text, logo and clock (0-12; overscan), on every frame.
   // fitMin: the lyrics auto-fit minimum (% of the maximum size, 30-100; LYRICS_FIT_MIN_PCT).
-  // songKey: 'letters' | 'solfege' to show the song's key on its first screen, null for none.
+  // songKey: { notation: 'letters' | 'solfege', position, scale } to show the song's key on its
+  // first screen, null for none.
   function projectorFrame(state, event, songs, { logoUrl = null, videoMedia = null, backgrounds = null, clock = null, safeMargin = DEFAULT_SAFE_MARGIN, fitMin = DEFAULT_FIT_MIN, translation = null, songKey = null } = {}) {
     const margin = Number.isInteger(safeMargin) && safeMargin >= 0 && safeMargin <= 12 ? safeMargin : DEFAULT_SAFE_MARGIN;
     const fit = Number.isInteger(fitMin) && fitMin >= 30 && fitMin <= 100 ? fitMin : DEFAULT_FIT_MIN;

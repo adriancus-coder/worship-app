@@ -831,8 +831,9 @@ test('projector frames: sources, items, no chords, idle', () => {
   assert.strictEqual(projectorFrame({ ...state(1, 0), status: 'finished' }, { items }, new Map()).kind, 'idle');
   // "Gama pe proiector": the key on the first screen of a song only, in the asked notation
   const keyed = new Map([[1, { ...song, key: 'D' }]]);
-  const withKey = (step, songKey) => projectorFrame(state(1, step), { items }, keyed, { songKey });
-  assert.deepStrictEqual([withKey(0, 'solfege').key, withKey(0, 'letters').key, withKey(1, 'letters').key, withKey(0, null).key, frame(1, 0).key], ['Re', 'D', undefined, undefined, undefined], 'the key: step 0 only, in the notation, never without the setting');
+  const withKey = (step, notation, position = 'top-left', scale = 1) => projectorFrame(state(1, step), { items }, keyed, { songKey: notation ? { notation, position, scale } : null });
+  assert.deepStrictEqual([withKey(0, 'solfege').key, withKey(0, 'letters', 'top-right', 1.4).key, withKey(1, 'letters').key, withKey(0, null).key, frame(1, 0).key],
+    [{ text: 'Re', position: 'top-left', scale: 1 }, { text: 'D', position: 'top-right', scale: 1.4 }, undefined, undefined, undefined], 'the key: step 0 only, in the notation, with its corner and size; never without the setting');
 });
 
 test('projector frames: translation source (bridge SV -> worship)', () => {
@@ -1261,7 +1262,7 @@ test('live store: "Pe ce ecrane" (migration 040): null = every screen; chosen id
 test('live store: projector preparation before the start (migration 043): clock, background, screens, video while planned; the start keeps them; nothing else; not on a template', () => {
   const { mem, live, eventId } = liveFixture();
   const { PREPARE_COMMANDS } = require('../lib/live');
-  assert.deepStrictEqual(PREPARE_COMMANDS, ['clock.set', 'background.set', 'projector.screens', 'video.prepare', 'video.volume']);
+  assert.deepStrictEqual(PREPARE_COMMANDS, ['clock.set', 'key.set', 'background.set', 'projector.screens', 'video.prepare', 'video.volume']);
   const screens = require('../lib/screens').createScreenStore(mem);
   const a = screens.create(1, 1, 'Sală').id;
   screens.create(1, 1, 'Hol');

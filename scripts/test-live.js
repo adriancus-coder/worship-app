@@ -717,27 +717,36 @@ async function main() {
     await back;
   });
 
-  await step('"Gama pe proiector" (key_show): owner only; the key on the first screen of a song only, in the church notation; the screens re-render at once', async () => {
+  await step('"Gama pe proiector": church defaults (owner), key.set live (event roles, prepared too); the key on the first screen of a song only, with its corner and size, in the church notation', async () => {
     assert.strictEqual((await api('PUT', `/api/songs/${s1.id}`, leader, { song_key: 'G' })).status, 200);
-    assert.strictEqual((await api('PUT', '/api/settings/key-show', member, { show: true })).status, 403);
-    assert.strictEqual((await api('PUT', '/api/settings/key-show', owner, { show: 'yes' })).status, 400);
-    assert.strictEqual((await api('GET', '/api/settings', owner)).body.keyShow, false, 'off by default');
+    assert.strictEqual((await api('PUT', '/api/settings/song-key', member, { show: true })).status, 403);
+    assert.strictEqual((await api('PUT', '/api/settings/song-key', owner, { show: 'yes' })).status, 400);
+    assert.deepStrictEqual((await api('GET', '/api/settings', owner)).body.songKey, { show: false, position: 'top-left', scale: 1 }, 'off by default, top left, 100 %');
     await send(lead.socket, { type: 'worship.goto', itemId: i1, step: 0 });
     let frame = await frameWhere(screen, (f) => f.version === version);
-    assert.deepStrictEqual([frame.kind, frame.key], ['lyrics', undefined], 'no key while the setting is off');
-    assert.deepStrictEqual((await api('PUT', '/api/settings/key-show', owner, { show: true })).body, { keyShow: true });
-    frame = await frameWhere(screen, (f) => f.key === 'G');
-    assert.deepStrictEqual([frame.kind, frame.version, frame.clock.show], ['lyrics', version, false], 'the screen gets the key at once, on the same version; still no clock over the lyrics');
+    assert.deepStrictEqual([frame.kind, frame.key], ['lyrics', undefined], 'no key while off');
+    assert.strictEqual((await emit(mem.socket, 'live:command', { eventId: ev.id, type: 'key.set', show: true })).code, 'forbidden');
+    assert.strictEqual((await send(lead.socket, { type: 'key.set' })).code, 'badCommand');
+    const reply = await send(lead.socket, { type: 'key.set', show: true, expectedVersion: version });
+    assert.strictEqual(reply.ok, true, JSON.stringify(reply));
+    assert.deepStrictEqual((await memberAt(version)).songKey, { show: true, position: 'top-left', scale: 1 }, 'broadcast in the snapshots');
+    frame = await frameWhere(screen, (f) => f.version === version);
+    assert.deepStrictEqual([frame.kind, frame.key, frame.clock.show], ['lyrics', { text: 'G', position: 'top-left', scale: 1 }, false], 'the key on the frame; still no clock over the lyrics');
+    await send(ownerSocket, { type: 'key.set', position: 'top-right', scale: 1.45 });
+    assert.deepStrictEqual((await frameWhere(screen, (f) => f.version === version)).key, { text: 'G', position: 'top-right', scale: 1.5 }, 'corner and size (the scale on the 0.1 grid)');
     await send(lead.socket, { type: 'worship.goto', itemId: i1, step: 1 });
     assert.strictEqual((await frameWhere(screen, (f) => f.version === version)).key, undefined, 'the second screen of the song: no key');
     await api('PUT', '/api/settings/chord-notation', owner, { notation: 'solfege' });
     await send(lead.socket, { type: 'worship.goto', itemId: i1, step: 0 });
-    assert.strictEqual((await frameWhere(screen, (f) => f.version === version)).key, 'Sol', 'in the church notation');
+    assert.strictEqual((await frameWhere(screen, (f) => f.version === version)).key.text, 'Sol', 'in the church notation');
     await api('PUT', '/api/settings/chord-notation', owner, { notation: 'letters' });
-    await api('PUT', '/api/settings/key-show', owner, { show: false });
-    await send(lead.socket, { type: 'worship.goto', itemId: i2, step: 0 });
-    await send(lead.socket, { type: 'worship.goto', itemId: i1, step: 0 });
+    await send(lead.socket, { type: 'key.set', show: false });
     assert.strictEqual((await frameWhere(screen, (f) => f.version === version)).key, undefined, 'off again');
+    // the church defaults: what the next event starts with
+    assert.deepStrictEqual((await api('PUT', '/api/settings/song-key', owner, { show: true, position: 'bottom-left', scale: 0.8 })).body.songKey, { show: true, position: 'bottom-left', scale: 0.8 });
+    const evK = (await api('POST', '/api/events', owner, { name: 'Gama', eventDate: day(1) })).body.event;
+    assert.deepStrictEqual((await joined(leader, evK.id)).state.songKey, { show: true, position: 'bottom-left', scale: 0.8 }, 'an event not started yet shows what it would start with');
+    await api('PUT', '/api/settings/song-key', owner, { show: false, position: 'top-left', scale: 1 });
     assert.strictEqual((await api('PUT', `/api/songs/${s1.id}`, leader, { song_key: '' })).status, 200);
   });
 

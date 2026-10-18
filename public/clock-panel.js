@@ -4,23 +4,27 @@
 // settings page share: the "Ceas" toggle (key K on the live pages), the corner (a selection
 // group of the four corners) and the size (70 - 180 %, step 10, shown as a percentage).
 //
-//   const panel = CLOCK_PANEL.create(container, { t, el, onChange, prefix });
+//   const panel = CLOCK_PANEL.create(container, { t, el, onChange, prefix, kind });
 //   panel.update({ clock, enabled });   // clock: { show, position, scale }; enabled: live
 //   panel.toggle();                     // key K: show <-> hidden
 //   panel.render();                     // after a language change
 // onChange(patch) receives { show } | { position } | { scale } (the live pages send
-// clock.set, the settings page saves the church defaults).
+// clock.set, the settings page saves the church defaults). kind: 'clock' (default) or
+// 'key': the same controls for "Gama pe proiector" (key G; labels live.projector.key*;
+// key.set / the church defaults).
 
 (function () {
-  const { POSITIONS, SCALE_MIN, SCALE_MAX, SCALE_STEP, normalize } = window.CLOCK;
+  const { POSITIONS, SCALE_MIN, SCALE_MAX, SCALE_STEP, normalize, normalizeKey } = window.CLOCK;
   const pct = (scale) => Math.round(scale * 100);
 
-  function create(container, { t, el, onChange, prefix = 'clock' }) {
-    let clock = normalize(null);
+  function create(container, { t, el, onChange, prefix = 'clock', kind = 'clock' }) {
+    const norm = kind === 'key' ? normalizeKey : normalize;
+    const label = (name) => t(`live.projector.${kind === 'key' ? 'key' : 'clock'}${name}`);
+    let clock = norm(null);
     let enabled = false;
 
     const toggle = el('button', {
-      type: 'button', class: 'secondary clock-toggle', 'aria-pressed': 'false', 'aria-keyshortcuts': 'K',
+      type: 'button', class: 'secondary clock-toggle', 'aria-pressed': 'false', 'aria-keyshortcuts': kind === 'key' ? 'G' : 'K',
       onclick: () => onChange({ show: !clock.show }),
     });
     const corners = POSITIONS.map((position) => el('button', {
@@ -42,17 +46,18 @@
       },
     });
     container.classList.add('clock-panel');
+    if (kind === 'key') container.classList.add('key-panel');
     container.replaceChildren(
       el('div', { class: 'clock-row' }, toggle, cornersGroup),
       el('div', { class: 'clock-size' }, sizeLabel, size),
     );
 
     function render() {
-      toggle.textContent = t('live.projector.clock');
-      toggle.setAttribute('aria-label', t('live.projector.clockLabel'));
+      toggle.textContent = label('');
+      toggle.setAttribute('aria-label', label('Label'));
       toggle.setAttribute('aria-pressed', String(enabled && clock.show));
       toggle.disabled = !enabled;
-      cornersGroup.setAttribute('aria-label', t('live.projector.clockPosition'));
+      cornersGroup.setAttribute('aria-label', label('Position'));
       for (const button of corners) {
         const name = t(`live.projector.corners.${button.dataset.corner}`);
         button.setAttribute('aria-label', name);
@@ -60,7 +65,7 @@
         button.setAttribute('aria-pressed', String(enabled && button.dataset.corner === clock.position));
         button.disabled = !enabled;
       }
-      sizeText.textContent = t('live.projector.clockSize');
+      sizeText.textContent = label('Size');
       size.value = String(pct(clock.scale));
       sizeValue.textContent = `${pct(clock.scale)} %`;
       size.disabled = !enabled;
@@ -69,7 +74,7 @@
     render();
     return {
       update(next) {
-        clock = normalize(next && next.clock);
+        clock = norm(next && next.clock);
         enabled = Boolean(next && next.enabled);
         render();
       },
