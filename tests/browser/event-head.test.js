@@ -39,6 +39,15 @@ module.exports = {
     await p.waitForSelector('#event-actions .button');
     const own = await p.evaluate(() => ({ title: document.getElementById('event-name').textContent, when: document.getElementById('event-when').hidden ? null : document.getElementById('event-when').textContent }));
     check(own.title === 'Serviciu duminică' && /^\S+, \d+ \S+ · 10:00$/.test(own.when), 'a name of its own: the name is the title, the date under it', own);
+    // one bar at the bottom: "Șterge evenimentul" left, "Salvează" right; no delete card in the Program
+    const bar = await p.evaluate(() => {
+      const top = (s) => Math.round(document.querySelector(s).getBoundingClientRect().top);
+      const state = document.getElementById('save-state').getBoundingClientRect();
+      return { sameRow: Math.abs(top('#delete-button') - top('#save-button')) < 8, inBar: Boolean(document.querySelector('#save-bar #delete-button')), card: Boolean(document.querySelector('.setlist-scroll .delete-area')), stateHidden: state.width <= 1 };
+    });
+    check(bar.sameRow && bar.inBar && !bar.card && bar.stateHidden, '"Șterge evenimentul" and "Salvează" share the bottom bar; no second card; the state text out of the way on the phone', bar);
+    const b = await layoutAudit(p, '#save-bar');
+    check(!b.overflow && !b.small.length, 'the bar 375: no overflow, targets >= 44 px', b);
     await p.context().close();
   },
 };

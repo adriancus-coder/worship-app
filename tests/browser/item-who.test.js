@@ -19,7 +19,7 @@ module.exports = {
     check(labels.join('|') === 'Predică|Rugăciune|Altceva', 'the type picker: Predică · Rugăciune · Altceva', labels);
     check(!(await p.$('#it-title')) && !(await p.$('#it-body')) && !(await p.$('#it-duration')), 'a prayer has only "Cine" (no title, text or duration)');
     await p.fill('#it-who', 'Fratele Ion');
-    await p.click('#save-bar button:not([disabled])');
+    await p.click('#save-button');
     await p.waitForFunction(() => /Salvat/.test(document.querySelector('#save-bar .save-state').textContent));
     const items = (await app.api(app.cookies.owner, 'GET', `/api/events/${E}`)).body.items;
     const mine = items.find((it) => it.type === 'prayer');

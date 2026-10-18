@@ -1479,7 +1479,6 @@
     }
     state.editing = editSegment === 'edit' && canEdit(state.me);
     $('add-bar').hidden = !state.editing;
-    $('delete-area').hidden = !state.editing;
     applyEvent(eventRes.body, false);
     if (state.editing) {
       // Just created with "+ Eveniment nou": the "Detalii" row is open, its template shown.

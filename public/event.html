@@ -127,9 +127,6 @@
               </div>
             </div>
           </div>
-          <div class="delete-area" id="delete-area" hidden>
-            <button type="button" class="delete-link" id="delete-button"><svg class="delete-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg><span data-i18n="setlist.deleteEvent"></span></button>
-          </div>
           </div>
         </section>
         <section class="detail-pane" id="detail-home" aria-live="polite" data-pane-label="setlist.details">
@@ -137,7 +134,9 @@
         </section>
       </div>
 
+      <!-- One bar: "Șterge evenimentul" on the left, the state, "Salvează" on the right -->
       <div class="save-bar" id="save-bar" hidden>
+        <button type="button" class="delete-link" id="delete-button"><svg class="delete-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg><span data-i18n="setlist.deleteEvent"></span></button>
         <p id="save-state" class="save-state" role="status" aria-live="polite"></p>
         <button type="button" id="save-button" data-icon="check" data-i18n="setlist.save"></button>
       </div>

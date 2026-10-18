@@ -362,7 +362,7 @@ button.danger {
   background: var(--danger-fill);
 }
 
-.delete-area { margin-top: 48px; padding-top: 12px; border-top: 1px solid var(--border); }
+.delete-area { margin-top: 48px; padding-top: 12px; border-top: 1px solid var(--border); } /* platform */
 
 /* A quiet delete: red text, no fill, no border; the confirmation dialog keeps the red button. */
 button.delete-link {
@@ -709,6 +709,7 @@ main.wide.event-page { max-width: 1200px; }
 .save-bar.dirty .save-state { color: var(--text); }
 .save-state.error { color: var(--error); }
 .save-bar button { flex: none; min-width: 120px; }
+.save-bar .delete-link { min-width: 0; margin-left: 0; white-space: nowrap; } /* "Șterge evenimentul" lives in the bar, on the left */
 
 .wide-dialog { width: min(560px, calc(100vw - 32px)); }
 .pick-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; max-height: 50vh; overflow-y: auto; }
@@ -2410,7 +2411,6 @@ body.list-page .setlist-pane { flex: 1 1 auto; display: flex; flex-direction: co
 body.list-page .setlist-pane > * { flex: 0 0 auto; }
 body.list-page .setlist-pane > .setlist-scroll { flex: 1 1 0; height: 0; gap: 12px; }
 body.list-page .setlist-pane h2 { margin: 8px 0; }
-body.list-page .setlist-scroll .delete-area { margin-top: 8px; }
 body.list-page .save-bar { position: static; margin-top: 8px; }
 @media (min-width: 900px) {
   body.list-page #event > .editor-grid { display: grid; grid-template-rows: minmax(0, 1fr); align-items: stretch; }
@@ -2753,5 +2753,11 @@ dialog.whats-new[open] { display: flex; }
   body.list-page .save-bar { gap: 8px; margin-top: 4px; padding: 6px 12px calc(6px + env(safe-area-inset-bottom)); }
   body.list-page .save-state { font-size: 0.8125rem; line-height: 1.25; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
   body.list-page .save-bar button { min-width: 0; }
+  /* no room for "Modificări nesalvate" next to "Șterge evenimentul" on a phone: the filled
+     "Salvează" and the accent line say it; the words stay for screen readers. An error shows. */
+  body.list-page .save-state:not(.error) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  body.list-page .save-bar .delete-link { flex: 1 1 auto; }
+  body.list-page .save-bar .delete-link:has(+ .save-state.error) { flex: 0 1 auto; min-width: var(--touch); overflow: hidden; }
+  body.list-page .save-state.error { flex: 1 1 6rem; }
   body.list-page .item-detail { padding: 10px; }
 }
