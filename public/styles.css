@@ -33,7 +33,6 @@
   --type-announcement: #5fd3c4;
   --type-sermon: #8fd19e;
   --type-prayer: #f2a7c3;
-  --type-exhortation: #d6cf6e;
   --type-other: #b8b0c4;
   /* The projector (/screen, previews): always black with white text, in every theme. */
   --projector-bg: #000;
@@ -84,7 +83,6 @@
   --type-announcement: #0f6b63;
   --type-sermon: #1f7a3a;
   --type-prayer: #a0305e;
-  --type-exhortation: #5f6412;
   --type-other: #5b5563;
   color-scheme: light;
 }
@@ -673,7 +671,6 @@ main.wide.event-page { max-width: 1200px; }
 .type-announcement { color: var(--type-announcement); }
 .type-sermon { color: var(--type-sermon); }
 .type-prayer { color: var(--type-prayer); }
-.type-exhortation { color: var(--type-exhortation); }
 .type-other { color: var(--type-other); }
 
 .add-bar { display: flex; flex-wrap: wrap; gap: 8px; }

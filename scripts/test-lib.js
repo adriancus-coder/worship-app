@@ -1060,16 +1060,16 @@ function liveFixture() {
   return { mem, evs, live, eventId, items, save };
 }
 
-test('item types (migration 052): prayer and exhortation validate, store and render as a title like a sermon', () => {
+test('item type prayer (migrations 052 + 053, "Îndemn la rugăciune"): validates, stores, renders as a title like a sermon; exhortation is gone', () => {
   const { evs, eventId, save } = liveFixture();
   const { ITEM_TYPES } = require('../lib/events');
   const { projectorFrame } = require('../lib/projector');
-  assert.deepStrictEqual(ITEM_TYPES, ['song', 'verse', 'video', 'announcement', 'sermon', 'prayer', 'exhortation', 'other']);
-  const items = save([{ type: 'prayer', title: 'Rugăciune pentru bolnavi' }, { type: 'exhortation', body: 'Fiți tari!\nȘi curajoși.' }, { type: 'sermon', title: 'Predica' }]);
-  assert.deepStrictEqual(items.map((it) => [it.type, it.title, it.body]), [['prayer', 'Rugăciune pentru bolnavi', null], ['exhortation', null, 'Fiți tari!\nȘi curajoși.'], ['sermon', 'Predica', null]]);
+  assert.deepStrictEqual(ITEM_TYPES, ['song', 'verse', 'video', 'announcement', 'sermon', 'prayer', 'other']);
+  const items = save([{ type: 'prayer', title: 'Rugăciune pentru bolnavi' }, { type: 'prayer', body: 'Fiți tari!\nȘi curajoși.' }, { type: 'sermon', title: 'Predica' }]);
+  assert.deepStrictEqual(items.map((it) => [it.type, it.title, it.body]), [['prayer', 'Rugăciune pentru bolnavi', null], ['prayer', null, 'Fiți tari!\nȘi curajoși.'], ['sermon', 'Predica', null]]);
   const tro = (k, v) => t(k, v, 'ro');
-  const { error } = require('../lib/events').validateItems([{ type: 'blessing', title: 'x' }], tro, () => null);
-  assert.ok(error, 'an unknown type is refused');
+  const { error } = require('../lib/events').validateItems([{ type: 'exhortation', title: 'x' }], tro, () => null);
+  assert.ok(error, 'exhortation (052) is no type any more');
   // a title frame on the projector (the text's first line when there is no title)
   const state = { status: 'live', version: 1, eventId, projector: { source: 'content', itemId: items[1].id, step: 0 }, worship: { itemId: items[1].id, step: 0 }, mode: 'together', clock: null };
   const frame = projectorFrame(state, { items: evs.get(1, eventId).items }, new Map(), {});

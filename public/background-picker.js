@@ -23,7 +23,7 @@
   let cache = null;
 
   // Which church default an item type uses (lib/backgrounds.js DEFAULT_OF_TYPE).
-  const DEFAULT_OF_TYPE = { song: 'song', verse: 'verse', announcement: 'announcement', sermon: 'announcement', prayer: 'announcement', exhortation: 'announcement', other: 'announcement' };
+  const DEFAULT_OF_TYPE = { song: 'song', verse: 'verse', announcement: 'announcement', sermon: 'announcement', prayer: 'announcement', other: 'announcement' };
 
   function load(force) {
     if (!cache || force) {

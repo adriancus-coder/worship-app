@@ -788,7 +788,7 @@
   }
 
   function editFields(item) {
-    const TITLE_TYPES = ['sermon', 'prayer', 'exhortation', 'other']; // a title (+ text) on the projector
+    const TITLE_TYPES = ['sermon', 'prayer', 'other']; // a title (+ text) on the projector
     const typeSelect = TITLE_TYPES.includes(item.type)
       ? field('it-type', t('setlist.typeLabel'), bind(item, 'type', (() => {
         const s = el('select', { id: 'it-type' },
