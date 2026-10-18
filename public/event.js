@@ -95,7 +95,7 @@
   function itemTitle(item) {
     if (item.type === 'song') return item.title || t('setlist.songDeleted');
     if (item.type === 'verse') return item.reference || item.title || t('setlist.types.verse');
-    return item.title || (item.body ? item.body.split('\n')[0].slice(0, 80) : '') || t('setlist.untitled');
+    return item.title || item.who || (item.body ? item.body.split('\n')[0].slice(0, 80) : '') || t('setlist.untitled'); // the person stands as the title
   }
 
   function itemSubline(item) {
@@ -113,8 +113,8 @@
       parts.push(t('setlist.mediaFromLibrary'));
     } else if (item.type === 'video' && item.url) {
       try { parts.push(new URL(item.url).hostname); } catch (err) { parts.push(item.url); }
-    } else if (item.who) {
-      parts.push(item.who); // "Cine": the person of a sermon / prayer / other item
+    } else if (item.who && item.title) {
+      parts.push(item.who); // "Cine" under the title (alone, it is the title)
     }
     if (item.durationMin) parts.push(t('setlist.minutes', { n: item.durationMin }));
     return parts.join(' · ');
@@ -820,6 +820,14 @@
           ...videoSourceFields(item),
           durationField(item),
         ];
+      case 'prayer': // the person is the item
+        return [typeSelect, field('it-who', t('setlist.whoLabel'), input(item, 'who', 'it-who', { type: 'text', maxlength: '100', autocomplete: 'off' }))];
+      case 'sermon': // the title and the preacher
+        return [
+          typeSelect,
+          field('it-title', t('setlist.titleLabel'), input(item, 'title', 'it-title', { type: 'text', maxlength: '200' })),
+          field('it-who', t('setlist.whoLabel'), input(item, 'who', 'it-who', { type: 'text', maxlength: '100', autocomplete: 'off' })),
+        ];
       default:
         return [
           typeSelect,
@@ -886,7 +894,7 @@
         if (item.media) return [readOnlyText(t('setlist.mediaLabel'), item.media.title), duration];
         return [item.url ? el('p', null, el('a', { class: 'button secondary video-link', href: item.url, target: '_blank', rel: 'noopener noreferrer', text: item.url })) : null, duration];
       default:
-        return [item.who ? readOnlyText(t('setlist.whoLabel'), item.who) : null, readOnlyText(t('setlist.bodyLabel'), item.body), duration];
+        return [item.who && item.title ? readOnlyText(t('setlist.whoLabel'), item.who) : null, item.body ? readOnlyText(t('setlist.bodyLabel'), item.body) : null, duration];
     }
   }
 

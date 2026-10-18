@@ -86,7 +86,7 @@
   function itemTitle(item) {
     if (item.type === 'song') return item.title || t('setlist.songDeleted');
     if (item.type === 'verse') return item.reference || t('setlist.types.verse');
-    return item.title || (item.body ? item.body.split('\n')[0].slice(0, 80) : '') || t(`setlist.types.${item.type}`);
+    return item.title || item.who || (item.body ? item.body.split('\n')[0].slice(0, 80) : '') || t(`setlist.types.${item.type}`);
   }
 
   // "Isaia 40 · Refren": where a position is, for the handover choice.

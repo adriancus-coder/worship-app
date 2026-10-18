@@ -1078,6 +1078,8 @@ test('item type prayer (migrations 052 + 053, "Îndemn la rugăciune"): validate
   assert.deepStrictEqual([frame.kind, frame.title, frame.who], ['title', 'Fiți tari!', undefined]);
   const withWho = projectorFrame({ ...state, projector: { ...state.projector, itemId: items[2].id }, worship: { itemId: items[2].id, step: 0 } }, { items: evs.get(1, eventId).items }, new Map(), {});
   assert.deepStrictEqual([withWho.kind, withWho.title, withWho.who], ['title', 'Predica', 'Ovidiu Haidemak'], 'the person under the title on the projector');
+  const alone = projectorFrame({ ...state, projector: { ...state.projector, itemId: items[0].id }, worship: { itemId: items[0].id, step: 0 } }, { items: evs.get(1, eventId).items.map((it) => (it.id === items[0].id ? { ...it, title: null } : it)) }, new Map(), {});
+  assert.deepStrictEqual([alone.kind, alone.title, alone.who], ['title', 'Fratele Ion', undefined], 'no title: the person is the title');
   void ITEM_TYPES;
 });
 

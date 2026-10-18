@@ -68,7 +68,7 @@
       case 'video':
         return { kind: 'black' }; // played only through the video commands
       default:
-        return { kind: 'title', title: item.title || firstLine(item.body), ...(item.who ? { who: item.who } : {}) };
+        return { kind: 'title', title: item.title || item.who || firstLine(item.body), ...(item.who && item.title ? { who: item.who } : {}) };
     }
   }
 

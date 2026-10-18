@@ -61,7 +61,7 @@
   function itemTitle(item) {
     if (item.type === 'song') return item.title || t('setlist.songDeleted');
     if (item.type === 'verse') return item.reference || item.title || t('setlist.types.verse');
-    return item.title || t(`setlist.types.${item.type}`);
+    return item.title || item.who || t(`setlist.types.${item.type}`);
   }
 
   function header(item, extra) {
