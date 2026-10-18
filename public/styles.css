@@ -2725,11 +2725,17 @@ dialog.whats-new[open] { display: flex; }
    list pane (the Program, the open item's form) takes what is left of the screen. */
 @media (max-width: 899px) {
   body.list-page .event-page > .back { margin: 0; font-size: 0.875rem; }
-  body.list-page .event-head h1 { font-size: 1.35rem; line-height: 1.2; margin: 0; }
-  body.list-page .event-when, body.list-page .event-summary { display: inline-flex; align-items: center; gap: 6px 10px; margin: 2px 12px 2px 0; font-size: 0.875rem; }
+  /* the head is wrapped rows: the title (the date, for an event named after its day), then
+     status · count · the team's answers · the note sharing one row while they fit */
+  body.list-page .event-head { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 10px; }
+  body.list-page .event-head > h1, body.list-page .event-head > .event-actions-row, body.list-page .event-head > .event-tools:not(.as-menu), body.list-page .event-head > .message { flex: 1 1 100%; min-width: 0; }
+  body.list-page .event-head > .message:empty { display: none; }
+  body.list-page .event-head h1 { font-size: 1.25rem; line-height: 1.2; margin: 0; } /* "Duminică, 25 octombrie · 15:00" on one line at 375 */
+  body.list-page .event-when, body.list-page .event-summary { display: inline-flex; align-items: center; gap: 6px 10px; margin: 0; font-size: 0.875rem; }
   body.list-page .event-summary .pill { padding-top: 2px; padding-bottom: 2px; }
-  body.list-page .event-notes { margin: 0 0 4px; font-size: 0.875rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  body.list-page .event-actions-row { margin: 6px 0 6px; }
+  body.list-page .team-summary { margin: 0; padding: 0 10px; font-size: 0.8125rem; }
+  body.list-page .event-notes { flex: 1 1 8rem; min-width: 0; margin: 0; font-size: 0.875rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  body.list-page .event-actions-row { margin: 4px 0 6px; }
   body.list-page .event-actions > .button { flex-direction: row; gap: 0.4em; min-height: var(--touch); padding: 6px 8px; font-size: 0.9375rem; line-height: 1.2; }
   body.list-page .event-actions > .primary-action { flex-grow: 1.6; } /* "Pornește live" on one line next to "Repetiție" */
   body.list-page .event-actions > .button { font-size: 0.875rem; white-space: nowrap; }

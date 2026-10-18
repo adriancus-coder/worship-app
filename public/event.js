@@ -139,10 +139,16 @@
   function renderHeader() {
     const ev = state.event;
     setTitle('setlist.pageTitle', { name: ev.name });
-    $('event-name').textContent = ev.name;
-    $('event-when').textContent = ev.isTemplate
+    const when = ev.isTemplate
       ? t('events.template')
       : [formatDate(ev.eventDate, state.today && state.today.slice(0, 4)), ev.startTime].filter(Boolean).join(' · ');
+    // An event named after its day ("Duminica") says the day twice: the date line is the
+    // title then ("Duminică, 18 octombrie · 15:00") and the name is left out.
+    const plain = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+    const namedAfterDay = !ev.isTemplate && plain(ev.name) === plain(when.split(',')[0]);
+    $('event-name').textContent = namedAfterDay ? when : ev.name;
+    $('event-when').textContent = when;
+    $('event-when').hidden = namedAfterDay;
     const pill = $('event-status');
     pill.className = ev.isTemplate ? 'pill pill-template' : `pill pill-${ev.status}`;
     pill.textContent = ev.isTemplate ? t('events.template') : t(`events.status.${ev.status}`);
