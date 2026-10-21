@@ -373,9 +373,9 @@
     return true;
   }
 
-  // Saves a new arrangement / key for one song item right away (the live pages): the
-  // event's shared setlist as the server has it now, with only that item changed.
-  // Returns { ok } or { error }.
+  // Saves a new arrangement / key for one song item right away (the live pages, the home
+  // card's key choice): the event's shared setlist as the server has it now, with only that
+  // item changed (codes undefined: its arrangement stays). Returns { ok } or { error }.
   async function saveToEvent(eventId, itemId, { codes, transpose, isDefault }) {
     const { api } = window.PAGE;
     const { t } = window.I18N;
@@ -387,14 +387,16 @@
         id: it.id, type: it.type, songId: it.type === 'song' ? it.songId : null,
         mediaId: it.type === 'video' ? it.mediaId : null,
         title: it.title || '', body: it.body || '', reference: it.reference || '', url: it.url || '', durationMin: it.durationMin,
+        who: it.who || '', teamNote: it.teamNote || '', // "Cine" and the note for the team, on any item
       };
       if (it.type !== 'video') out.background = it.background || null;
       if (it.type === 'song') {
         const mine = it.id === itemId;
+        const kept = it.arrangementIsDefault ? null : it.arrangement || null;
         Object.assign(out, {
           transpose: mine ? transpose : (it.transpose || 0),
-          arrangement: mine ? (isDefault ? null : codes.join(' ')) : (it.arrangementIsDefault ? null : it.arrangement || null),
-          teamNote: it.teamNote || '', referenceUrl: it.referenceUrl || '',
+          arrangement: mine && codes ? (isDefault ? null : codes.join(' ')) : kept,
+          referenceUrl: it.referenceUrl || '',
         });
       }
       return out;
