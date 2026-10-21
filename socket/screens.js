@@ -89,6 +89,8 @@ function createScreensHub({ db, logger, config }) {
       logoUrl: logoUrl(adminId),
       // "Gama pe proiector": the event's own settings (key.set), in the church notation
       songKey: state.songKey.show ? { notation: settings.chordNotationDefault(adminId), position: state.songKey.position, scale: state.songKey.scale } : null,
+      // "Acorduri pe proiector": the lyrics with their chords, in the church notation
+      chords: state.chords && state.chords.show ? settings.chordNotationDefault(adminId) : null,
       videoMedia: videoMedia(adminId, state.video, found ? found.items : []),
       backgrounds: backgrounds.forEvent(adminId, eventId, state.backgroundOverride),
       // The live translated text when the projector source is "Traducere · <limbă>" (bridge).

@@ -72,6 +72,7 @@ const PAIRS = [
   ['focus', 'background', LARGE, 'focus ring'],
   ['focus', 'surface', LARGE, 'focus ring on cards'],
   ['projector-text', 'projector-bg', TEXT, 'projector'],
+  ['projector-chord', 'projector-bg', TEXT, 'projector chords'],
 ];
 
 const verbose = process.argv.includes('--verbose');

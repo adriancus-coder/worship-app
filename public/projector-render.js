@@ -146,6 +146,32 @@
       return node;
     }
 
+    // Lines with their chords inline ("[G]Ne ridici din [D]noaptea") -> segments, the chord
+    // above the syllable it starts on; a line without chords keeps an empty chord row so
+    // the lines stay even. No wrapping: fit() shrinks the block instead.
+    function chordedBlock(lines, className) {
+      const block = el('div', className);
+      for (const line of lines) {
+        const node = el('div', 'projector-line has-chords');
+        const parts = String(line || '').split(/(\[[^\]]*\])/);
+        let chord = '';
+        let any = false;
+        for (const part of parts) {
+          if (/^\[[^\]]*\]$/.test(part)) { chord = part.slice(1, -1).trim(); continue; }
+          if (!part && !chord) continue;
+          const seg = el('span', 'projector-seg');
+          seg.append(el('span', 'projector-chord', chord || ' '), el('span', 'projector-syl', part || ' '));
+          node.append(seg);
+          any = true;
+          chord = '';
+        }
+        if (chord) { const seg = el('span', 'projector-seg'); seg.append(el('span', 'projector-chord', chord), el('span', 'projector-syl', ' ')); node.append(seg); any = true; }
+        if (!any) node.append(el('span', 'projector-seg', ' '));
+        block.append(node);
+      }
+      return block;
+    }
+
     function linesBlock(lines, className) {
       const block = el('div', className);
       for (const line of lines) block.append(el('div', 'projector-line', line || ' '));
@@ -165,6 +191,17 @@
       const maxH = height * (1 - 2 * margin / 100);
       const minSize = Math.max(6, height * MIN_FONT);
       const maxSize = Math.max(minSize, height * MAX_FONT);
+      // Lyrics with their chords (segments: the chord above the syllable): no row wrapping,
+      // the size shrinks until the whole block fits.
+      if (box.querySelector('.has-chords')) {
+        let size = maxSize;
+        box.style.fontSize = `${size}px`;
+        for (let i = 0; i < 40 && size > minSize && (box.scrollWidth > maxW + 0.5 || box.scrollHeight > maxH + 0.5); i++) {
+          size = Math.max(minSize, size * 0.93);
+          box.style.fontSize = `${size}px`;
+        }
+        return;
+      }
       if (box.querySelector('.projector-line')) {
         window.LYRICS_FIT.fitBox(box, { lineSelector: '.projector-line', maxW, maxH, minSize, maxSize, minPct: fitMin, lineHeight: LINE_HEIGHT });
         return;
@@ -303,7 +340,7 @@
       const box = el('div', 'projector-text');
       switch (frame.kind) {
         case 'lyrics':
-          box.append(linesBlock(frame.lines, 'projector-lyrics'));
+          box.append(frame.chorded ? chordedBlock(frame.chorded, 'projector-lyrics projector-chorded') : linesBlock(frame.lines, 'projector-lyrics'));
           break;
         case 'translation': {
           // Bridge (SV -> worship): the translated lines, lighter while still in progress.

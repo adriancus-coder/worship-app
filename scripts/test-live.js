@@ -750,6 +750,37 @@ async function main() {
     assert.strictEqual((await api('PUT', `/api/songs/${s1.id}`, leader, { song_key: '' })).status, 200);
   });
 
+  await step('"Acorduri pe proiector" (chords.set): off by default, the church default for a new event, the frame carries the chorded lines only while on, in the church notation; member refused', async () => {
+    assert.strictEqual((await api('GET', '/api/settings', owner)).body.chordsShow, false, 'off by default');
+    assert.strictEqual((await api('PUT', '/api/settings/chords', member, { show: true })).status, 403);
+    assert.strictEqual((await api('PUT', '/api/settings/chords', owner, { show: 'da' })).status, 400);
+    await send(lead.socket, { type: 'worship.goto', itemId: i2, step: 0 }); // a real move: a fresh frame
+    await send(lead.socket, { type: 'worship.goto', itemId: i1, step: 0 });
+    let frame = await frameWhere(screen, (f) => f.version === version);
+    assert.deepStrictEqual([frame.kind, frame.chorded, frame.lines], ['lyrics', undefined, ['verse']], 'the words alone while off');
+    assert.strictEqual((await emit(mem.socket, 'live:command', { eventId: ev.id, type: 'chords.set', show: true })).code, 'forbidden');
+    assert.strictEqual((await send(lead.socket, { type: 'chords.set', show: 'yes' })).code, 'badCommand');
+    const reply = await send(lead.socket, { type: 'chords.set', show: true, expectedVersion: version });
+    assert.strictEqual(reply.ok, true, JSON.stringify(reply));
+    assert.deepStrictEqual((await memberAt(version)).chords, { show: true }, 'broadcast in the snapshots');
+    frame = await frameWhere(screen, (f) => f.version === version);
+    assert.deepStrictEqual([frame.chorded, frame.lines], [['[G]verse'], ['verse']], 'the chorded lines next to the plain ones');
+    await api('PUT', '/api/settings/chord-notation', owner, { notation: 'solfege' });
+    await send(lead.socket, { type: 'worship.goto', itemId: i1, step: 1 });
+    assert.deepStrictEqual((await frameWhere(screen, (f) => f.version === version)).chorded, ['[Sol]chorus'], 'in the church notation');
+    await api('PUT', '/api/settings/chord-notation', owner, { notation: 'letters' });
+    await send(lead.socket, { type: 'worship.goto', itemId: i2, step: 0 });
+    assert.strictEqual((await frameWhere(screen, (f) => f.version === version)).chorded, undefined, 'a verse item: nothing chorded');
+    assert.strictEqual((await send(lead.socket, { type: 'chords.set', show: true })).ok, true, 'the same again: ok (noop)');
+    await send(lead.socket, { type: 'chords.set', show: false });
+    await send(lead.socket, { type: 'worship.goto', itemId: i1, step: 0 });
+    assert.strictEqual((await frameWhere(screen, (f) => f.version === version)).chorded, undefined, 'off again');
+    assert.deepStrictEqual((await api('PUT', '/api/settings/chords', owner, { show: true })).body, { chordsShow: true });
+    const evC = (await api('POST', '/api/events', owner, { name: 'Acorduri', eventDate: day(2) })).body.event;
+    assert.deepStrictEqual((await joined(leader, evC.id)).state.chords, { show: true }, 'an event not started yet shows what it would start with');
+    await api('PUT', '/api/settings/chords', owner, { show: false });
+  });
+
   await step('together: leader and operator move ONE position, applied in order with versions', async () => {
     const op = await joined(operator, ev.id);
     const opStates = [];

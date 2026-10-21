@@ -858,6 +858,11 @@ test('projector frames: sources, items, no chords, idle', () => {
   const withKey = (step, notation, position = 'top-left', scale = 1) => projectorFrame(state(1, step), { items }, keyed, { songKey: notation ? { notation, position, scale } : null });
   assert.deepStrictEqual([withKey(0, 'solfege').key, withKey(0, 'letters', 'top-right', 1.4).key, withKey(1, 'letters').key, withKey(0, null).key, frame(1, 0).key],
     [{ text: 'Re', position: 'top-left', scale: 1 }, { text: 'D', position: 'top-right', scale: 1.4 }, undefined, undefined, undefined], 'the key: step 0 only, in the notation, with its corner and size; never without the setting');
+  // "Acorduri pe proiector": the chorded lines next to the plain ones, in the notation
+  const withChords = (notation) => projectorFrame(state(1, 0), { items }, new Map([[1, song]]), { chords: notation });
+  assert.deepStrictEqual(withChords('letters').chorded, ['[A]Ne ridici din [E]noaptea grea', '[F#m]Tu ești [D]lumina mea'], 'the lines with their chords inline');
+  assert.deepStrictEqual(withChords('solfege').chorded, ['[La]Ne ridici din [Mi]noaptea grea', '[Fa#m]Tu ești [Re]lumina mea'], 'in solfège');
+  assert.deepStrictEqual([withChords('letters').lines, frame(1, 0).chorded], [['Ne ridici din noaptea grea', 'Tu ești lumina mea'], undefined], 'the plain lines stay; nothing chorded without the setting');
 });
 
 test('projector frames: translation source (bridge SV -> worship)', () => {
@@ -1286,7 +1291,7 @@ test('live store: "Pe ce ecrane" (migration 040): null = every screen; chosen id
 test('live store: projector preparation before the start (migration 043): clock, background, screens, video while planned; the start keeps them; nothing else; not on a template', () => {
   const { mem, live, eventId } = liveFixture();
   const { PREPARE_COMMANDS } = require('../lib/live');
-  assert.deepStrictEqual(PREPARE_COMMANDS, ['clock.set', 'key.set', 'background.set', 'projector.screens', 'video.prepare', 'video.volume']);
+  assert.deepStrictEqual(PREPARE_COMMANDS, ['clock.set', 'key.set', 'chords.set', 'background.set', 'projector.screens', 'video.prepare', 'video.volume']);
   const screens = require('../lib/screens').createScreenStore(mem);
   const a = screens.create(1, 1, 'Sală').id;
   screens.create(1, 1, 'Hol');

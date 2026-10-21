@@ -86,4 +86,27 @@
   }
 
   window.CLOCK_PANEL = { create };
+
+  // "Acorduri" on the projector: one selection toggle (aria-pressed; key C on the live pages).
+  //   const toggle = CHORDS_TOGGLE.create(container, { t, el, onChange(show) });
+  //   toggle.update({ show, enabled }); toggle.toggle(); toggle.render();
+  function createChordsToggle(container, { t, el, onChange }) {
+    let show = false;
+    let enabled = false;
+    const button = el('button', { type: 'button', class: 'secondary chords-toggle', 'aria-pressed': 'false', 'aria-keyshortcuts': 'C', onclick: () => { if (enabled) onChange(!show); } });
+    container.replaceChildren(button);
+    function render() {
+      button.textContent = t('live.projector.chords');
+      button.setAttribute('aria-label', t('live.projector.chordsLabel'));
+      button.setAttribute('aria-pressed', String(enabled && show));
+      button.disabled = !enabled;
+    }
+    render();
+    return {
+      update(next) { show = Boolean(next && next.show); enabled = Boolean(next && next.enabled); render(); },
+      toggle() { if (enabled) onChange(!show); },
+      render,
+    };
+  }
+  window.CHORDS_TOGGLE = { create: createChordsToggle };
 })();

@@ -35,7 +35,7 @@
 
 (function (root) {
   const shared = typeof module === 'object' && module.exports;
-  const { stripChords, toNotation } = shared ? require('./chords.js') : root.CHORDS;
+  const { stripChords, toNotation, renderContent } = shared ? require('./chords.js') : root.CHORDS;
   const { normalize: normalizeClock } = shared ? require('./clock.js') : root.CLOCK;
   const DEFAULT_SAFE_MARGIN = 5; // % of each edge (lib/admin-settings.js safe_margin)
   const DEFAULT_FIT_MIN = 60; // lyrics auto-fit: % of the maximum size below which lines may wrap
@@ -55,9 +55,19 @@
     return String(text || '').split('\n').find((line) => line.trim()) || '';
   }
 
+  // The section's lines with their chords inline ("[G]Ne ridici din [D]noaptea grea"), the
+  // chord names in `notation`: what the screen draws above the words ("Acorduri pe proiector").
+  function chordedLines(content, notation) {
+    const lines = renderContent(content, notation).replace(/\r\n?/g, '\n').split('\n');
+    while (lines.length && !stripChords(lines[lines.length - 1]).trim() && !/\[[^\]]+\]/.test(lines[lines.length - 1])) lines.pop();
+    while (lines.length && !stripChords(lines[0]).trim() && !/\[[^\]]+\]/.test(lines[0])) lines.shift();
+    return lines;
+  }
+
   // Content of the item at a position -> frame fields. songKey: { notation, position, scale }
-  // to show the song's key on its first screen, or null for no key.
-  function contentFrame(item, step, song, songKey = null) {
+  // to show the song's key on its first screen, or null for no key. chords: the notation to
+  // draw the chords above the words in ('letters' | 'solfege'), or null for the words alone.
+  function contentFrame(item, step, song, songKey = null, chords = null) {
     if (!item) return { kind: 'black' };
     switch (item.type) {
       case 'song': {
@@ -66,7 +76,8 @@
         const section = entry && song.sections.find((s) => s.id === entry.sectionId);
         if (!section) return { kind: 'black' };
         const key = songKey && step === 0 && song.key ? { key: { text: toNotation(song.key, songKey.notation), position: songKey.position, scale: songKey.scale } } : {};
-        return { kind: 'lyrics', lines: lyricLines(section.content), ...key };
+        const chorded = chords ? { chorded: chordedLines(section.content, chords) } : {};
+        return { kind: 'lyrics', lines: lyricLines(section.content), ...key, ...chorded };
       }
       case 'verse':
         return { kind: 'verse', reference: item.reference || '', text: item.body || '' };
@@ -117,8 +128,9 @@
   // safeMargin: % of each edge kept free of text, logo and clock (0-12; overscan), on every frame.
   // fitMin: the lyrics auto-fit minimum (% of the maximum size, 30-100; LYRICS_FIT_MIN_PCT).
   // songKey: { notation: 'letters' | 'solfege', position, scale } to show the song's key on its
-  // first screen, null for none.
-  function projectorFrame(state, event, songs, { logoUrl = null, videoMedia = null, backgrounds = null, clock = null, safeMargin = DEFAULT_SAFE_MARGIN, fitMin = DEFAULT_FIT_MIN, translation = null, songKey = null } = {}) {
+  // first screen, null for none. chords: 'letters' | 'solfege' to draw the chords above the
+  // words (the frame's `chorded` lines), null for the words alone.
+  function projectorFrame(state, event, songs, { logoUrl = null, videoMedia = null, backgrounds = null, clock = null, safeMargin = DEFAULT_SAFE_MARGIN, fitMin = DEFAULT_FIT_MIN, translation = null, songKey = null, chords = null } = {}) {
     const margin = Number.isInteger(safeMargin) && safeMargin >= 0 && safeMargin <= 12 ? safeMargin : DEFAULT_SAFE_MARGIN;
     const fit = Number.isInteger(fitMin) && fitMin >= 30 && fitMin <= 100 ? fitMin : DEFAULT_FIT_MIN;
     if (!state || state.status !== 'live') {
@@ -154,7 +166,7 @@
     // the next move (the explicit Logo / black sources above still apply).
     if (pos.ended) return { kind: 'black', ...base };
     const item = (event && event.items || []).find((it) => it.id === pos.itemId);
-    const content = contentFrame(item, pos.step, item && songs ? songs.get(item.id) : null, songKey);
+    const content = contentFrame(item, pos.step, item && songs ? songs.get(item.id) : null, songKey, chords);
     const background = content.kind === 'black' ? null : backgroundFor(state, item, backgrounds);
     // The next item's background, when another one, so the screens can load it ahead.
     const items = (event && event.items) || [];
@@ -163,7 +175,7 @@
     return { ...content, ...base, clock: clockFrame(state.clock || null, content.kind), background, ...preload };
   }
 
-  const FRAMES = { SOURCES, LEADER_SOURCES, DEFAULT_SAFE_MARGIN, DEFAULT_FIT_MIN, projectorFrame, backgroundFor, lyricLines, clockFrame };
+  const FRAMES = { SOURCES, LEADER_SOURCES, DEFAULT_SAFE_MARGIN, DEFAULT_FIT_MIN, projectorFrame, backgroundFor, lyricLines, chordedLines, clockFrame };
 
   if (typeof module === 'object' && module.exports) module.exports = FRAMES;
   else root.FRAMES = FRAMES;

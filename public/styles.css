@@ -41,6 +41,7 @@
   --projector-text-shadow-strong: rgba(0, 0, 0, 0.85);
   --projector-dim: #000;
   --projector-hint: #bbb;
+  --projector-chord: #ffd166; /* the chords above the words on the screen ("Acorduri pe proiector") */
   --projector-guide: #8a8a8a;
   --projector-hint-bg: rgba(255, 255, 255, 0.08);
   --projector-offline: #a33;
@@ -1143,6 +1144,14 @@ button.live-item:disabled { opacity: 1; cursor: default; }
 .projector-dim { background: var(--projector-dim); }
 .projector-line { min-height: 1.22em; white-space: nowrap; } /* a stored line never wraps on its own: the auto-fit splits it into rows */
 .projector-line.fit-wrapped, .big-line.fit-wrapped { white-space: normal; }
+/* Lyrics with their chords on the screen: each syllable a segment with its chord above */
+.projector-line.has-chords { white-space: nowrap; min-height: 1.9em; }
+.projector-seg { display: inline-block; vertical-align: bottom; white-space: pre; text-align: left; }
+.projector-chord { display: block; min-height: 1.1em; font-size: 0.6em; line-height: 1.1; font-weight: 700; color: var(--projector-chord); }
+.projector-syl { display: block; }
+/* The Gama panel and the Acorduri toggle share one cell of the projector panel */
+.projector-extras { display: flex; flex-direction: column; gap: 8px; }
+.chords-toggle { min-height: var(--touch); padding: 8px 14px; align-self: flex-start; }
 .fit-row { display: block; white-space: nowrap; }
 .fit-probe { position: absolute; visibility: hidden; white-space: nowrap; pointer-events: none; }
 .big-text-lines .big-line { white-space: nowrap; }

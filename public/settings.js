@@ -41,6 +41,7 @@
     renderMargin(res.body.safeMargin);
     renderTimeFormat(res.body.timeFormat);
     renderSongKey(res.body.songKey);
+    renderChordsShow(res.body.chordsShow);
     renderEmail(res.body.email);
     renderPexels(res.body.pexels);
     renderAi(res.body.ai);
@@ -353,6 +354,22 @@
   function renderSongKey(value) {
     if (value) songKey = value;
     if (songKey) keyPanel.update({ clock: songKey, enabled: true });
+  }
+
+  // "Acorduri pe proiector": what a new event starts with.
+  function renderChordsShow(show) {
+    for (const button of document.querySelectorAll('[data-chords-show]')) {
+      button.setAttribute('aria-pressed', String((button.dataset.chordsShow === '1') === Boolean(show)));
+    }
+  }
+  for (const button of document.querySelectorAll('[data-chords-show]')) {
+    button.addEventListener('click', async () => {
+      const res = await api('/api/settings/chords', { method: 'PUT', body: { show: button.dataset.chordsShow === '1' } });
+      const out = $('chords-message');
+      out.className = `message ${res.ok ? 'success' : 'error'}`;
+      out.textContent = res.ok ? t(res.body.chordsShow ? 'settings.chordsSavedOn' : 'settings.chordsSavedOff') : res.body.error || t('common.networkError');
+      if (res.ok) renderChordsShow(res.body.chordsShow);
+    });
   }
 
   function renderThemeDefault(theme) {

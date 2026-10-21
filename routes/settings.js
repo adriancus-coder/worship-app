@@ -45,6 +45,7 @@ function createSettingsRouter({ db, auth, config, logger, screensHub, live, stor
       clock: settings.clock(req.adminId),
       timeFormat: settings.timeFormat(req.adminId),
       songKey: settings.songKey(req.adminId),
+      chordsShow: settings.chordsShow(req.adminId),
       safeMargin: settings.safeMargin(req.adminId),
       backgroundDefaults: backgrounds.defaults(req.adminId),
       backup: backups.lastBackup(req.adminId),
@@ -139,6 +140,14 @@ function createSettingsRouter({ db, auth, config, logger, screensHub, live, stor
     const patch = parseClockPatch(req.body);
     if (!patch) return res.status(400).json({ error: req.t('errors.keyInvalid') });
     res.json({ songKey: settings.setSongKey(req.adminId, patch) });
+  });
+
+  // "Acorduri pe proiector", what a new event starts with: { show: boolean }.
+  router.put('/api/settings/chords', (req, res) => {
+    const show = (req.body || {}).show;
+    if (typeof show !== 'boolean') return res.status(400).json({ error: req.t('errors.badRequest') });
+    settings.set(req.adminId, 'chords_show', show ? '1' : '0');
+    res.json({ chordsShow: show });
   });
 
   // The church default chord notation, for users without their own preference.
