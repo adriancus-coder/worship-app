@@ -1943,6 +1943,11 @@
         textOnly: 'Doar text',
         edit: 'Editează',
         notFound: 'Cântarea nu există sau a fost ștearsă.',
+        historyNever: 'Nu a fost cântată încă la niciun eveniment.',
+        historyLast: 'Cântată ultima dată: {date}',
+        historyCount: '{n} evenimente',
+        historyPlanned: 'planificat',
+        historyLabel: 'La ce evenimente a fost cântată',
       },
       editor: {
         pageTitleNew: 'Cântare nouă — {appName}',
@@ -3982,6 +3987,11 @@
         textOnly: 'Lyrics only',
         edit: 'Edit',
         notFound: 'This song does not exist or was deleted.',
+        historyNever: 'Not sung at any event yet.',
+        historyLast: 'Last sung: {date}',
+        historyCount: '{n} events',
+        historyPlanned: 'planned',
+        historyLabel: 'The events it was sung at',
       },
       editor: {
         pageTitleNew: 'New song — {appName}',

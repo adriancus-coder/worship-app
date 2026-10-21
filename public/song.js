@@ -1,7 +1,7 @@
 'use strict';
 
 (function () {
-  const { api, canEdit, setTitle } = window.PAGE;
+  const { api, el, canEdit, setTitle, formatDate } = window.PAGE;
   const { t } = window.I18N;
   const songId = window.location.pathname.split('/')[2];
   const status = document.getElementById('status');
@@ -40,8 +40,32 @@
     status.hidden = !text;
   }
 
+  // "Cântată ultima dată: Duminică, 11 octombrie · 4 evenimente" and, opened, the events
+  // (newest first; a planned one says so). For everyone who opens the song.
+  let history = null;
+  function renderHistory() {
+    const box = document.getElementById('song-history');
+    if (!history) { box.hidden = true; return; }
+    box.hidden = false;
+    const { dates, lastSung, today } = history;
+    const year = String(today || '').slice(0, 4);
+    if (!dates.length) {
+      box.replaceChildren(el('summary', { text: t('song.historyNever') }));
+      return;
+    }
+    box.replaceChildren(
+      el('summary', null,
+        el('span', { text: lastSung ? t('song.historyLast', { date: formatDate(lastSung, year) }) : t('song.historyNever') }),
+        el('span', { class: 'muted song-history-count', text: ` · ${t('song.historyCount', { n: dates.length })}` })),
+      el('ul', { class: 'song-history-list', 'aria-label': t('song.historyLabel') },
+        ...dates.map((d) => el('li', null,
+          el('a', { href: `/events/${d.eventId}`, text: `${formatDate(d.eventDate, year)} · ${d.name}` }),
+          d.status === 'planned' && d.eventDate > today ? el('span', { class: 'muted', text: ` (${t('song.historyPlanned')})` }) : null))));
+  }
+
   function render() {
     if (!song) return;
+    renderHistory();
     setTitle('song.pageTitle', { title: song.title });
     document.getElementById('song-title').textContent = song.title;
     // The key row, always: "Ton: Sol · Schimbă" (the editor roles change it inline) or
@@ -75,7 +99,8 @@
   });
 
   (async () => {
-    const [meRes, songRes] = await Promise.all([api('/api/auth/me'), api(`/api/songs/${songId}`)]);
+    const [meRes, songRes, historyRes] = await Promise.all([api('/api/auth/me'), api(`/api/songs/${songId}`), api(`/api/songs/${songId}/history`)]);
+    if (historyRes.ok) history = historyRes.body;
     if (!songRes.ok) {
       status.dataset.state = 'missing';
       setStatus(songRes.status === 404 ? t('song.notFound') : (songRes.body.error || t('common.networkError')));

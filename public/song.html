@@ -16,6 +16,8 @@
       <!-- "Ton: Sol · Schimbă" (public/arrange-sheet.js keyBox): always shown, under the title. -->
       <div id="song-key" class="song-key-row"></div>
       <p id="song-meta" class="muted"></p>
+      <!-- "Cântată ultima dată: …" + the events it was sung at (GET /api/songs/:id/history) -->
+      <details id="song-history" class="song-history" hidden></details>
       <div class="song-actions">
         <button type="button" id="text-only" class="secondary" aria-pressed="false" data-i18n="song.textOnly"></button>
         <span data-notation-switch></span>
