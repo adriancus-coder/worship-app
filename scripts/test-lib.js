@@ -278,6 +278,21 @@ test('OpenSong: chords merged column-accurately, markers mapped, comments droppe
     'G             D\nNe ridici din noaptea grea\nEm      C\nTu ești lumina mea');
 });
 
+test('resurse chord sheets: the song page listing, a sheet page -> text + key, the chords over matching lyrics (labels and numbering shifted), a sheet as a song, auto / pick / none through the mock', () => {
+  const page = '<a href="https://www.resursecrestine.ro/acorduri/207581/in-mana-ta" class="listingTitleLink">În mâna ta</a> <a class="brownLink">\n Em \n</a><a href="/acorduri/699/in-mana-ta" class="listingTitleLink">In mana Ta</a><a class="brownLink">Alin Timofte</a><a href="/acorduri/699/x" class="listingTitleLink">dup</a>';
+  assert.deepStrictEqual(resurse.songPageSheets(page), [{ id: '207581', title: 'În mâna ta', author: 'Em' }, { id: '699', title: 'In mana Ta', author: 'Alin Timofte' }]);
+  const sheetHtml = '<title>x - acorduri: Bm</title><span class="stil-acorduri">&nbsp;&nbsp;<a class="nice-acord" rel="Bm">Bm</a>&nbsp;<br \\/>\r\nIsus,&nbsp;la&nbsp;Tine&nbsp;vin<br />\r\nG<br />\r\nVreau&nbsp;doar&nbsp;al&nbsp;T&#259;u&nbsp;s&#259;&nbsp;fiu<br />\r\n<br />\r\n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a class="nice-acord" rel="D">D</a>&nbsp;&nbsp;&nbsp;<a class="nice-acord" rel="A">A</a><br />\r\nRef: Via&#539;a&nbsp;mea&nbsp;e-n&nbsp;m&acirc;na&nbsp;Ta.<br />\r\n</span>\n</div>';
+  const sheet = resurse.parseChordSheetHtml(sheetHtml);
+  assert.deepStrictEqual(sheet, { key: 'Bm', text: 'Bm\nIsus, la Tine vin\nG\nVreau doar al Tău să fiu\n\n           D   A\nRef: Viața mea e-n mâna Ta.' }, 'entities decoded, chords kept on their columns, stanzas apart');
+  assert.deepStrictEqual(resurse.sheetSections(sheet.text), [{ type: 'verse', label: null, content: '[Bm]Isus, la Tine vin\n[G]Vreau doar al Tău să fiu' }, { type: 'chorus', label: null, content: 'Viața [D]mea [A]e-n mâna Ta.' }], 'a sheet as a song: "Ref:" makes a chorus and goes, the chords moving with it');
+  const over = resurse.overlayChords([{ type: 'verse', label: null, content: 'Isus, la Tine vin\nVreau doar al Tau sa fiu' }, { type: 'chorus', label: null, content: 'Viața mea e-n mâna Ta.\nAltceva' }], sheet.text);
+  assert.deepStrictEqual([over.matched, over.total, over.score, over.sections[0].content, over.sections[1].content], [3, 4, 0.75, '[Bm]Isus, la Tine vin\n[G]Vreau doar al Tau sa fiu', 'Viața [D]mea [A]e-n mâna Ta.\nAltceva'], 'lines matched without diacritics; a line the sheet has not stays');
+  assert.strictEqual(resurse.overlayChords([{ type: 'verse', label: null, content: '[C]Isus, la Tine vin' }], sheet.text).sections[0].content, '[C]Isus, la Tine vin', 'a line with chords keeps them');
+  assert.strictEqual(resurse.normalizeLyric('  1. Când totul, pare că-i pierdut!'), 'cand totul pare ca i pierdut');
+  const code = (fn) => { try { fn(); } catch (err) { return err.code; } return 'no error'; };
+  assert.strictEqual(code(() => resurse.parseChordSheetHtml('<html>no sheet here at all, padding padding padding</html>')), 'bad_response');
+});
+
 test('OpenSong: numbered multi-verse block split into verses, unknown markers kept as labels', () => {
   const song = resurse.parseOpenSongXml(OPENSONG_NUMBERED);
   assert.strictEqual(song.key, null);
@@ -2766,6 +2781,18 @@ testAsync('bridge worship -> SV: song.current / song.clear on main-position chan
   bridge.onLiveChanged(1, eventId);
   assert.strictEqual(songs().filter(([ev]) => ev === 'song.current').length, 2, 'no song.current once dir_out is off');
   db.close();
+});
+
+
+testAsync('resurse chord sheets: auto / pick / none through the browser tests\' stand-in for the site', async () => {
+  require('../tests/browser/fixtures/mock-resurse.js');
+  const auto = await resurse.importFromUrl({ id: '503' }, { sheet: 'auto' });
+  assert.deepStrictEqual([auto.key, auto.chords.source, auto.chords.sheetId, auto.chords.score, auto.sheets.map((s) => [s.id, s.score])], ['D', 'sheet', '9001', 1, [['9001', 1], ['9002', 0]]], 'auto: the sheet covering the lyrics, its key for a song without one');
+  assert.deepStrictEqual(auto.sections, [{ type: 'verse', label: null, content: '[D]Când totul pare[A] că-i pierdut,\n[Bm]Al meu Păstor î[G]mi va fi scut.' }, { type: 'chorus', label: null, content: '[G]Viața mea e[D]-n mâna Sa\n[A]Și cu credință voi cânta' }], 'the chords over the song\'s own sections, "1." and "Ref:" accounted for');
+  const other = await resurse.importFromUrl({ id: '503' }, { sheet: '9002' });
+  assert.deepStrictEqual([other.key, other.chords.overlay, other.sections.length, other.sections[0].content], ['Am', false, 1, '[Am]In dragostea Ta m-ai cuprins\n[C]Atins de iubirea Ta'], 'a picked sheet with other lyrics: the sheet as the song');
+  assert.deepStrictEqual((await resurse.importFromUrl({ id: '503' }, { sheet: 'none' })).chords.source, null);
+  assert.deepStrictEqual((await resurse.importFromUrl({ id: '502' }, { sheet: 'auto' })).chords.source, 'own', 'a song with chords of its own keeps them');
 });
 
 (async () => {

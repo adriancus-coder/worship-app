@@ -328,6 +328,11 @@ h2 { font-size: 1.15rem; margin: 24px 0 8px; }
 /* A tappable chord (song page, rehearsal): dotted underline, the diagram pop-up on tap */
 .chord-tap { cursor: pointer; border-bottom: 1px dotted var(--chord); border-radius: 3px; }
 .chord-tap:hover, .chord-tap:focus-visible { background: var(--accent-soft); outline: none; }
+.preview-chords { margin: 0 0 10px; }
+.preview-chords-label { margin: 0 0 4px; font-size: 0.8125rem; font-weight: 700; color: var(--text-muted); }
+.preview-chords-choice { display: flex; flex-wrap: wrap; }
+.preview-chords-choice > button { white-space: normal; text-align: left; }
+.preview-chords-note { margin: 6px 0 0; font-size: 0.8125rem; }
 .chord-dialog { width: min(92vw, 22rem); padding: 14px 16px 16px; }
 .chord-dialog-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
 .chord-dialog-head h2 { margin: 0; font-size: 1.5rem; color: var(--chord); }

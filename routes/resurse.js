@@ -51,6 +51,12 @@ function createResurseRouter({ db, auth, logger }) {
     const input = body || {};
     return { url: typeof input.url === 'string' ? input.url.trim() : undefined, id: input.id };
   }
+  // The chords: 'auto' (default), 'none' or a sheet id (lib/resurse.js withChords).
+  function sheetOf(body) {
+    const v = (body || {}).sheet;
+    if (v === 'none' || v === 'auto') return v;
+    return /^\d{1,10}$/.test(String(v || '')) ? String(v) : 'auto';
+  }
 
   // Parsed song -> the body POST /api/songs accepts.
   function toSongBody(parsed) {
@@ -75,13 +81,16 @@ function createResurseRouter({ db, auth, logger }) {
   router.post('/api/resurse/preview', asyncRoute(async (req, res) => {
     let parsed;
     try {
-      parsed = await resurse.importFromUrl(source(req.body));
+      parsed = await resurse.importFromUrl(source(req.body), { sheet: sheetOf(req.body) });
     } catch (err) {
       return fail(req, res, err);
     }
     const { error } = validateSong(toSongBody(parsed), req.t);
+    const { sheets, chords, ...song } = parsed;
     res.json({
-      song: parsed,
+      song,
+      chords, // { source: 'own' | 'sheet' | null, sheetId, author, score }
+      sheets, // the song page's chord sheets: [{ id, author, key, score }]
       existingId: songs.findIdByTitle(req.adminId, parsed.title),
       invalid: error || null,
     });
@@ -90,7 +99,7 @@ function createResurseRouter({ db, auth, logger }) {
   router.post('/api/resurse/import', asyncRoute(async (req, res) => {
     let parsed;
     try {
-      parsed = await resurse.importFromUrl(source(req.body));
+      parsed = await resurse.importFromUrl(source(req.body), { sheet: sheetOf(req.body) });
     } catch (err) {
       return fail(req, res, err);
     }
@@ -102,8 +111,8 @@ function createResurseRouter({ db, auth, logger }) {
         sourceUrl: parsed.sourceUrl,
         presentation: parsed.presentation,
       });
-      logger.info(`Song #${id} imported from ${parsed.sourceUrl} by user #${req.user.id} (admin #${req.adminId})`);
-      res.status(201).json({ song: songs.get(req.adminId, id) });
+      logger.info(`Song #${id} imported from ${parsed.sourceUrl} by user #${req.user.id} (admin #${req.adminId})${parsed.chords && parsed.chords.source === 'sheet' ? ` with chords from sheet #${parsed.chords.sheetId}` : ''}`);
+      res.status(201).json({ song: songs.get(req.adminId, id), chords: parsed.chords || null });
     } catch (err) {
       if (err instanceof DuplicateTitleError) {
         return res.status(409).json({ error: req.t('errors.songDuplicate'), existingId: err.existingId });

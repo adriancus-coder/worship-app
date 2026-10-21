@@ -268,7 +268,7 @@
       rows: new Map(), // result id -> { kind: 'imported' | 'exists', songId } | { kind: 'error', text } | { kind: 'done', text }
       status: null, // { key, vars, spin }
       error: null, // server text
-      preview: null, // { source, resultId, song, existingId, invalid }
+      preview: null, // { source, resultId, song, chords, sheets, sheet, existingId, invalid }; sheet: 'auto' | 'none' | id (the chords asked for)
       outcome: null, // { kind: 'imported' | 'exists' | 'error' | 'done', id?, text? }
       busy: false, // 'search' | 'preview' | 'import' | 'row:<id>' | 'online:<id>:<i>'
     };
@@ -293,7 +293,7 @@
       if (existing) {
         const imported = row && row.kind === 'imported';
         return [
-          el('span', { class: `row-state${imported ? ' success' : ''}`, text: t(imported ? 'online.importedShort' : 'online.exists') }),
+          el('span', { class: `row-state${imported ? ' success' : ''}`, text: t(imported ? (row.withChords ? 'online.importedChords' : 'online.importedShort') : 'online.exists') }),
           el('a', { class: 'button secondary', href: `/songs/${existing}`, 'data-icon': 'jump', text: t('online.open'), 'aria-label': t('online.openSongTitle', { title: item.title }) }),
         ];
       }
@@ -351,6 +351,7 @@
         song.presentation ? t('online.presentation', { order: song.presentation }) : null,
       ].filter(Boolean).join(' · ');
       previewSections.replaceChildren(...window.SONG_RENDER.sectionsView(song.sections, { headingLevel: 3 }));
+      renderChordsChoice(pv);
 
       const outcome = online.outcome;
       let message = [];
@@ -424,6 +425,39 @@
       }
     }
 
+    // "Acorduri": from the song itself, none, or one of the song page's chord sheets (author,
+    // key, how much of the lyrics it covers). A pick reloads the preview with that sheet;
+    // the import then asks for the same one.
+    let chordsBox = null;
+    function renderChordsChoice(pv) {
+      if (!chordsBox) {
+        chordsBox = el('div', { class: 'preview-chords', id: 'preview-chords' });
+        previewMeta.after(chordsBox);
+      }
+      const sheets = pv.sheets || [];
+      const chords = pv.chords || { source: null };
+      if (!sheets.length && chords.source !== 'sheet') {
+        chordsBox.replaceChildren(chords.source === 'own' ? el('p', { class: 'muted preview-chords-note', text: t('online.chordsOwn') }) : null);
+        chordsBox.hidden = !chords.source;
+        return;
+      }
+      chordsBox.hidden = false;
+      const current = chords.source === 'sheet' ? String(chords.sheetId) : (chords.source === 'own' ? 'own' : 'none');
+      const options = [
+        chords.source === 'own' || (pv.sheet === 'none' && !sheets.length) ? null : { value: 'none', text: t(chords.source === 'own' ? 'online.chordsOwn' : 'online.chordsNone') },
+        ...sheets.map((s) => ({ value: String(s.id), text: `${s.author || t('online.chordsSheet')}${s.key ? ` · ${window.NOTATION.chord(s.key)}` : ''} · ${t('online.chordsMatch', { pct: Math.round(s.score * 100) })}` })),
+      ].filter(Boolean);
+      if (chords.source === 'own') options.unshift({ value: 'own', text: t('online.chordsOwn') });
+      chordsBox.replaceChildren(
+        el('p', { class: 'preview-chords-label', id: 'preview-chords-label', text: t('online.chordsLabel') }),
+        el('div', { class: 'choice-group preview-chords-choice', role: 'group', 'aria-labelledby': 'preview-chords-label' },
+          ...options.map((o) => el('button', {
+            type: 'button', 'data-sheet': o.value, 'aria-pressed': String(o.value === current), disabled: online.busy ? 'disabled' : null, text: o.text,
+            onclick: () => { if (o.value !== current) openPreview({ ...pv.source, sheet: o.value === 'own' ? 'none' : o.value }, pv.resultId); },
+          }))),
+        el('p', { class: 'muted preview-chords-note', text: t('online.chordsHint') }));
+    }
+
     async function openPreview(source, resultId) {
       online.busy = 'preview';
       online.error = null;
@@ -433,7 +467,9 @@
       try {
         const res = await api('/api/resurse/preview', { method: 'POST', body: source });
         if (res.ok) {
-          online.preview = { source, resultId, song: res.body.song, existingId: res.body.existingId, invalid: res.body.invalid };
+          // the sheets list is known from the first load ("Fără acorduri" asks the site for none)
+          const known = online.preview && online.preview.resultId === resultId && online.preview.source.id === source.id && online.preview.source.url === source.url ? online.preview.sheets : [];
+          online.preview = { source, resultId, song: res.body.song, chords: res.body.chords || null, sheets: (res.body.sheets && res.body.sheets.length) ? res.body.sheets : known, sheet: source.sheet || 'auto', existingId: res.body.existingId, invalid: res.body.invalid };
           online.status = null;
         } else {
           online.status = null;
@@ -452,8 +488,8 @@
       }
     }
 
-    function imported(resultId, songId) {
-      if (resultId) online.rows.set(resultId, { kind: 'imported', songId });
+    function imported(resultId, songId, chords) {
+      if (resultId) online.rows.set(resultId, { kind: 'imported', songId, withChords: Boolean(chords && chords.source === 'sheet') });
       document.dispatchEvent(new CustomEvent('library:changed'));
     }
 
@@ -462,8 +498,8 @@
       online.rows.delete(item.id);
       renderOnline();
       try {
-        const res = await api('/api/resurse/import', { method: 'POST', body: { id: item.id } });
-        if (res.status === 201) imported(item.id, res.body.song.id);
+        const res = await api('/api/resurse/import', { method: 'POST', body: { id: item.id } }); // the chords: the song's own, else a matching sheet
+        if (res.status === 201) imported(item.id, res.body.song.id, res.body.chords);
         else if (res.status === 409) online.rows.set(item.id, { kind: 'exists', songId: res.body.existingId });
         else online.rows.set(item.id, { kind: 'error', text: failText(res) });
       } catch (err) {
@@ -573,7 +609,7 @@
         online.outcome = null;
         renderPreview();
         try {
-          const res = await api('/api/resurse/import', { method: 'POST', body: pv.source });
+          const res = await api('/api/resurse/import', { method: 'POST', body: { ...pv.source, sheet: pv.sheet } });
           if (res.status === 201) {
             online.outcome = { kind: 'imported', id: res.body.song.id };
             imported(pv.resultId, res.body.song.id);
