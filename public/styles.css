@@ -2686,7 +2686,9 @@ dialog.big-lyrics.scrolls .big-body { align-items: flex-start; overflow-y: auto;
 .big-after-section .section-label { font-size: 0.6em; margin-bottom: 0.2em; }
 /* The "next" line: ~1.6x the old size (A− / A+ scale it with the lyrics), one line, 44 px tall,
    clear of the notches. */
-.big-next { box-sizing: border-box; min-height: var(--touch); margin: 0; padding: 8px max(16px, env(safe-area-inset-right, 0px)) 8px max(16px, env(safe-area-inset-left, 0px)); text-align: center; font-size: 1.5rem; line-height: 1.2; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* "Urmează: Strofa 2. Ești lut pe roată…": smaller than the lyrics, two rows at most, so the
+   first line of what comes next fits even on a phone */
+.big-next { box-sizing: border-box; min-height: var(--touch); margin: 0; padding: 6px max(16px, env(safe-area-inset-right, 0px)) 6px max(16px, env(safe-area-inset-left, 0px)); text-align: center; font-size: 1.125rem; line-height: 1.2; color: var(--text-muted); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
 .big-status { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 0 16px; margin: 0; padding: 0 16px; font-size: 0.8125rem; color: var(--text-muted); }
 .big-status-text { display: inline-flex; align-items: center; gap: 8px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .big-status .live-clock { font-size: 0.8125rem; }
@@ -2706,7 +2708,8 @@ dialog.big-lyrics.scrolls .big-body { align-items: flex-start; overflow-y: auto;
 .big-nav-member .big-back-live[hidden] { display: none; }
 .follow-section .song-section, .rehearse-slide .slide-sections .song-section { cursor: pointer; }
 @media (max-width: 599px) {
-  .big-nav { flex-wrap: wrap; }
+  .big-nav { flex-wrap: wrap; gap: 6px; padding-top: 6px; }
+  .big-nav > button { min-height: 48px; font-size: 1rem; }
   .big-nav > button:last-child { order: 3; flex: 1 0 100%; }
   .big-nav > .big-exit { order: 0; }
 }

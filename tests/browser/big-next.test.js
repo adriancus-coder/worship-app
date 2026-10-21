@@ -3,7 +3,8 @@
 // The "next" line of the big lyrics (and the follow page's "Urmează", and the step-row
 // "Următoarea: …" label): the next step of the same song with its first lyric line, the next
 // song with its key, a verse / announcement by its reference or title, "Sfârșitul programului"
-// at the very end. Larger than before, one line, 44 px, scales with A− / A+. RO 375, EN 1180.
+// at the very end. Smaller than the lyrics, two rows at most (the first line of what comes
+// next fits on a phone), 44 px, grows a little with A+. RO 375, EN 1180.
 
 const { layoutAudit, wait } = require('./harness');
 
@@ -18,7 +19,7 @@ module.exports = {
       const n = document.querySelector('dialog.big-lyrics .big-next');
       const r = n.getBoundingClientRect();
       const cs = getComputedStyle(n);
-      return { text: n.textContent, height: r.height, font: parseFloat(cs.fontSize), overflow: r.right > window.innerWidth + 1 || r.left < -1, ellipsis: cs.textOverflow === 'ellipsis' && cs.whiteSpace === 'nowrap' };
+      return { text: n.textContent, height: r.height, font: parseFloat(cs.fontSize), overflow: r.right > window.innerWidth + 1 || r.left < -1, fits: n.scrollHeight <= n.clientHeight + 1 && r.height <= 2 * 1.2 * parseFloat(cs.fontSize) + 13 };
     });
 
     for (const [lang, width, role] of [['ro', 375, 'leader'], ['en', 1180, 'presenter']]) {
@@ -55,7 +56,7 @@ module.exports = {
         await p.waitForFunction((re) => new RegExp(re).test(document.querySelector('dialog.big-lyrics .big-next').textContent), big.source, { timeout: 4000 }).catch(() => {});
         const b = await bigNext(p);
         check(big.test(b.text), `${tag} big lyrics ${itemId}/${step}: "${b.text}"`, b);
-        check(b.height >= 44 && !b.overflow && b.ellipsis, `${tag} the line is >= 44 px, one line with ellipsis, inside the screen`, b);
+        check(b.height >= 44 && !b.overflow && b.fits, `${tag} the line is >= 44 px, whole, two rows at most, inside the screen`, b);
         await m.waitForFunction((re) => new RegExp(re).test((document.querySelector('#slide .up-next') || {}).textContent || ''), big.source, { timeout: 4000 }).catch(() => {});
         check(big.test(await follow()), `${tag} follow page "Urmează": the same words`, await follow());
         check(row.test(await stepRow()), `${tag} step-row button: "${await stepRow()}"`);
@@ -69,7 +70,7 @@ module.exports = {
       await p.click('dialog.big-lyrics .big-tools button:has-text("A−")');
       await wait(150);
       const f2 = (await bigNext(p)).font;
-      check(f1 > f0 && f2 < f0 && f0 >= 22, `${tag} A+ / A− scale the next line (${f2.toFixed(1)} < ${f0.toFixed(1)} < ${f1.toFixed(1)} px)`);
+      check(f1 > f0 && f2 < f0 && f0 >= 18, `${tag} A+ / A− scale the next line (${f2.toFixed(1)} < ${f0.toFixed(1)} < ${f1.toFixed(1)} px)`);
       await p.click('dialog.big-lyrics .big-tools button:has-text("A+")'); // back to the default
       const a = await layoutAudit(p, 'dialog.big-lyrics');
       check(!a.overflow && !a.small.length, `${tag} big lyrics: no overflow, targets >= 44 px`, a);

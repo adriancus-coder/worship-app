@@ -207,7 +207,9 @@
 
     // The next line follows A− / A+ (1.5rem at scale 1).
     function scaleNext() {
-      parts.next.style.fontSize = `${(1.5 * state.scale).toFixed(3)}rem`;
+      // the bottom line grows a little with A+, never much: the first line of what comes next
+      // must stay readable in two rows at most
+      parts.next.style.fontSize = `${(1.125 * Math.min(1.2, Math.max(0.85, state.scale))).toFixed(3)}rem`;
     }
 
     function setTextOnly(value) {
