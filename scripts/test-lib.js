@@ -2792,7 +2792,9 @@ testAsync('resurse chord sheets: auto / pick / none through the browser tests\' 
   const other = await resurse.importFromUrl({ id: '503' }, { sheet: '9002' });
   assert.deepStrictEqual([other.key, other.chords.overlay, other.sections.length, other.sections[0].content], ['Am', false, 1, '[Am]In dragostea Ta m-ai cuprins\n[C]Atins de iubirea Ta'], 'a picked sheet with other lyrics: the sheet as the song');
   assert.deepStrictEqual((await resurse.importFromUrl({ id: '503' }, { sheet: 'none' })).chords.source, null);
-  assert.deepStrictEqual((await resurse.importFromUrl({ id: '502' }, { sheet: 'auto' })).chords.source, 'own', 'a song with chords of its own keeps them');
+  assert.deepStrictEqual((await resurse.importFromUrl({ id: '502' }, { sheet: 'auto' })).chords.source, 'own', 'a song with chords of its own keeps them (its page cannot even be read: no matter)');
+  const plain = await resurse.importFromUrl({ id: '501' }, { sheet: 'auto' });
+  assert.deepStrictEqual([plain.chords.source, plain.sheets], ['own', []], 'a page with no sheets');
 });
 
 (async () => {

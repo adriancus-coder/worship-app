@@ -66,7 +66,9 @@ global.fetch = async (url, opts) => {
   if (!['www.resursecrestine.ro', 'resursecrestine.ro'].includes(u.hostname)) return chordFetch(url, opts);
   const res = (status, body, headers = {}) => new Response(body, { status, headers });
   if (u.pathname === '/cantece/opensong/503') return res(200, PLAIN_XML);
-  const page = u.pathname.match(/^\/cantece\/(\d+)$/);
+  if (/^\/cantece\/\d+$/.test(u.pathname)) return res(404, 'no slug'); // as the site: the id alone is a 404
+  const page = u.pathname.match(/^\/cantece\/(\d+)\/[^/]+$/);
+  if (page && page[1] === '502') return res(500, 'boom'); // the page cannot be read: the import still works
   if (page) return res(200, songPage(page[1] === '503' ? [[9001, 'Adeline M.'], [9002, 'Alin T.']] : []));
   const sheet = u.pathname.match(/^\/acorduri\/(\d+)\//);
   if (sheet) return SHEETS[sheet[1]] ? res(200, SHEETS[sheet[1]]) : res(404, '');
