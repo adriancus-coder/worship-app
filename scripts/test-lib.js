@@ -1981,6 +1981,7 @@ test('events: upcoming / past split by status and date; the home never picks a f
   db.prepare("UPDATE events SET status = 'finished' WHERE id = 2").run();
   const h2 = createHome(db).home(1, 'member', today);
   assert.deepStrictEqual([h2.live, h2.next.name], [null, 'planned next week'], 'a finished event today is never "next"');
+  assert.ok(Array.isArray(h2.program) && Array.isArray(h2.team), 'the card carries the top event\'s Program and team');
   assert.deepStrictEqual(names('past').slice(0, 4), ['planned today', 'finished today', 'planned yesterday', 'live yesterday'], 'descending; same date and time: newest id first');
   db.close();
 });

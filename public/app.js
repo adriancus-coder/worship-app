@@ -13,7 +13,7 @@
   const { t } = window.I18N;
   const $ = (id) => document.getElementById(id);
 
-  const state = { me: null, home: null, failed: false };
+  const state = { me: null, home: null, failed: false, pickedItem: null, keyBusy: false };
 
   const editor = () => can(state.me, 'events'); // creates events
 
@@ -62,6 +62,81 @@
     return [prepare, rehearse || { text: t('home.rehearse'), href: eventUrl(event, '/rehearse'), icon: 'rehearse' }].filter(Boolean);
   }
 
+  // --- the card's Program with the keys, the key choice, the team row ----------------------
+  const NOTE_INDEX = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+  const keyIndex = (key) => { const m = /^([A-G])([#b]?)/.exec(String(key || '')); return m ? (NOTE_INDEX[m[1]] + (m[2] === '#' ? 1 : m[2] === 'b' ? -1 : 0) + 12) % 12 : null; };
+  const itemLabel = (it) => it.title || it.who || it.reference || t(`setlist.types.${it.type}`);
+
+  // Picks the item whose key is changed (editors); a tap on it again lets go.
+  function pickItem(it) {
+    state.pickedItem = state.pickedItem === it.id ? null : it.id;
+    render();
+  }
+
+  // "Gamă": the 12 keys from the song's own, spelled by lib/chords.js keyAfter (a minor song
+  // keeps "m"); the one sung at this event is selected. A tap saves the transposition for
+  // this event (ARRANGE_SHEET.saveToEvent) and re-reads the home.
+  async function chooseKey(event, it, semitones) {
+    if (state.keyBusy) return;
+    state.keyBusy = true;
+    const res = await window.ARRANGE_SHEET.saveToEvent(event.id, it.id, { transpose: semitones });
+    state.keyBusy = false;
+    const out = $('start-message');
+    if (res.error) { out.textContent = res.error; return; }
+    out.textContent = '';
+    await load();
+  }
+
+  function keyChoice(event, it) {
+    if (!it.songKey) return el('p', { class: 'muted now-key-hint', text: t('home.keyNoKey') });
+    const base = keyIndex(it.songKey);
+    const current = ((it.transpose % 12) + 12) % 12;
+    const keys = [];
+    for (let n = 0; n < 12; n++) keys.push({ n, name: window.CHORDS.keyAfter(it.songKey, n), index: (base + n) % 12 });
+    keys.sort((a, b) => a.index - b.index);
+    return el('div', { class: 'now-key-row' },
+      el('span', { class: 'now-section-label', id: 'now-key-label', text: t('home.keyLabel', { title: itemLabel(it) }) }),
+      el('div', { class: 'choice-group now-keys', role: 'group', 'aria-labelledby': 'now-key-label' },
+        ...keys.map((k) => el('button', {
+          type: 'button', 'data-key': k.name, 'aria-pressed': String(k.n === current), disabled: state.keyBusy ? 'disabled' : null,
+          text: window.NOTATION.chord(k.name),
+          onclick: () => { if (k.n !== current) chooseKey(event, it, k.n > 6 ? k.n - 12 : k.n); },
+        }))));
+  }
+
+  function programBlock(event) {
+    const items = state.home.program || [];
+    if (!items.length) return null;
+    const picker = editor();
+    const picked = picker ? items.find((it) => it.id === state.pickedItem && it.type === 'song') : null;
+    return el('div', { class: 'now-program' },
+      el('p', { class: 'now-section-label', text: t('home.program') }),
+      el('ol', { class: 'now-items' }, ...items.map((it) => {
+        const key = it.type === 'song' ? el('span', { class: `key-badge now-item-key${it.key ? '' : ' is-unset'}`, text: it.key ? window.NOTATION.chord(it.key) : '—' }) : null;
+        const inner = [el('span', { class: `now-item-type type-badge type-${it.type}`, text: t(`setlist.types.${it.type}`) }), el('span', { class: 'now-item-title', text: itemLabel(it) }), key];
+        return el('li', { class: `now-item${picked && picked.id === it.id ? ' is-picked' : ''}` },
+          picker && it.type === 'song' && it.songId
+            ? el('button', { type: 'button', class: 'now-item-button', 'aria-pressed': String(Boolean(picked && picked.id === it.id)), 'aria-label': t('home.pickSong', { title: itemLabel(it) }), onclick: () => pickItem(it) }, ...inner)
+            : el('span', { class: 'now-item-button' }, ...inner));
+      })),
+      picked ? keyChoice(event, picked) : (picker && items.some((it) => it.type === 'song' && it.songId) ? el('p', { class: 'muted now-key-hint', text: t('home.keyHint') }) : null));
+  }
+
+  // The team: a circle with the initials per person, a dot with their answer, a legend.
+  const initials = (name) => String(name || '').trim().split(/\s+/).slice(0, 2).map((w) => w[0] || '').join('').toUpperCase() || '?';
+  function teamBlock() {
+    const team = state.home.team || [];
+    if (!team.length) return null;
+    const answer = (s) => t(s === 'pending' ? 'home.noAnswer' : `attend.answers.${s}`);
+    return el('div', { class: 'now-team' },
+      el('p', { class: 'now-section-label', text: t('home.team') }),
+      el('ul', { class: 'now-people', 'aria-label': t('home.team') }, ...team.map((p) => el('li', { class: `now-person now-person-${p.status}`, title: `${p.name} · ${answer(p.status)}${p.positions.length ? ` · ${p.positions.map((x) => window.PAGE.positionLabel(x)).join(', ')}` : ''}` },
+        el('span', { class: 'now-avatar', 'aria-hidden': 'true', text: initials(p.name) }),
+        el('span', { class: 'now-dot', 'aria-hidden': 'true' }),
+        el('span', { class: 'sr-only', text: `${p.name}: ${answer(p.status)}` })))),
+      el('p', { class: 'now-legend', 'aria-hidden': 'true' }, ...['accepted', 'maybe', 'declined', 'pending'].map((s) => el('span', { class: `now-legend-item now-person-${s}` }, el('span', { class: 'now-dot' }), ` ${answer(s)}`))));
+  }
+
   function card(event, live) {
     const [primary, secondary] = actions(event, live);
     return el('article', { class: `now-card${live ? ' live' : ''}`, 'aria-labelledby': 'now-title' },
@@ -74,6 +149,8 @@
         el('span', { text: itemCount(event.itemCount) }),
         el('span', { class: `pill pill-${event.status}`, text: t(`events.status.${event.status}`) })),
       event.notes ? el('p', { class: 'event-note now-note', text: event.notes }) : null,
+      programBlock(event),
+      teamBlock(),
       el('div', { class: 'now-actions' },
         primary.run
           ? el('button', { type: 'button', class: 'now-primary', id: 'start-live', 'data-icon': primary.icon, text: primary.text, onclick: primary.run })

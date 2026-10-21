@@ -1498,6 +1498,33 @@ body.has-view-as.list-page > .view-as-bar { flex: 0 0 auto; }
 .now-title a:hover { text-decoration: underline; }
 .now-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin: 0 0 12px; color: var(--text-muted); }
 .now-note { margin: -6px 0 12px; }
+/* The card's Program (the keys on the right), the key choice, the team row */
+.now-section-label { display: block; margin: 12px 0 6px; font-size: 0.8125rem; font-weight: 700; color: var(--text-muted); }
+.now-items { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.now-item-button { display: flex; align-items: center; gap: 10px; width: 100%; min-height: var(--touch); padding: 4px 10px; font: inherit; color: var(--text); text-align: left; background: var(--background); border: 1px solid var(--border); border-radius: var(--radius); }
+button.now-item-button { cursor: pointer; }
+button.now-item-button:hover { border-color: var(--text-muted); }
+button.now-item-button[aria-pressed="true"] { border-color: var(--accent-fill); box-shadow: inset 0 0 0 1px var(--accent-fill); }
+.now-item-type { flex: none; }
+.now-item-title { flex: 1 1 auto; min-width: 0; font-weight: 600; overflow-wrap: anywhere; }
+.now-item-key { flex: none; margin-left: auto; }
+.now-item-key.is-unset { color: var(--text-muted); background: var(--background); border: 1px solid var(--border); }
+.now-key-row { margin-top: 10px; }
+.now-key-row .now-section-label { margin-top: 0; }
+.now-keys { display: flex; gap: 4px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin; }
+.now-keys > button { flex: 1 0 auto; min-width: var(--touch); padding-left: 8px; padding-right: 8px; }
+.now-key-hint { margin: 8px 0 0; font-size: 0.875rem; }
+.now-team { margin-top: 4px; }
+.now-people { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.now-person { position: relative; display: inline-flex; }
+.now-avatar { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; font-size: 0.875rem; font-weight: 700; color: var(--text); background: var(--background); border: 1px solid var(--border); }
+.now-dot { position: absolute; right: -2px; bottom: -2px; width: 12px; height: 12px; border-radius: 50%; background: var(--text-muted); border: 2px solid var(--surface); }
+.now-person-accepted .now-dot { background: var(--success); }
+.now-person-maybe .now-dot { background: var(--warning); }
+.now-person-declined .now-dot { background: var(--error); }
+.now-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 8px 0 0; font-size: 0.8125rem; color: var(--text-muted); }
+.now-legend-item { display: inline-flex; align-items: center; gap: 6px; }
+.now-legend .now-dot { position: static; width: 10px; height: 10px; border: 0; }
 .now-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
 /* A live event forgotten since yesterday: the hint and "Încheie" (never automatic). */
 .now-stale { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin: 12px 0 0; font-size: 0.9rem; color: var(--text-muted); }
