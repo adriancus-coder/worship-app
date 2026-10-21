@@ -15,7 +15,8 @@
 
     <div id="rehearse" hidden>
       <div class="rehearse-bar">
-        <p id="position" class="rehearse-position" aria-live="polite"></p>
+        <!-- "Elementul 3 din 5" is a button: the whole Program, to jump to any item -->
+        <button type="button" class="secondary rehearse-position-button" id="jump-open" aria-haspopup="dialog" aria-controls="rehearse-jump" data-icon="list"><span id="position" class="rehearse-position" aria-live="polite"></span></button>
         <div class="rehearse-tools">
           <span data-notation-switch></span>
           <button type="button" class="secondary" id="text-only" aria-pressed="false" data-i18n="song.textOnly" hidden></button>
@@ -35,6 +36,15 @@
         <button type="button" id="next" data-i18n="rehearse.next"></button>
       </nav>
     </div>
+
+    <!-- The Program: any item, in one tap -->
+    <dialog id="rehearse-jump" class="rehearse-jump" aria-labelledby="rehearse-jump-title">
+      <div class="rehearse-jump-head">
+        <h2 id="rehearse-jump-title" data-i18n="rehearse.jumpTitle"></h2>
+        <button type="button" class="secondary" id="rehearse-jump-close" data-icon="close" data-i18n-aria-label="rehearse.jumpClose"></button>
+      </div>
+      <ol id="rehearse-jump-list" class="rehearse-jump-list"></ol>
+    </dialog>
   </main>
   <script src="/i18n.js"></script>
   <script src="/chords.js"></script>

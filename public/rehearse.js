@@ -228,6 +228,26 @@
   $('prev').addEventListener('click', () => go(state.index - 1));
   $('next').addEventListener('click', () => go(state.index + 1));
 
+  // The Program as a list ("Elementul 3 din 5" opens it): any item in one tap.
+  const jump = $('rehearse-jump');
+  function openJump() {
+    $('rehearse-jump-list').replaceChildren(...state.items.map((item, index) => el('li', null, el('button', {
+      type: 'button',
+      class: `jump-item${index === state.index ? ' current' : ''}`,
+      'aria-current': index === state.index ? 'true' : null,
+      onclick: () => { jump.close(); go(index); },
+    },
+    el('span', { class: 'jump-index', text: String(index + 1) }),
+    el('span', { class: `type-badge type-${item.type}`, text: t(`setlist.types.${item.type}`) }),
+    el('span', { class: 'follow-setlist-title', text: itemTitle(item) })))));
+    jump.showModal();
+    const current = jump.querySelector('.jump-item.current');
+    if (current) current.focus();
+  }
+  $('jump-open').addEventListener('click', openJump);
+  $('rehearse-jump-close').addEventListener('click', () => jump.close());
+  jump.addEventListener('click', (event) => { if (event.target === jump) jump.close(); });
+
   document.addEventListener('keydown', (event) => {
     if (event.target.closest('input, textarea, select') || event.altKey || event.ctrlKey || event.metaKey) return;
     if (big.isOpen()) return;
