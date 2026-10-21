@@ -2287,6 +2287,7 @@ button.song-key-change:hover { text-decoration: underline; }
 /* The song page's history ("Cântată ultima dată: … · n evenimente", opened: the events) */
 .song-history { margin: 0 0 12px; color: var(--text-muted); font-size: 0.9375rem; }
 .song-history > summary { cursor: pointer; min-height: var(--touch); display: flex; align-items: center; flex-wrap: wrap; gap: 0 4px; }
+.song-history:not([open]) > :not(summary) { display: none; } /* closed: no boxes for the list (targets audit, Chromium's content-visibility) */
 .song-history-list { margin: 4px 0 0; padding-left: 20px; }
 .song-history-list li { margin: 4px 0; }
 /* The operator console: the item's "Notă pentru echipă" under its title */
