@@ -67,12 +67,12 @@
       };
       // The item's own background (null = inherit, 'none', a media id); videos have none.
       if (type !== 'video') out.background = item.background || null;
+      out.teamNote = item.teamNote || ''; // "Notă pentru echipă", on any item
       // Per-event song options (only song items may carry them).
       if (type === 'song') {
         Object.assign(out, {
           transpose: Number(item.transpose) || 0,
           arrangement: arrangementPayload(item),
-          teamNote: item.teamNote || '',
           referenceUrl: item.referenceUrl || '',
         });
       }
@@ -783,7 +783,7 @@
     parts.push(keyBlock(item, song), arrangementBlock(item, song));
     if (state.editing) {
       parts.push(
-        field('it-team-note', t('options.teamNoteLabel'), bind(item, 'teamNote', el('textarea', { id: 'it-team-note', rows: '2', maxlength: '500', value: item.teamNote || '' }))),
+        teamNoteField(item),
         field('it-reference-url', t('options.referenceUrlLabel'), input(item, 'referenceUrl', 'it-reference-url', { type: 'url', maxlength: '500', inputmode: 'url', autocapitalize: 'off', spellcheck: 'false' })),
         durationField(item));
     } else {
@@ -795,6 +795,9 @@
     parts.push(el('p', null, el('a', { class: 'button secondary', href: `/songs/${item.songId}?back=${encodeURIComponent(returnTo)}`, text: t('setlist.openSong') })), previewBlock(item, song));
     return parts;
   }
+
+  // "Notă pentru echipă" on any item: for the rehearsal, live and phone pages, never the projector.
+  const teamNoteField = (item) => field('it-team-note', t('options.teamNoteLabel'), bind(item, 'teamNote', el('textarea', { id: 'it-team-note', rows: '2', maxlength: '500', value: item.teamNote || '' })));
 
   function editFields(item) {
     const TITLE_TYPES = ['sermon', 'prayer', 'other']; // a title (+ text) on the projector
@@ -818,21 +821,24 @@
         return [
           field('it-reference', t('setlist.referenceLabel'), input(item, 'reference', 'it-reference', { type: 'text', maxlength: '100', 'aria-describedby': 'it-reference-hint' }), t('setlist.referenceHint')),
           field('it-body', t('setlist.verseTextLabel'), textarea(item, 'body', 'it-body', 5)),
+          teamNoteField(item),
           durationField(item),
         ];
       case 'video':
         return [
           field('it-title', t('setlist.titleLabel'), input(item, 'title', 'it-title', { type: 'text', maxlength: '200' })),
           ...videoSourceFields(item),
+          teamNoteField(item),
           durationField(item),
         ];
       case 'prayer': // the person is the item
-        return [typeSelect, field('it-who', t('setlist.whoLabel'), input(item, 'who', 'it-who', { type: 'text', maxlength: '100', autocomplete: 'off' }))];
+        return [typeSelect, field('it-who', t('setlist.whoLabel'), input(item, 'who', 'it-who', { type: 'text', maxlength: '100', autocomplete: 'off' })), teamNoteField(item)];
       case 'sermon': // the title and the preacher
         return [
           typeSelect,
           field('it-title', t('setlist.titleLabel'), input(item, 'title', 'it-title', { type: 'text', maxlength: '200' })),
           field('it-who', t('setlist.whoLabel'), input(item, 'who', 'it-who', { type: 'text', maxlength: '100', autocomplete: 'off' })),
+          teamNoteField(item),
         ];
       default:
         return [
@@ -840,6 +846,7 @@
           field('it-title', t('setlist.titleLabel'), input(item, 'title', 'it-title', { type: 'text', maxlength: '200' })),
           field('it-who', t('setlist.whoLabel'), input(item, 'who', 'it-who', { type: 'text', maxlength: '100', autocomplete: 'off' })),
           field('it-body', t('setlist.bodyLabel'), textarea(item, 'body', 'it-body', 4)),
+          teamNoteField(item),
           durationField(item),
         ];
     }
@@ -893,14 +900,15 @@
 
   function viewFields(item) {
     const duration = item.durationMin ? el('p', { class: 'muted', text: t('setlist.minutes', { n: item.durationMin }) }) : null;
+    const note = item.teamNote ? el('p', { class: 'team-note', text: item.teamNote }) : null;
     switch (item.type) {
       case 'verse':
-        return [readOnlyText(t('setlist.referenceLabel'), item.reference), readOnlyText(t('setlist.verseTextLabel'), item.body), duration];
+        return [readOnlyText(t('setlist.referenceLabel'), item.reference), readOnlyText(t('setlist.verseTextLabel'), item.body), note, duration];
       case 'video':
-        if (item.media) return [readOnlyText(t('setlist.mediaLabel'), item.media.title), duration];
-        return [item.url ? el('p', null, el('a', { class: 'button secondary video-link', href: item.url, target: '_blank', rel: 'noopener noreferrer', text: item.url })) : null, duration];
+        if (item.media) return [readOnlyText(t('setlist.mediaLabel'), item.media.title), note, duration];
+        return [item.url ? el('p', null, el('a', { class: 'button secondary video-link', href: item.url, target: '_blank', rel: 'noopener noreferrer', text: item.url })) : null, note, duration];
       default:
-        return [item.who && item.title ? readOnlyText(t('setlist.whoLabel'), item.who) : null, item.body ? readOnlyText(t('setlist.bodyLabel'), item.body) : null, duration];
+        return [item.who && item.title ? readOnlyText(t('setlist.whoLabel'), item.who) : null, item.body ? readOnlyText(t('setlist.bodyLabel'), item.body) : null, note, duration];
     }
   }
 

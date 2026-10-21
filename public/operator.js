@@ -236,6 +236,8 @@
     $('op-edit-lyrics').hidden = !(item && item.type === 'song' && item.songId && enabled);
     if (item) $('op-edit-lyrics').setAttribute('aria-label', t('lyricsEdit.buttonLabel', { title: titleText }));
     $('op-lyrics-edited').hidden = !(item && item.lyricsEdited);
+    $('op-item-note').hidden = !(item && item.teamNote);
+    $('op-item-note').replaceChildren(...(item && item.teamNote ? [el('span', { class: 'ro-label', text: t('rehearse.teamNote') }), el('p', { text: item.teamNote })] : []));
     $('op-item-title').replaceChildren(item && arrangeable(item) && enabled
       ? el('button', { type: 'button', class: 'title-button', id: 'op-arrange-current', 'aria-label': t('arrange.buttonLabel', { title: titleText }), onclick: () => arrange(item) },
         titleText, el('span', { class: 'title-button-hint', 'data-icon': 'edit', text: t('arrange.button') }))

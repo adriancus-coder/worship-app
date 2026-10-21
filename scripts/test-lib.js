@@ -586,9 +586,13 @@ test('validateItems: song options (transpose, arrangement, team note, reference 
   assert.ok(err({ type: 'song', songId: 5, arrangement: 'V1 '.repeat(70) }));
   assert.ok(err({ type: 'song', songId: 5, teamNote: 'x'.repeat(501) }));
   assert.ok(err({ type: 'song', songId: 5, referenceUrl: 'http://youtu.be/x' }));
-  for (const field of [{ transpose: 2 }, { transpose: 0 }, { arrangement: 'V1' }, { teamNote: 'x' }, { referenceUrl: 'https://x.ro' }]) {
-    assert.strictEqual(err({ type: 'announcement', title: 'x', ...field }, tEn), 'Item 1: key, section order, team note and reference link are only for songs.', JSON.stringify(field));
+  for (const field of [{ transpose: 2 }, { transpose: 0 }, { arrangement: 'V1' }, { referenceUrl: 'https://x.ro' }]) {
+    assert.strictEqual(err({ type: 'announcement', title: 'x', ...field }, tEn), 'Item 1: key, section order and reference link are only for songs.', JSON.stringify(field));
   }
+  // "Notă pentru echipă" on any item (trimmed, 500 max)
+  assert.strictEqual(evs.validateItems([{ type: 'announcement', title: 'x', teamNote: '  intro la pian ' }], tro, findSong).value[0].teamNote, 'intro la pian');
+  assert.strictEqual(evs.validateItems([{ type: 'verse', reference: 'Ps 23', teamNote: '' }], tro, findSong).value[0].teamNote, null);
+  assert.ok(err({ type: 'verse', reference: 'Ps 23', teamNote: 'x'.repeat(501) }));
   // A deleted song keeps its options (nothing to check the arrangement against).
   assert.strictEqual(evs.validateItems([{ type: 'song', songId: null, title: 'Veche', arrangement: 'V1 C', transpose: 2 }], tro, findSong).value[0].arrangement, 'V1 C');
 });

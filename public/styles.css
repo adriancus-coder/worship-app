@@ -2289,6 +2289,9 @@ button.song-key-change:hover { text-decoration: underline; }
 .song-history > summary { cursor: pointer; min-height: var(--touch); display: flex; align-items: center; flex-wrap: wrap; gap: 0 4px; }
 .song-history-list { margin: 4px 0 0; padding-left: 20px; }
 .song-history-list li { margin: 4px 0; }
+/* The operator console: the item's "Notă pentru echipă" under its title */
+.op-item-note { margin: 0 0 10px; }
+.op-item-note p { margin: 0; }
 .arrange-order .song-key-box { margin-bottom: 8px; }
 .option-block .song-key-box { margin: 2px 0 8px; }
 .song-key-picker .song-key-dot { color: var(--text-muted); }

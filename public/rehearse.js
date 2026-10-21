@@ -123,6 +123,10 @@
     } else if (item.body) {
       parts.push(el('p', { class: 'lyrics slide-body', text: item.body }));
     }
+    if (item.teamNote) {
+      parts.push(el('div', { class: 'team-note', role: 'note' },
+        el('span', { class: 'ro-label', text: t('rehearse.teamNote') }), el('p', { text: item.teamNote })));
+    }
     return parts;
   }
 

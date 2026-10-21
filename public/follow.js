@@ -177,7 +177,9 @@
     const head = el('header', { class: 'slide-head' },
       el('span', { class: `type-badge type-${item.type}`, text: t(`setlist.types.${item.type}`) }),
       el('h1', { text: itemTitle(item) }),
-      item.type === 'song' && item.displayKey ? el('p', { class: 'slide-key' }, el('span', { class: 'key-badge', text: t('rehearse.key', { key: window.NOTATION.chord(item.displayKey) }) })) : null);
+      item.type === 'song' && item.displayKey ? el('p', { class: 'slide-key' }, el('span', { class: 'key-badge', text: t('rehearse.key', { key: window.NOTATION.chord(item.displayKey) }) })) : null,
+      // "Notă pentru echipă" (any item): for the team, never on the projector
+      item.teamNote ? el('div', { class: 'team-note', role: 'note' }, el('span', { class: 'ro-label', text: t('rehearse.teamNote') }), el('p', { text: item.teamNote })) : null);
 
     // "■ Sfârșit" on the live position (followed, not while scrolling on one's own): the item
     // is over; what comes next.
