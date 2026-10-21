@@ -53,11 +53,11 @@ const PLAIN_XML = `<?xml version="1.0" encoding="UTF-8"?>
  Viața mea e-n mâna Sa
  Și cu credință voi cânta
 </lyrics></song>`;
-const sheetPage = (key, body) => `<html><head><title>x - acorduri: ${key}</title></head><body><div class="resized-text"><span class="stil-acorduri">${body}</span>
+const sheetPage = (key, body, title = 'x', author = 'Cineva') => `<html><head><title>${title} - Resurse Creștine</title><meta property="og:title" content="${title}" /></head><body><div class="resized-text"><p>Autor: <a href="https://www.resursecrestine.ro/acorduri/index-autori/x" class="blueLink"> ${author} </a> &nbsp;|&nbsp; acorduri: ${key}</p><span class="stil-acorduri">${body}</span>
 </div></body></html>`;
 const SHEETS = {
-  9001: sheetPage('D', '<a href="#" class="nice-acord" rel="D">D</a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#" class="nice-acord" rel="A">A</a><br />\r\n1. C&acirc;nd&nbsp;totul&nbsp;pare&nbsp;c&#259;-i&nbsp;pierdut,<br />\r\n<a href="#" class="nice-acord" rel="Bm">Bm</a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#" class="nice-acord" rel="G">G</a><br />\r\nAl&nbsp;meu&nbsp;P&#259;stor&nbsp;&icirc;mi&nbsp;va&nbsp;fi&nbsp;scut.<br />\r\n<br />\r\n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#" class="nice-acord" rel="G">G</a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#" class="nice-acord" rel="D">D</a><br />\r\nRef: Via&#539;a&nbsp;mea&nbsp;e-n&nbsp;m&acirc;na&nbsp;Sa<br />\r\n<a href="#" class="nice-acord" rel="A">A</a><br />\r\n&#536;i&nbsp;cu&nbsp;credin&#539;&#259;&nbsp;voi&nbsp;c&acirc;nta<br />\r\n'),
-  9002: sheetPage('Am', '<a href="#" class="nice-acord" rel="Am">Am</a><br />\r\nIn&nbsp;dragostea&nbsp;Ta&nbsp;m-ai&nbsp;cuprins<br />\r\n<a href="#" class="nice-acord" rel="C">C</a><br />\r\nAtins&nbsp;de&nbsp;iubirea&nbsp;Ta<br />\r\n'),
+  9001: sheetPage('D', '<a href="#" class="nice-acord" rel="D">D</a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#" class="nice-acord" rel="A">A</a><br />\r\n1. C&acirc;nd&nbsp;totul&nbsp;pare&nbsp;c&#259;-i&nbsp;pierdut,<br />\r\n<a href="#" class="nice-acord" rel="Bm">Bm</a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#" class="nice-acord" rel="G">G</a><br />\r\nAl&nbsp;meu&nbsp;P&#259;stor&nbsp;&icirc;mi&nbsp;va&nbsp;fi&nbsp;scut.<br />\r\n<br />\r\n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#" class="nice-acord" rel="G">G</a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#" class="nice-acord" rel="D">D</a><br />\r\nRef: Via&#539;a&nbsp;mea&nbsp;e-n&nbsp;m&acirc;na&nbsp;Sa<br />\r\n<a href="#" class="nice-acord" rel="A">A</a><br />\r\n&#536;i&nbsp;cu&nbsp;credin&#539;&#259;&nbsp;voi&nbsp;c&acirc;nta<br />\r\n', 'Fără acorduri', 'Adeline M.'),
+  9002: sheetPage('Am', '<a href="#" class="nice-acord" rel="Am">Am</a><br />\r\nIn&nbsp;dragostea&nbsp;Ta&nbsp;m-ai&nbsp;cuprins<br />\r\n<a href="#" class="nice-acord" rel="C">C</a><br />\r\nAtins&nbsp;de&nbsp;iubirea&nbsp;Ta<br />\r\n', 'In dragostea Ta', 'Alin T.'),
 };
 const songPage = (sheets) => `<html><body><h1>Cântare</h1>${sheets.map(([id, author]) => `<div class="listing"><a href="https://www.resursecrestine.ro/acorduri/${id}/fara-acorduri" class="listingTitleLink">Fără acorduri</a> <a href="https://www.resursecrestine.ro/acorduri/index-autori/x" class="brownLink">\n ${author} \n</a></div>`).join('')}</body></html>`;
 const chordFetch = global.fetch;
@@ -72,6 +72,10 @@ global.fetch = async (url, opts) => {
   if (page) return res(200, songPage(page[1] === '503' ? [[9001, 'Adeline M.'], [9002, 'Alin T.']] : []));
   const sheet = u.pathname.match(/^\/acorduri\/(\d+)\//);
   if (sheet) return SHEETS[sheet[1]] ? res(200, SHEETS[sheet[1]]) : res(404, '');
+  if (u.pathname === '/web-api-search' && u.searchParams.get('search_in') === '1') {
+    const q = u.searchParams.get('search_text') || '';
+    return res(200, JSON.stringify({ Results: /ăr|ar/i.test(q) ? [{ id: '9002', title: 'In dragostea Ta', title_slug: 'in-dragostea-ta', author: 'Alin T.', kind: 'text', slug: 'acorduri' }] : [] }), { 'content-type': 'application/json' });
+  }
   if (u.pathname === '/web-api-search' && /ăr|ar/i.test(u.searchParams.get('search_text') || '')) {
     return res(200, JSON.stringify({ Results: [{ id: '503', title: 'Fără acorduri', title_slug: 'fara-acorduri', author: 'Autor Necunoscut', slug: 'cantece' }] }), { 'content-type': 'application/json' });
   }

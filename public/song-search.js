@@ -326,7 +326,7 @@
         const row = online.rows.get(item.id);
         return el('li', { class: 'result-row' },
           el('div', { class: 'result-text' },
-            el('span', { class: 'song-title', text: item.title }),
+            el('span', { class: 'song-title' }, item.title, item.kind === 'sheet' ? [' ', el('span', { class: 'pill result-kind', text: t('online.sheetBadge') })] : null),
             item.author ? el('span', { class: 'song-meta', text: item.author }) : null,
             row && row.kind === 'error' ? el('span', { class: 'message error', role: 'alert', text: row.text }) : null,
             row && row.kind === 'done' ? el('span', { class: 'message success', role: 'status', text: row.text }) : null),
@@ -436,6 +436,12 @@
       }
       const sheets = pv.sheets || [];
       const chords = pv.chords || { source: null };
+      // a chord sheet imported as a song: nothing to choose, just where it comes from
+      if (/^a\d+$/.test(String(pv.source.id || '')) || /\/acorduri\//.test(String(pv.source.url || ''))) {
+        chordsBox.hidden = false;
+        chordsBox.replaceChildren(el('p', { class: 'muted preview-chords-note', text: t('online.sheetNote', { author: pv.song.author || t('online.sheetAnonymous') }) }));
+        return;
+      }
       if (!sheets.length && chords.source !== 'sheet') {
         chordsBox.replaceChildren(chords.source === 'own' ? el('p', { class: 'muted preview-chords-note', text: t('online.chordsOwn') }) : null);
         chordsBox.hidden = !chords.source;

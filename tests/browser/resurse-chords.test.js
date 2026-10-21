@@ -54,6 +54,19 @@ module.exports = {
     const imported = (await app.api(app.cookies.owner, 'GET', '/api/songs?q=acorduri')).body.songs.find((s) => s.title === 'Fără acorduri');
     const got = (await app.api(app.cookies.owner, 'GET', `/api/songs/${imported.id}`)).body.song;
     check(got.song_key === 'Am' && got.sections[0].content.startsWith('[Am]In dragostea'), 'imported as picked in the preview', { key: got.song_key, first: got.sections[0].content });
+
+    // the site's "Acorduri" section in the search: a sheet result, imported as a song
+    await p.goto(`${app.url}/library`);
+    await p.waitForSelector('#q');
+    await p.fill('#q', 'Fără');
+    await p.keyboard.press('Enter');
+    await p.waitForSelector('#online-results li:has-text("In dragostea Ta")');
+    check((await p.textContent('#online-results li:has-text("In dragostea Ta") .result-kind')) === 'Acorduri' && /Alin T\./.test(await p.textContent('#online-results li:has-text("In dragostea Ta")')), 'a chord sheet in the results, marked "Acorduri", with its author');
+    await p.click('#online-results li:has-text("In dragostea Ta") button:has-text("Importă")');
+    await p.waitForSelector('#online-results li:has-text("In dragostea Ta") .row-state');
+    check((await p.textContent('#online-results li:has-text("In dragostea Ta") .row-state')) === 'Importată, cu acorduri', '"Importă" on a sheet: a song with chords');
+    const fromSheet = (await app.api(app.cookies.owner, 'GET', '/api/songs?q=dragostea')).body.songs.find((s) => s.title === 'In dragostea Ta');
+    check(Boolean(fromSheet) && (await app.api(app.cookies.owner, 'GET', `/api/songs/${fromSheet.id}`)).body.song.song_key === 'Am', 'in the library with the sheet\'s key');
     await p.context().close();
   },
 };

@@ -289,6 +289,9 @@ test('resurse chord sheets: the song page listing, a sheet page -> text + key, t
   assert.deepStrictEqual([over.matched, over.total, over.score, over.sections[0].content, over.sections[1].content], [3, 4, 0.75, '[Bm]Isus, la Tine vin\n[G]Vreau doar al Tau sa fiu', 'Viața [D]mea [A]e-n mâna Ta.\nAltceva'], 'lines matched without diacritics; a line the sheet has not stays');
   assert.strictEqual(resurse.overlayChords([{ type: 'verse', label: null, content: '[C]Isus, la Tine vin' }], sheet.text).sections[0].content, '[C]Isus, la Tine vin', 'a line with chords keeps them');
   assert.strictEqual(resurse.normalizeLyric('  1. Când totul, pare că-i pierdut!'), 'cand totul pare ca i pierdut');
+  assert.deepStrictEqual([resurse.extractResurseCrestineSongId('https://www.resursecrestine.ro/acorduri/699/in-mana-ta'), resurse.extractResurseCrestineSongId('https://resursecrestine.ro/acorduri/699')], ['a699', 'a699'], 'a chord sheet link: a<id>');
+  const sheetPage = resurse.parseChordSheetPage('<title>\n Da, eu cred - Resurse Creștine\n</title><p>Autor: <a href="https://www.resursecrestine.ro/acorduri/index-autori/x" class="blueLink"> Travis Cottrell </a> | acorduri: Em</p>' + sheetHtml.replace('<title>x - acorduri: Bm</title>', ''));
+  assert.deepStrictEqual([sheetPage.title, sheetPage.author, sheetPage.key], ['Da, eu cred', 'Travis Cottrell', 'Em']);
   const code = (fn) => { try { fn(); } catch (err) { return err.code; } return 'no error'; };
   assert.strictEqual(code(() => resurse.parseChordSheetHtml('<html>no sheet here at all, padding padding padding</html>')), 'bad_response');
 });
@@ -414,15 +417,17 @@ testAsync('search and import use the ported endpoints', async () => {
     return fakeResponse(200, OPENSONG_CHORDS);
   };
   const results = await resurse.searchResurseCrestineSongs('Isus', { fetchImpl });
-  assert.deepStrictEqual(results, [{ id: '101', title: 'Isus e Domnul', author: 'X', url: 'https://www.resursecrestine.ro/cantece/101/isus-e-domnul' }]);
-  const search = new URL(seen[0]);
-  assert.strictEqual(search.searchParams.get('output'), 'json2');
-  assert.strictEqual(search.searchParams.get('search_in'), '2');
-  assert.strictEqual(search.searchParams.get('search_by'), 'filtru-titlu');
+  assert.deepStrictEqual(results, [{ id: '101', kind: 'song', title: 'Isus e Domnul', author: 'X', url: 'https://www.resursecrestine.ro/cantece/101/isus-e-domnul' }], 'the songs (the same list answers the sheets search here: no "acorduri" rows)');
+  const searches = seen.filter((u) => u.includes('/web-api-search')).map((u) => new URL(u));
+  assert.deepStrictEqual(searches.map((u) => u.searchParams.get('search_in')).sort(), ['1', '2'], 'the songs (2) and the chord sheets (1)');
+  for (const search of searches) {
+    assert.strictEqual(search.searchParams.get('output'), 'json2');
+    assert.strictEqual(search.searchParams.get('search_by'), 'filtru-titlu');
+  }
   assert.strictEqual(await asyncCode(resurse.searchResurseCrestineSongs('I', { fetchImpl })), 'query_too_short');
 
   const song = await resurse.importFromUrl({ url: 'https://www.resursecrestine.ro/cantece/101/isus-e-domnul' }, { fetchImpl });
-  assert.strictEqual(seen[1], 'https://www.resursecrestine.ro/cantece/opensong/101');
+  assert.ok(seen.includes('https://www.resursecrestine.ro/cantece/opensong/101'), 'the OpenSong export is fetched');
   assert.strictEqual(song.sourceProvider, 'resursecrestine');
   assert.strictEqual(song.sourceUrl, 'https://www.resursecrestine.ro/cantece/101');
   assert.strictEqual((await resurse.importFromUrl({ id: 7 }, { fetchImpl })).sourceUrl, 'https://www.resursecrestine.ro/cantece/7');
@@ -2795,6 +2800,11 @@ testAsync('resurse chord sheets: auto / pick / none through the browser tests\' 
   assert.deepStrictEqual((await resurse.importFromUrl({ id: '502' }, { sheet: 'auto' })).chords.source, 'own', 'a song with chords of its own keeps them (its page cannot even be read: no matter)');
   const plain = await resurse.importFromUrl({ id: '501' }, { sheet: 'auto' });
   assert.deepStrictEqual([plain.chords.source, plain.sheets], ['own', []], 'a page with no sheets');
+  const asSong = await resurse.importFromUrl({ id: 'a9002' });
+  assert.deepStrictEqual([asSong.title, asSong.author, asSong.key, asSong.chords.source, asSong.sections[0].content, asSong.sourceUrl], ['In dragostea Ta', 'Alin T.', 'Am', 'sheet', '[Am]In dragostea Ta m-ai cuprins\n[C]Atins de iubirea Ta', 'https://www.resursecrestine.ro/acorduri/9002/acorduri'], 'a chord sheet as a song: title, author, key and the stanzas');
+  assert.strictEqual((await resurse.importFromUrl({ url: 'https://www.resursecrestine.ro/acorduri/9002/in-dragostea-ta' })).title, 'In dragostea Ta', 'from a pasted link too');
+  const found = await resurse.searchResurseCrestineSongs('Fără');
+  assert.deepStrictEqual(found.map((r) => [r.id, r.kind, r.title]), [['503', 'song', 'Fără acorduri'], ['a9002', 'sheet', 'In dragostea Ta']], 'the search: the songs, then the chord sheets');
 });
 
 (async () => {
