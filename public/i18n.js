@@ -1931,6 +1931,16 @@
         alreadyExistsUse: 'Există deja în bibliotecă: se folosește cântarea de acolo.',
         openExisting: 'Deschide cântarea existentă',
       },
+      chordDiagram: {
+        tapLabel: 'Acordul {chord}: arată diagrama',
+        instrument: 'Instrument',
+        guitar: 'Chitară',
+        piano: 'Pian',
+        bass: 'Bas: {note}',
+        noGuitar: 'Nu am o diagramă de chitară pentru acest acord.',
+        unknown: 'Nu cunosc acest acord.',
+        close: 'Închide',
+      },
       song: {
         pageTitle: '{title} — {appName}',
         back: '← Bibliotecă',
@@ -3974,6 +3984,16 @@
         alreadyExists: 'A song with this title is already in the library.',
         alreadyExistsUse: 'Already in the library: that song is used.',
         openExisting: 'Open the existing song',
+      },
+      chordDiagram: {
+        tapLabel: 'Chord {chord}: show the diagram',
+        instrument: 'Instrument',
+        guitar: 'Guitar',
+        piano: 'Piano',
+        bass: 'Bass: {note}',
+        noGuitar: 'No guitar diagram for this chord.',
+        unknown: 'I do not know this chord.',
+        close: 'Close',
       },
       song: {
         pageTitle: '{title} — {appName}',

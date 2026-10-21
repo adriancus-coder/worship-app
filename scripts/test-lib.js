@@ -3242,6 +3242,29 @@ test('answer links (migration 050): one per event and person, replaced by a new 
   mem.close();
 });
 
+test('chord diagrams: parse (letters / solfège, qualities, slash bass), piano keys, guitar shapes (open, barre by the lowest root fret, none for an unknown quality)', () => {
+  const CD = require('../lib/chord-diagrams');
+  const d = CD.parse('D/F#');
+  assert.deepStrictEqual([d.root, d.name, d.quality, d.intervals, d.bass, d.bassName], [2, 'D', '', [0, 4, 7], 6, 'F#']);
+  assert.deepStrictEqual([CD.parse('Fa#m7').label, CD.parse('Bbmaj7').quality, CD.parse('Csus').quality, CD.parse('Am7b5').intervals, CD.parse('E7#9').intervals], ['F#m7', 'maj7', 'sus4', [0, 3, 6, 10], [0, 4, 7, 10, 15]]);
+  assert.deepStrictEqual([CD.parse('N.C.'), CD.parse('Mi-e'), CD.parse('Cfoo'), CD.parse('')], [null, null, null, null]);
+  assert.deepStrictEqual(CD.pianoNotes(CD.parse('Am7')), { keys: [9, 12, 16, 19], root: 9, bass: null }, 'A C E G from A');
+  assert.deepStrictEqual(CD.pianoNotes(CD.parse('D/F#')), { keys: [2, 6, 9], root: 2, bass: null }, 'the bass is already in the chord');
+  assert.deepStrictEqual(CD.pianoNotes(CD.parse('G/B')).bass, null);
+  assert.deepStrictEqual(CD.pianoNotes(CD.parse('C/G')), { keys: [0, 4, 7], root: 0, bass: null });
+  assert.deepStrictEqual(CD.pianoNotes(CD.parse('E/D')), { keys: [2, 4, 8, 11], root: 4, bass: 2 }, 'a bass below the root');
+  assert.deepStrictEqual(CD.pianoNotes(CD.parse('B9')).keys, [11, 13, 15, 18, 21], 'a 9th above the second octave folds down (sorted)');
+  assert.deepStrictEqual(CD.guitarShape(CD.parse('G')), { frets: [3, 2, 0, 0, 0, 3], baseFret: 1, barre: null, bassShown: false });
+  assert.deepStrictEqual(CD.guitarShape(CD.parse('Sol')).frets, [3, 2, 0, 0, 0, 3], 'solfège too');
+  assert.deepStrictEqual(CD.guitarShape(CD.parse('D/F#')), { frets: [2, 0, 0, 2, 3, 2], baseFret: 1, barre: null, bassShown: true });
+  assert.deepStrictEqual(CD.guitarShape(CD.parse('F#m')), { frets: [2, 4, 4, 2, 2, 2], baseFret: 2, barre: { fret: 2, from: 0, to: 5 }, bassShown: false }, 'E-shape barre at the 2nd fret');
+  assert.deepStrictEqual(CD.guitarShape(CD.parse('Bb')), { frets: [-1, 1, 3, 3, 3, 1], baseFret: 1, barre: { fret: 1, from: 1, to: 5 }, bassShown: false }, 'A-shape barre at the 1st fret');
+  assert.deepStrictEqual(CD.guitarShape(CD.parse('C#m7')).baseFret, 4, 'C#m7: E-shape at 9 or A-shape at 4 -> the lowest');
+  assert.deepStrictEqual(CD.guitarShape(CD.parse('Bdim')).frets, [-1, -1, 9, 10, 9, 10].map((f, i) => (i < 2 ? -1 : f)), 'D-shape diminished');
+  assert.strictEqual(CD.guitarShape(CD.parse('C13')), null, 'no template: no guitar diagram (the piano still has one)');
+  assert.deepStrictEqual(CD.guitarShape(CD.parse('G/F#')), { frets: [3, 2, 0, 0, 0, 3], baseFret: 1, barre: null, bassShown: false }, 'an unknown slash bass: the chord itself, the bass named by the pop-up');
+});
+
 test('whats-new: releases newest first with RO / EN texts, every item says whom it is for; releasesFor filters by role / rights; releasesSince gives the newer ones (the newest only for a device that saw none)', () => {
   const { RELEASES, releasesFor, releasesSince, isFor, latest } = require('../lib/whats-new');
   const { PERMS } = require('../lib/roles');

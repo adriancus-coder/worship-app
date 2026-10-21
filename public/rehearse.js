@@ -109,6 +109,7 @@
       el('div', { class: 'slide-sections' },
         window.SONG_RENDER.sectionsView(order.map((i) => song.sections[i]), {
           textOnly: state.textOnly,
+          tappable: true, // a tap on a chord: its diagram (public/chord-diagrams.js)
           headingLevel: 2,
           labels: order.map((i) => labels[i]),
         })),

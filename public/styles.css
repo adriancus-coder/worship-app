@@ -325,6 +325,30 @@ h2 { font-size: 1.15rem; margin: 24px 0 8px; }
 
 .chord-line, .lyric-line { white-space: pre; }
 .chord-line { color: var(--chord); font-weight: 700; }
+/* A tappable chord (song page, rehearsal): dotted underline, the diagram pop-up on tap */
+.chord-tap { cursor: pointer; border-bottom: 1px dotted var(--chord); border-radius: 3px; }
+.chord-tap:hover, .chord-tap:focus-visible { background: var(--accent-soft); outline: none; }
+.chord-dialog { width: min(92vw, 22rem); padding: 14px 16px 16px; }
+.chord-dialog-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.chord-dialog-head h2 { margin: 0; font-size: 1.5rem; color: var(--chord); }
+.chord-close { min-width: var(--touch); min-height: var(--touch); padding: 0 10px; }
+.chord-instrument { display: flex; margin-bottom: 12px; }
+.chord-instrument > button { flex: 1 1 0; }
+.chord-picture { display: flex; justify-content: center; min-height: 100px; }
+.chord-svg { display: block; max-width: 100%; }
+.chord-guitar { width: 180px; height: 210px; }
+.chord-piano { width: 100%; height: auto; }
+.chord-bass, .chord-none { margin: 10px 0 0; text-align: center; }
+.gtr-string, .gtr-fret { stroke: var(--text-muted); stroke-width: 1.2; }
+.gtr-nut { fill: var(--text); }
+.gtr-dot { fill: var(--accent-fill); }
+.gtr-open { fill: none; stroke: var(--text); stroke-width: 1.5; }
+.gtr-text { font: 700 12px system-ui, sans-serif; fill: var(--text); }
+.pno-white { fill: var(--background); stroke: var(--border); stroke-width: 1; }
+.pno-black { fill: var(--text); stroke: var(--text); stroke-width: 1; }
+.pno-key.is-on { fill: var(--accent-fill); stroke: var(--accent-fill); }
+.pno-key.is-root { stroke: var(--text); stroke-width: 2; }
+.pno-key.is-bass { fill: var(--worship); stroke: var(--worship); }
 .lyric-line + .chord-line { margin-top: 4px; }
 
 /* --- song editor -------------------------------------------------------- */

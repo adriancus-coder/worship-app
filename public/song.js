@@ -77,7 +77,7 @@
     metaEl.hidden = !meta;
 
     textOnlyButton.setAttribute('aria-pressed', String(textOnly));
-    document.getElementById('sections').replaceChildren(...window.SONG_RENDER.sectionsView(song.sections, { textOnly }));
+    document.getElementById('sections').replaceChildren(...window.SONG_RENDER.sectionsView(song.sections, { textOnly, tappable: true }));
   }
 
   textOnlyButton.addEventListener('click', () => {
