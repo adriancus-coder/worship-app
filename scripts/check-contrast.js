@@ -58,6 +58,7 @@ const PAIRS = [
   ['success', 'background', TEXT, 'success'],
   ['success', 'surface', TEXT, 'success on cards'],
   ['warning', 'background', TEXT, 'warnings'],
+  ['warning', 'surface', TEXT, 'warnings on cards'],
   ['worship', 'background', TEXT, 'team position'],
   ['worship', 'surface', TEXT, 'team position on cards'],
   ['type-song', 'surface', TEXT, 'badge: song'],

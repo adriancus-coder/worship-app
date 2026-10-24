@@ -2374,6 +2374,17 @@ button.song-key-change:hover { text-decoration: underline; }
 .song-key-box .message { flex-basis: 100%; margin: 0; }
 .song-key-box .message:empty { display: none; }
 .song-key-row { margin: 4px 0 8px; }
+/* "Detectează gama" (public/key-detect-ui.js) */
+.key-detect-dialog { width: min(480px, calc(100vw - 32px)); }
+.key-detect-dialog > * + * { margin-top: 12px; }
+.key-detect-best { font-size: 1.125rem; }
+.key-detect-best strong { font-size: 1.5rem; }
+.key-detect-confidence.is-sure { color: var(--success); }
+.key-detect-confidence.is-unsure { color: var(--warning); }
+.key-detect-choices > button { flex: 1 1 0; font-size: 1.125rem; }
+.key-detect-replace { font-weight: 600; }
+.key-detect-audio { padding-top: 12px; border-top: 1px solid var(--border); }
+.key-detect-audio > * + * { margin-top: 10px; }
 /* The song page's history ("Cântată ultima dată: … · n evenimente", opened: the events) */
 .song-history { margin: 0 0 12px; color: var(--text-muted); font-size: 0.9375rem; }
 .song-history > summary { cursor: pointer; min-height: var(--touch); display: flex; align-items: center; flex-wrap: wrap; gap: 0 4px; }

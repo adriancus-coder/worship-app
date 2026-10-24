@@ -346,6 +346,12 @@
             el('button', { type: 'button', class: 'song-key-change', 'data-icon': 'edit', text: t(has ? 'song.keyChange' : 'song.keySet'), onclick: () => { show(true); box.querySelector('select').focus(); } }));
         }
       }
+      // "Detectează gama" (public/key-detect-ui.js, the song page): estimated from the chords
+      // or a recording; shown without a key, and while picking (replacing asks again).
+      if (canSet && window.KEY_DETECT_UI && (!has || picking)) {
+        parts.push(el('span', { class: 'song-key-dot', 'aria-hidden': 'true', text: '·' }),
+          window.KEY_DETECT_UI.button(song, (saved) => { show(false); if (onSaved) onSaved(saved); }));
+      }
       box.replaceChildren(...parts, message);
     }
 

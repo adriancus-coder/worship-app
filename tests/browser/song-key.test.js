@@ -52,7 +52,7 @@ module.exports = {
         const want = getComputedStyle(probe).color; probe.remove();
         return { text: box.textContent.replace(/\s+/g, ' ').trim(), accent: getComputedStyle(box.querySelector('.song-key-unset-text')).color === want };
       });
-      check(/^(Tonul nu e setat|The key is not set)\s*·\s*(Setează|Set it)$/.test(unset.text) && unset.accent, `${tag} no key: "Tonul nu e setat · Setează" in the accent colour`, unset);
+      check(/^(Tonul nu e setat|The key is not set)\s*·\s*(Setează|Set it)\s*·\s*(Detectează gama|Detect the key)$/.test(unset.text) && unset.accent, `${tag} no key: "Tonul nu e setat · Setează · Detectează gama" in the accent colour`, unset);
 
       // --- the editor: the "Detalii" card ---
       await l.goto(`${app.url}/songs/${songs.G}/edit`);
