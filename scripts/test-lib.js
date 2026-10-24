@@ -2480,6 +2480,89 @@ test('build identity: the commit from the host env (Render first), else git, els
   fs.rmSync(nowhere, { recursive: true, force: true });
 });
 
+// --- key estimation (lib/key-detect.js) ---------------------------------------------
+
+const KD = require('../lib/key-detect');
+
+test('key-detect chordsInText: letters, solfège, H = B, slash, inline ChordPro; lyrics ignored', () => {
+  assert.deepStrictEqual(KD.chordsInText('G D Em C'), ['G', 'D', 'Em', 'C']);
+  assert.deepStrictEqual(KD.chordsInText('Lam Rem Mi7 Lam'), ['Am', 'Dm', 'E7', 'Am']);
+  assert.deepStrictEqual(KD.chordsInText('Hm/F# H7 Sol7 Cmaj7 Gsus4 C/E N.C. |'), ['Bm/F#', 'B7', 'G7', 'Cmaj7', 'Gsus4', 'C/E']);
+  assert.deepStrictEqual(KD.chordsInText('[G]Ne ridici din [D]noaptea grea\n[Em]cu [C]tine\nDoar versuri aici'), ['G', 'D', 'Em', 'C']);
+  assert.deepStrictEqual(KD.chordsInText('G        D        Em\nNe ridici din noaptea grea\nMi-e dor de Tine, la fel'), ['G', 'D', 'Em']);
+  assert.deepStrictEqual(KD.chordsInText('Doar versuri, fără acorduri'), []);
+  assert.deepStrictEqual(KD.chordsInSections([{ content: '[G]a' }, { content: '[C]b [D]c' }]), ['G', 'C', 'D']);
+});
+
+test('key-detect chordTones: root, third, fifth, seventh, slash bass', () => {
+  assert.deepStrictEqual(KD.chordTones('G'), { root: 7, third: 11, fifth: 2, seventh: null, bass: null });
+  assert.deepStrictEqual(KD.chordTones('Em'), { root: 4, third: 7, fifth: 11, seventh: null, bass: null });
+  assert.deepStrictEqual(KD.chordTones('D7'), { root: 2, third: 6, fifth: 9, seventh: 0, bass: null });
+  assert.deepStrictEqual(KD.chordTones('Cmaj7'), { root: 0, third: 4, fifth: 7, seventh: 11, bass: null });
+  assert.deepStrictEqual(KD.chordTones('Gsus4'), { root: 7, third: null, fifth: 2, seventh: null, bass: null });
+  assert.deepStrictEqual(KD.chordTones('C/E'), { root: 0, third: 4, fifth: 7, seventh: null, bass: 4 });
+  assert.deepStrictEqual(KD.chordTones('Bdim7'), { root: 11, third: 2, fifth: 5, seventh: 8, bass: null });
+  assert.deepStrictEqual(KD.chordTones('Am7b5'), { root: 9, third: 0, fifth: 3, seventh: 7, bass: null });
+  assert.deepStrictEqual(KD.chordTones('Cadd9'), { root: 0, third: 4, fifth: 7, seventh: null, bass: null });
+  assert.strictEqual(KD.chordTones('Amin'), null, 'the Romanian word');
+  assert.strictEqual(KD.chordTones('N.C.'), null);
+});
+
+test('key-detect chordProfile: the weights; the first chord x1.5, the last x2.2', () => {
+  const one = KD.chordProfile(['C/E']);
+  const f = 1.5 * 2.2; // first and last at once
+  assert.deepStrictEqual([one[0], one[4], one[7]].map((v) => Number(v.toFixed(3))), [1 * f, (0.8 + 0.3) * f, 0.6 * f].map((v) => Number(v.toFixed(3))));
+  const three = KD.chordProfile(['G', 'C', 'D']);
+  assert.deepStrictEqual([three[7], three[0], three[2]].map((v) => Number(v.toFixed(3))), [Number((1.5 + 0.6).toFixed(3)), 1, Number((2.2 + 0.6 * 1.5).toFixed(3))]);
+  assert.deepStrictEqual(KD.chordProfile([]), new Array(12).fill(0));
+});
+
+test('key-detect fromText: the required progressions', () => {
+  const cases = [['G D Em C G D C G Em C G D C D G', 'G'], ['Am F C G Am F G Am', 'Am'], ['Lam Rem Mi7 Lam', 'Am'], ['D A/C# Bm G D', 'D'], ['Bb F Gm Eb F Bb', 'Bb']];
+  for (const [text, key] of cases) {
+    const r = KD.fromText(text);
+    assert.strictEqual(r.key, key, text);
+    assert.strictEqual(r.confidence, 'sure', text);
+    assert.strictEqual(r.alternatives.length, 2, text);
+    assert.ok(!r.alternatives.includes(key), text);
+  }
+  assert.strictEqual(KD.fromText('Doar versuri'), null, 'no chords: nothing to say');
+  assert.deepStrictEqual(KD.fromSections([{ content: '[F#m]a [D]b [A]c [E]d [F#m]e' }]).key, 'F#m', 'the app spelling');
+});
+
+test('key-detect estimate: the confidence from the gap between the first two scores', () => {
+  assert.strictEqual(KD.fromChords(['G', 'C', 'D', 'G']).confidence, 'sure');
+  const ambiguous = KD.estimate([1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1]); // the C major scale evenly
+  assert.ok(['likely', 'unsure'].includes(ambiguous.confidence), ambiguous.confidence);
+  assert.strictEqual(KD.estimate([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]), null);
+});
+
+test('key-detect fromAudio: a synthetic G - C - D - G recording (sine waves) comes out G', () => {
+  const sr = 44100;
+  const seconds = 2;
+  const notes = { G: [196, 246.94, 293.66], C: [261.63, 329.63, 392], D: [293.66, 369.99, 440] };
+  const sequence = ['G', 'C', 'D', 'G'];
+  const samples = new Float32Array(sr * seconds * sequence.length);
+  sequence.forEach((chord, c) => {
+    for (let i = 0; i < sr * seconds; i += 1) {
+      let v = 0;
+      for (const hz of notes[chord]) v += Math.sin((2 * Math.PI * hz * i) / sr);
+      samples[c * sr * seconds + i] = (v / 3) * 0.5;
+    }
+  });
+  const r = KD.fromAudio(samples, sr);
+  assert.strictEqual(r.key, 'G');
+  assert.strictEqual(r.confidence, 'sure');
+  assert.ok(r.frames >= 20 && r.frames <= KD.MAX_FRAMES, `frames ${r.frames}`);
+  assert.strictEqual(KD.fromAudio(new Float32Array(sr), sr), null, 'silence');
+  assert.strictEqual(KD.fromAudio(new Float32Array(0), sr), null, 'empty');
+  // a long recording is sampled: at most MAX_FRAMES frames, spread over the whole of it
+  const long = new Float32Array(sr * 120);
+  for (let i = 0; i < long.length; i += 1) long[i] = Math.sin((2 * Math.PI * 440 * i) / sr) * 0.3;
+  const a = KD.fromAudio(long, sr);
+  assert.ok(a && a.frames === KD.MAX_FRAMES, `long: ${a && a.frames}`);
+});
+
 // --- bridge client (stage 8) --------------------------------------------------
 
 const bridgeClient = require('../lib/bridge/client');
