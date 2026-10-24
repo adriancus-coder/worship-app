@@ -1537,6 +1537,9 @@ button.now-item-button[aria-pressed="true"] { border-color: var(--accent-fill); 
 .now-keys { display: flex; gap: 4px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin; }
 .now-keys > button { flex: 1 0 auto; min-width: var(--touch); padding-left: 8px; padding-right: 8px; }
 .now-key-hint { margin: 8px 0 0; font-size: 0.875rem; }
+.now-key-set { display: flex; align-items: flex-start; gap: 8px; }
+.now-key-set .now-keys { flex: 1 1 auto; min-width: 0; }
+.now-key-minor { flex: none; min-height: var(--touch); padding: 8px 12px; } /* a single toggle keeps its own border */
 .now-team { margin-top: 4px; }
 .now-people { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
 .now-person { position: relative; display: inline-flex; }

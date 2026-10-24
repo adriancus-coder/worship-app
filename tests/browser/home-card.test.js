@@ -56,6 +56,22 @@ module.exports = {
     check((await app.api(owner, 'GET', `/api/events/${E}`)).body.items[0].transpose === 0, 'back to G: no transposition');
     const verse = (await app.api(owner, 'GET', `/api/events/${E}`)).body.items[1];
     check(verse.reference === 'Luca 2:1-7' && verse.body.startsWith('În zilele'), 'the other items are untouched by the save');
+    // a song with no key: the row sets it in the library (minor too)
+    const fresh = (await app.api(owner, 'POST', '/api/songs', { title: 'Fără ton', sections: [{ type: 'verse', content: 'La la' }] })).body.song;
+    const evNow = (await app.api(owner, 'GET', `/api/events/${E}`)).body;
+    await app.api(owner, 'PUT', `/api/events/${E}/items`, { items: [...evNow.items.map((it) => ({ id: it.id, type: it.type, songId: it.songId, title: it.title, body: it.body, reference: it.reference, url: it.url, who: it.who, mediaId: it.mediaId, durationMin: it.durationMin, teamNote: it.teamNote || '', ...(it.type === 'song' ? { transpose: it.transpose || 0, arrangement: it.arrangementIsDefault ? '' : it.arrangement || '', referenceUrl: it.referenceUrl || '' } : {}) })), { type: 'song', songId: fresh.id }] });
+    await o.reload();
+    await laterAnswers(o);
+    await o.waitForSelector('#now .now-item:nth-child(6) .now-item-key.is-unset');
+    await o.click('#now .now-item:nth-child(6) button');
+    await o.waitForSelector('#now .now-key-minor');
+    const setter = await o.$$eval('#now .now-keys button', (l) => l.map((b) => b.dataset.key));
+    check(setter.length === 12 && setter[0] === 'C' && setter.includes('Bb') && !(await o.$('#now .now-keys [aria-pressed="true"]')), 'no key: the 12 keys to pick from, none selected', setter);
+    await o.click('#now .now-key-minor');
+    await o.waitForSelector('#now .now-keys [data-key="Am"]');
+    await o.click('#now .now-keys [data-key="Em"]');
+    await o.waitForFunction(() => document.querySelector('#now .now-item:nth-child(6) .now-item-key') && document.querySelector('#now .now-item:nth-child(6) .now-item-key').textContent === 'Em', null, { timeout: 5000 });
+    check((await app.api(owner, 'GET', `/api/songs/${fresh.id}`)).body.song.song_key === 'Em', '"minor" + Em: the song\'s key is Em in the library, the badge says so');
     await o.screenshot({ path: process.env.WA_SHOT || '/dev/null' }).catch(() => {});
     await o.context().close();
   },

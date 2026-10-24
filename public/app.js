@@ -13,7 +13,7 @@
   const { t } = window.I18N;
   const $ = (id) => document.getElementById(id);
 
-  const state = { me: null, home: null, failed: false, pickedItem: null, keyBusy: false };
+  const state = { me: null, home: null, failed: false, pickedItem: null, keyBusy: false, keyMinor: false };
 
   const editor = () => can(state.me, 'events'); // creates events
 
@@ -87,8 +87,35 @@
     await load();
   }
 
+  // A song with no key yet: the same row sets the song's key in the library (the library
+  // right), with a "minor" switch for Lam / Mim …; without the right, a hint.
+  async function setSongKey(it, key) {
+    if (state.keyBusy) return;
+    state.keyBusy = true;
+    const res = await api(`/api/songs/${it.songId}`, { method: 'PUT', body: { song_key: key } }).catch(() => ({ ok: false, body: {} }));
+    state.keyBusy = false;
+    const out = $('start-message');
+    if (!res.ok) { out.textContent = res.body.error || t('common.networkError'); return; }
+    out.textContent = '';
+    await load();
+  }
+
+  function keySetter(it) {
+    if (!canEditLibrary(state.me)) return el('p', { class: 'muted now-key-hint', text: t('home.keyNoKey') });
+    const base = state.keyMinor ? 'Am' : 'C';
+    const keys = [];
+    for (let n = 0; n < 12; n++) keys.push(window.CHORDS.keyAfter(base, n));
+    keys.sort((a, b) => keyIndex(a) - keyIndex(b));
+    return el('div', { class: 'now-key-row' },
+      el('span', { class: 'now-section-label', id: 'now-key-label', text: t('home.keySetLabel', { title: itemLabel(it) }) }),
+      el('div', { class: 'now-key-set' },
+        el('button', { type: 'button', class: 'now-key-minor', 'aria-pressed': String(state.keyMinor), text: t('home.keyMinor'), onclick: () => { state.keyMinor = !state.keyMinor; render(); } }),
+        el('div', { class: 'choice-group now-keys', role: 'group', 'aria-labelledby': 'now-key-label' },
+          ...keys.map((k) => el('button', { type: 'button', 'data-key': k, 'aria-pressed': 'false', disabled: state.keyBusy ? 'disabled' : null, text: window.NOTATION.chord(k), onclick: () => setSongKey(it, k) })))));
+  }
+
   function keyChoice(event, it) {
-    if (!it.songKey) return el('p', { class: 'muted now-key-hint', text: t('home.keyNoKey') });
+    if (!it.songKey) return keySetter(it);
     const base = keyIndex(it.songKey);
     const current = ((it.transpose % 12) + 12) % 12;
     const keys = [];
