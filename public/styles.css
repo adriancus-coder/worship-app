@@ -1534,7 +1534,7 @@ button.now-item-button[aria-pressed="true"] { border-color: var(--accent-fill); 
 .now-item-key.is-unset { color: var(--text-muted); background: var(--background); border: 1px solid var(--border); }
 .now-key-row { margin-top: 10px; }
 .now-key-row .now-section-label { margin-top: 0; }
-.now-keys { display: flex; gap: 4px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin; }
+.now-keys { display: flex; flex-wrap: nowrap; gap: 4px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin; } /* one row, scrolled sideways when narrow */
 .now-keys > button { flex: 1 0 auto; min-width: var(--touch); padding-left: 8px; padding-right: 8px; }
 .now-key-hint { margin: 8px 0 0; font-size: 0.875rem; }
 .now-key-set { display: flex; align-items: flex-start; gap: 8px; }
