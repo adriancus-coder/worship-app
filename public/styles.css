@@ -1036,14 +1036,26 @@ button.live-item:disabled { opacity: 1; cursor: default; }
 }
 .live-info > div > * + * { margin-top: 12px; }
 
-/* Tablet landscape and wider: setlist left, current song in the middle, info right. */
+/* Tablet landscape (900 - 1179 px): two columns, the setlist and under it the projector panel
+   on the left (wide enough for its buttons), the current song on the right. From 1180 px:
+   setlist left, current song in the middle, projector panel right. */
 @media (min-width: 900px) {
-  .live-grid { display: grid; grid-template-columns: minmax(220px, 1fr) minmax(0, 2.2fr) minmax(200px, 1fr); grid-template-areas: "setlist current info"; align-items: start; }
+  .live-grid { display: grid; grid-template-columns: minmax(300px, 1.1fr) minmax(0, 2fr); grid-template-areas: "setlist current" "info current"; align-items: start; }
   .live-setlist { grid-area: setlist; }
   .live-current { grid-area: current; }
   .live-info { grid-area: info; }
   .live-nav { position: static; margin: 16px 0 0; padding: 0; border-top: 0; background: transparent; }
   .key-hint { display: block; }
+}
+@media (min-width: 1180px) {
+  .live-grid { grid-template-columns: minmax(220px, 1fr) minmax(0, 2.2fr) minmax(220px, 1fr); grid-template-areas: "setlist current info"; }
+}
+/* Tablet landscape: the live / console nav keeps its words whole: "Următoarea: … →" on a
+   row of its own; the projector source buttons a little tighter */
+@media (min-width: 900px) and (max-width: 1279px) {
+  .live-nav { flex-wrap: wrap; }
+  .live-nav > #next-button, .live-nav > #op-next { flex: 1 0 100%; order: 3; }
+  .source-buttons button { padding: 8px 8px; font-size: 0.9375rem; }
 }
 
 /* --- live: team phones ---------------------------------------------------------------------- */
