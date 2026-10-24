@@ -1742,7 +1742,9 @@ async function main() {
   await step('"Ce e nou": the releases in the person\'s language, signed in only', async () => {
     assert.strictEqual((await api('GET', '/api/whats-new', null)).status, 401);
     const news = await api('GET', '/api/whats-new', member);
-    assert.deepStrictEqual([news.status, typeof news.body.latest, news.body.releases[0].id, Array.isArray(news.body.releases[0].items)], [200, 'string', news.body.latest, true]);
+    // `latest` is the newest release of all; the first one shown is the newest with something for a member
+    assert.deepStrictEqual([news.status, typeof news.body.latest, news.body.releases[0].id <= news.body.latest, Array.isArray(news.body.releases[0].items)], [200, 'string', true, true]);
+    assert.ok(news.body.releases.every((r) => r.items.length > 0), 'only releases with something for this person');
     assert.ok(news.body.releases.every((r, i, all) => i === 0 || all[i - 1].id > r.id), 'newest first');
   });
 
