@@ -1534,12 +1534,12 @@ button.now-item-button[aria-pressed="true"] { border-color: var(--accent-fill); 
 .now-item-key.is-unset { color: var(--text-muted); background: var(--background); border: 1px solid var(--border); }
 .now-key-row { margin-top: 10px; }
 .now-key-row .now-section-label { margin-top: 0; }
-.now-keys { display: flex; flex-wrap: nowrap; gap: 4px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin; } /* one row, scrolled sideways when narrow */
-.now-keys > button { flex: 1 0 auto; min-width: var(--touch); padding-left: 8px; padding-right: 8px; }
+.now-keys.choice-group { display: flex; flex-wrap: nowrap; gap: 3px; overflow-x: auto; scrollbar-width: thin; } /* one row: wide, the 12 share it; narrow, 44 px each, scrolled sideways */
+.now-keys.choice-group > button { flex: 1 1 0; min-width: var(--touch); padding-left: 4px; padding-right: 4px; font-size: 0.9375rem; white-space: nowrap; }
 .now-key-hint { margin: 8px 0 0; font-size: 0.875rem; }
 .now-key-set { display: flex; align-items: flex-start; gap: 8px; }
 .now-key-set .now-keys { flex: 1 1 auto; min-width: 0; }
-.now-key-minor { flex: none; min-height: var(--touch); padding: 8px 12px; } /* a single toggle keeps its own border */
+.now-key-minor { flex: none; min-height: var(--touch); padding: 8px 10px; font-size: 0.9375rem; } /* a single toggle keeps its own border */
 .now-team { margin-top: 4px; }
 .now-people { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
 .now-person { position: relative; display: inline-flex; }
