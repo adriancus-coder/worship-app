@@ -2563,6 +2563,35 @@ test('key-detect fromAudio: a synthetic G - C - D - G recording (sine waves) com
   assert.ok(a && a.frames === KD.MAX_FRAMES, `long: ${a && a.frames}`);
 });
 
+test('songs store: keySuggestions (keyless songs with chords) and setKeys (never over a key)', () => {
+  const Database = require('better-sqlite3');
+  const { runMigrations } = require('../lib/db');
+  const { createSongStore } = require('../lib/songs');
+  const mem = new Database(':memory:');
+  mem.pragma('foreign_keys = ON');
+  runMigrations(mem);
+  mem.prepare("INSERT INTO admins (id, name, created_at) VALUES (1, 'A', 0), (2, 'B', 0)").run();
+  mem.prepare("INSERT INTO users (id, admin_id, email, name, password_hash, role, created_at) VALUES (1, 1, 'a@x.ro', 'A', 'x', 'owner', 0)").run();
+  const store = createSongStore(mem);
+  const make = (adminId, title, songKey, content) => store.create(adminId, 1, { title, titleNorm: title.toLowerCase(), author: null, songKey, sections: content === null ? [] : [{ type: 'verse', label: null, content, note: null }] });
+  const am = make(1, 'B fără ton', null, '[Am]a [F]b [C]c [G]d [Am]e');
+  const g = make(1, 'A fără ton', null, '[G]a [D]b [Em]c [C]d [G]e');
+  const noChords = make(1, 'C fără acorduri', null, 'Doar versuri');
+  const withKey = make(1, 'D cu ton', 'E', '[E]a [A]b');
+  const other = make(2, 'Alt admin', null, '[D]a [G]b [A]c [D]d');
+  const s = store.keySuggestions(1);
+  assert.deepStrictEqual(s.songs.map((x) => [x.id, x.title, x.key, x.confidence]), [[g, 'A fără ton', 'G', 'sure'], [am, 'B fără ton', 'Am', 'sure']], 'by title, only admin 1, only with chords and without a key');
+  assert.strictEqual(s.songs[0].alternatives.length, 2);
+  assert.strictEqual(s.withoutChords, 1);
+  assert.deepStrictEqual(store.keySuggestions(2).songs.map((x) => x.id), [other]);
+  const r = store.setKeys(1, [{ id: g, songKey: 'G' }, { id: am, songKey: 'Am' }, { id: withKey, songKey: 'C' }, { id: other, songKey: 'D' }, { id: 999, songKey: 'C' }]);
+  assert.deepStrictEqual(r, { saved: [g, am], skipped: [withKey, other, 999] }, 'a key already set, another admin and a missing song are skipped');
+  assert.deepStrictEqual([store.get(1, g).song_key, store.get(1, am).song_key, store.get(1, withKey).song_key, store.get(2, other).song_key], ['G', 'Am', 'E', null]);
+  assert.deepStrictEqual(store.keySuggestions(1), { songs: [], withoutChords: 1 });
+  assert.strictEqual(noChords > 0, true);
+  mem.close();
+});
+
 // --- bridge client (stage 8) --------------------------------------------------
 
 const bridgeClient = require('../lib/bridge/client');

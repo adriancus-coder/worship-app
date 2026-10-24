@@ -2385,6 +2385,22 @@ button.song-key-change:hover { text-decoration: underline; }
 .key-detect-replace { font-weight: 600; }
 .key-detect-audio { padding-top: 12px; border-top: 1px solid var(--border); }
 .key-detect-audio > * + * { margin-top: 10px; }
+.key-review h2:focus { outline: none; }
+.key-review .message:empty { display: none; }
+body.list-page > main > .key-review { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
+body.list-page > main > .key-review[hidden] { display: none; }
+.key-review h2 { margin: 0; font-size: 1.25rem; }
+.key-review-tools { display: flex; gap: 8px; }
+.key-review-tools > button { flex: 1 1 0; padding: 8px 6px; }
+.key-review-tools[hidden] { display: none; }
+.key-review-rows { list-style: none; margin: 0; padding: 0; }
+.key-review-row { display: flex; align-items: center; gap: 10px; padding: 6px 4px; border-bottom: 1px solid var(--border); }
+.key-review-main { flex: 1 1 0; display: flex; flex-direction: column; min-width: 0; }
+.key-review-title { display: inline-flex; align-items: center; min-height: var(--touch); align-self: flex-start; font-weight: 600; overflow-wrap: anywhere; }
+.key-review-meta { font-size: 0.875rem; }
+.key-review-select { width: auto; min-width: 7rem; min-height: var(--touch); }
+.key-review-note { padding: 12px 4px 0; }
+#key-review-finish[hidden] { display: none; }
 /* The song page's history ("Cântată ultima dată: … · n evenimente", opened: the events) */
 .song-history { margin: 0 0 12px; color: var(--text-muted); font-size: 0.9375rem; }
 .song-history > summary { cursor: pointer; min-height: var(--touch); display: flex; align-items: center; flex-wrap: wrap; gap: 0 4px; }

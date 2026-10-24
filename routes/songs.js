@@ -108,6 +108,29 @@ function createSongsRouter({ db, auth, config, logger, live }) {
     res.json(result);
   });
 
+  // "Detectează gama la toate" (public/key-suggest.js): the keyless songs with chords and
+  // their estimated key; then the keys the user approved, set only where none is set.
+  // Registered before /api/songs/:id.
+  router.get('/api/songs/key-suggestions', canEdit, (req, res) => {
+    res.json(songs.keySuggestions(req.adminId));
+  });
+
+  router.put('/api/songs/keys', canEdit, (req, res) => {
+    const list = req.body && req.body.keys;
+    if (!Array.isArray(list) || list.length > MAX_SONGS) return res.status(400).json({ error: req.t('errors.songKeyInvalid') });
+    const keys = [];
+    for (const item of list) {
+      const id = item && /^\d{1,15}$/.test(String(item.id)) ? Number(item.id) : null;
+      const key = item && typeof item.song_key === 'string' ? item.song_key.trim() : null;
+      if (!id || !key || !KEYS.includes(key)) return res.status(400).json({ error: req.t('errors.songKeyInvalid') });
+      keys.push({ id, songKey: key });
+    }
+    const before = live.songBefore(req.adminId);
+    const result = songs.setKeys(req.adminId, keys);
+    if (result.saved.length) live.songChanged(req.adminId, before);
+    res.json(result);
+  });
+
   // Registered before /api/songs/:id.
   router.get('/api/songs/export', canEdit, (req, res) => {
     const payload = songs.exportLibrary(req.adminId, config.APP_NAME);

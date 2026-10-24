@@ -18,6 +18,7 @@
           <div class="menu-list" id="library-menu-list" hidden>
             <a class="menu-item" id="export-library" href="/api/songs/export" download data-i18n="library.export"></a>
             <button type="button" class="menu-item" id="import-library" data-i18n="library.import"></button>
+            <button type="button" class="menu-item" id="detect-keys" data-i18n="keySuggest.menu"></button>
           </div>
           <input type="file" id="import-file" accept=".json,application/json" hidden>
         </div>
@@ -118,6 +119,26 @@
         <button type="button" id="import-done" data-icon="check" data-i18n="import.back"></button>
       </div>
     </section>
+
+    <!-- "Detectează gama la toate" (public/key-suggest.js): the keyless songs with chords, each
+         with its estimated key to check and save in one go. The rows scroll in their own pane. -->
+    <section id="key-review" class="key-review" hidden aria-labelledby="key-review-heading">
+      <h2 id="key-review-heading" tabindex="-1" data-i18n="keySuggest.heading"></h2>
+      <p id="key-review-status" class="muted" role="status" aria-live="polite"></p>
+      <p id="key-review-error" class="message error" role="alert"></p>
+      <div class="key-review-tools" id="key-review-tools" hidden>
+        <button type="button" class="secondary" id="key-review-all" data-i18n="keySuggest.tickAll"></button>
+        <button type="button" class="secondary" id="key-review-none" data-i18n="keySuggest.tickNone"></button>
+      </div>
+      <div id="key-review-list" class="key-review-list grow" data-list-pane="keySuggest.heading"></div>
+      <div class="form-actions" id="key-review-actions">
+        <button type="button" id="key-review-save" data-icon="check"></button>
+        <button type="button" class="secondary" id="key-review-cancel" data-i18n="keySuggest.cancel"></button>
+      </div>
+      <div class="form-actions" id="key-review-finish" hidden>
+        <button type="button" id="key-review-done" data-icon="check" data-i18n="keySuggest.back"></button>
+      </div>
+    </section>
   </main>
   <script src="/i18n.js"></script>
   <script src="/chords.js"></script>
@@ -130,5 +151,6 @@
   <script src="/song-search.js"></script>
   <script src="/library.js"></script>
   <script src="/library-import.js"></script>
+  <script src="/key-suggest.js"></script>
 </body>
 </html>
