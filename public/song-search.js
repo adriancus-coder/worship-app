@@ -100,6 +100,20 @@
     const sort = mode === 'library' ? $('sort') : null;
     const noKeyToggle = mode === 'library' ? $('filter-no-key') : null; // "Fără ton"
     const noKey = () => Boolean(noKeyToggle && noKeyToggle.getAttribute('aria-pressed') === 'true');
+    // the theme filter (library mode): the select, filled from GET /api/songs/themes
+    const themeSelect = mode === 'library' ? $('filter-theme') : null;
+    let themeWanted = '';
+    const theme = () => (themeSelect ? themeSelect.value : '');
+    async function loadThemes() {
+      if (!themeSelect) return;
+      const res = await api('/api/songs/themes').catch(() => null);
+      const themes = res && res.ok ? res.body.themes : [];
+      themeSelect.replaceChildren(el('option', { value: '', text: t('library.allThemes') }),
+        ...themes.map((x) => el('option', { value: x.name, text: `${x.name} (${x.count})` })));
+      const match = themeWanted ? themes.find((x) => x.name.localeCompare(themeWanted, 'ro', { sensitivity: 'base' }) === 0) : null;
+      themeSelect.value = match ? match.name : '';
+      $('theme-field').hidden = !themes.length;
+    }
     const status = $('status');
     const list = $('songs');
     const form = $('search-form');
@@ -134,7 +148,8 @@
     }
 
     function songMeta(song) {
-      return [song.song_key ? t('library.key', { key: window.NOTATION.chord(song.song_key) }) : null, song.author].filter(Boolean).join(' · ');
+      const themes = song.themes && song.themes.length ? song.themes.slice(0, 3).join(', ') : null;
+      return [song.song_key ? t('library.key', { key: window.NOTATION.chord(song.song_key) }) : null, song.author, themes].filter(Boolean).join(' · ');
     }
 
     // Under the title: "Ton Sol · author", or the small "fără ton" tag for a song without a key.
@@ -218,6 +233,7 @@
       if (local.songs.length) setStatus('');
       else if (local.lastQuery) setStatus(t('library.noResults', { q: local.lastQuery }));
       else if (noKey()) setStatus(t('library.noKeyNone'));
+      else if (theme()) setStatus(t('library.themeNone', { theme: theme() }));
       else if (mode === 'pick') setStatus(options.emptyQuery === 'none' ? '' : t('library.emptyMember'));
       else setStatus(t(canEdit(me) ? 'library.empty' : 'library.emptyMember'));
     }
@@ -230,6 +246,7 @@
         if (query) qs.set('q', query);
         if (sort.value !== 'az') qs.set('sort', sort.value);
         if (noKey()) qs.set('noKey', '1');
+        if (theme()) qs.set('theme', theme());
         const search = qs.toString();
         window.history.replaceState(null, '', search ? `?${search}` : window.location.pathname);
       } else if (!query && options.emptyQuery === 'none') {
@@ -242,6 +259,7 @@
         const qs = { q: query, sort: sort ? sort.value : 'az' };
         if (options.withHistory) qs.withHistory = '1';
         if (noKey()) qs.noKey = '1';
+        if (theme()) qs.theme = theme();
         const { ok, body } = await api(`/api/songs?${new URLSearchParams(qs)}`);
         if (id !== local.request) return; // a newer search is on its way
         if (!ok) {
@@ -349,6 +367,7 @@
         song.key ? t('song.key', { key: window.NOTATION.chord(song.key) }) : null,
         song.author ? t('song.author', { author: song.author }) : null,
         song.presentation ? t('online.presentation', { order: song.presentation }) : null,
+        song.themes && song.themes.length ? t('song.themes', { themes: song.themes.join(', ') }) : null,
       ].filter(Boolean).join(' · ');
       previewSections.replaceChildren(...window.SONG_RENDER.sectionsView(song.sections, { headingLevel: 3 }));
       renderChordsChoice(pv);
@@ -606,6 +625,10 @@
         load();
       });
     }
+    if (themeSelect) {
+      themeSelect.addEventListener('change', load);
+      document.addEventListener('library:changed', loadThemes);
+    }
 
     if (importButton) {
       importButton.addEventListener('click', async () => {
@@ -666,6 +689,11 @@
       setOnline(allowed) {
         online.allowed = Boolean(allowed);
         render();
+      },
+      // library mode: the theme to filter by (from the URL); the list is loaded first
+      setTheme(value) {
+        themeWanted = value || '';
+        return loadThemes();
       },
       setMe(value) {
         me = value;

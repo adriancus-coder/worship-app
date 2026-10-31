@@ -133,14 +133,15 @@ function createEventsRouter({ db, auth, logger, live }) {
     res.status(201).json({ ...events.get(req.adminId, id, { t: req.t }), today: today(req) });
   });
 
-  // Random song ideas for a programme (lib/suggest.js): the library minus the songs of the
-  // last 3 events and the event's own songs (saved, plus ?exclude=1,2 the editor has not
-  // saved yet); songs with a key first. ?count=10 (1-30).
+  // Random song ideas for a programme (lib/suggest.js): the library (or one theme of it,
+  // ?theme=) minus the songs of the last 3 events and the event's own songs (saved, plus
+  // ?exclude=1,2 the editor has not saved yet); songs with a key first. ?count=10 (1-30).
   router.get('/api/events/:id/suggestions', canEdit, (req, res) => {
     const id = eventId(req);
     if (!id || !events.get(req.adminId, id)) return notFound(req, res);
     const exclude = String(req.query.exclude || '').split(',').filter((x) => /^\d{1,15}$/.test(x)).map(Number);
-    const result = suggest.randomSongs(req.adminId, { eventId: id, count: req.query.count, exclude, today: today(req) });
+    const theme = typeof req.query.theme === 'string' ? req.query.theme.slice(0, 40) : ''; // ?theme=Paști: only that theme
+    const result = suggest.randomSongs(req.adminId, { eventId: id, count: req.query.count, exclude, today: today(req), theme });
     res.json(result);
   });
 

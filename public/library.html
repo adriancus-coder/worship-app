@@ -38,6 +38,10 @@
       <div class="library-tools">
         <!-- A single toggle (its own border, aria-pressed): only the songs without a key. -->
         <button type="button" class="secondary filter-toggle" id="filter-no-key" aria-pressed="false" data-i18n="library.filterNoKey"></button>
+        <!-- the theme filter: "Toate temele" or one of the library's themes (GET /api/songs/themes) -->
+        <label class="sort-field theme-field" id="theme-field" hidden><span class="sort-label" data-i18n="library.themeLabel"></span>
+          <select id="filter-theme"><option value="" data-i18n="library.allThemes"></option></select>
+        </label>
         <label class="sort-field"><span class="sort-label" data-i18n="library.sortLabel"></span>
           <select id="sort">
             <option value="az" data-i18n="library.sortAz"></option>

@@ -59,7 +59,8 @@ const SHEETS = {
   9001: sheetPage('D', '<a href="#" class="nice-acord" rel="D">D</a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#" class="nice-acord" rel="A">A</a><br />\r\n1. C&acirc;nd&nbsp;totul&nbsp;pare&nbsp;c&#259;-i&nbsp;pierdut,<br />\r\n<a href="#" class="nice-acord" rel="Bm">Bm</a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#" class="nice-acord" rel="G">G</a><br />\r\nAl&nbsp;meu&nbsp;P&#259;stor&nbsp;&icirc;mi&nbsp;va&nbsp;fi&nbsp;scut.<br />\r\n<br />\r\n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#" class="nice-acord" rel="G">G</a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#" class="nice-acord" rel="D">D</a><br />\r\nRef: Via&#539;a&nbsp;mea&nbsp;e-n&nbsp;m&acirc;na&nbsp;Sa<br />\r\n<a href="#" class="nice-acord" rel="A">A</a><br />\r\n&#536;i&nbsp;cu&nbsp;credin&#539;&#259;&nbsp;voi&nbsp;c&acirc;nta<br />\r\n', 'Fără acorduri', 'Adeline M.'),
   9002: sheetPage('Am', '<a href="#" class="nice-acord" rel="Am">Am</a><br />\r\nIn&nbsp;dragostea&nbsp;Ta&nbsp;m-ai&nbsp;cuprins<br />\r\n<a href="#" class="nice-acord" rel="C">C</a><br />\r\nAtins&nbsp;de&nbsp;iubirea&nbsp;Ta<br />\r\n', 'In dragostea Ta', 'Alin T.'),
 };
-const songPage = (sheets) => `<html><body><h1>Cântare</h1>${sheets.map(([id, author]) => `<div class="listing"><a href="https://www.resursecrestine.ro/acorduri/${id}/fara-acorduri" class="listingTitleLink">Fără acorduri</a> <a href="https://www.resursecrestine.ro/acorduri/index-autori/x" class="brownLink">\n ${author} \n</a></div>`).join('')}</body></html>`;
+// the song page: its "Tematica" links (503 has two) and its chord sheets
+const songPage = (sheets, themes = []) => `<html><body><h1>Cântare</h1>${themes.length ? `<p class="tematica">Tematica: ${themes.map(([slug, name]) => `<a href="https://www.resursecrestine.ro/cantece/index-tematic/${slug}" class="blueLink">${name}</a>`).join(', ')}</p>` : ''}${sheets.map(([id, author]) => `<div class="listing"><a href="https://www.resursecrestine.ro/acorduri/${id}/fara-acorduri" class="listingTitleLink">Fără acorduri</a> <a href="https://www.resursecrestine.ro/acorduri/index-autori/x" class="brownLink">\n ${author} \n</a></div>`).join('')}</body></html>`;
 const chordFetch = global.fetch;
 global.fetch = async (url, opts) => {
   const u = new URL(url);
@@ -69,7 +70,7 @@ global.fetch = async (url, opts) => {
   if (/^\/cantece\/\d+$/.test(u.pathname)) return res(404, 'no slug'); // as the site: the id alone is a 404
   const page = u.pathname.match(/^\/cantece\/(\d+)\/[^/]+$/);
   if (page && page[1] === '502') return res(500, 'boom'); // the page cannot be read: the import still works
-  if (page) return res(200, songPage(page[1] === '503' ? [[9001, 'Adeline M.'], [9002, 'Alin T.']] : []));
+  if (page) return res(200, songPage(page[1] === '503' ? [[9001, 'Adeline M.'], [9002, 'Alin T.']] : [], page[1] === '503' ? [['inchinare', '&Icirc;nchinare'], ['pasti', 'Pa&#537;ti']] : []));
   const sheet = u.pathname.match(/^\/acorduri\/(\d+)\//);
   if (sheet) return SHEETS[sheet[1]] ? res(200, SHEETS[sheet[1]]) : res(404, '');
   if (u.pathname === '/web-api-search' && u.searchParams.get('search_in') === '1') {

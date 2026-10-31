@@ -19,6 +19,7 @@
   $('q').value = params.get('q') || '';
   if (['az', 'za', 'recent'].includes(params.get('sort'))) $('sort').value = params.get('sort');
   if (params.get('noKey') === '1') $('filter-no-key').setAttribute('aria-pressed', 'true'); // "Fără ton"
+  search.setTheme(params.get('theme') || ''); // ?theme=Paști (from a song page's chip)
 
   // --- "⋯" menu (import / export) ----------------------------------------------------
 

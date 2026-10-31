@@ -44,8 +44,10 @@ function createSongsRouter({ db, auth, config, logger, live }) {
   router.get('/api/songs', (req, res) => {
     const q = typeof req.query.q === 'string' ? req.query.q.slice(0, LIMITS.queryMax) : '';
     const sort = SORT_MODES.includes(req.query.sort) ? req.query.sort : 'az';
-    // ?noKey=1: only the songs without a key (the library's "Fără ton" filter).
-    const list = songs.list(req.adminId, { q, sort, noKey: req.query.noKey === '1' });
+    // ?noKey=1: only the songs without a key (the library's "Fără ton" filter); ?theme=<name>:
+    // only the songs with that theme.
+    const theme = typeof req.query.theme === 'string' ? req.query.theme.slice(0, LIMITS.themeMax) : '';
+    const list = songs.list(req.adminId, { q, sort, noKey: req.query.noKey === '1', theme });
     // ?withHistory=1 adds lastSung (the last date it was sung: lib/events.js lastSungMap).
     if (req.query.withHistory === '1') {
       const day = today(req);
@@ -106,6 +108,12 @@ function createSongsRouter({ db, auth, config, logger, live }) {
     logger.info(`Library import (${file.format}, mode=${mode}) by user #${req.user.id} (admin #${req.adminId}): `
       + `added=${result.added} updated=${result.updated} skipped=${result.skipped} invalid=${result.invalid}`);
     res.json(result);
+  });
+
+  // The library's themes ("tematică"), with how many songs carry each: the library filter,
+  // the editor's suggestions, the ideas panel. Registered before /api/songs/:id.
+  router.get('/api/songs/themes', (req, res) => {
+    res.json({ themes: songs.themes(req.adminId) });
   });
 
   // "Detectează gama la toate" (public/key-suggest.js): the keyless songs with chords and

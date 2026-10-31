@@ -65,6 +65,7 @@ function createResurseRouter({ db, auth, logger }) {
       author: parsed.author || '',
       song_key: parsed.key || '',
       sections: parsed.sections.map(({ type, label, content }) => ({ type, label: label || '', content })),
+      themes: parsed.themes || [],
     };
   }
 

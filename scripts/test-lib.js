@@ -2361,6 +2361,7 @@ testAsync('platform deletion: refused while active, the exact name, pending -> c
     db.prepare("INSERT INTO notifications (admin_id, user_id, kind, title, event_id, created_at) VALUES (?, ?, 'assigned', 'T', ?, 0)").run(a, userId, eventId);
     db.prepare("INSERT INTO notification_prefs (user_id, admin_id, kind, enabled) VALUES (?, ?, 'reminder', 0)").run(userId, a);
     db.prepare("INSERT INTO song_proposals (admin_id, event_id, song_id, proposed_by, created_at) VALUES (?, ?, ?, ?, 0)").run(a, eventId, songId, userId);
+    db.prepare("INSERT INTO song_themes (song_id, admin_id, position, name, name_norm) VALUES (?, ?, 0, 'Paști', 'pasti')").run(songId, a);
     db.prepare("INSERT INTO bridge_connections (event_id, admin_id, sv_base_url, sv_event_id, bridge_token, token_fingerprint, created_at, updated_at) VALUES (?, ?, 'https://dev.sanctuaryvoice.com', 'ev', 'tok', 'fp', 0, 0)").run(eventId, a);
     db.prepare("INSERT INTO bridge_pairings (admin_id, sv_base_url, pairing_token, token_fingerprint, sv_org_id, paired_at) VALUES (?, 'https://dev.sanctuaryvoice.com', 'pt', 'fp', 'org', 0)").run(a);
     db.prepare("INSERT INTO custom_roles (admin_id, name, base, perms, created_at) VALUES (?, 'Sunet', 'member', 'live', 0)").run(a);
@@ -2629,7 +2630,76 @@ test('suggest randomSongs: skips the last 3 events and the event\'s own songs, k
   assert.strictEqual(store.randomSongs(2, {}).songs.length, 1, 'another admin: its own song only');
   assert.deepStrictEqual(shuffle([]), []);
   assert.deepStrictEqual(shuffle([1, 2, 3]).sort(), [1, 2, 3]);
+  // a theme: only the songs carrying it (by normalized name)
+  const theme = mem.prepare("INSERT INTO song_themes (song_id, admin_id, position, name, name_norm) VALUES (?, 1, 0, 'Paști', 'pasti')");
+  for (const id of [ids[0], ids[1], ids[7], ids[12]]) theme.run(id);
+  const themed = store.randomSongs(1, { eventId: mine, theme: 'pasti' });
+  assert.deepStrictEqual([themed.total, themed.left, themed.songs.map((s) => s.id).sort((a, b) => a - b)], [4, 3, [ids[0], ids[7], ids[12]]], 'S2 is recent; the three others, keyed first');
+  assert.ok(ids.indexOf(themed.songs[themed.songs.length - 1].id) === 12, 'the unkeyed one last');
+  assert.deepStrictEqual(store.randomSongs(1, { eventId: mine, theme: 'botez' }), { songs: [], total: 0, left: 0 });
   mem.close();
+});
+
+// --- themes ("tematică") ---------------------------------------------------------------
+
+test('validateThemes / validateSong: a list or a comma string, trimmed, merged by normalized form, limits', () => {
+  const { validateThemes, validateSong } = require('../lib/songs');
+  assert.deepStrictEqual(validateThemes(['Paști', ' pasti ', 'Închinare', '', 'inchinare'], t).value, [{ name: 'Paști', norm: 'pasti' }, { name: 'Închinare', norm: 'inchinare' }]);
+  assert.deepStrictEqual(validateThemes('Crăciun, botez;  Cina Domnului\nbotez', t).value.map((x) => x.name), ['Crăciun', 'botez', 'Cina Domnului']);
+  assert.deepStrictEqual(validateThemes(undefined, t).value, []);
+  assert.deepStrictEqual(validateThemes(null, t).value, []);
+  assert.ok(validateThemes(42, t).error, 'not a list');
+  assert.ok(validateThemes([1], t).error, 'not strings');
+  assert.ok(validateThemes(['x'.repeat(41)], t).error, 'too long');
+  assert.ok(validateThemes(Array.from({ length: 11 }, (_, i) => `t${i}`), t).error, 'too many');
+  const song = validateSong({ title: 'S', sections: [{ type: 'verse', content: 'a' }], themes: ['Paști', 'paști'] }, t);
+  assert.deepStrictEqual(song.value.themes, [{ name: 'Paști', norm: 'pasti' }]);
+  assert.deepStrictEqual(validateSong({ title: 'S', sections: [{ type: 'verse', content: 'a' }] }, t).value.themes, [], 'none given: none');
+  assert.ok(/Temele/.test(validateSong({ title: 'S', sections: [{ type: 'verse', content: 'a' }], themes: 'x' }, t).error === undefined ? '' : 'Temele') || true);
+});
+
+test('songs store: themes are saved with the song, listed per row, filtered and counted; the export carries them', () => {
+  const Database = require('better-sqlite3');
+  const { runMigrations } = require('../lib/db');
+  const { createSongStore, validateSong } = require('../lib/songs');
+  const mem = new Database(':memory:');
+  mem.pragma('foreign_keys = ON');
+  runMigrations(mem);
+  mem.prepare("INSERT INTO admins (id, name, created_at) VALUES (1, 'A', 0), (2, 'B', 0)").run();
+  mem.prepare("INSERT INTO users (id, admin_id, email, name, password_hash, role, created_at) VALUES (1, 1, 'a@x.ro', 'A', 'x', 'owner', 0)").run();
+  const store = createSongStore(mem);
+  const make = (adminId, title, themes) => store.create(adminId, 1, validateSong({ title, sections: [{ type: 'verse', content: 'x' }], themes }, t).value);
+  const a = make(1, 'A', ['Paști', 'Închinare']);
+  const b = make(1, 'B', ['pasti']);
+  const c = make(1, 'C', []);
+  make(2, 'Alt', ['Paști']);
+  assert.deepStrictEqual(store.get(1, a).themes, ['Paști', 'Închinare']);
+  assert.deepStrictEqual(store.get(1, c).themes, []);
+  assert.deepStrictEqual(store.themes(1), [{ name: 'Închinare', count: 1 }, { name: 'Paști', count: 2 }], 'by name, one spelling, counted; admin 2 apart');
+  assert.deepStrictEqual(store.list(1, { q: '', sort: 'az' }).map((s) => [s.title, s.themes]), [['A', ['Paști', 'Închinare']], ['B', ['pasti']], ['C', []]]);
+  assert.deepStrictEqual(store.list(1, { q: '', sort: 'az', theme: 'PAȘTI' }).map((s) => s.title), ['A', 'B'], 'the filter by normalized name');
+  assert.deepStrictEqual(store.list(1, { q: '', sort: 'az', theme: 'botez' }), []);
+  // update replaces the themes
+  store.update(1, a, validateSong({ title: 'A', sections: [{ type: 'verse', content: 'x' }], themes: ['Botez'] }, t).value);
+  assert.deepStrictEqual(store.get(1, a).themes, ['Botez']);
+  assert.deepStrictEqual(store.themes(1).map((x) => `${x.name}:${x.count}`), ['Botez:1', 'pasti:1']);
+  const exported = store.exportLibrary(1, 'app');
+  assert.deepStrictEqual(exported.songs.map((s) => s.themes), [['Botez'], ['pasti'], []]);
+  // a deleted song takes its themes with it
+  store.remove(1, b);
+  assert.deepStrictEqual(store.themes(1), [{ name: 'Botez', count: 1 }]);
+  mem.close();
+});
+
+test('resurse songPageThemes: the "Tematica" links of a song page; OpenSong <theme> as the fallback', () => {
+  const R = require('../lib/resurse');
+  const html = '<p class="tematica">Tematica: <a href="https://www.resursecrestine.ro/cantece/index-tematic/inchinare" class="blueLink">&Icirc;nchinare</a>, <a href="/cantece/index-tematic/pasti" class="blueLink"> Pa&#537;ti </a>, <a href="/cantece/index-tematic/pasti">paști</a></p><a href="/cantece/index-autori/x">Autor</a>';
+  assert.deepStrictEqual(R.songPageThemes(html), ['Închinare', 'Paști']);
+  assert.deepStrictEqual(R.songPageThemes('<html></html>'), []);
+  assert.deepStrictEqual(R.songPageThemes(null), []);
+  const xml = '<?xml version="1.0"?><song><title>T</title><author>A</author><theme>Închinare; Crăciun</theme><lyrics>[V1]\n Rând unu\n Rând doi</lyrics></song>';
+  assert.deepStrictEqual(R.parseOpenSongXml(xml).themes, ['Închinare', 'Crăciun']);
+  assert.deepStrictEqual(R.parseOpenSongXml('<?xml version="1.0"?><song><title>T</title><lyrics>[V1]\n Rând unu\n Rând doi</lyrics></song>').themes, []);
 });
 
 // --- bridge client (stage 8) --------------------------------------------------

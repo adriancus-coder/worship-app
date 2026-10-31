@@ -2375,6 +2375,15 @@ button.song-key-change:hover { text-decoration: underline; }
 .song-key-box .message { flex-basis: 100%; margin: 0; }
 .song-key-box .message:empty { display: none; }
 .song-key-row { margin: 4px 0 8px; }
+/* the song's themes ("Tematică: Paști · închinare"), each a link to the library filtered by it */
+.song-themes { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 10px; font-size: 0.875rem; color: var(--text-muted); }
+.song-themes[hidden] { display: none; }
+.theme-chip { display: inline-flex; align-items: center; min-height: var(--touch); padding: 2px 12px; border: 1px solid var(--border); border-radius: 999px; color: var(--text); background: var(--surface); text-decoration: none; font-weight: 600; }
+.theme-chip:hover, .theme-chip:focus-visible { border-color: var(--accent-fill); }
+.theme-field select, .ideas-theme-field select { max-width: 14rem; }
+.ideas-theme-field { display: flex; flex-direction: row; align-items: center; gap: 8px; width: auto; margin: 0 0 8px; font-size: 0.875rem; font-weight: 500; color: var(--text-muted); }
+.ideas-theme-field select { flex: 1 1 auto; min-height: var(--touch); }
+.ideas-theme-field[hidden] { display: none; }
 /* "Detectează gama" (public/key-detect-ui.js) */
 .key-detect-dialog { width: min(480px, calc(100vw - 32px)); }
 .key-detect-dialog > * + * { margin-top: 12px; }

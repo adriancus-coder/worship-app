@@ -130,6 +130,10 @@
           <details class="ideas" id="ideas" hidden>
             <summary><span data-i18n="setlist.ideasHeading"></span></summary>
             <p class="hint" data-i18n="setlist.ideasHint"></p>
+            <!-- the theme: "Oricare" or one of the library's themes; "10 la întâmplare" uses it too -->
+            <label class="sort-field ideas-theme-field" id="ideas-theme-field" hidden><span class="sort-label" data-i18n="setlist.ideasTheme"></span>
+              <select id="ideas-theme"><option value="" data-i18n="setlist.ideasAnyTheme"></option></select>
+            </label>
             <p id="ideas-status" class="muted" role="status" aria-live="polite"></p>
             <ul id="ideas-list" class="ideas-list" data-i18n-aria-label="setlist.ideasHeading"></ul>
             <button type="button" class="secondary" id="ideas-more" data-icon="restart" data-i18n="setlist.ideasMore"></button>

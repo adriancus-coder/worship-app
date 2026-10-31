@@ -36,10 +36,16 @@
     const titleInput = el('input', { type: 'text', id: ids.title, maxlength: '200', required: true, oninput: changed });
     const authorInput = el('input', { type: 'text', id: ids.author, maxlength: '200', oninput: changed });
     const keySelect = el('select', { id: ids.key, onchange: changed });
+    // Themes ("tematică"): one field, names separated by commas, with the library's themes
+    // as suggestions (GET /api/songs/themes, a datalist).
+    const themesList = el('datalist', { id: `${ids.key}-themes-list` });
+    const themesInput = el('input', { type: 'text', id: `${ids.key}-themes`, maxlength: '450', autocomplete: 'off', list: themesList.id, oninput: changed });
+    const themesHint = el('span', { class: 'hint', id: `${ids.key}-themes-hint` });
+    themesInput.setAttribute('aria-describedby', themesHint.id);
     const sectionsBox = el('div', { id: ids.sections, class: 'sections-editor' });
     const addButton = el('button', { type: 'button', id: ids.addSection, class: 'secondary', 'data-icon': 'plus' });
     const preview = el('div', { id: ids.preview });
-    const labels = { details: el(h, { id: `${ids.key}-details-heading` }), title: el('label', { for: ids.title }), author: el('label', { for: ids.author }), key: el('label', { for: ids.key }), sections: el(h), preview: el(h, { id: `${ids.preview}-heading` }) };
+    const labels = { details: el(h, { id: `${ids.key}-details-heading` }), title: el('label', { for: ids.title }), author: el('label', { for: ids.author }), key: el('label', { for: ids.key }), themes: el('label', { for: themesInput.id }), sections: el(h), preview: el(h, { id: `${ids.preview}-heading` }) };
     // The key row: the current value large in the reader's notation next to the picker, and a
     // hint while it is empty ("Adaugă tonul ca să poți transpune").
     const keyValue = el('output', { class: 'song-key-value editor-key-value', for: ids.key, 'aria-live': 'polite' });
@@ -53,7 +59,8 @@
         el('div', { class: 'field' }, labels.author, authorInput),
         el('div', { class: 'field editor-key-field' }, labels.key,
           el('div', { class: 'editor-key-row' }, keyValue, keySelect),
-          keyHint)),
+          keyHint),
+        el('div', { class: 'field' }, labels.themes, themesInput, themesList, themesHint)),
       options.extra || '',
       labels.sections,
       sectionsBox,
@@ -207,6 +214,8 @@
       labels.title.textContent = t('editor.titleLabel');
       labels.author.textContent = t('editor.authorLabel');
       labels.key.textContent = t('editor.keyLabel');
+      labels.themes.textContent = t('editor.themesLabel');
+      themesHint.textContent = t('editor.themesHint');
       labels.sections.textContent = t('editor.sectionsHeading');
       labels.preview.textContent = t('editor.previewHeading');
       addButton.textContent = t('editor.addSection');
@@ -224,6 +233,7 @@
         title: titleInput.value,
         author: authorInput.value,
         song_key: keySelect.value,
+        themes: themesInput.value.split(',').map((x) => x.trim()).filter(Boolean),
         sections: state.sections.map((s) => ({ type: s.type, label: s.label, content: chordsOverLyricsToInline(s.content), note: s.note })),
       };
     }
@@ -236,6 +246,7 @@
         : [emptySection()];
       titleInput.value = s.title || '';
       authorInput.value = s.author || '';
+      themesInput.value = (s.themes || []).join(', ');
       renderKeys();
       keySelect.value = s.song_key || '';
       renderKeyValue();
@@ -244,6 +255,10 @@
     }
 
     document.addEventListener('notation:change', () => { renderKeys(); renderPreview(); });
+    // the library's themes as suggestions (best effort)
+    window.PAGE.api('/api/songs/themes').then((res) => {
+      if (res.ok) themesList.replaceChildren(...res.body.themes.map((x) => el('option', { value: x.name })));
+    }).catch(() => {});
     document.addEventListener('i18n:change', render);
     setSong(null);
 
@@ -257,7 +272,7 @@
       focusTitle: () => titleInput.focus(),
       onChange: (cb) => listeners.push(cb),
       render,
-      fields: { title: titleInput, author: authorInput, key: keySelect },
+      fields: { title: titleInput, author: authorInput, key: keySelect, themes: themesInput },
       // A song is written when it has a title or any text.
       hasText: () => Boolean(titleInput.value.trim() || state.sections.some((s) => s.content.trim())),
     };
