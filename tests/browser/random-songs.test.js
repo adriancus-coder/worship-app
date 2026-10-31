@@ -69,6 +69,15 @@ module.exports = {
     check(quickSongs.length === 10 && quickSongs.every((id) => !recent.includes(id)) && quickSongs.every((id) => !seedSongIds.includes(id) || !recent.includes(id)),
       'quick create: ten random songs, none sung at the recent event', { quickSongs: quickSongs.length });
 
+    // --- "Planifică": each planned event gets its songs, one after another without repeats --
+    const today = (await app.api(owner, 'GET', '/api/events')).body.today;
+    const plus = (days) => { const d = new Date(`${today}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + days); return d.toISOString().slice(0, 10); };
+    const plan = (await app.api(owner, 'POST', '/api/events/plan', { dates: [plus(30), plus(37)] })).body;
+    const planned = [];
+    for (const ev of plan.events) planned.push((await app.api(owner, 'GET', `/api/events/${ev.id}`)).body.items.filter((it) => it.type === 'song').map((it) => it.songId));
+    check(plan.created === 2 && planned.every((l) => l.length >= 1 && l.length <= 10) && !planned[0].some((id) => planned[1].includes(id)),
+      '"Planifică": both events get random songs, the second none of the first', planned.map((l) => l.length));
+
     // --- the phone and the team ------------------------------------------------------------------
     const m = await signIn('owner', { width: 375, lang: 'ro' });
     await m.goto(`${app.url}/events/${quick.event.id}/edit`);

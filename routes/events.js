@@ -107,6 +107,15 @@ function createEventsRouter({ db, auth, logger, live }) {
     respond(req, res, id, 201);
   });
 
+  // A new programme ("+ Eveniment nou", "Planifică") starts with 10 random song ideas
+  // (lib/suggest.js) when nothing (the template) brought songs of its own; the editor keeps,
+  // swaps or deletes them. Planned one after another, each counts as recent for the next.
+  // Returns how many were added.
+  function fillRandomSongs(req, id) {
+    if (events.get(req.adminId, id).items.some((it) => it.type === 'song')) return 0;
+    return events.appendSongs(req.adminId, id, suggest.randomSongs(req.adminId, { eventId: id, today: today(req) }).songs);
+  }
+
   // The template "+ Eveniment nou" starts from: the one used last (remembered per church),
   // else the most recently changed one, else none.
   function quickTemplate(adminId) {
@@ -141,12 +150,8 @@ function createEventsRouter({ db, auth, logger, live }) {
     const id = events.create(req.adminId, req.user.id, value, { sourceId: template ? template.id : null });
     if (template) assignments.copyFrom(req.adminId, template.id, id, req.user.id);
     if (template) rememberTemplate(req.adminId, template.id);
-    // A new programme starts with 10 random song ideas (lib/suggest.js) when nothing (the
-    // template) brought songs of its own; the editor keeps, swaps or deletes them.
-    const hasSongs = events.get(req.adminId, id).items.some((it) => it.type === 'song');
-    const ideas = hasSongs ? [] : suggest.randomSongs(req.adminId, { eventId: id, today: today(req) }).songs;
-    events.appendSongs(req.adminId, id, ideas);
-    logger.info(`Event #${id} quick-created by user #${req.user.id} (admin #${req.adminId})${template ? ` from template #${template.id}` : ''}${ideas.length ? `, ${ideas.length} random songs` : ''}`);
+    const ideas = fillRandomSongs(req, id);
+    logger.info(`Event #${id} quick-created by user #${req.user.id} (admin #${req.adminId})${template ? ` from template #${template.id}` : ''}${ideas ? `, ${ideas} random songs` : ''}`);
     live.eventChanged(req.adminId, id);
     res.status(201).json({ ...events.get(req.adminId, id, { t: req.t }), today: today(req), templateId: template ? template.id : null });
   });
@@ -226,6 +231,7 @@ function createEventsRouter({ db, auth, logger, live }) {
     const created = db.transaction(() => metas.map((value) => {
       const id = events.create(req.adminId, req.user.id, value, { sourceId: template ? template.id : null });
       if (template) assignments.copyFrom(req.adminId, template.id, id, req.user.id);
+      fillRandomSongs(req, id);
       return { id, name: value.name, eventDate: value.eventDate };
     }))();
     if (template) rememberTemplate(req.adminId, template.id);
