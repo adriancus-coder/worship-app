@@ -1437,11 +1437,60 @@
     if (!addMoreList.hidden && !addMore.contains(event.target)) openAddMore(false);
   });
 
+  // --- random song ideas (lib/suggest.js) ---------------------------------------------
+
+  function currentSongIds() {
+    return state.items.filter((it) => it.type === 'song' && it.songId).map((it) => it.songId);
+  }
+
+  async function fetchIdeas() {
+    const res = await api(`/api/events/${state.event.id}/suggestions?exclude=${currentSongIds().join(',')}`).catch(() => null);
+    return res && res.ok ? res.body : null;
+  }
+
+  // "+ Altele → 10 cântări la întâmplare": the songs go into the programme (saved with it).
+  async function addRandom() {
+    const body = await fetchIdeas();
+    if (!body) return showAction(t('common.networkError'));
+    for (const song of body.songs) addSong(song);
+    picked.ids.clear();
+    showAction(t(body.songs.length ? 'setlist.randomAdded' : 'setlist.ideasEmpty', { n: body.songs.length }));
+    if (!ideas.hidden && ideas.open) loadIdeas();
+  }
+
+  const ideas = $('ideas');
+  const ideasList = $('ideas-list');
+  const ideasStatus = $('ideas-status');
+  let ideasLoaded = false;
+
+  function ideaRow(song) {
+    const row = el('li', { class: 'ideas-row', 'data-song-id': song.id },
+      el('span', { class: 'ideas-title' }, song.title, song.song_key ? el('span', { class: 'muted ideas-key', text: ` · ${t('library.key', { key: window.NOTATION.chord(song.song_key) })}` }) : null),
+      el('button', { type: 'button', class: 'secondary ideas-add', 'data-icon': 'plus', text: t('setlist.ideasAdd'), 'aria-label': t('setlist.pickAddLabel', { title: song.title }),
+        onclick: () => { addSong(song); picked.ids.clear(); row.remove(); if (!ideasList.children.length) ideasStatus.textContent = t('setlist.ideasAllAdded'); } }));
+    return row;
+  }
+
+  async function loadIdeas() {
+    ideasStatus.textContent = t('setlist.ideasLoading');
+    ideasList.replaceChildren();
+    const body = await fetchIdeas();
+    ideasLoaded = true;
+    if (!body) { ideasStatus.textContent = t('common.networkError'); return; }
+    ideasStatus.textContent = body.songs.length ? '' : t('setlist.ideasEmpty');
+    ideasList.replaceChildren(...body.songs.map(ideaRow));
+  }
+
+  ideas.addEventListener('toggle', () => { if (ideas.open && !ideasLoaded) loadIdeas(); });
+  $('ideas-more').addEventListener('click', loadIdeas);
+
   $('add-bar').addEventListener('click', (event) => {
     const button = event.target.closest('[data-add]');
     if (!button) return;
     if (!addMoreList.hidden) openAddMore(false);
-    if (button.dataset.add === 'song') {
+    if (button.dataset.add === 'random') {
+      addRandom();
+    } else if (button.dataset.add === 'song') {
       picked.ids.clear();
       picked.count = 0;
       picked.last = -1;
@@ -1487,6 +1536,7 @@
     }
     state.editing = editSegment === 'edit' && canEdit(state.me);
     $('add-bar').hidden = !state.editing;
+    ideas.hidden = !state.editing;
     applyEvent(eventRes.body, false);
     if (state.editing) {
       // Just created with "+ Eveniment nou": the "Detalii" row is open, its template shown.

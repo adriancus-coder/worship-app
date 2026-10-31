@@ -38,7 +38,8 @@ module.exports = {
         main: document.querySelector('main').getBoundingClientRect().width,
         dialog: Boolean(document.getElementById('create-dialog')),
       }));
-      check(head.buttons.length === 1 && head.plan && !head.dialog && (width > 600 || head.width > head.main * 0.8), `${tag} /events: one primary "+ Eveniment nou" (+ the secondary "Planifică")${width < 600 ? ', full width' : ''}`, head);
+      // phones: "+ Eveniment nou" shares the row with the secondary "Planifică" (about half each)
+      check(head.buttons.length === 1 && head.plan && !head.dialog && (width > 600 || head.width > head.main * 0.45), `${tag} /events: one primary "+ Eveniment nou" (+ the secondary "Planifică")${width < 600 ? ', sharing the row' : ''}`, head);
       await p.click('#new-event');
       await p.waitForURL(/\/events\/\d+\/edit$/);
       await p.waitForSelector('#quick-details[open]:not([hidden])');

@@ -704,6 +704,17 @@ main.wide.event-page { max-width: 1200px; }
 .type-prayer { color: var(--type-prayer); }
 .type-other { color: var(--type-other); }
 
+/* "Idei de cântări" (random songs) under the add bar */
+.ideas { margin: 12px 0 0; padding: 10px 12px; border: 1px dashed var(--border); border-radius: var(--radius); }
+.ideas[hidden] { display: none; }
+.ideas > summary { min-height: var(--touch); display: flex; align-items: center; font-weight: 700; cursor: pointer; }
+.ideas > .hint, .ideas > .muted { margin: 4px 0 8px; }
+.ideas > .muted:empty { display: none; }
+.ideas-list { list-style: none; margin: 0 0 8px; padding: 0; }
+.ideas-row { display: flex; align-items: center; gap: 8px; padding: 2px 0; border-bottom: 1px solid var(--border); }
+.ideas-title { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.ideas-add { flex: none; }
+
 .add-bar { display: flex; flex-wrap: wrap; gap: 8px; }
 .add-bar > button, .add-bar > .menu { flex: 1 1 96px; min-width: 0; } /* "+ Cântare · + Verset · + Altele" on one row, from 320 */
 .add-bar > button, .add-bar > .menu > button { white-space: nowrap; }

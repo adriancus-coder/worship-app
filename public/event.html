@@ -124,9 +124,19 @@
                 <button type="button" class="menu-item" data-add="sermon" data-i18n="setlist.addSermon"></button>
                 <button type="button" class="menu-item" data-add="prayer" data-i18n="setlist.addPrayer"></button>
                 <button type="button" class="menu-item" data-add="other" data-i18n="setlist.addOther"></button>
+                <button type="button" class="menu-item" data-add="random" data-i18n="setlist.addRandom"></button>
               </div>
             </div>
           </div>
+          <!-- "Idei de cântări": 10 random songs of the library (GET /api/events/:id/suggestions),
+               each with "+ Adaugă"; "Alte idei" draws again. Editors only, like the add bar. -->
+          <details class="ideas" id="ideas" hidden>
+            <summary><span data-i18n="setlist.ideasHeading"></span></summary>
+            <p class="hint" data-i18n="setlist.ideasHint"></p>
+            <p id="ideas-status" class="muted" role="status" aria-live="polite"></p>
+            <ul id="ideas-list" class="ideas-list" data-i18n-aria-label="setlist.ideasHeading"></ul>
+            <button type="button" class="secondary" id="ideas-more" data-icon="restart" data-i18n="setlist.ideasMore"></button>
+          </details>
           </div>
         </section>
         <section class="detail-pane" id="detail-home" aria-live="polite" data-pane-label="setlist.details">

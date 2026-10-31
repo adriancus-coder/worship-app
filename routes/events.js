@@ -7,6 +7,7 @@ const { createAdminSettings } = require('../lib/admin-settings');
 const { validateEventMeta, validateItems, createEventStore } = require('../lib/events');
 const { validateSections } = require('../lib/songs');
 const { createAssignmentStore } = require('../lib/assignments');
+const { createSuggestStore } = require('../lib/suggest');
 
 const WHEN = ['upcoming', 'past', 'templates'];
 const PLAN_MAX = 60; // "Planifică": events per request
@@ -22,6 +23,7 @@ function createEventsRouter({ db, auth, logger, live }) {
   const assignments = createAssignmentStore(db); // a copy of an event / template copies its team (pending)
   const settings = createAdminSettings(db);
   const canEdit = requirePerm('events');
+  const suggest = createSuggestStore(db);
   const canLive = requirePerm('live');
 
   const isEditor = (req) => seesAllEvents(req.user);
@@ -139,9 +141,25 @@ function createEventsRouter({ db, auth, logger, live }) {
     const id = events.create(req.adminId, req.user.id, value, { sourceId: template ? template.id : null });
     if (template) assignments.copyFrom(req.adminId, template.id, id, req.user.id);
     if (template) rememberTemplate(req.adminId, template.id);
-    logger.info(`Event #${id} quick-created by user #${req.user.id} (admin #${req.adminId})${template ? ` from template #${template.id}` : ''}`);
+    // A new programme starts with 10 random song ideas (lib/suggest.js) when nothing (the
+    // template) brought songs of its own; the editor keeps, swaps or deletes them.
+    const hasSongs = events.get(req.adminId, id).items.some((it) => it.type === 'song');
+    const ideas = hasSongs ? [] : suggest.randomSongs(req.adminId, { eventId: id, today: today(req) }).songs;
+    events.appendSongs(req.adminId, id, ideas);
+    logger.info(`Event #${id} quick-created by user #${req.user.id} (admin #${req.adminId})${template ? ` from template #${template.id}` : ''}${ideas.length ? `, ${ideas.length} random songs` : ''}`);
     live.eventChanged(req.adminId, id);
     res.status(201).json({ ...events.get(req.adminId, id, { t: req.t }), today: today(req), templateId: template ? template.id : null });
+  });
+
+  // Random song ideas for a programme (lib/suggest.js): the library minus the songs of the
+  // last 3 events and the event's own songs (saved, plus ?exclude=1,2 the editor has not
+  // saved yet); songs with a key first. ?count=10 (1-30).
+  router.get('/api/events/:id/suggestions', canEdit, (req, res) => {
+    const id = eventId(req);
+    if (!id || !events.get(req.adminId, id)) return notFound(req, res);
+    const exclude = String(req.query.exclude || '').split(',').filter((x) => /^\d{1,15}$/.test(x)).map(Number);
+    const result = suggest.randomSongs(req.adminId, { eventId: id, count: req.query.count, exclude, today: today(req) });
+    res.json(result);
   });
 
   // A song item's lyrics as edited during the service (lib/events.js itemLyrics, the live

@@ -26,7 +26,7 @@ module.exports = {
       await p.click('#add-more-button');
       await p.waitForSelector('#add-more-list:not([hidden])');
       const menu = await p.evaluate(() => ({ items: [...document.querySelectorAll('#add-more-list [data-add]')].map((b) => b.dataset.add), expanded: document.getElementById('add-more-button').getAttribute('aria-expanded'), focused: document.activeElement && document.activeElement.dataset.add, inView: document.getElementById('add-more-list').getBoundingClientRect().bottom <= innerHeight, sideways: document.querySelector('.setlist-scroll').scrollLeft, inside: document.getElementById('add-more-list').getBoundingClientRect().right <= document.querySelector('.setlist-scroll').getBoundingClientRect().right + 1 }));
-      check(JSON.stringify(menu.items) === '["video","announcement","sermon","prayer","other"]' && menu.expanded === 'true' && menu.focused === 'video' && menu.inView && !menu.sideways && menu.inside, `${tag} "+ Altele" opens the menu: Video · Anunț · Predică · Rugăciune · Altceva, in view inside the pane (no sideways scroll), the first focused`, menu);
+      check(JSON.stringify(menu.items) === '["video","announcement","sermon","prayer","other","random"]' && menu.expanded === 'true' && menu.focused === 'video' && menu.inView && !menu.sideways && menu.inside, `${tag} "+ Altele" opens the menu: Video · Anunț · Predică · Rugăciune · Altceva · 10 cântări la întâmplare, in view inside the pane (no sideways scroll), the first focused`, menu);
       const m = await layoutAudit(p, '#add-more-list');
       check(!m.overflow && !m.small.length, `${tag} the menu: no overflow, targets >= 44 px`, m);
       await p.keyboard.press('Escape');

@@ -2592,6 +2592,47 @@ test('songs store: keySuggestions (keyless songs with chords) and setKeys (never
   mem.close();
 });
 
+// --- random song ideas (lib/suggest.js) -------------------------------------------
+
+test('suggest randomSongs: skips the last 3 events and the event\'s own songs, keyed songs first, count', () => {
+  const Database = require('better-sqlite3');
+  const { runMigrations } = require('../lib/db');
+  const { createSuggestStore, shuffle } = require('../lib/suggest');
+  const mem = new Database(':memory:');
+  mem.pragma('foreign_keys = ON');
+  runMigrations(mem);
+  mem.prepare("INSERT INTO admins (id, name, created_at) VALUES (1, 'A', 0), (2, 'B', 0)").run();
+  const song = mem.prepare("INSERT INTO songs (admin_id, title, title_norm, song_key, created_at, updated_at) VALUES (?, ?, ?, ?, 0, 0)");
+  const ids = [];
+  for (let i = 1; i <= 14; i += 1) ids.push(Number(song.run(1, `S${i}`, `s${i}`, i <= 10 ? 'G' : null).lastInsertRowid));
+  const other = Number(song.run(2, 'Alt', 'alt', 'C').lastInsertRowid);
+  const event = mem.prepare("INSERT INTO events (admin_id, name, event_date, status, is_template, created_at, updated_at) VALUES (1, ?, ?, 'planned', ?, 0, 0)");
+  const item = mem.prepare("INSERT INTO setlist_items (event_id, admin_id, position, type, song_id, scope) VALUES (?, 1, 0, 'song', ?, 'shared')");
+  // four past events, the oldest with S1, then S2, S3, S4; a template with S5; the new event with S6
+  const dates = ['2026-10-04', '2026-10-11', '2026-10-18', '2026-10-25'];
+  dates.forEach((date, i) => item.run(Number(event.run(`E${i}`, date, 0).lastInsertRowid), ids[i]));
+  item.run(Number(event.run('T', '2026-01-01', 1).lastInsertRowid), ids[4]);
+  const mine = Number(event.run('Nou', '2026-11-01', 0).lastInsertRowid);
+  item.run(mine, ids[5]);
+  const store = createSuggestStore(mem);
+  const r = store.randomSongs(1, { eventId: mine, exclude: [ids[6]] });
+  const got = r.songs.map((s) => s.id);
+  assert.deepStrictEqual([r.total, r.left, r.songs.length], [14, 9, 9], 'left: minus the last 3 events (S2 S3 S4), the own song (S6) and the excluded one (S7)');
+  for (const id of [ids[1], ids[2], ids[3], ids[5], ids[6], other]) assert.ok(!got.includes(id), `not ${id}`);
+  assert.ok(got.includes(ids[0]), 'the oldest event does not count (4th back)');
+  assert.ok(got.slice(0, 5).every((id) => ids.indexOf(id) < 10) && got.slice(5).every((id) => ids.indexOf(id) >= 10), 'keyed songs first (S1 S5 S8 S9 S10), then the four without a key');
+  assert.ok(new Set(got).size === 9, 'no repeats');
+  const ten = createSuggestStore(mem).randomSongs(1, { today: '2020-01-01' });
+  assert.strictEqual(ten.songs.length, 10, 'ten by default');
+  // without an event: today bounds the recent events; count capped
+  const all = store.randomSongs(1, { today: '2026-10-12', count: 99 });
+  assert.ok(!all.songs.map((s) => s.id).includes(ids[1]) && all.songs.length === 14 - 2 && all.songs.length <= 30, 'today: the two events up to it count as recent');
+  assert.strictEqual(store.randomSongs(2, {}).songs.length, 1, 'another admin: its own song only');
+  assert.deepStrictEqual(shuffle([]), []);
+  assert.deepStrictEqual(shuffle([1, 2, 3]).sort(), [1, 2, 3]);
+  mem.close();
+});
+
 // --- bridge client (stage 8) --------------------------------------------------
 
 const bridgeClient = require('../lib/bridge/client');
