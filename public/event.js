@@ -19,7 +19,6 @@
   const saveButton = $('save-button');
   const saveState = $('save-state');
   const actionMessage = $('action-message');
-  const templateButton = $('template-button');
   const wide = window.matchMedia('(min-width: 900px)');
 
   const state = {
@@ -139,19 +138,17 @@
   function renderHeader() {
     const ev = state.event;
     setTitle('setlist.pageTitle', { name: ev.name });
-    const when = ev.isTemplate
-      ? t('events.template')
-      : [formatDate(ev.eventDate, state.today && state.today.slice(0, 4)), ev.startTime].filter(Boolean).join(' · ');
+    const when = [formatDate(ev.eventDate, state.today && state.today.slice(0, 4)), ev.startTime].filter(Boolean).join(' · ');
     // An event named after its day ("Duminica") says the day twice: the date line is the
     // title then ("Duminică, 18 octombrie · 15:00") and the name is left out.
     const plain = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
-    const namedAfterDay = !ev.isTemplate && plain(ev.name) === plain(when.split(',')[0]);
+    const namedAfterDay = plain(ev.name) === plain(when.split(',')[0]);
     $('event-name').textContent = namedAfterDay ? when : ev.name;
     $('event-when').textContent = when;
     $('event-when').hidden = namedAfterDay;
     const pill = $('event-status');
-    pill.className = ev.isTemplate ? 'pill pill-template' : `pill pill-${ev.status}`;
-    pill.textContent = ev.isTemplate ? t('events.template') : t(`events.status.${ev.status}`);
+    pill.className = `pill pill-${ev.status}`;
+    pill.textContent = t(`events.status.${ev.status}`);
     const minutes = state.items.reduce((sum, it) => sum + (Number(it.durationMin) || 0), 0);
     const count = countText(state.items.length);
     $('event-counts').textContent = minutes ? t('setlist.summary', { count, minutes }) : count;
@@ -165,9 +162,7 @@
     renderActions();
     $('details-button').hidden = !state.editing;
     // "Retrage din live": a live event back to planned without ending it (event roles)
-    $('withdraw-button').hidden = !(ev.status === 'live' && !ev.isTemplate && can(state.me, 'live'));
-    templateButton.hidden = !state.editing;
-    templateButton.disabled = isDirty();
+    $('withdraw-button').hidden = !(ev.status === 'live' && can(state.me, 'live'));
     renderToolsMenu();
   }
 
@@ -232,14 +227,14 @@
     } else {
       const edit = state.editing || !canEdit(state.me) ? null : { key: 'setlist.edit', icon: 'edit', href: keepFrom(`/events/${ev.id}/edit`) };
       const soon = state.today && [state.today, dayAfter(state.today)].includes(ev.eventDate);
-      if (!ev.isTemplate && ev.status === 'live') {
+      if (ev.status === 'live') {
         actions.push(entry ? { key: entry.key, icon: 'play', href: livePage } : follow, rehearse, edit);
         // The leader lands in the big lyrics; the full live page stays a secondary way in.
         if (role === 'leader') actions.push({ key: 'live.fullPage', icon: 'follow', href: keepFrom(`/events/${ev.id}/live?view=full`) });
       } else {
         // Before the start, by role (the same order as the home card): the owner starts first
         // (today / tomorrow), the leader rehearses first, presenter and operator prepare first.
-        const live = ev.isTemplate || !entry ? null : { key: soon ? 'home.startLive' : 'live.link', icon: 'play', href: livePage };
+        const live = !entry ? null : { key: soon ? 'home.startLive' : 'live.link', icon: 'play', href: livePage };
         if (role === 'leader') actions.push(rehearse, live, edit);
         else if (role === 'owner') actions.push(...(soon ? [live, rehearse, edit] : [edit, live, rehearse]));
         else actions.push(edit, live, rehearse);
@@ -366,7 +361,7 @@
   // start keeps it (lib/live.js PREPARE_COMMANDS). Event roles, planned or live events.
   function renderProjectorPrep() {
     const ev = state.event;
-    const show = Boolean(ev && !ev.isTemplate && ev.status !== 'finished' && can(state.me, 'live'));
+    const show = Boolean(ev && ev.status !== 'finished' && can(state.me, 'live'));
     $('projector-card').hidden = !show;
     setTabAvailable('projector', show);
     if (!show) return;
@@ -384,7 +379,7 @@
   const bridgeBox = { ui: null, mounted: false };
   function renderBridge() {
     const ev = state.event;
-    const show = Boolean(ev && !ev.isTemplate && can(state.me, 'live'));
+    const show = Boolean(ev && can(state.me, 'live'));
     $('bridge-card').hidden = !show;
     setTabAvailable('bridge', show);
     if (!show || bridgeBox.mounted) return;
@@ -399,7 +394,7 @@
   function renderProposals() {
     const ev = state.event;
     const editor = seesAll(state.me);
-    const wanted = ev.isTemplate ? null : (editor ? (state.editing && ev.status !== 'finished' ? 'roles' : 'badge') : 'member');
+    const wanted = editor ? (state.editing && ev.status !== 'finished' ? 'roles' : 'badge') : 'member';
     setTabAvailable('proposals', wanted === 'member' || wanted === 'roles');
     if (proposalsBox.mode === wanted) return;
     proposalsBox.mode = wanted;
@@ -433,7 +428,7 @@
   const team = { card: null, mode: null, summary: null };
   function renderTeam() {
     const ev = state.event;
-    const wanted = ev.isTemplate && !state.editing ? null : (can(state.me, 'schedule') && (state.editing || !canEdit(state.me)) ? 'edit' : 'view'); // a scheduler without the events right assigns on the event page
+    const wanted = (can(state.me, 'schedule') && (state.editing || !canEdit(state.me)) ? 'edit' : 'view'); // a scheduler without the events right assigns on the event page
     setTabAvailable('team', Boolean(wanted));
     if (!wanted) {
       $('team-card').replaceChildren();
@@ -459,7 +454,7 @@
   function renderTeamSummary() {
     const box = $('team-summary');
     const editor = seesAll(state.me);
-    if (!editor || !team.summary || !team.summary.total || state.event.isTemplate) { box.hidden = true; return; }
+    if (!editor || !team.summary || !team.summary.total) { box.hidden = true; return; }
     box.hidden = false;
     box.textContent = window.TEAM_CARD.summaryText(team.summary);
     box.className = `team-summary${team.summary.declined ? ' has-declined' : ''}`;
@@ -947,7 +942,7 @@
     return picker.node;
   }
 
-  // --- saving, templates, delete --------------------------------------
+  // --- saving, delete --------------------------------------
 
   async function save() {
     state.saving = true;
@@ -971,13 +966,12 @@
     }
   }
 
-  // --- "Detalii": name, date, time, notes and "Program de la" on one card (editor, not for
-  // templates). Name / date / time / notes save on change. "Program de la" replaces the
-  // Program: Șablon (the last used one is preselected and remembered for the next
-  // "+ Eveniment nou"), Copie a evenimentului (a past event's items, new ids) or Gol; when the
-  // Program was edited (or would be emptied) a confirmation comes first.
+  // --- "Detalii": name, date, time, notes and "Program de la" on one card (editor). Name /
+  // date / time / notes save on change. "Program de la" replaces the Program: Copie a
+  // evenimentului (a past event's items, new ids) or Gol; when the Program was edited (or
+  // would be emptied) a confirmation comes first. Nothing is selected until a choice is made.
 
-  const quick = { templates: null, past: null, templateId: null, copyId: null, source: null, opened: false };
+  const quick = { past: null, copyId: null, source: null, opened: false };
 
   function quickSay(text, kind) {
     $('quick-message').className = `message${kind ? ` ${kind}` : ''}`;
@@ -988,7 +982,7 @@
     const ev = state.event;
     // The card is the form behind "Detalii" (and open after "+ Eveniment nou"): never a summary
     // row repeating the header above.
-    const shown = state.editing && !ev.isTemplate && quick.opened;
+    const shown = state.editing && quick.opened;
     $('quick-details').hidden = !shown;
     if (!shown) return;
     const year = state.today ? state.today.slice(0, 4) : '';
@@ -996,26 +990,17 @@
     for (const [id, value] of [['q-name', ev.name], ['q-date', ev.eventDate], ['q-time', ev.startTime || ''], ['q-notes', ev.notes || '']]) {
       if (document.activeElement !== $(id)) $(id).value = value;
     }
-    const templates = quick.templates || [];
     const past = (quick.past || []).filter((e) => e.id !== ev.id);
-    // The starting choice waits for the templates list: Șablon while there is one (the last
-    // used is preselected), else Gol.
-    if (!quick.source && quick.templates !== null) quick.source = quick.templateId || templates.length ? 'template' : 'empty';
-    const source = quick.source || 'template';
+    const source = quick.source;
     for (const button of document.querySelectorAll('#quick-details [data-source]')) {
       button.setAttribute('aria-pressed', String(button.dataset.source === source));
     }
-    $('q-template-field').hidden = source !== 'template';
     $('q-copy-field').hidden = source !== 'copy';
-    $('q-template').replaceChildren(el('option', { value: '', text: t(templates.length ? 'setlist.pickTemplate' : 'events.noTemplates') }),
-      ...templates.map((tpl) => el('option', { value: String(tpl.id), text: tpl.name })));
-    $('q-template').value = quick.templateId && templates.some((tpl) => tpl.id === quick.templateId) ? String(quick.templateId) : '';
-    $('q-template').disabled = !templates.length;
     $('q-copy').replaceChildren(el('option', { value: '', text: t(past.length ? 'setlist.pickEvent' : 'events.noEvents') }),
       ...past.map((e) => el('option', { value: String(e.id), text: `${formatDate(e.eventDate, year)} — ${e.name}` })));
     $('q-copy').value = quick.copyId && past.some((e) => e.id === quick.copyId) ? String(quick.copyId) : '';
     $('q-copy').disabled = !past.length;
-    $('q-source-hint').textContent = t(`setlist.fromHint.${source}`);
+    $('q-source-hint').textContent = source ? t(`setlist.fromHint.${source}`) : '';
   }
 
   async function saveQuickMeta() {
@@ -1078,20 +1063,9 @@
       }
       quick.source = source;
       renderQuickDetails();
-      $(source === 'template' ? 'q-template' : 'q-copy').focus();
+      $('q-copy').focus();
     });
   }
-
-  $('q-template').addEventListener('change', () => {
-    const templateId = Number($('q-template').value);
-    if (!templateId) return renderQuickDetails();
-    const go = () => {
-      quick.templateId = templateId;
-      applySource('apply-template', { templateId }, t('setlist.templateApplied'));
-    };
-    if (isDirty()) confirmReplace('replace', go);
-    else go();
-  });
 
   $('q-copy').addEventListener('change', () => {
     const fromEventId = Number($('q-copy').value);
@@ -1106,8 +1080,7 @@
   });
 
   async function loadQuickSources() {
-    const [tpl, past] = await Promise.all([api('/api/events?when=templates'), api('/api/events?when=past')]);
-    quick.templates = tpl.ok ? tpl.body.events : [];
+    const past = await api('/api/events?when=past');
     quick.past = past.ok ? past.body.events : [];
     renderQuickDetails();
   }
@@ -1115,7 +1088,7 @@
   // "Detalii" in the header (or the ⋯ menu): the card opens and gets the focus.
   function openQuickDetails() {
     const box = $('quick-details');
-    if (!state.editing || state.event.isTemplate) return;
+    if (!state.editing) return;
     quick.opened = true;
     renderQuickDetails();
     box.open = true;
@@ -1140,7 +1113,7 @@
   function wireDialog(dialog) {
     dialog.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', () => dialog.close()));
   }
-  ['template-dialog', 'replace-dialog'].forEach((id) => wireDialog($(id)));
+  wireDialog($('replace-dialog'));
 
   $('details-button').addEventListener('click', openQuickDetails);
   // Closed again: the card goes (the header already shows the name, date and time).
@@ -1158,28 +1131,6 @@
     if (fresh && fresh.ok && !isDirty()) applyEvent(fresh.body, true);
     else if (fresh && fresh.ok) { state.event = fresh.body.event; renderAll(); }
     showAction(t('live.withdrawn'));
-  });
-
-  templateButton.addEventListener('click', () => {
-    $('t-name').value = state.event.name;
-    $('template-message').textContent = '';
-    $('template-dialog').showModal();
-    $('t-name').select();
-  });
-
-  $('template-form').addEventListener('submit', async (event) => {
-    event.preventDefault();
-    try {
-      const res = await api(`/api/events/${state.event.id}/save-as-template`, { method: 'POST', body: { name: $('t-name').value } });
-      if (res.status !== 201) {
-        $('template-message').textContent = res.body.error || t('common.networkError');
-        return;
-      }
-      $('template-dialog').close();
-      showAction(t('setlist.templateCreated'), el('a', { href: `/events/${res.body.event.id}/edit`, text: t('setlist.openTemplate') }));
-    } catch (err) {
-      $('template-message').textContent = t('common.networkError');
-    }
   });
 
   $('delete-button').addEventListener('click', () => {
@@ -1539,15 +1490,13 @@
     ideas.hidden = !state.editing;
     applyEvent(eventRes.body, false);
     if (state.editing) {
-      // Just created with "+ Eveniment nou": the "Detalii" row is open, its template shown.
+      // Just created with "+ Eveniment nou": the "Detalii" row is open.
       const params = new URLSearchParams(window.location.search);
       if (params.has('new')) {
-        quick.templateId = Number(params.get('template')) || null;
         quick.opened = true;
         renderQuickDetails();
         $('quick-details').open = true;
         params.delete('new');
-        params.delete('template');
         const query = params.toString();
         window.history.replaceState(null, '', `${window.location.pathname}${query ? `?${query}` : ''}`);
       }

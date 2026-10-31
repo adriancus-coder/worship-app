@@ -39,7 +39,7 @@ never implement a later stage early. Mockups: claude.ai design canvas
   opens that role's own page. Never show the internal role word in the UI (labels through
   `team.roles.*`). The owner can look at the app as any other role ("Vezi aplicația ca").
 - **Rights and custom roles** (migration 045, `lib/roles.js`): every guard reads RIGHTS, never
-  a role list: `library` (songs), `events` (events, setlists, templates, proposals), `media`,
+  a role list: `library` (songs), `events` (events, setlists, proposals), `media`,
   `live` (start / run / end / withdraw, live pages, additions, resursecrestine search, the
   bridge), `screens` (console, screens page; holding the projector = split mode; needs
   `live`), `schedule` (assignments, positions, everyone's unavailability). The built-in
@@ -81,10 +81,9 @@ never implement a later stage early. Mockups: claude.ai design canvas
   were made against; one made against an older version is refused ("stale") and the page
   gets the current state, so two people moving at once never skip a section.
 - **Event rights.** Owner, presenter, leader and operator (EVENT_ROLES, defined once in
-  `lib/events.js`) have the same rights over events, always: create, edit, templates,
-  delete, start, end, move the live position, projector, sources, video, live mode and
-  team mode. They see templates. Members see every event as soon as it exists (never
-  templates) and send no commands. The same roles (EDITOR_ROLES = EVENT_ROLES) edit
+  `lib/events.js`) have the same rights over events, always: create, edit, delete, start,
+  end, move the live position, projector, sources, video, live mode and team mode.
+  Members see every event as soon as it exists and send no commands. The same roles (EDITOR_ROLES = EVENT_ROLES) edit
   the library (create, edit, delete, file import / export, the key, backgrounds) and
   media; presenter, leader and operator differ by the page an event opens on (live page /
   big lyrics / console; the console itself is the owner's and the operator's) and by the
@@ -305,18 +304,20 @@ never implement a later stage early. Mockups: claude.ai design canvas
   panel (a member: Program, Echipa, Propuneri; the event roles editing: all five). The tab
   bar shows when there is more than the Program; Echipa and Propuneri carry their counts.
 
-- Events: name, date, time; create from a template or copy a previous event.
-- "+ Eveniment nou" is one tap (`POST /api/events/quick`): name, time and items from the
-  template used last (else the most recent one; else "Serviciu de duminică"), the date of
-  the next usual service (church setting "Ziua și ora obișnuită a slujbei", default Sunday
-  10:00, timezone-aware; the day itself until 2 h after the start). The editor opens with
-  an inline "Detalii" row (name, date, time, template); "Cu opțiuni" keeps the full dialog.
+- Events: name, date, time; copy a previous event's programme. Event templates were
+  removed (migration 057 deleted them): not useful in practice.
+- "+ Eveniment nou" is one tap (`POST /api/events/quick`): "Serviciu de duminică" at the
+  church's usual time, the date of the next usual service (church setting "Ziua și ora
+  obișnuită a slujbei", default Sunday 10:00, timezone-aware; the day itself until 2 h after
+  the start) and ten random songs (`lib/suggest.js`: not the songs of the last 3 events;
+  keyed songs first). "Planifică" does the same for many dates. The editor opens with an
+  inline "Detalii" row (name, date, time, notes, "Program de la": a copy / empty).
 - Acasă, event roles: "▶ Pornește live" on the next event starts it and opens the live page
   (the console for the operator) in one tap (`POST /api/events/:id/start`); live already:
   "Intră live". Only when another event is live a confirmation offers to end it first.
   Members keep "Repetiție" / "Urmărește live".
 - Status: planned → live → finished (history). No publishing step: the team sees an
-  event as soon as it exists (templates stay hidden). "Pornește" works on any planned
+  event as soon as it exists. "Pornește" works on any planned
   event (one live event per church). Migration 020 turned draft and published into planned.
 - "Cântată ultima dată": live or finished events, and planned ones whose date has passed.
 - Setlist items of several types: song, verse, video, announcement, sermon/other.

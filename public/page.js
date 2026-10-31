@@ -50,7 +50,7 @@
   function can(me, perm) {
     return Boolean(me && me.user && Array.isArray(me.user.perms) && me.user.perms.includes(perm));
   }
-  // Sees every event (unshared ones, templates): the events or the live right.
+  // Sees every event (unshared ones too): the events or the live right.
   const seesAll = (me) => can(me, 'events') || can(me, 'live');
 
   // Library writing (songs, a song's key and background).
@@ -58,7 +58,7 @@
     return can(me, 'library');
   }
 
-  // Creating and editing events, setlists and templates.
+  // Creating and editing events and setlists.
   function canEditEvents(me) {
     return can(me, 'events');
   }

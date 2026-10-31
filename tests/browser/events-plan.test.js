@@ -3,7 +3,7 @@
 // "Planifică" on Evenimente: a month calendar; the leader (RO 375) goes to next month, taps
 // "DU" (every Sunday chosen: filled and checked), clears one, adds a note, creates them; the
 // list reloads with the new events and their note; reopening shows a dot on those days. The
-// API: members cannot, bad dates are refused, a template gives its name and time.
+// API: members cannot, bad dates are refused, a name and a time apply to every day.
 
 const { layoutAudit, wait } = require('./harness');
 
@@ -51,12 +51,8 @@ module.exports = {
     // the API
     check((await app.api(app.cookies.member, 'POST', '/api/events/plan', { dates: [sundays[1]] })).status === 403, 'a member cannot plan');
     check((await app.api(app.cookies.leader, 'POST', '/api/events/plan', { dates: ['2026-13-40'] })).status === 400 && (await app.api(app.cookies.leader, 'POST', '/api/events/plan', { dates: [] })).status === 400, 'bad or no dates: 400');
-    const tpl = (await app.api(app.cookies.leader, 'POST', '/api/events', { name: 'Seară de rugăciune', eventDate: app.seed.today, startTime: '19:00' })).body.event;
-    await app.api(app.cookies.leader, 'POST', `/api/events/${tpl.id}/save-as-template`, { name: 'Seară de rugăciune' });
-    const templates = (await app.api(app.cookies.leader, 'GET', '/api/events?when=templates')).body.events;
-    const t1 = templates.find((x) => x.name === 'Seară de rugăciune');
-    const made = await app.api(app.cookies.leader, 'POST', '/api/events/plan', { dates: [sundays[1]], templateId: t1 && t1.id });
+    const made = await app.api(app.cookies.leader, 'POST', '/api/events/plan', { dates: [sundays[1]], name: 'Seară de rugăciune', startTime: '19:00' });
     const ev = made.status === 201 && (await app.api(app.cookies.leader, 'GET', `/api/events/${made.body.events[0].id}`)).body.event;
-    check(t1 && ev && ev.name === 'Seară de rugăciune' && ev.startTime === '19:00' && ev.eventDate === sundays[1], 'a template: its name and time', { t1, ev });
+    check(ev && ev.name === 'Seară de rugăciune' && ev.startTime === '19:00' && ev.eventDate === sundays[1], 'a given name and time apply', { ev });
   },
 };

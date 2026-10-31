@@ -9,18 +9,18 @@ const { validateSections } = require('../lib/songs');
 const { createAssignmentStore } = require('../lib/assignments');
 const { createSuggestStore } = require('../lib/suggest');
 
-const WHEN = ['upcoming', 'past', 'templates'];
+const WHEN = ['upcoming', 'past'];
 const PLAN_MAX = 60; // "Planifică": events per request
 // "2026-10-11" and a real day of the calendar
 const realDate = (d) => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d) && !Number.isNaN(Date.parse(`${d}T00:00:00Z`)) && new Date(`${d}T00:00:00Z`).toISOString().slice(0, 10) === d;
 
 // Events and setlists, scoped to req.adminId. Writes: the 'events' right; start / end /
-// withdraw: the 'live' right (lib/roles.js). Members see every event as soon as it exists, never templates.
+// withdraw: the 'live' right (lib/roles.js). Members see every event as soon as it exists.
 // Another admin's event does not exist here: 404.
 function createEventsRouter({ db, auth, logger, live }) {
   const router = express.Router();
   const events = createEventStore(db);
-  const assignments = createAssignmentStore(db); // a copy of an event / template copies its team (pending)
+  const assignments = createAssignmentStore(db); // a copy of an event copies its team (pending)
   const settings = createAdminSettings(db);
   const canEdit = requirePerm('events');
   const suggest = createSuggestStore(db);
@@ -37,7 +37,7 @@ function createEventsRouter({ db, auth, logger, live }) {
     res.status(404).json({ error: req.t('errors.eventNotFound') });
   }
 
-  // Loads the event for this request (the team never sees templates) or sends 404.
+  // Loads the event for this request or sends 404.
   function load(req, res) {
     const id = eventId(req);
     const found = id && events.get(req.adminId, id, { teamOnly: !isEditor(req), t: req.t });
@@ -56,7 +56,6 @@ function createEventsRouter({ db, auth, logger, live }) {
 
   router.get('/api/events', (req, res) => {
     const when = WHEN.includes(req.query.when) ? req.query.when : 'upcoming';
-    if (when === 'templates' && !isEditor(req)) return res.status(403).json({ error: req.t('errors.forbidden') });
     const day = today(req);
     res.json({ today: day, when, events: events.list(req.adminId, { when, today: day, teamOnly: !isEditor(req) }) });
   });
@@ -85,75 +84,53 @@ function createEventsRouter({ db, auth, logger, live }) {
     const { error, value } = validateEventMeta(body, req.t);
     if (error) return res.status(400).json({ error });
 
-    // Optional source: a previous event or a template of the same admin.
+    // Optional source: a previous event of the same admin (its items and team are copied).
     let sourceId = null;
     const fromEvent = body.fromEventId ?? null;
-    const fromTemplate = body.fromTemplateId ?? null;
-    if (fromEvent !== null && fromTemplate !== null) return res.status(400).json({ error: req.t('errors.eventSourceInvalid') });
-    if (fromEvent !== null || fromTemplate !== null) {
-      const raw = String(fromEvent ?? fromTemplate);
+    if (fromEvent !== null) {
+      const raw = String(fromEvent);
       const source = /^\d{1,15}$/.test(raw) ? events.get(req.adminId, Number(raw)) : null;
-      if (!source || source.event.isTemplate !== (fromTemplate !== null)) {
-        return res.status(400).json({ error: req.t('errors.eventSourceInvalid') });
-      }
+      if (!source) return res.status(400).json({ error: req.t('errors.eventSourceInvalid') });
       sourceId = source.event.id;
     }
 
     const id = events.create(req.adminId, req.user.id, value, { sourceId });
     if (sourceId !== null) assignments.copyFrom(req.adminId, sourceId, id, req.user.id);
-    if (fromTemplate !== null) rememberTemplate(req.adminId, sourceId);
     logger.info(`Event #${id} created by user #${req.user.id} (admin #${req.adminId})${sourceId ? ` from #${sourceId}` : ''}`);
     live.eventChanged(req.adminId, id); // open home pages show it at once
     respond(req, res, id, 201);
   });
 
   // A new programme ("+ Eveniment nou", "Planifică") starts with 10 random song ideas
-  // (lib/suggest.js) when nothing (the template) brought songs of its own; the editor keeps,
-  // swaps or deletes them. Planned one after another, each counts as recent for the next.
-  // Returns how many were added.
+  // (lib/suggest.js); the editor keeps, swaps or deletes them. Planned one after another,
+  // each counts as recent for the next. Returns how many were added.
   function fillRandomSongs(req, id) {
-    if (events.get(req.adminId, id).items.some((it) => it.type === 'song')) return 0;
     return events.appendSongs(req.adminId, id, suggest.randomSongs(req.adminId, { eventId: id, today: today(req) }).songs);
   }
 
-  // The template "+ Eveniment nou" starts from: the one used last (remembered per church),
-  // else the most recently changed one, else none.
-  function quickTemplate(adminId) {
-    const last = Number(settings.get(adminId, 'last_template_id'));
-    const used = Number.isInteger(last) && last > 0 ? events.get(adminId, last) : null;
-    if (used && used.event.isTemplate) return used.event;
-    const latest = events.latestTemplateId(adminId);
-    return latest === null ? null : events.get(adminId, latest).event;
-  }
-
-  const rememberTemplate = (adminId, id) => settings.set(adminId, 'last_template_id', String(id));
-
-  // One tap: an event with smart defaults, opened in the editor right away. The template's
-  // name, time and items, else "Serviciu de duminică" at the church's usual time; the date
-  // is the next usual service day (timezone-aware; today until 2 h after the service time).
+  // One tap: an event with smart defaults, opened in the editor right away: "Serviciu de
+  // duminică" at the church's usual time; the date is the next usual service day
+  // (timezone-aware; today until 2 h after the service time); ten random songs.
   router.post('/api/events/quick', canEdit, (req, res) => {
     const tz = settings.timezone(req.adminId);
     const service = settings.service(req.adminId);
-    const template = quickTemplate(req.adminId);
     // "Serviciu de duminică" / "Sunday service" (2023-01-01 was a Sunday).
     const weekday = new Intl.DateTimeFormat(req.lang === 'en' ? 'en' : 'ro', { weekday: 'long', timeZone: 'UTC' })
       .format(new Date(Date.UTC(2023, 0, 1 + service.weekday)));
     const day = req.lang === 'en' ? weekday : weekday.toLowerCase();
     const meta = {
-      name: template ? template.name : req.t('events.quickName', { day }),
+      name: req.t('events.quickName', { day }),
       eventDate: nextServiceDate(todayIn(tz), nowTimeIn(tz), service.weekday, service.time),
-      startTime: (template && template.startTime) || service.time,
+      startTime: service.time,
       notes: '',
     };
     const { error, value } = validateEventMeta(meta, req.t);
     if (error) return res.status(400).json({ error });
-    const id = events.create(req.adminId, req.user.id, value, { sourceId: template ? template.id : null });
-    if (template) assignments.copyFrom(req.adminId, template.id, id, req.user.id);
-    if (template) rememberTemplate(req.adminId, template.id);
+    const id = events.create(req.adminId, req.user.id, value);
     const ideas = fillRandomSongs(req, id);
-    logger.info(`Event #${id} quick-created by user #${req.user.id} (admin #${req.adminId})${template ? ` from template #${template.id}` : ''}${ideas ? `, ${ideas} random songs` : ''}`);
+    logger.info(`Event #${id} quick-created by user #${req.user.id} (admin #${req.adminId}), ${ideas} random songs`);
     live.eventChanged(req.adminId, id);
-    res.status(201).json({ ...events.get(req.adminId, id, { t: req.t }), today: today(req), templateId: template ? template.id : null });
+    res.status(201).json({ ...events.get(req.adminId, id, { t: req.t }), today: today(req) });
   });
 
   // Random song ideas for a programme (lib/suggest.js): the library minus the songs of the
@@ -199,19 +176,13 @@ function createEventsRouter({ db, auth, logger, live }) {
   router.delete('/api/events/:id/items/:itemId/lyrics', canEdit, (req, res) => setLyrics(req, res, null));
 
   // "Planifică": many events at once from the calendar. { dates: ['YYYY-MM-DD', ...] (max
-  // PLAN_MAX), templateId?, name?, startTime?, notes? }: one event per date (the template's
-  // items and team, its name and time unless given; no template: "Serviciu de <ziua>" at the
-  // church's usual time). All or nothing. -> 201 { created, events: [{ id, name, eventDate }] }
+  // PLAN_MAX), name?, startTime?, notes? }: one event per date ("Serviciu de <ziua>" at the
+  // church's usual time unless given), each with ten random songs. All or nothing.
+  // -> 201 { created, events: [{ id, name, eventDate }] }
   router.post('/api/events/plan', canEdit, (req, res) => {
     const body = req.body || {};
     const dates = Array.isArray(body.dates) ? [...new Set(body.dates)].sort() : [];
     if (!dates.length || dates.length > PLAN_MAX || !dates.every(realDate)) return res.status(400).json({ error: req.t('errors.badRequest') });
-    let template = null;
-    if (body.templateId !== undefined && body.templateId !== null) {
-      const found = Number.isInteger(body.templateId) ? events.get(req.adminId, body.templateId) : null;
-      if (!found || !found.event.isTemplate) return res.status(400).json({ error: req.t('errors.eventSourceInvalid') });
-      template = found.event;
-    }
     const service = settings.service(req.adminId);
     const name = typeof body.name === 'string' ? body.name.trim() : '';
     const startTime = typeof body.startTime === 'string' && body.startTime ? body.startTime : null;
@@ -220,22 +191,20 @@ function createEventsRouter({ db, auth, logger, live }) {
       const weekday = new Intl.DateTimeFormat(req.lang === 'en' ? 'en' : 'ro', { weekday: 'long', timeZone: 'UTC' }).format(new Date(`${eventDate}T12:00:00Z`));
       const day = req.lang === 'en' ? weekday : weekday.toLowerCase();
       const { error, value } = validateEventMeta({
-        name: name || (template ? template.name : req.t('events.quickName', { day })),
+        name: name || req.t('events.quickName', { day }),
         eventDate,
-        startTime: startTime || (template && template.startTime) || service.time,
+        startTime: startTime || service.time,
         notes: typeof body.notes === 'string' ? body.notes : '',
       }, req.t);
       if (error) return res.status(400).json({ error });
       metas.push(value);
     }
     const created = db.transaction(() => metas.map((value) => {
-      const id = events.create(req.adminId, req.user.id, value, { sourceId: template ? template.id : null });
-      if (template) assignments.copyFrom(req.adminId, template.id, id, req.user.id);
+      const id = events.create(req.adminId, req.user.id, value);
       fillRandomSongs(req, id);
       return { id, name: value.name, eventDate: value.eventDate };
     }))();
-    if (template) rememberTemplate(req.adminId, template.id);
-    logger.info(`${created.length} event(s) planned by user #${req.user.id} (admin #${req.adminId})${template ? ` from template #${template.id}` : ''}`);
+    logger.info(`${created.length} event(s) planned by user #${req.user.id} (admin #${req.adminId})`);
     for (const ev of created) live.eventChanged(req.adminId, ev.id);
     res.status(201).json({ created: created.length, events: created });
   });
@@ -276,29 +245,14 @@ function createEventsRouter({ db, auth, logger, live }) {
     res.status(409).json({ code: out.code, error: req.t(key) === key ? req.t('errors.internal') : req.t(key) });
   });
 
-  // The editor's "Detalii · Șablon": the setlist becomes the template's (it is remembered
-  // for the next "+ Eveniment nou").
-  router.post('/api/events/:id/apply-template', canEdit, (req, res) => {
-    const found = load(req, res);
-    if (!found) return;
-    const raw = String((req.body || {}).templateId ?? '');
-    const template = /^\d{1,15}$/.test(raw) ? events.get(req.adminId, Number(raw)) : null;
-    if (!template || !template.event.isTemplate || found.event.isTemplate) return res.status(400).json({ error: req.t('errors.eventSourceInvalid') });
-    const before = live.setlistBefore(req.adminId, found.event.id);
-    events.applyTemplate(req.adminId, found.event.id, template.event.id);
-    live.setlistChanged(req.adminId, found.event.id, before);
-    rememberTemplate(req.adminId, template.event.id);
-    respond(req, res, found.event.id);
-  });
-
   // "Detalii · Program de la · Copie a evenimentului": the setlist becomes a copy of another
-  // event's (never a template's, never its own; the items get new ids).
+  // event's (never its own; the items get new ids).
   router.post('/api/events/:id/apply-copy', canEdit, (req, res) => {
     const found = load(req, res);
     if (!found) return;
     const raw = String((req.body || {}).fromEventId ?? '');
     const source = /^\d{1,15}$/.test(raw) ? events.get(req.adminId, Number(raw)) : null;
-    if (!source || source.event.isTemplate || found.event.isTemplate || source.event.id === found.event.id) {
+    if (!source || source.event.id === found.event.id) {
       return res.status(400).json({ error: req.t('errors.eventSourceInvalid') });
     }
     const before = live.setlistBefore(req.adminId, found.event.id);
@@ -349,23 +303,6 @@ function createEventsRouter({ db, auth, logger, live }) {
     events.replaceItems(req.adminId, found.event.id, value);
     live.setlistChanged(req.adminId, found.event.id, before);
     respond(req, res, found.event.id);
-  });
-
-  router.post('/api/events/:id/save-as-template', canEdit, (req, res) => {
-    const found = load(req, res);
-    if (!found) return;
-    const { event } = found;
-    const { error, value } = validateEventMeta({
-      name: (req.body || {}).name,
-      eventDate: event.eventDate,
-      startTime: event.startTime || '',
-      notes: event.notes || '',
-    }, req.t);
-    if (error) return res.status(400).json({ error });
-    const id = events.create(req.adminId, req.user.id, value, { isTemplate: true, sourceId: event.id });
-    assignments.copyFrom(req.adminId, event.id, id, req.user.id); // the "usual team" of the template
-    logger.info(`Template #${id} saved from event #${event.id} by user #${req.user.id} (admin #${req.adminId})`);
-    respond(req, res, id, 201);
   });
 
   return router;

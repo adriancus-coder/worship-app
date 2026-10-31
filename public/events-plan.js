@@ -3,16 +3,16 @@
 // "Planifică" on Evenimente (the 'events' right): many events at once. A month calendar (‹ ›
 // between months, weeks from Monday): tap days to choose them (the chosen ones filled and
 // checked; days already holding an event carry a dot; past days are off); tap a weekday name
-// ("DU") to choose / clear every such day of the month. The template (its items, team, name
-// and time), or a name and a time, and a note apply to every day; "Creează N evenimente"
-// makes them all (POST /api/events/plan) and the list reloads.
+// ("DU") to choose / clear every such day of the month. A name, a time and a note apply to
+// every day (else the usual service); "Creează N evenimente" makes them all (POST
+// /api/events/plan, each with ten random songs) and the list reloads.
 
 (function () {
   const { api, el, canEditEvents } = window.PAGE;
   const { t } = window.I18N;
   const $ = (id) => document.getElementById(id);
   const LOCALES = { ro: 'ro-RO', en: 'en-GB' };
-  const state = { today: null, month: null, chosen: new Set(), busy: new Map(), templates: [] };
+  const state = { today: null, month: null, chosen: new Set(), busy: new Map() };
 
   const iso = (y, m, d) => `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
   const locale = () => LOCALES[window.I18N.lang] || LOCALES.ro;
@@ -20,28 +20,16 @@
 
   async function open() {
     $('plan-message').textContent = '';
-    const [upcoming, templates] = await Promise.all([api('/api/events?when=upcoming'), api('/api/events?when=templates')]).catch(() => [{ ok: false }, { ok: false }]);
+    const upcoming = await api('/api/events?when=upcoming').catch(() => ({ ok: false }));
     if (!upcoming.ok) return;
     state.today = upcoming.body.today;
     state.busy = new Map();
     for (const ev of upcoming.body.events) state.busy.set(ev.eventDate, [...(state.busy.get(ev.eventDate) || []), ev.name]);
-    state.templates = templates.ok ? templates.body.events : [];
     const [y, m] = state.today.split('-').map(Number);
     state.month = { y, m: m - 1 }; // each time from this month
-    const select = $('plan-template');
-    const keep = select.value;
-    select.replaceChildren(el('option', { value: '', text: t('plan.noTemplate') }), ...state.templates.map((tpl) => el('option', { value: String(tpl.id), text: tpl.name })));
-    select.value = state.templates.some((tpl) => String(tpl.id) === keep) ? keep : (state.templates[0] ? String(state.templates[0].id) : '');
-    onTemplate();
+    $('plan-name').placeholder = t('plan.namePlaceholder');
     render();
     $('plan-dialog').showModal();
-  }
-
-  // The template fills the name and the time as placeholders (an empty field keeps them).
-  function onTemplate() {
-    const tpl = state.templates.find((x) => String(x.id) === $('plan-template').value);
-    $('plan-name').placeholder = tpl ? tpl.name : t('plan.namePlaceholder');
-    $('plan-time').value = tpl && tpl.startTime ? tpl.startTime : $('plan-time').value;
   }
 
   function render() {
@@ -98,8 +86,7 @@
     if (!state.chosen.size) return;
     const button = $('plan-create');
     button.disabled = true;
-    const templateId = Number($('plan-template').value) || null;
-    const body = { dates: [...state.chosen].sort(), templateId, name: $('plan-name').value.trim(), startTime: $('plan-time').value, notes: $('plan-notes').value.trim() };
+    const body = { dates: [...state.chosen].sort(), name: $('plan-name').value.trim(), startTime: $('plan-time').value, notes: $('plan-notes').value.trim() };
     const res = await api('/api/events/plan', { method: 'POST', body }).catch(() => ({ ok: false, body: {} }));
     button.disabled = false;
     if (!res.ok) {
@@ -115,7 +102,6 @@
 
   $('plan-prev').addEventListener('click', () => move(-1));
   $('plan-next').addEventListener('click', () => move(1));
-  $('plan-template').addEventListener('change', onTemplate);
   $('plan-form').addEventListener('submit', create);
   $('plan-events').addEventListener('click', open);
   document.addEventListener('i18n:change', () => { if ($('plan-dialog').open) render(); });

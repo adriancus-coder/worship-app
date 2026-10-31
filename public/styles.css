@@ -607,7 +607,6 @@ dialog .choice { margin: 4px 0; }
 
 .date-weekday, .date-month { font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.06em; color: var(--text-muted); }
 .date-day { font-size: 1.375rem; font-weight: 700; }
-.template-block .date-day { color: var(--text-muted); }
 
 .event-text { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
 .event-name { font-weight: 600; overflow-wrap: anywhere; }
@@ -627,7 +626,6 @@ dialog .choice { margin: 4px 0; }
 .pill-planned { color: var(--on-accent); background: var(--accent-fill); }
 .pill-live { color: var(--on-live); background: var(--live-fill); }
 .pill-finished { color: var(--text-muted); background: var(--background); border-color: var(--border); }
-.pill-template { color: var(--text); border-color: var(--border); }
 
 /* --- event / setlist editor ------------------------------------------------ */
 
@@ -2143,7 +2141,6 @@ button, .button { gap: 0.5em; }
 [data-icon="copy"] { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 9h11v11H9zM5 15H4V4h11v1'/%3E%3C/svg%3E"); }
 [data-icon="person-plus"] { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M15 19v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1M8.5 10a3 3 0 1 0 0-6 3 3 0 0 0 0 6M19 8v6M16 11h6'/%3E%3C/svg%3E"); }
 [data-icon="login"] { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3'/%3E%3C/svg%3E"); }
-[data-icon="template"] { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 4h14v16H5zM9 8h6M9 12h6M9 16h3'/%3E%3C/svg%3E"); }
 [data-icon="details"] { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 20h4L19 9l-4-4L4 16z'/%3E%3C/svg%3E"); }
 [data-icon="upload"] { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 16V4M7 9l5-5 5 5M5 20h14'/%3E%3C/svg%3E"); }
 [data-icon="link"] { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1'/%3E%3C/svg%3E"); }
@@ -2658,14 +2655,14 @@ dialog.song-pick-dialog .song-pick > .ss-results { flex: 1 1 0; height: 0; --pan
 .page-head-actions button { min-height: var(--touch); }
 /* "+ Eveniment nou" alone in the header: full width on phones. */
 @media (max-width: 599px) { .page-head-actions { flex: 1 1 100%; } .page-head-actions > button { flex: 1 1 auto; } }
-/* The editor's "Detalii" row: name, date, time, template (collapsible, scrolls with the Program). */
+/* The editor's "Detalii" row: name, date, time, Program de la (collapsible, scrolls with the Program). */
 .quick-details { margin: 0 0 10px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
 .quick-details[hidden] { display: none; }
 .quick-details > summary { min-height: var(--touch); display: flex; align-items: center; padding: 8px 12px; cursor: pointer; font-weight: 600; overflow-wrap: anywhere; }
 .quick-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; padding: 0 12px 4px; }
 .quick-fields .field { margin: 0; min-width: 0; }
 .quick-fields input, .quick-fields select { width: 100%; min-height: var(--touch); }
-.quick-name, .quick-template { grid-column: 1 / -1; }
+.quick-name, .quick-source { grid-column: 1 / -1; }
 .quick-details .message { margin: 0; padding: 0 12px 8px; }
 .quick-fields textarea { width: 100%; min-height: var(--touch); resize: vertical; }
 .quick-source { display: flex; flex-direction: column; gap: 8px; }
@@ -2680,7 +2677,7 @@ dialog.song-pick-dialog .song-pick > .ss-results { flex: 1 1 0; height: 0; --pan
    intrinsic size). */
 .quick-details { container-type: inline-size; }
 .quick-fields input, .quick-fields select { min-width: 0; }
-@container (min-width: 700px) { .quick-fields { grid-template-columns: 2fr minmax(9.5rem, 1fr) minmax(8.5rem, 1fr) 2fr; } .quick-name, .quick-template { grid-column: auto; } }
+@container (min-width: 700px) { .quick-fields { grid-template-columns: 2fr minmax(9.5rem, 1fr) minmax(8.5rem, 1fr) 2fr; } .quick-name { grid-column: auto; } .quick-source { grid-column: 1 / -1; } }
 .service-row .field { min-width: 0; }
 
 /* One church on the platform (/platform/:id): header card, usage cards, settings, backup. */

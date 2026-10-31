@@ -199,7 +199,7 @@ async function main() {
     first.socket.close(); // an owner left in the room would answer the leader's requests below
   });
 
-  await step('operator: full event rights (create, edit, templates, delete); member none', async () => {
+  await step('operator: full event rights (create, edit, delete); member none', async () => {
     const created = await api('POST', '/api/events', operator, { name: 'Repetiție', eventDate: day(2) });
     assert.strictEqual(created.status, 201, JSON.stringify(created.body));
     const id = created.body.event.id;
@@ -208,22 +208,17 @@ async function main() {
     assert.strictEqual((await api('PUT', `/api/events/${id}`, operator, { name: 'Repetiție mare', eventDate: day(2) })).status, 200);
     assert.strictEqual((await api('PUT', `/api/events/${id}/items`, operator, { items: [{ type: 'verse', reference: 'Ps 1' }] })).status, 200);
     for (const action of ['publish', 'unpublish']) assert.strictEqual((await api('POST', `/api/events/${id}/${action}`, operator)).status, 404, `no ${action}`);
-    const tpl = await api('POST', `/api/events/${id}/save-as-template`, operator, { name: 'Șablon op' });
-    assert.strictEqual(tpl.status, 201);
-    const templates = await api('GET', '/api/events?when=templates', operator);
-    assert.ok(templates.body.events.some((e) => e.id === tpl.body.event.id), 'sees templates');
     assert.ok((await api('GET', '/api/events?when=upcoming', member)).body.events.some((e) => e.id === id), 'the member lists it');
-    assert.strictEqual((await api('GET', `/api/events/${tpl.body.event.id}`, member)).status, 404, 'templates stay hidden from the team');
+    assert.strictEqual((await api('POST', `/api/events/${id}/save-as-template`, operator, { name: 'X' })).status, 404, 'templates are gone');
     for (const [method, url, body] of [
       ['POST', '/api/events', { name: 'X', eventDate: day(2) }],
       ['PUT', `/api/events/${id}`, { name: 'X', eventDate: day(2) }],
       ['PUT', `/api/events/${id}/items`, { items: [] }],
-      ['POST', `/api/events/${id}/save-as-template`, { name: 'Y' }],
       ['DELETE', `/api/events/${id}`],
     ]) {
       assert.strictEqual((await api(method, url, member, body)).status, 403, `member ${method} ${url}`);
     }
-    assert.strictEqual((await api('GET', '/api/events?when=templates', member)).status, 403);
+    assert.strictEqual((await api('GET', '/api/events?when=templates', member)).status, 200, 'an unknown when: the upcoming list');
     assert.strictEqual((await api('GET', `/api/events/${ev.id}`, member)).status, 200, 'member: every event');
     // the operator has every leader right: the library (create, edit, delete, import /
     // export, the key), media and screens; members none; team and settings stay the owner's
@@ -284,7 +279,6 @@ async function main() {
     assert.strictEqual((await api('DELETE', `/api/songs/${prSong.body.song.id}`, presenter)).status, 200);
     const prEvent = await api('POST', '/api/events', presenter, { name: 'A prezentatorului', eventDate: day(7) });
     assert.strictEqual(prEvent.status, 201, 'presenter: events');
-    assert.strictEqual((await api('GET', '/api/events?when=templates', presenter)).status, 200, 'presenter: templates');
     assert.strictEqual((await api('GET', '/api/media', presenter)).status, 200, 'presenter: media');
     assert.strictEqual((await api('DELETE', `/api/events/${prEvent.body.event.id}`, presenter)).status, 200);
     for (const [method, url, body] of [['GET', '/api/screens'], ['POST', '/api/screens/auto-claim', { name: 'X' }], ['GET', '/api/team'], ['GET', '/api/settings']]) {
@@ -304,7 +298,6 @@ async function main() {
     assert.strictEqual((await api('GET', '/api/team', operator)).status, 403);
     assert.strictEqual((await api('GET', '/api/settings', operator)).status, 403);
     assert.strictEqual((await api('DELETE', `/api/events/${id}`, operator)).status, 200);
-    assert.strictEqual((await api('DELETE', `/api/events/${tpl.body.event.id}`, operator)).status, 200);
     // pages: the operator opens the editor and the live page
     for (const page of [`/events/${ev.id}/edit`, `/events/${ev.id}/live`, `/events/${ev.id}/operator`]) {
       const res = await fetch(base() + page, { headers: { Cookie: operator }, redirect: 'manual' });
@@ -1621,36 +1614,30 @@ async function main() {
     assert.strictEqual((await emit(l.socket, 'live:command', { type: 'event.start', eventId: ev.id })).code, 'finished');
   });
 
-  await step('quick create: one tap with the template, the usual service day and time', async () => {
-    const other2 = await login('alt@x.ro'); // admin 2: no templates yet
+  await step('quick create: one tap, the usual service day and time, random songs', async () => {
+    const other2 = await login('alt@x.ro'); // admin 2
     assert.strictEqual((await api('PUT', '/api/settings/service', other2, { weekday: 7, time: '10:00' })).status, 400);
     assert.strictEqual((await api('PUT', '/api/settings/service', other2, { weekday: 3, time: '25:00' })).status, 400);
     assert.deepStrictEqual((await api('PUT', '/api/settings/service', other2, { weekday: 3, time: '18:30' })).body.service, { weekday: 3, time: '18:30' });
     assert.deepStrictEqual((await api('GET', '/api/settings', other2)).body.service, { weekday: 3, time: '18:30' });
     const q = await api('POST', '/api/events/quick', other2);
     assert.strictEqual(q.status, 201, JSON.stringify(q.body));
-    assert.deepStrictEqual([q.body.event.name, q.body.event.startTime, q.body.event.status, q.body.items.length, q.body.templateId], ['Serviciu de miercuri', '18:30', 'planned', 0, null]);
+    assert.deepStrictEqual([q.body.event.name, q.body.event.startTime, q.body.event.status, q.body.items.every((i) => i.type === 'song'), 'templateId' in q.body], ['Serviciu de miercuri', '18:30', 'planned', true, false]);
     assert.strictEqual(new Date(`${q.body.event.eventDate}T12:00:00Z`).getUTCDay(), 3, 'on the usual day');
     assert.ok(q.body.event.eventDate >= q.body.today);
     const en = await api('POST', '/api/events/quick', other2, undefined, { 'Accept-Language': 'en' });
     assert.strictEqual(en.body.event.name, 'Wednesday service');
-    // with a template: its name, time and items; remembered for the next one
-    const tpl = (await api('POST', `/api/events/${q.body.event.id}/save-as-template`, other2, { name: 'Seară de rugăciune' })).body.event;
-    await api('PUT', `/api/events/${tpl.id}`, other2, { name: 'Seară de rugăciune', eventDate: tpl.eventDate, startTime: '19:00' });
-    await api('PUT', `/api/events/${tpl.id}/items`, other2, { items: [{ type: 'verse', reference: 'Ps 91' }] });
+    // a second one: the same defaults (nothing remembered)
     const q2 = (await api('POST', '/api/events/quick', other2)).body;
-    assert.deepStrictEqual([q2.event.name, q2.event.startTime, q2.items.map((i) => i.reference), q2.templateId], ['Seară de rugăciune', '19:00', ['Ps 91'], tpl.id]);
-    // the editor's template switch: the Program becomes the template's
+    await api('PUT', `/api/events/${q2.event.id}/items`, other2, { items: [{ type: 'verse', reference: 'Ps 91' }] });
+    assert.deepStrictEqual([q2.event.name, q2.event.startTime], ['Serviciu de miercuri', '18:30']);
     const plain = (await api('POST', '/api/events', other2, { name: 'Gol', eventDate: q2.event.eventDate })).body.event;
-    const applied = await api('POST', `/api/events/${plain.id}/apply-template`, other2, { templateId: tpl.id });
-    assert.deepStrictEqual([applied.status, applied.body.items.map((i) => i.reference)], [200, ['Ps 91']]);
-    assert.strictEqual((await api('POST', `/api/events/${plain.id}/apply-template`, other2, { templateId: plain.id })).status, 400, 'only a template');
-    assert.strictEqual((await api('POST', `/api/events/${plain.id}/apply-template`, other2, { templateId: tpl.id + 1000 })).status, 400);
+    assert.strictEqual((await api('POST', `/api/events/${plain.id}/apply-template`, other2, { templateId: q2.event.id })).status, 404, 'templates are gone');
     // "Program de la: Copie a evenimentului" (new ids) and "Gol"
     const copied = await api('POST', `/api/events/${plain.id}/apply-copy`, other2, { fromEventId: q2.event.id });
     assert.deepStrictEqual([copied.status, copied.body.items.map((i) => i.reference)], [200, ['Ps 91']]);
-    assert.notStrictEqual(copied.body.items[0].id, q2.items[0].id, 'copies get new ids');
-    assert.strictEqual((await api('POST', `/api/events/${plain.id}/apply-copy`, other2, { fromEventId: tpl.id })).status, 400, 'a template is not copied this way');
+    const q2Items = (await api('GET', `/api/events/${q2.event.id}`, other2)).body.items;
+    assert.notStrictEqual(copied.body.items[0].id, q2Items[0].id, 'copies get new ids');
     assert.strictEqual((await api('POST', `/api/events/${plain.id}/apply-copy`, other2, { fromEventId: plain.id })).status, 400, 'not itself');
     assert.strictEqual((await api('POST', `/api/events/${plain.id}/apply-copy`, owner, { fromEventId: q2.event.id })).status, 404, 'another admin\'s event');
     const cleared = await api('POST', `/api/events/${plain.id}/clear`, other2);
@@ -1665,7 +1652,7 @@ async function main() {
     assert.deepStrictEqual([started.status, started.body.event.status], [200, 'live']);
     await changed;
     const blocked = await api('POST', `/api/events/${plain.id}/start`, other2, {});
-    assert.deepStrictEqual([blocked.status, blocked.body.code, blocked.body.live.name], [409, 'anotherLive', 'Seară de rugăciune']);
+    assert.deepStrictEqual([blocked.status, blocked.body.code, blocked.body.live.name], [409, 'anotherLive', 'Serviciu de miercuri']);
     started = await api('POST', `/api/events/${plain.id}/start`, other2, { endOther: true });
     assert.deepStrictEqual([started.status, started.body.event.status], [200, 'live']);
     assert.strictEqual((await api('GET', `/api/events/${q2.event.id}`, other2)).body.event.status, 'finished', 'the other one was ended');
@@ -1832,16 +1819,12 @@ async function main() {
     assert.deepStrictEqual([again.status, again.body.sent.sent], [200, 1], 'a reminder to this one person');
     assert.strictEqual((await api('POST', `/api/events/${ev2.id}/assignments/send`, leader, { ids: ['x'] })).status, 400);
     assert.strictEqual((await api('POST', `/api/events/${ev2.id}/assignments/send`, leader, { ids: [999999] })).status, 409, 'not a pending row of this event');
-    // a copy of the event carries the team as pending; a template keeps the usual team
+    // a copy of the event carries the team as pending
     const copy = (await api('POST', '/api/events', owner, { name: 'Copie', eventDate: day(35), fromEventId: ev2.id })).body.event;
     const copied = (await api('GET', `/api/events/${copy.id}/assignments`, owner)).body.assignments;
     assert.deepStrictEqual([copied.length, copied.every((r) => r.status === 'pending' && !r.notifiedAt && !r.note)], [3, true]);
-    const tpl = (await api('POST', `/api/events/${ev2.id}/save-as-template`, owner, { name: 'Șablon echipă' })).body.event;
-    assert.strictEqual((await api('GET', `/api/events/${tpl.id}/assignments`, owner)).body.assignments.length, 3, 'the template keeps the usual team');
-    assert.strictEqual((await api('GET', `/api/events/${tpl.id}/assignments`, member)).status, 404, 'members never see templates');
-    const fromTpl = (await api('POST', '/api/events', owner, { name: 'Din șablon', eventDate: day(42), fromTemplateId: tpl.id })).body.event;
-    assert.strictEqual((await api('GET', `/api/events/${fromTpl.id}/assignments`, owner)).body.assignments.length, 3, 'an event from the template starts with its team');
-    for (const id of [copy.id, tpl.id, fromTpl.id]) await api('DELETE', `/api/events/${id}`, owner);
+    assert.strictEqual((await api('POST', '/api/events', owner, { name: 'Din șablon', eventDate: day(42), fromTemplateId: ev2.id })).status, 201, 'fromTemplateId is ignored now');
+    await api('DELETE', `/api/events/${copy.id}`, owner);
   });
 
   await step('unavailability: own ranges; owner / leader read everyone\'s, others not; the picker greys the person out on the event day', async () => {
@@ -2048,7 +2031,6 @@ async function main() {
     let me = (await api('GET', '/api/auth/me', owner)).body;
     assert.deepStrictEqual([me.user.role, me.user.realRole, me.user.viewAs, me.platformOwner], ['member', 'owner', 'member', false], 'the effective role is member');
     assert.strictEqual((await api('POST', '/api/events', owner, { name: 'X', eventDate: day(6) })).status, 403, 'member: no event writes');
-    assert.strictEqual((await api('GET', '/api/events?when=templates', owner)).status, 403, 'member: no templates');
     assert.strictEqual((await api('GET', '/api/team', owner)).status, 403, 'member: no team');
     assert.strictEqual((await api('GET', '/api/platform/admins', owner)).status, 403, 'platform routes refuse while viewing as');
     assert.strictEqual(await page(`/events/${ev.id}/edit`, owner), 302, 'member: the editor page redirects');
@@ -2304,7 +2286,7 @@ async function main() {
     assert.deepStrictEqual([a.settings.timezone, a.settings.themeDefault, a.settings.chordNotationDefault, a.settings.service.time], ['Europe/Oslo', 'dark', 'letters', '18:30']);
     assert.deepStrictEqual(Object.keys(a.backup).sort(), ['lastAt', 'lastBytes']);
     const text = JSON.stringify(d.body);
-    for (const secret of ['Cânt', 'Șters', 'Seară de rugăciune', 'Ps 91', 'password_hash']) assert.ok(!text.includes(secret), `no content: ${secret}`);
+    for (const secret of ['Cânt', 'Șters', 'Ps 91', 'password_hash']) assert.ok(!text.includes(secret), `no content: ${secret}`);
     assert.strictEqual((await api('GET', '/api/platform/admins/999', owner)).status, 404);
     // its team: create (temp password once), rename / role, deactivate / reactivate, reset
     let users = (await api('GET', `/api/platform/admins/${B}/users`, owner)).body.users;

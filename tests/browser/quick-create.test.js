@@ -1,18 +1,15 @@
 'use strict';
 
-// "+ Eveniment nou" in one tap: the event is created at once with the defaults (the
-// template used last, the next usual service day and time) and the editor opens with the
-// "Detalii" row open; name / date / time change inline; the template can be switched;
-// a member sees the new event at once; the church's usual day and time in the settings.
+// "+ Eveniment nou" in one tap: the event is created at once with the defaults (the next
+// usual service day and time, ten random songs) and the editor opens with the "Detalii" row
+// open; name / date / time change inline; a member sees the new event at once; the church's
+// usual day and time in the settings.
 
 const { layoutAudit, wait } = require('./harness');
 
 module.exports = {
   name: 'quick-create',
   async run({ app, signIn, check }) {
-    const { eventId: E } = app.seed;
-    // A template, as a church would have one.
-    const tpl = (await app.api(app.cookies.owner, 'POST', `/api/events/${E}/save-as-template`, { name: 'Serviciu de duminică' })).body.event;
     const nextSunday = (today) => {
       const d = new Date(`${today}T12:00:00Z`);
       d.setUTCDate(d.getUTCDate() + ((7 - d.getUTCDay()) % 7));
@@ -20,6 +17,8 @@ module.exports = {
     };
     for (const [lang, width] of [['ro', 375], ['en', 1024]]) {
       const tag = `[${lang} ${width}]`;
+      // songs the random ideas can draw from (the seed's three, and the previous round's, are in recent events)
+      for (let i = 1; i <= 4; i += 1) await app.api(app.cookies.owner, 'POST', '/api/songs', { title: `Nouă ${lang} ${i}`, song_key: 'G', sections: [{ type: 'verse', content: `Rând ${i}` }] });
       const m = await signIn('member', { width: 375, lang });
       await m.goto(`${app.url}/events`);
       await m.waitForSelector('#events li');
@@ -33,9 +32,9 @@ module.exports = {
       const id = Number(new URL(p.url()).pathname.split('/')[2]);
       const ev = (await app.api(app.cookies.owner, 'GET', `/api/events/${id}`)).body;
       const sunday = nextSunday(ev.today);
-      check(ev.event.name === 'Serviciu de duminică' && ev.event.eventDate >= ev.today && new Date(`${ev.event.eventDate}T12:00:00Z`).getUTCDay() === 0 && ev.items.length === 5,
-        `${tag} one tap: "${ev.event.name}" on Sunday ${ev.event.eventDate} (next Sunday ${sunday}), ${ev.items.length} items from the template`);
-      check(await p.inputValue('#q-template') === String(tpl.id), `${tag} the editor opens with "Detalii" open and the template selected`);
+      check((lang === 'ro' ? ev.event.name === 'Serviciu de duminică' : /service/i.test(ev.event.name)) && ev.event.eventDate >= ev.today && new Date(`${ev.event.eventDate}T12:00:00Z`).getUTCDay() === 0 && ev.items.length >= 1 && ev.items.every((it) => it.type === 'song'),
+        `${tag} one tap: "${ev.event.name}" on Sunday ${ev.event.eventDate} (next Sunday ${sunday}), ${ev.items.length} random songs`);
+      check(await p.evaluate(() => !document.querySelector('#quick-details [data-source="template"]') && !document.getElementById('q-template')), `${tag} the editor opens with "Detalii" open, no template picker`);
       const a = await layoutAudit(p, '#quick-details');
       check(!a.overflow && !a.small.length, `${tag} "Detalii": no overflow, targets >= 44 px`, a);
       await p.fill('#q-name', `Seară ${lang}`);

@@ -21,7 +21,6 @@
     <div class="tabs" role="tablist" data-i18n-aria-label="events.tabsLabel">
       <button type="button" role="tab" id="tab-upcoming" aria-controls="events-panel" aria-selected="true" data-i18n="events.tabUpcoming"></button>
       <button type="button" role="tab" id="tab-past" aria-controls="events-panel" aria-selected="false" tabindex="-1" data-i18n="events.tabPast"></button>
-      <button type="button" role="tab" id="tab-templates" aria-controls="events-panel" aria-selected="false" tabindex="-1" hidden data-i18n="events.tabTemplates"></button>
     </div>
 
     <div id="events-panel" role="tabpanel" data-list-pane="events.listPane">
@@ -41,7 +40,6 @@
         </div>
         <div id="plan-grid" class="plan-grid choice-group" role="group" aria-labelledby="plan-month"></div>
         <p id="plan-count" class="plan-count" role="status" aria-live="polite"></p>
-        <label><span data-i18n="plan.templateLabel"></span><select id="plan-template"></select></label>
         <div class="field-row">
           <label class="field"><span data-i18n="plan.nameLabel"></span><input type="text" id="plan-name" maxlength="120" autocomplete="off"></label>
           <label class="field"><span data-i18n="plan.timeLabel"></span><input type="time" id="plan-time"></label>

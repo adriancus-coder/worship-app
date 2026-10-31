@@ -35,7 +35,6 @@
         </div>
         <div class="event-tools" id="event-tools">
           <button type="button" class="secondary" id="details-button" hidden data-icon="details" data-i18n="setlist.details"></button>
-          <button type="button" class="secondary" id="template-button" hidden data-icon="template" data-i18n="setlist.saveTemplate"></button>
           <button type="button" class="secondary" id="withdraw-button" hidden data-icon="undo" data-i18n="live.withdraw"></button>
         </div>
         <p id="action-message" class="message" role="status" aria-live="polite"></p>
@@ -74,8 +73,8 @@
           <p id="reorder-hint" class="hint" hidden data-i18n="setlist.reorderHint" data-dismiss="event-reorder-hint"></p>
           <!-- The Program scrolls here (with the add bar under it); the event header stays. -->
           <div class="setlist-scroll" data-list-pane="setlist.heading">
-          <!-- "Detalii": name, date, time, notes and where the Program starts from (template /
-               a copy of a past event / empty), on one card; open right after "+ Eveniment nou",
+          <!-- "Detalii": name, date, time, notes and where the Program starts from (a copy of
+               a past event / empty), on one card; open right after "+ Eveniment nou",
                reopened any time from the header's "Detalii". -->
           <details class="quick-details" id="quick-details" hidden>
             <summary id="quick-summary"></summary>
@@ -96,14 +95,12 @@
                 <label for="q-notes" data-i18n="setlist.notesLabel"></label>
                 <textarea id="q-notes" rows="2" maxlength="2000"></textarea>
               </div>
-              <div class="field quick-template quick-source">
+              <div class="field quick-source">
                 <span class="field-label" id="q-source-label" data-i18n="setlist.programFrom"></span>
                 <div class="choice-group" role="group" aria-labelledby="q-source-label">
-                  <button type="button" data-source="template" aria-pressed="false" data-i18n="setlist.fromTemplate"></button>
                   <button type="button" data-source="copy" aria-pressed="false" data-i18n="setlist.fromCopy"></button>
                   <button type="button" data-source="empty" aria-pressed="false" data-i18n="setlist.fromEmpty"></button>
                 </div>
-                <label class="quick-picker" id="q-template-field"><span class="sr-only" data-i18n="setlist.templateLabel"></span><select id="q-template" data-i18n-aria-label="setlist.templateLabel"></select></label>
                 <label class="quick-picker" id="q-copy-field" hidden><span class="sr-only" data-i18n="setlist.copyLabel"></span><select id="q-copy" data-i18n-aria-label="setlist.copyLabel"></select></label>
                 <p class="hint" id="q-source-hint"></p>
               </div>
@@ -169,20 +166,6 @@
       </div>
     </dialog>
 
-    <dialog id="template-dialog" aria-labelledby="template-heading">
-      <form id="template-form" novalidate>
-        <h2 id="template-heading" data-i18n="setlist.templateHeading"></h2>
-        <div class="field">
-          <label for="t-name" data-i18n="setlist.templateNameLabel"></label>
-          <input type="text" id="t-name" maxlength="120" required>
-        </div>
-        <p class="message error" id="template-message" role="alert"></p>
-        <div class="form-actions">
-          <button type="submit" data-i18n="setlist.templateSave"></button>
-          <button type="button" class="secondary" data-close data-i18n="setlist.cancel"></button>
-        </div>
-      </form>
-    </dialog>
 
     <dialog id="replace-dialog" aria-labelledby="replace-heading" aria-describedby="replace-text">
       <h2 id="replace-heading"></h2>

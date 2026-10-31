@@ -1991,14 +1991,12 @@ test('events: upcoming / past split by status and date; the home never picks a f
   add.run(4, 'planned yesterday', '2026-09-25', '10:00', 'planned', 0);
   add.run(5, 'planned next week', '2026-10-03', '10:00', 'planned', 0);
   add.run(6, 'finished last week', '2026-09-19', '10:00', 'finished', 0);
-  add.run(7, 'template', '2026-09-20', null, 'planned', 1);
+  add.run(7, 'template leftover', '2026-09-20', null, 'planned', 1); // a leftover row (templates were removed): never listed
   db.prepare('INSERT INTO live_state (event_id, admin_id, version, started_at, updated_at) VALUES (3, 1, 2, ?, 0)').run(Date.UTC(2026, 8, 25, 8, 0));
   const evs = createEventStore(db);
   const names = (when) => evs.list(1, { when, today, teamOnly: false }).map((e) => e.name);
-  assert.deepStrictEqual(names('upcoming'), ['live yesterday', 'planned today', 'planned next week'], 'upcoming: live first (forgotten yesterday), then ascending; never finished, never a template');
+  assert.deepStrictEqual(names('upcoming'), ['live yesterday', 'planned today', 'planned next week'], 'upcoming: live first (forgotten yesterday), then ascending; never finished, never a template leftover');
   assert.deepStrictEqual(names('past'), ['finished today', 'planned yesterday', 'finished last week'], 'past: finished (even today) and planned with the date passed, descending');
-  assert.deepStrictEqual(names('templates'), ['template'], 'templates untouched');
-  assert.deepStrictEqual(evs.list(1, { when: 'templates', today, teamOnly: true }), [], 'the team never sees templates');
   // the home: the live one with its start, the next planned one (never a finished one)
   const h = createHome(db).home(1, 'leader', today);
   assert.deepStrictEqual([h.live.name, h.live.startedAt, h.next.name, h.upcoming.map((e) => e.name)], ['live yesterday', Date.UTC(2026, 8, 25, 8, 0), 'planned today', ['planned next week']]);
@@ -2033,16 +2031,17 @@ test('events: draft and published migrate to planned (020); "Cântată ultima da
   db.prepare("INSERT INTO songs (id, admin_id, title, title_norm, created_at, updated_at) VALUES (1, 1, 'S', 's', 0, 0), (2, 1, 'T', 't', 0, 0)").run();
   db.prepare("INSERT INTO setlist_items (event_id, admin_id, position, type, song_id) VALUES (1, 1, 0, 'song', 1), (4, 1, 0, 'song', 2)").run();
   runMigrations(db, all);
+  // migration 057 deletes the template rows (with their items)
   assert.deepStrictEqual(db.prepare('SELECT id, status, is_template FROM events ORDER BY id').raw().all(),
-    [[1, 'planned', 0], [2, 'planned', 0], [3, 'finished', 0], [4, 'planned', 1]]);
-  assert.strictEqual(db.prepare('SELECT COUNT(*) FROM setlist_items').pluck().get(), 2, 'items kept');
+    [[1, 'planned', 0], [2, 'planned', 0], [3, 'finished', 0]]);
+  assert.strictEqual(db.prepare('SELECT COUNT(*) FROM setlist_items').pluck().get(), 1, 'items kept; the template\'s went with it');
   assert.deepStrictEqual(db.pragma('foreign_key_check'), []);
   const evs = createEventStore(db);
-  // planned with its date passed counts; a template never; a future planned one does not
+  // planned with its date passed counts; a future planned one does not
   assert.deepStrictEqual([...evs.lastSungMap(1, '2026-02-01').entries()], [[1, '2026-01-04']]);
   assert.deepStrictEqual([...evs.lastSungMap(1, '2026-01-04').entries()], [], 'not on the day itself until it goes live');
   assert.strictEqual(evs.get(1, 1, { teamOnly: true }).event.status, 'planned', 'the team sees it');
-  assert.strictEqual(evs.get(1, 4, { teamOnly: true }), null, 'never a template');
+  assert.strictEqual(evs.get(1, 4), null, 'the template row is gone');
   db.close();
   fs.rmSync(before, { recursive: true, force: true });
 });
