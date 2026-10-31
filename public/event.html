@@ -71,7 +71,7 @@
       <div class="editor-grid" id="editor-program">
         <section class="setlist-pane" aria-labelledby="setlist-heading">
           <h2 id="setlist-heading" data-i18n="setlist.heading"></h2>
-          <p id="reorder-hint" class="hint" hidden data-i18n="setlist.reorderHint"></p>
+          <p id="reorder-hint" class="hint" hidden data-i18n="setlist.reorderHint" data-dismiss="event-reorder-hint"></p>
           <!-- The Program scrolls here (with the add bar under it); the event header stays. -->
           <div class="setlist-scroll" data-list-pane="setlist.heading">
           <!-- "Detalii": name, date, time, notes and where the Program starts from (template /
@@ -152,7 +152,7 @@
         </div>
         <button type="button" class="shell-close preview-close-x" id="song-dialog-x" data-i18n-aria-label="setlist.pickClose">✕</button>
       </div>
-      <p class="hint song-pick-hint" data-i18n="setlist.pickManyHint"></p>
+      <p class="hint song-pick-hint" data-i18n="setlist.pickManyHint" data-dismiss="event-pick-hint"></p>
       <div id="song-search" class="song-pick"></div>
       <div class="form-actions song-pick-foot">
         <button type="button" class="secondary" id="song-dialog-close" data-i18n="setlist.pickClose"></button>
@@ -215,6 +215,7 @@
   <script src="/list-pane.js"></script>
   <script src="/notation.js"></script>
   <script src="/shell.js"></script>
+  <script src="/dismiss.js"></script>
   <script src="/song-render.js"></script>
   <script src="/song-search.js"></script>
   <script src="/background-picker.js"></script>

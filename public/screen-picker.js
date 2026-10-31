@@ -17,7 +17,7 @@
     let snap = null;
     const label = el('span', { class: 'mode-label', id: 'screen-picker-label' });
     const group = el('div', { class: 'choice-group screen-picker-group', role: 'group', 'aria-labelledby': 'screen-picker-label' });
-    const hint = el('p', { class: 'hint screen-picker-hint' });
+    const hint = el('p', { class: 'hint screen-picker-hint', 'data-dismiss': 'screens-hint' });
     container.classList.add('screen-picker');
     container.hidden = true;
     container.replaceChildren(label, group, hint);

@@ -12,7 +12,7 @@
     <p id="status" class="muted" role="status" aria-live="polite" data-i18n="events.loading"></p>
 
     <div id="console" hidden>
-      <div id="mode-banner" class="mode-banner" role="status" aria-live="polite">
+      <div id="mode-banner" class="mode-banner" role="status" aria-live="polite" data-dismiss="op-banner">
         <p id="mode-title" class="mode-title"></p>
         <p id="mode-detail" class="mode-detail"></p>
       </div>
@@ -36,7 +36,7 @@
           <span id="op-screens" class="projector-screens"></span>
           <button type="button" class="secondary" id="open-projector" data-icon="projector" data-i18n="live.projector.open"></button>
         </div>
-        <p class="hint" id="projector-permission" data-i18n="live.projector.permissionHint"></p>
+        <p class="hint" id="projector-permission" data-i18n="live.projector.permissionHint" data-dismiss="projector-permission"></p>
         <p id="projector-message" class="message" role="status" aria-live="polite"></p>
         <p id="op-message" class="message" role="status" aria-live="polite"></p>
       </header>
@@ -52,7 +52,7 @@
               <!-- A new song written now: the same editor as /songs/new, in a sheet (live-new-song.js). -->
               <button type="button" class="secondary" id="op-new-song" data-icon="plus" data-i18n="operator.newSong"></button>
             </div>
-            <p class="hint" data-i18n="operator.addHint"></p>
+            <p class="hint" data-i18n="operator.addHint" data-dismiss="op-add-hint"></p>
             <!-- The shared song search (public/song-search.js): library and resursecrestine.ro. -->
             <div id="add-search" class="song-pick op-search"></div>
             <div id="proposals"></div>
@@ -81,7 +81,7 @@
             <button type="button" id="op-next"></button>
           </div>
           <button type="button" class="secondary op-sync" id="op-sync" data-icon="jump" data-i18n="operator.syncWorship"></button>
-          <p class="hint key-hint op-keys" data-i18n="operator.keysHint"></p>
+          <p class="hint key-hint op-keys" data-i18n="operator.keysHint" data-dismiss="op-keys-hint"></p>
         </section>
 
         <aside class="op-right" aria-labelledby="op-projector-heading">
@@ -131,6 +131,7 @@
   <script src="/list-pane.js"></script>
   <script src="/notation.js"></script>
   <script src="/shell.js"></script>
+  <script src="/dismiss.js"></script>
   <script src="/song-render.js"></script>
   <script src="/song-search.js"></script>
   <script src="/song-editor.js"></script>

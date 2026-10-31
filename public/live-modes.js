@@ -62,7 +62,7 @@
       return { row, label, group, buttons, labelKey, command, values };
     };
     const teamMode = segmented('live.modes.teamLabel', 'team.mode', ['follow', 'free']);
-    const hint = el('p', { class: 'hint mode-hint' });
+    const hint = el('p', { class: 'hint mode-hint', 'data-dismiss': 'mode-hint' });
     // The requester's line: "Cerere trimisă… 58 s" + Anulează, or the answer / the notice.
     const lineText = el('p');
     const cancel = el('button', { type: 'button', class: 'secondary', onclick: () => send('handover.cancel') });

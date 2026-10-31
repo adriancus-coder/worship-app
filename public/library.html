@@ -33,7 +33,7 @@
             maxlength="200" aria-describedby="q-hint" aria-controls="songs">
           <button type="submit" class="secondary" id="online-search" hidden data-icon="search" data-i18n="online.searchBoth"></button>
         </div>
-        <span class="hint" id="q-hint"></span>
+        <span class="hint" id="q-hint" data-dismiss="library-search-hint"></span>
       </form>
       <div class="library-tools">
         <!-- A single toggle (its own border, aria-pressed): only the songs without a key. -->
@@ -146,6 +146,7 @@
   <script src="/page.js"></script>
   <script src="/notation.js"></script>
   <script src="/shell.js"></script>
+  <script src="/dismiss.js"></script>
   <script src="/song-render.js"></script>
   <script src="/list-pane.js"></script>
   <script src="/song-search.js"></script>

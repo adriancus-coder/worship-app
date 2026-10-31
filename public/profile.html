@@ -33,6 +33,14 @@
       <button type="submit" id="submit" data-icon="check" data-i18n="profile.save"></button>
     </form>
 
+    <!-- Messages closed with × on this device (public/dismiss.js): bring them back. -->
+    <section class="dismissed-section" id="dismissed" aria-labelledby="dismissed-heading">
+      <h2 id="dismissed-heading" data-i18n="dismiss.heading"></h2>
+      <p class="hint" data-i18n="dismiss.profileHint"></p>
+      <p id="dismissed-count" class="muted"></p>
+      <button type="button" class="secondary" id="show-dismissed" data-icon="restart" data-i18n="dismiss.showAgain"></button>
+    </section>
+
     <section class="unavail" id="unavail" aria-labelledby="unavail-heading" hidden>
       <h2 id="unavail-heading" data-i18n="unavail.heading"></h2>
       <p class="hint" data-i18n="unavail.hint"></p>
@@ -52,6 +60,7 @@
   <script src="/i18n.js"></script>
   <script src="/page.js"></script>
   <script src="/shell.js"></script>
+  <script src="/dismiss.js"></script>
   <script src="/profile.js"></script>
   <script src="/unavailability.js"></script>
 </body>

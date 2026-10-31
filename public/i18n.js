@@ -872,6 +872,15 @@
         reactivateLabel: 'Reactivează „{name}”',
         inactive: 'dezactivată',
       },
+      dismiss: {
+        close: 'Închide mesajul (nu îl mai arăta pe acest dispozitiv)',
+        heading: 'Mesaje închise',
+        profileHint: 'Mesajele explicative din aplicație (de exemplu „Proiectorul e al tău” sau sfaturile cu taste) se închid cu ×; rămân închise pe acest dispozitiv.',
+        count: '{n} mesaje închise pe acest dispozitiv.',
+        none: 'Nu ai închis niciun mesaj pe acest dispozitiv.',
+        showAgain: 'Arată din nou mesajele închise',
+        shown: 'Gata: mesajele apar din nou.',
+      },
       profile: {
         pageTitle: 'Profilul meu — {appName}',
         heading: 'Profilul meu',
@@ -3006,6 +3015,15 @@
         reactivate: 'Reactivate',
         reactivateLabel: 'Reactivate “{name}”',
         inactive: 'inactive',
+      },
+      dismiss: {
+        close: 'Close this message (stop showing it on this device)',
+        heading: 'Closed messages',
+        profileHint: 'The explanatory messages in the app (for example “The projector is yours” or the keyboard tips) close with ×; they stay closed on this device.',
+        count: '{n} messages closed on this device.',
+        none: 'You have not closed any message on this device.',
+        showAgain: 'Show the closed messages again',
+        shown: 'Done: the messages show again.',
       },
       profile: {
         pageTitle: 'My profile — {appName}',

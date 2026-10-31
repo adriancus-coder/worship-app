@@ -61,4 +61,18 @@
     $('status').removeAttribute('data-i18n');
     $('status').textContent = t('common.networkError');
   });
+
+  // --- messages closed with × on this device (public/dismiss.js) ----------------------
+  function renderDismissed() {
+    const n = window.DISMISS ? window.DISMISS.count() : 0;
+    $('dismissed-count').textContent = n ? t('dismiss.count', { n }) : t('dismiss.none');
+    $('show-dismissed').disabled = n === 0;
+  }
+  $('show-dismissed').addEventListener('click', () => {
+    window.DISMISS.reset();
+    renderDismissed();
+    $('dismissed-count').textContent = t('dismiss.shown');
+  });
+  renderDismissed();
+  document.addEventListener('i18n:change', renderDismissed);
 })();
