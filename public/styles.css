@@ -2605,6 +2605,7 @@ dialog.song-pick-dialog .song-pick > .ss-results { flex: 1 1 0; height: 0; --pan
 .dismissable { display: flex; align-items: flex-start; gap: 4px; min-width: 0; }
 .dismissable > :first-child { flex: 1 1 auto; min-width: 0; }
 .dismissable:has(> [hidden]), .dismissable[hidden] { display: none; }
+.dismissable.is-empty > .dismiss { display: none; } /* the message is hidden by its page's CSS: no stray × (the wrapper stays, so it can come back) */
 .dismissable > .dismiss { flex: none; min-width: var(--touch); min-height: var(--touch); margin: -10px 0 0; padding: 0; font-size: 1.5rem; line-height: 1; color: var(--text-muted); background: none; border: 0; border-radius: var(--radius); }
 .dismissable > .dismiss:hover, .dismissable > .dismiss:focus-visible { color: var(--text); background: var(--surface); }
 .dismissable > .mode-banner + .dismiss { margin-top: 0; }

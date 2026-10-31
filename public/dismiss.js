@@ -53,6 +53,11 @@
     });
     node.replaceWith(box);
     box.append(node, button);
+    // A message its page hides by CSS (a keyboard hint on phones) leaves no stray ×: the
+    // wrapper follows the element's rendered size.
+    const follow = () => box.classList.toggle('is-empty', node.offsetWidth === 0 && node.offsetHeight === 0);
+    if ('ResizeObserver' in window) new ResizeObserver(follow).observe(node);
+    follow();
   }
 
   function attach(root) {
