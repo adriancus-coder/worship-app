@@ -29,7 +29,8 @@ module.exports = {
     const teamRow = (p, name) => p.locator('#team .team-row', { has: p.locator(`.team-name >> text="${name}"`) });
     const me = async (p) => { const r = await p.request.get(`${app.url}/api/auth/me`); return r.ok() ? r.json() : null; };
     const newPage = async (width) => {
-      const context = await browser.newContext({ viewport: { width, height: width < 600 ? 667 : 820 }, hasTouch: width < 600, isMobile: width < 600 });
+      // a Romanian browser: the page follows Accept-Language (a fresh context defaults to English)
+      const context = await browser.newContext({ viewport: { width, height: width < 600 ? 667 : 820 }, hasTouch: width < 600, isMobile: width < 600, locale: 'ro-RO' });
       const page = await context.newPage();
       page.on('pageerror', (err) => check(false, `page error: ${err.message}`));
       return page;
