@@ -2691,6 +2691,15 @@ test('songs store: themes are saved with the song, listed per row, filtered and 
   mem.close();
 });
 
+test('themes index (lib/themes.js): distinct, trimmed, none over the per-theme limit', () => {
+  const { THEME_INDEX } = require('../lib/themes');
+  const { LIMITS } = require('../lib/songs');
+  assert.ok(THEME_INDEX.length >= 30);
+  assert.strictEqual(new Set(THEME_INDEX.map((x) => normalizeForSearch(x))).size, THEME_INDEX.length, 'distinct');
+  assert.ok(THEME_INDEX.every((x) => x === x.trim() && x.length <= LIMITS.themeMax));
+  assert.ok(THEME_INDEX.includes('Laudă și închinare') && THEME_INDEX.includes('Paște'));
+});
+
 test('resurse songPageThemes: the "Tematica" links of a song page; OpenSong <theme> as the fallback', () => {
   const R = require('../lib/resurse');
   const html = '<p class="tematica">Tematica: <a href="https://www.resursecrestine.ro/cantece/index-tematic/inchinare" class="blueLink">&Icirc;nchinare</a>, <a href="/cantece/index-tematic/pasti" class="blueLink"> Pa&#537;ti </a>, <a href="/cantece/index-tematic/pasti">paști</a></p><a href="/cantece/index-autori/x">Autor</a>';

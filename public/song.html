@@ -17,7 +17,7 @@
       <div id="song-key" class="song-key-row"></div>
       <p id="song-meta" class="muted"></p>
       <!-- the song's themes ("tematică"), each a link to the library filtered by it -->
-      <p id="song-themes" class="song-themes" hidden></p>
+      <div id="song-themes"></div>
       <!-- "Cântată ultima dată: …" + the events it was sung at (GET /api/songs/:id/history) -->
       <details id="song-history" class="song-history" hidden></details>
       <div class="song-actions">
@@ -39,6 +39,7 @@
   <script src="/arrange-sheet.js"></script>
   <script src="/key-detect.js"></script>
   <script src="/key-detect-ui.js"></script>
+  <script src="/themes-ui.js"></script>
   <script src="/song.js"></script>
 </body>
 </html>

@@ -2,7 +2,8 @@
 
 const express = require('express');
 const { requirePerm } = require('../lib/roles');
-const { LIMITS, KEYS, SORT_MODES, DuplicateTitleError, validateSong, createSongStore } = require('../lib/songs');
+const { LIMITS, KEYS, SORT_MODES, DuplicateTitleError, validateSong, validateThemes, createSongStore } = require('../lib/songs');
+const { THEME_INDEX } = require('../lib/themes');
 const { parseChoice, createBackgroundStore } = require('../lib/backgrounds');
 const { createMediaSigner } = require('../lib/media');
 const { MAX_SONGS, LibraryFileError, parseLibraryFile, planImport } = require('../lib/library-import');
@@ -113,7 +114,17 @@ function createSongsRouter({ db, auth, config, logger, live }) {
   // The library's themes ("tematică"), with how many songs carry each: the library filter,
   // the editor's suggestions, the ideas panel. Registered before /api/songs/:id.
   router.get('/api/songs/themes', (req, res) => {
-    res.json({ themes: songs.themes(req.adminId) });
+    res.json({ themes: songs.themes(req.adminId), index: THEME_INDEX });
+  });
+
+  // The themes of one song (the song page's "Tematică · Setează"): { themes: [names] }.
+  router.put('/api/songs/:id/themes', canEdit, (req, res) => {
+    const id = songId(req);
+    if (!id) return notFound(req, res);
+    const { error, value } = validateThemes((req.body || {}).themes, req.t);
+    if (error) return res.status(400).json({ error });
+    if (!songs.setThemes(req.adminId, id, value)) return notFound(req, res);
+    res.json({ song: songs.get(req.adminId, id) });
   });
 
   // "Detectează gama la toate" (public/key-suggest.js): the keyless songs with chords and

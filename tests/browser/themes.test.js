@@ -33,17 +33,51 @@ module.exports = {
     await p.goto(`${app.url}/songs/${pasti[0]}/edit`);
     await p.waitForSelector('#song-key-themes');
     const field = await p.evaluate(() => ({ value: document.getElementById('song-key-themes').value, list: [...document.querySelectorAll('#song-key-themes-list option')].map((o) => o.value), label: document.querySelector('label[for="song-key-themes"]').textContent }));
-    check(field.value === 'Paști, Închinare' && field.list.join() === 'botez,Închinare,Paști' && /Teme/.test(field.label), 'the editor: the themes in one field, the library\'s themes as suggestions', field);
+    check(field.value === 'Paști, Închinare' && field.list.slice(0, 3).join() === 'botez,Închinare,Paști' && field.list.includes('Laudă și închinare') && /Teme/.test(field.label), 'the editor: the themes in one field, the library\'s themes then the index as suggestions', field);
     await p.fill('#song-key-themes', 'Paști, Cina Domnului , paști');
     await p.click('#save');
     await p.waitForFunction((id) => fetch(`/api/songs/${id}`).then((r) => r.json()).then((j) => j.song.themes.join() === 'Paști,Cina Domnului'), pasti[0], { timeout: 8000 });
     check(true, 'saved: trimmed, the repeat merged');
     await p.goto(`${app.url}/songs/${pasti[0]}`);
-    await p.waitForSelector('#song-themes:not([hidden]) .theme-chip');
+    await p.waitForSelector('#song-themes .theme-chip');
     const chips = await p.$$eval('#song-themes .theme-chip', (l) => l.map((a) => [a.textContent, a.getAttribute('href')]));
     check(chips.length === 2 && chips[1][0] === 'Cina Domnului' && chips[1][1] === '/library?theme=Cina%20Domnului', 'the song page: a chip per theme, linking to the filtered library', chips);
     const a = await layoutAudit(p, '#song');
     check(!a.overflow && !a.small.length, 'the song page with chips: no overflow, targets >= 44 px', a);
+
+    // --- the song page's "Setează": the thematic index, the library's themes, another theme --
+    await p.click('#song-themes .song-themes-set');
+    await p.waitForSelector('#themes-dialog[open] .theme-pick');
+    const dlg = await p.evaluate(() => ({
+      index: document.querySelectorAll('#themes-dialog .themes-picks')[0].querySelectorAll('.theme-pick').length,
+      pressed: [...document.querySelectorAll('#themes-dialog .theme-pick[aria-pressed="true"]')].map((b) => b.dataset.theme),
+      hasBotez: Boolean(document.querySelector('#themes-dialog .theme-pick[data-theme="Botez"]')),
+      extra: [...document.querySelectorAll('#themes-dialog .themes-picks')[1].querySelectorAll('.theme-pick')].map((b) => b.dataset.theme),
+    }));
+    check(dlg.index >= 30 && dlg.hasBotez && dlg.pressed.sort().join() === 'Cina Domnului,Paști' && dlg.extra.includes('Cina Domnului') && dlg.extra.includes('Închinare') && !dlg.extra.includes('botez'),
+      'the pop-up: the index (Botez…), the song\'s themes pressed, the library\'s other themes listed (botez is the index\'s Botez)', dlg);
+    const d = await layoutAudit(p, '#themes-dialog');
+    check(!d.overflow && !d.small.length, 'the pop-up 1024: no overflow, targets >= 44 px', d);
+    await p.click('#themes-dialog .theme-pick[data-theme="Botez"]');
+    await p.click('#themes-dialog .theme-pick[data-theme="Cina Domnului"]');
+    await p.fill('#themes-other', ' Tineret ');
+    await p.click('#themes-other-add');
+    const chosen = await p.$eval('#themes-chosen', (x) => x.textContent);
+    check(chosen === 'Alese: Paști, Botez, Tineret', 'tap to select / unselect, another theme typed', chosen);
+    await p.click('#themes-save');
+    await p.waitForSelector('#themes-dialog:not([open])', { state: 'attached' });
+    await p.waitForFunction(() => document.querySelectorAll('#song-themes .theme-chip').length === 3);
+    const saved = (await app.api(owner, 'GET', `/api/songs/${pasti[0]}`)).body.song.themes;
+    check(saved.join() === 'Paști,Botez,Tineret', 'saved from the page: the three', saved);
+    const member = await signIn('member', { width: 375, lang: 'ro' });
+    await member.goto(`${app.url}/songs/${pasti[0]}`);
+    await member.waitForSelector('#song-themes .theme-chip');
+    check(!(await member.locator('#song-themes .song-themes-set').count()), 'a member sees the chips, no "Setează"');
+    const put = await app.api(app.cookies.member, 'PUT', `/api/songs/${pasti[0]}/themes`, { themes: ['x'] });
+    check(put.status === 403, 'PUT themes: members 403', put.status);
+    await app.api(owner, 'PUT', `/api/songs/${pasti[0]}/themes`, { themes: ['Paști', 'Cina Domnului'] }); // back, for the checks below
+    await p.reload();
+    await p.waitForSelector('#song-themes .theme-chip');
 
     // --- the library: the "Tema" filter, from the chip and by hand ------------------------
     await p.click('#song-themes .theme-chip >> nth=1');

@@ -75,11 +75,8 @@
     const metaEl = document.getElementById('song-meta');
     metaEl.textContent = meta;
     metaEl.hidden = !meta;
-    const themesEl = document.getElementById('song-themes');
-    const themes = song.themes || [];
-    themesEl.replaceChildren(el('span', { class: 'song-themes-label', text: `${t('song.themesLabel')}:` }),
-      ...themes.map((name) => el('a', { class: 'theme-chip', href: `/library?theme=${encodeURIComponent(name)}`, text: name })));
-    themesEl.hidden = !themes.length;
+    // "Tematică: [chips] · Setează" (public/themes-ui.js): the editor roles pick from the index
+    document.getElementById('song-themes').replaceChildren(window.THEMES_UI.box(song, canSetKey, () => render()));
 
     textOnlyButton.setAttribute('aria-pressed', String(textOnly));
     document.getElementById('sections').replaceChildren(...window.SONG_RENDER.sectionsView(song.sections, { textOnly, tappable: true }));

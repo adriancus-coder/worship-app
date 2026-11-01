@@ -257,7 +257,8 @@
     document.addEventListener('notation:change', () => { renderKeys(); renderPreview(); });
     // the library's themes as suggestions (best effort)
     window.PAGE.api('/api/songs/themes').then((res) => {
-      if (res.ok) themesList.replaceChildren(...res.body.themes.map((x) => el('option', { value: x.name })));
+      // the library's themes first, then the thematic index (lib/themes.js)
+      if (res.ok) themesList.replaceChildren(...[...res.body.themes.map((x) => x.name), ...(res.body.index || [])].filter((name, i, all) => all.indexOf(name) === i).map((name) => el('option', { value: name })));
     }).catch(() => {});
     document.addEventListener('i18n:change', render);
     setSong(null);
