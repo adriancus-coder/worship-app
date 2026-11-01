@@ -21,7 +21,7 @@
   const listBox = document.getElementById('key-review-list');
   const actions = document.getElementById('key-review-actions');
   const saveButton = document.getElementById('key-review-save');
-  const libraryParts = ['library-search', 'library-results'].map((id) => document.getElementById(id));
+  const libraryParts = ['library-collections', 'library-search', 'library-results'].map((id) => document.getElementById(id));
 
   const state = { songs: null, withoutChords: 0, rows: new Map(), status: null, error: null, busy: false, result: null };
   let hiddenBefore = [];

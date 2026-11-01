@@ -39,7 +39,7 @@ never implement a later stage early. Mockups: claude.ai design canvas
   opens that role's own page. Never show the internal role word in the UI (labels through
   `team.roles.*`). The owner can look at the app as any other role ("Vezi aplicația ca").
 - **Rights and custom roles** (migration 045, `lib/roles.js`): every guard reads RIGHTS, never
-  a role list: `library` (songs), `events` (events, setlists, proposals), `media`,
+  a role list: `library` (songs), `school` (the Sunday school's library only), `events` (events, setlists, proposals), `media`,
   `live` (start / run / end / withdraw, live pages, additions, resursecrestine search, the
   bridge), `screens` (console, screens page; holding the projector = split mode; needs
   `live`), `schedule` (assignments, positions, everyone's unavailability). The built-in

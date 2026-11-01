@@ -110,8 +110,8 @@
     }
     song = songRes.body.song;
     editLink.href = `/songs/${song.id}/edit`;
-    editLink.hidden = !canEdit(meRes.body);
-    canSetKey = canEdit(meRes.body);
+    editLink.hidden = !window.PAGE.canEditSong(meRes.body, song);
+    canSetKey = window.PAGE.canEditSong(meRes.body, song);
     setStatus('');
     article.hidden = false;
     render();

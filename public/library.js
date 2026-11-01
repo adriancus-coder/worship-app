@@ -20,6 +20,7 @@
   if (['az', 'za', 'recent'].includes(params.get('sort'))) $('sort').value = params.get('sort');
   if (params.get('noKey') === '1') $('filter-no-key').setAttribute('aria-pressed', 'true'); // "Fără ton"
   search.setTheme(params.get('theme') || ''); // ?theme=Paști (from a song page's chip)
+  search.setCollection(params.get('collection') === 'school' ? 'school' : 'main'); // ?collection=school: the Sunday school's library
 
   // --- "⋯" menu (import / export) ----------------------------------------------------
 
@@ -48,6 +49,13 @@
     const me = res.body;
     $('new-song').hidden = !canEdit(me);
     menu.hidden = !canEdit(me);
+    // a school-only writer sees the school's library first and writes only there
+    if (!can(me, 'library') && can(me, 'school') && !params.has('collection')) search.setCollection('school');
+    search.onCollection((collection) => {
+      $('new-song').href = collection === 'school' ? '/songs/new?collection=school' : '/songs/new';
+      $('new-song').hidden = !(can(me, 'library') || (can(me, 'school') && collection === 'school'));
+      $('export-library').href = collection === 'school' ? '/api/songs/export?collection=school' : '/api/songs/export';
+    });
     search.setMe(me);
     // resursecrestine.ro: the event roles (operators import, but never write songs by hand).
     search.setOnline(['library', 'events', 'live'].some((p) => can(me, p))); // routes/resurse.js

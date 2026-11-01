@@ -172,7 +172,7 @@ function createPagesRouter({ db, auth, sendPage }) {
   });
 
   router.get('/songs/new', noStore, signedIn, (req, res) => {
-    if (!has(req, 'library')) return res.redirect('/library');
+    if (!has(req, 'library') && !has(req, 'school')) return res.redirect('/library');
     sendPage(req, res, 'song-edit');
   });
 
@@ -181,7 +181,7 @@ function createPagesRouter({ db, auth, sendPage }) {
   });
 
   router.get('/songs/:id(\\d+)/edit', noStore, signedIn, (req, res) => {
-    if (!has(req, 'library')) return res.redirect(`/songs/${req.params.id}`);
+    if (!has(req, 'library') && !has(req, 'school')) return res.redirect(`/songs/${req.params.id}`);
     sendPage(req, res, 'song-edit');
   });
 

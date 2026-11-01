@@ -42,6 +42,23 @@
     const themesInput = el('input', { type: 'text', id: `${ids.key}-themes`, maxlength: '450', autocomplete: 'off', list: themesList.id, oninput: changed });
     const themesHint = el('span', { class: 'hint', id: `${ids.key}-themes-hint` });
     themesInput.setAttribute('aria-describedby', themesHint.id);
+    // Which library (migration 060): the church's or the Sunday school's; a choice for those
+    // with both rights (song-edit.js sets what is allowed), else fixed.
+    const collectionLabel = el('span', { class: 'field-label', id: `${ids.key}-collection-label` });
+    const collectionButtons = ['main', 'school'].map((value) => el('button', { type: 'button', 'data-collection': value, 'aria-pressed': String(value === 'main'), onclick: () => setCollection(value) }));
+    const collectionGroup = el('div', { class: 'choice-group editor-collection', role: 'group', 'aria-labelledby': collectionLabel.id }, ...collectionButtons);
+    const collectionField = el('div', { class: 'field editor-collection-field', hidden: true }, collectionLabel, collectionGroup);
+    let collectionValue = 'main';
+    let collectionAllowed = ['main', 'school'];
+    function setCollection(value) {
+      collectionValue = collectionAllowed.includes(value) ? value : collectionAllowed[0];
+      for (const button of collectionButtons) {
+        button.setAttribute('aria-pressed', String(button.dataset.collection === collectionValue));
+        button.hidden = !collectionAllowed.includes(button.dataset.collection);
+      }
+      collectionField.hidden = collectionAllowed.length < 2;
+      changed();
+    }
     const sectionsBox = el('div', { id: ids.sections, class: 'sections-editor' });
     const addButton = el('button', { type: 'button', id: ids.addSection, class: 'secondary', 'data-icon': 'plus' });
     const preview = el('div', { id: ids.preview });
@@ -60,7 +77,8 @@
         el('div', { class: 'field editor-key-field' }, labels.key,
           el('div', { class: 'editor-key-row' }, keyValue, keySelect),
           keyHint),
-        el('div', { class: 'field' }, labels.themes, themesInput, themesList, themesHint)),
+        el('div', { class: 'field' }, labels.themes, themesInput, themesList, themesHint),
+        collectionField),
       options.extra || '',
       labels.sections,
       sectionsBox,
@@ -216,6 +234,8 @@
       labels.key.textContent = t('editor.keyLabel');
       labels.themes.textContent = t('editor.themesLabel');
       themesHint.textContent = t('editor.themesHint');
+      collectionLabel.textContent = t('editor.collectionLabel');
+      for (const button of collectionButtons) button.textContent = t(button.dataset.collection === 'school' ? 'library.collectionSchool' : 'library.collectionMain');
       labels.sections.textContent = t('editor.sectionsHeading');
       labels.preview.textContent = t('editor.previewHeading');
       addButton.textContent = t('editor.addSection');
@@ -234,6 +254,7 @@
         author: authorInput.value,
         song_key: keySelect.value,
         themes: themesInput.value.split(',').map((x) => x.trim()).filter(Boolean),
+        collection: collectionValue,
         sections: state.sections.map((s) => ({ type: s.type, label: s.label, content: chordsOverLyricsToInline(s.content), note: s.note })),
       };
     }
@@ -247,6 +268,8 @@
       titleInput.value = s.title || '';
       authorInput.value = s.author || '';
       themesInput.value = (s.themes || []).join(', ');
+      collectionValue = collectionAllowed.includes(s.collection) ? s.collection : collectionAllowed[0];
+      setCollection(collectionValue);
       renderKeys();
       keySelect.value = s.song_key || '';
       renderKeyValue();
@@ -274,6 +297,10 @@
       onChange: (cb) => listeners.push(cb),
       render,
       fields: { title: titleInput, author: authorInput, key: keySelect, themes: themesInput },
+      // the libraries this user may write into (['main', 'school'], ['school']…); the song's
+      // own stays when allowed
+      setCollections(list) { collectionAllowed = list.length ? list : ['main']; setCollection(collectionValue); state.base = snapshot(); },
+      collection: () => collectionValue,
       // A song is written when it has a title or any text.
       hasText: () => Boolean(titleInput.value.trim() || state.sections.some((s) => s.content.trim())),
     };

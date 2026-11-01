@@ -53,9 +53,13 @@
   // Sees every event (unshared ones too): the events or the live right.
   const seesAll = (me) => can(me, 'events') || can(me, 'live');
 
-  // Library writing (songs, a song's key and background).
+  // Library writing (songs, a song's key and background): the church's library, or only the
+  // Sunday school's (the 'school' right). canEditSong says whether this song may be edited.
   function canEdit(me) {
-    return can(me, 'library');
+    return can(me, 'library') || can(me, 'school');
+  }
+  function canEditSong(me, song) {
+    return can(me, 'library') || (can(me, 'school') && Boolean(song) && song.collection === 'school');
   }
 
   // Creating and editing events and setlists.
@@ -202,5 +206,5 @@
   const roleLabel = (role) => withEmoji(roleEmoji(role), roleName(role));
   const positionLabel = (p) => (p ? withEmoji(p.emoji, p.name) : '');
 
-  window.PAGE = { api, el, ROLE_EMOJI, roleLabel, roleName, roleEmoji, setRoleNames, positionLabel, can, seesAll, liveEntryRole, canEdit, canEditEvents, EVENT_ROLES, setTitle, formatDate, dateBlock, setupTabs, backLink, keepFrom, eventBack, linkBack };
+  window.PAGE = { api, el, ROLE_EMOJI, roleLabel, roleName, roleEmoji, setRoleNames, positionLabel, can, seesAll, liveEntryRole, canEdit, canEditSong, canEditEvents, EVENT_ROLES, setTitle, formatDate, dateBlock, setupTabs, backLink, keepFrom, eventBack, linkBack };
 })();

@@ -19,7 +19,7 @@
   const runButton = document.getElementById('import-run');
   const resultBox = document.getElementById('import-result');
   const summary = document.getElementById('import-summary');
-  const libraryParts = ['library-search', 'library-results'].map((id) => document.getElementById(id));
+  const libraryParts = ['library-collections', 'library-search', 'library-results'].map((id) => document.getElementById(id));
 
   const state = { name: '', text: null, status: null, error: null, plan: null, result: null, busy: false };
   let hiddenBefore = [];

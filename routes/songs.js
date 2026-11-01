@@ -1,8 +1,8 @@
 'use strict';
 
 const express = require('express');
-const { requirePerm } = require('../lib/roles');
-const { LIMITS, KEYS, SORT_MODES, DuplicateTitleError, validateSong, validateThemes, createSongStore } = require('../lib/songs');
+const { requirePerm, can } = require('../lib/roles');
+const { LIMITS, KEYS, COLLECTIONS, SORT_MODES, DuplicateTitleError, validateSong, validateThemes, createSongStore } = require('../lib/songs');
 const { THEME_INDEX } = require('../lib/themes');
 const { parseChoice, createBackgroundStore } = require('../lib/backgrounds');
 const { createMediaSigner } = require('../lib/media');
@@ -22,7 +22,13 @@ function createSongsRouter({ db, auth, config, logger, live }) {
   const songs = createSongStore(db);
   const events = createEventStore(db);
   const settings = createAdminSettings(db);
-  const canEdit = requirePerm('library');
+  // Writing: the 'library' right (both libraries) or the 'school' right (the Sunday school's
+  // library only: a song with collection 'school'). mayWrite says which, per song.
+  const canEdit = requirePerm('library', 'school');
+  const mayWrite = (req, collection) => can(req.user, 'library') || (can(req.user, 'school') && collection === 'school');
+  const forbidden = (req, res) => res.status(403).json({ error: req.t('errors.forbidden') });
+  // A school-only writer always writes into the school's library.
+  const ownCollection = (req, wanted) => (can(req.user, 'library') ? wanted : 'school');
   const today = (req) => todayIn(settings.timezone(req.adminId));
 
   function songId(req) {
@@ -48,7 +54,9 @@ function createSongsRouter({ db, auth, config, logger, live }) {
     // ?noKey=1: only the songs without a key (the library's "Fără ton" filter); ?theme=<name>:
     // only the songs with that theme.
     const theme = typeof req.query.theme === 'string' ? req.query.theme.slice(0, LIMITS.themeMax) : '';
-    const list = songs.list(req.adminId, { q, sort, noKey: req.query.noKey === '1', theme });
+    // ?collection=main (default) | school | all: which library (migration 060)
+    const collection = ['school', 'all'].includes(req.query.collection) ? req.query.collection : 'main';
+    const list = songs.list(req.adminId, { q, sort, noKey: req.query.noKey === '1', theme, collection });
     // ?withHistory=1 adds lastSung (the last date it was sung: lib/events.js lastSungMap).
     if (req.query.withHistory === '1') {
       const day = today(req);
@@ -64,6 +72,9 @@ function createSongsRouter({ db, auth, config, logger, live }) {
     const dryRun = req.query.dryRun === '1' || req.query.dryRun === 'true';
     const mode = req.query.mode === undefined ? 'skip' : req.query.mode;
     if (!['skip', 'update'].includes(mode)) return res.status(400).json({ error: req.t('errors.importMode') });
+    // a school-only writer: everything lands in the school's library, nothing is updated
+    const schoolOnly = !can(req.user, 'library');
+    if (schoolOnly && mode === 'update') return res.status(400).json({ error: req.t('errors.importMode') });
 
     let file;
     try {
@@ -91,7 +102,7 @@ function createSongsRouter({ db, auth, config, logger, live }) {
     const before = mode === 'update' ? live.songBefore(req.adminId) : [];
     const result = db.transaction(() => {
       const p = plan();
-      for (const { value, meta } of p.add) songs.create(req.adminId, req.user.id, value, meta);
+      for (const { value, meta } of p.add) songs.create(req.adminId, req.user.id, schoolOnly ? { ...value, collection: 'school' } : value, meta);
       if (mode === 'update') {
         for (const { id, value, meta, keepAuthor } of p.existing) {
           const song = keepAuthor ? { ...value, author: songs.get(req.adminId, id).author } : value;
@@ -123,6 +134,9 @@ function createSongsRouter({ db, auth, config, logger, live }) {
     if (!id) return notFound(req, res);
     const { error, value } = validateThemes((req.body || {}).themes, req.t);
     if (error) return res.status(400).json({ error });
+    const existing = songs.get(req.adminId, id);
+    if (!existing) return notFound(req, res);
+    if (!mayWrite(req, existing.collection)) return forbidden(req, res);
     if (!songs.setThemes(req.adminId, id, value)) return notFound(req, res);
     res.json({ song: songs.get(req.adminId, id) });
   });
@@ -131,7 +145,9 @@ function createSongsRouter({ db, auth, config, logger, live }) {
   // their estimated key; then the keys the user approved, set only where none is set.
   // Registered before /api/songs/:id.
   router.get('/api/songs/key-suggestions', canEdit, (req, res) => {
-    res.json(songs.keySuggestions(req.adminId));
+    const out = songs.keySuggestions(req.adminId);
+    if (!can(req.user, 'library')) out.songs = out.songs.filter((s) => (songs.get(req.adminId, s.id) || {}).collection === 'school');
+    res.json(out);
   });
 
   router.put('/api/songs/keys', canEdit, (req, res) => {
@@ -144,15 +160,17 @@ function createSongsRouter({ db, auth, config, logger, live }) {
       if (!id || !key || !KEYS.includes(key)) return res.status(400).json({ error: req.t('errors.songKeyInvalid') });
       keys.push({ id, songKey: key });
     }
+    const allowed = keys.filter((k) => { const song = songs.get(req.adminId, k.id); return song && mayWrite(req, song.collection); });
     const before = live.songBefore(req.adminId);
-    const result = songs.setKeys(req.adminId, keys);
+    const result = songs.setKeys(req.adminId, allowed);
+    result.skipped.push(...keys.filter((k) => !allowed.includes(k)).map((k) => k.id));
     if (result.saved.length) live.songChanged(req.adminId, before);
     res.json(result);
   });
 
   // Registered before /api/songs/:id.
   router.get('/api/songs/export', canEdit, (req, res) => {
-    const payload = songs.exportLibrary(req.adminId, config.APP_NAME);
+    const payload = songs.exportLibrary(req.adminId, config.APP_NAME, can(req.user, 'library') ? (['main', 'school'].includes(req.query.collection) ? req.query.collection : 'all') : 'school');
     const filename = `worship-app-library-${payload.exportedAt.slice(0, 10)}.json`;
     logger.info(`Library exported by user #${req.user.id} (admin #${req.adminId}, ${payload.count} songs)`);
     res.set('Content-Type', 'application/json; charset=utf-8');
@@ -180,6 +198,7 @@ function createSongsRouter({ db, auth, config, logger, live }) {
   router.post('/api/songs', canEdit, (req, res) => {
     const { error, value } = validateSong(req.body, req.t);
     if (error) return res.status(400).json({ error });
+    value.collection = ownCollection(req, value.collection);
     try {
       const id = songs.create(req.adminId, req.user.id, value);
       logger.info(`Song #${id} created by user #${req.user.id} (admin #${req.adminId})`);
@@ -195,6 +214,9 @@ function createSongsRouter({ db, auth, config, logger, live }) {
     if (!id) return notFound(req, res);
     // A body with only song_key sets the original key and nothing else (the arrange sheet).
     const body = req.body || {};
+    const existing = songs.get(req.adminId, id);
+    if (!existing) return notFound(req, res);
+    if (!mayWrite(req, existing.collection)) return forbidden(req, res);
     if (Object.keys(body).length === 1 && 'song_key' in body) {
       const key = typeof body.song_key === 'string' ? body.song_key.trim() : null;
       if (key === null || (key && !KEYS.includes(key))) return res.status(400).json({ error: req.t('errors.songKeyInvalid') });
@@ -205,6 +227,8 @@ function createSongsRouter({ db, auth, config, logger, live }) {
     }
     const { error, value } = validateSong(req.body, req.t);
     if (error) return res.status(400).json({ error });
+    if (body.collection === undefined) value.collection = existing.collection; // not given: the song stays where it is
+    else if (!mayWrite(req, value.collection)) return forbidden(req, res);
     try {
       const before = live.songBefore(req.adminId, id);
       if (!songs.update(req.adminId, id, value)) return notFound(req, res);
@@ -220,7 +244,9 @@ function createSongsRouter({ db, auth, config, logger, live }) {
   // or a background from the media library.
   router.put('/api/songs/:id/background', canEdit, (req, res) => {
     const id = songId(req);
-    if (!id || !songs.get(req.adminId, id)) return notFound(req, res);
+    const existing = id ? songs.get(req.adminId, id) : null;
+    if (!existing) return notFound(req, res);
+    if (!mayWrite(req, existing.collection)) return forbidden(req, res);
     const choice = parseChoice((req.body || {}).background);
     if (choice.error || choice.value === undefined
       || (typeof choice.value === 'number' && !backgrounds.find(req.adminId, choice.value))) {
@@ -233,6 +259,8 @@ function createSongsRouter({ db, auth, config, logger, live }) {
 
   router.delete('/api/songs/:id', canEdit, (req, res) => {
     const id = songId(req);
+    const existing = id ? songs.get(req.adminId, id) : null;
+    if (existing && !mayWrite(req, existing.collection)) return forbidden(req, res);
     const before = id ? live.songBefore(req.adminId, id) : [];
     if (!id || !songs.remove(req.adminId, id)) return notFound(req, res);
     live.songChanged(req.adminId, before);

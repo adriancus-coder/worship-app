@@ -2737,6 +2737,46 @@ testAsync('resurse lookupSongThemes: by the import link, else by the title; not 
   assert.deepStrictEqual(await R.lookupSongThemes({ title: 'Gloria', sourceUrl: 'https://www.resursecrestine.ro/acorduri/9001/x' }, { fetchImpl }).then((r) => r.found.id), '78', 'a sheet link: by title');
 });
 
+test('songs store: the collection (migration 060): main by default, school on request, listed apart, exported', () => {
+  const Database = require('better-sqlite3');
+  const { runMigrations } = require('../lib/db');
+  const { createSongStore, validateSong, COLLECTIONS } = require('../lib/songs');
+  assert.deepStrictEqual(COLLECTIONS, ['main', 'school']);
+  const mem = new Database(':memory:');
+  mem.pragma('foreign_keys = ON');
+  runMigrations(mem);
+  mem.prepare("INSERT INTO admins (id, name, created_at) VALUES (1, 'A', 0)").run();
+  mem.prepare("INSERT INTO users (id, admin_id, email, name, password_hash, role, created_at) VALUES (1, 1, 'a@x.ro', 'A', 'x', 'owner', 0)").run();
+  const store = createSongStore(mem);
+  const song = (title, extra = {}) => validateSong({ title, sections: [{ type: 'verse', content: 'x' }], ...extra }, t);
+  assert.strictEqual(song('A').value.collection, 'main', 'none given: main');
+  assert.strictEqual(song('A', { collection: 'school' }).value.collection, 'school');
+  assert.ok(/nu există/.test(song('A', { collection: 'other' }).error));
+  const a = store.create(1, 1, song('A').value);
+  const b = store.create(1, 1, song('B', { collection: 'school' }).value);
+  assert.deepStrictEqual([store.get(1, a).collection, store.get(1, b).collection], ['main', 'school']);
+  assert.deepStrictEqual(store.list(1, { q: '', sort: 'az' }).map((s) => s.title), ['A'], 'the church library by default');
+  assert.deepStrictEqual(store.list(1, { q: '', sort: 'az', collection: 'school' }).map((s) => s.title), ['B']);
+  assert.deepStrictEqual(store.list(1, { q: '', sort: 'az', collection: 'all' }).map((s) => [s.title, s.collection]), [['A', 'main'], ['B', 'school']]);
+  store.update(1, a, song('A', { collection: 'school' }).value);
+  assert.strictEqual(store.get(1, a).collection, 'school', 'an update moves it');
+  assert.deepStrictEqual(store.exportLibrary(1, 'app').songs.map((s) => s.collection), ['school', 'school']);
+  assert.deepStrictEqual(store.exportLibrary(1, 'app', 'main').songs, []);
+  const { planImport, parseLibraryFile } = require('../lib/library-import');
+  const { LIBRARY_FORMAT } = require('../lib/songs');
+  const file = parseLibraryFile({ type: LIBRARY_FORMAT, version: 1, songs: [{ title: 'C', collection: 'school', sections: [{ type: 'verse', content: 'x' }] }, { title: 'D', sections: [{ type: 'verse', content: 'x' }] }] });
+  const plan = planImport(file.entries, { findIdByTitle: () => null, t });
+  assert.deepStrictEqual(plan.add.map((x) => x.value.collection), ['school', 'main'], 'the file says where each song goes');
+  mem.close();
+});
+
+test('roles: the school right is a right of its own; normalizePerms keeps it', () => {
+  const R = require('../lib/roles');
+  assert.ok(R.PERMS.includes('school'));
+  assert.deepStrictEqual(R.normalizePerms(['school', 'school', 'x']), ['school']);
+  assert.ok(!R.BUILTIN_PERMS.leader.includes('school') && R.BUILTIN_PERMS.owner.includes('school'), 'only the owner has it built in');
+});
+
 // --- bridge client (stage 8) --------------------------------------------------
 
 const bridgeClient = require('../lib/bridge/client');

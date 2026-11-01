@@ -25,6 +25,14 @@
       </div>
     </div>
 
+    <!-- Which library (migration 060): the church's or the Sunday school's (a selection) -->
+    <div class="library-collections" id="library-collections">
+      <span class="sort-label" id="collection-label" data-i18n="library.collectionLabel"></span>
+      <div class="choice-group collection-switch" id="collection-switch" role="group" aria-labelledby="collection-label">
+        <button type="button" data-collection="main" aria-pressed="true" data-i18n="library.collectionMain"></button>
+        <button type="button" data-collection="school" aria-pressed="false" data-i18n="library.collectionSchool"></button>
+      </div>
+    </div>
     <div id="library-search">
       <form id="search-form" class="search-form" role="search" novalidate>
         <label for="q" class="sr-only" data-i18n="library.searchLabel"></label>

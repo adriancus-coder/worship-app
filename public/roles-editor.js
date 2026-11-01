@@ -9,7 +9,7 @@
   const { api, el, ROLE_EMOJI } = window.PAGE;
   const { t } = window.I18N;
 
-  const PERMS = ['library', 'events', 'media', 'live', 'screens', 'schedule', 'guides']; // lib/roles.js
+  const PERMS = ['library', 'school', 'events', 'media', 'live', 'screens', 'schedule', 'guides']; // lib/roles.js
   const BUILTIN = {
     owner: PERMS,
     presenter: ['library', 'events', 'media', 'live'],

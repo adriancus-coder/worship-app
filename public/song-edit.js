@@ -150,6 +150,11 @@
   // --- start ----------------------------------------------------------------
 
   (async () => {
+    // which libraries this user may write into: both (the library right) or the school's only
+    const me = (await api('/api/auth/me').catch(() => ({ ok: false }))).body;
+    const { can } = window.PAGE;
+    editor.setCollections(can(me, 'library') ? ['main', 'school'] : ['school']);
+    if (!songId && new URLSearchParams(window.location.search).get('collection') === 'school') editor.setSong({ collection: 'school' });
     if (songId) {
       const { ok, status: code, body } = await api(`/api/songs/${songId}`);
       if (!ok) {

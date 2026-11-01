@@ -2557,6 +2557,16 @@ dialog, .op-add { --pane-bg: var(--surface); }
 
 /* --- List pages: where the panes are ---------------------------------------------------------- */
 /* Library: title, "+ Cântare nouă", "⋯", the search field and the sort stay; results scroll. */
+/* Which library (the church's / the Sunday school's): a selection above the search */
+.library-collections { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; }
+.library-collections .sort-label { font-size: 0.875rem; font-weight: 500; color: var(--text-muted); }
+.library-collections .collection-switch { flex: 1 1 auto; flex-wrap: nowrap; min-width: 0; }
+.library-collections .collection-switch > button { flex: 1 1 0; min-width: 0; padding: 8px 6px; font-size: 0.9375rem; white-space: nowrap; }
+/* Phones: the search hint goes (the field and the "Caută și pe resurse" button say enough), so
+   the fixed header leaves room for the list under the library switch. */
+@media (max-width: 599px) { body.list-page #library-search .search-form .hint { display: none; } }
+.editor-collection-field[hidden] { display: none; }
+.editor-collection > button[hidden] { display: none; }
 .library-tools { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; margin: 0 0 8px; }
 .library-tools .filter-toggle { min-height: var(--touch); }
 .library-tools .sort-field { display: flex; flex-direction: row; align-items: center; gap: 8px; margin: 0; font-size: 0.875rem; font-weight: 500; color: var(--text-muted); }

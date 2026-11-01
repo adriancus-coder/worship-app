@@ -100,6 +100,21 @@
     const sort = mode === 'library' ? $('sort') : null;
     const noKeyToggle = mode === 'library' ? $('filter-no-key') : null; // "Fără ton"
     const noKey = () => Boolean(noKeyToggle && noKeyToggle.getAttribute('aria-pressed') === 'true');
+    // which library (library mode): the church's or the Sunday school's; the picker searches both
+    const collectionSwitch = mode === 'library' ? $('collection-switch') : null;
+    let collectionValue = 'main';
+    const collection = () => (mode === 'library' ? collectionValue : 'all');
+    const collectionListeners = [];
+    function renderCollection() {
+      if (!collectionSwitch) return;
+      for (const button of collectionSwitch.querySelectorAll('[data-collection]')) button.setAttribute('aria-pressed', String(button.dataset.collection === collectionValue));
+      for (const cb of collectionListeners) cb(collectionValue);
+    }
+    if (collectionSwitch) {
+      for (const button of collectionSwitch.querySelectorAll('[data-collection]')) {
+        button.addEventListener('click', () => { collectionValue = button.dataset.collection; renderCollection(); load(); });
+      }
+    }
     // the theme filter (library mode): the select, filled from GET /api/songs/themes
     const themeSelect = mode === 'library' ? $('filter-theme') : null;
     let themeWanted = '';
@@ -149,7 +164,9 @@
 
     function songMeta(song) {
       const themes = song.themes && song.themes.length ? song.themes.slice(0, 3).join(', ') : null;
-      return [song.song_key ? t('library.key', { key: window.NOTATION.chord(song.song_key) }) : null, song.author, themes].filter(Boolean).join(' · ');
+      // the picker searches both libraries: a Sunday school song says so
+      const school = mode === 'pick' && song.collection === 'school' ? t('library.collectionSchool') : null;
+      return [song.song_key ? t('library.key', { key: window.NOTATION.chord(song.song_key) }) : null, song.author, themes, school].filter(Boolean).join(' · ');
     }
 
     // Under the title: "Ton Sol · author", or the small "fără ton" tag for a song without a key.
@@ -175,7 +192,7 @@
     // The library's quick "Tematică" button on a row (the editor roles, public/themes-ui.js):
     // the same pop-up as the song page; the row and the theme filter follow the save.
     function themesButton(song) {
-      if (!window.THEMES_UI || !me || !canEdit(me)) return null;
+      if (!window.THEMES_UI || !me || !window.PAGE.canEditSong(me, song)) return null;
       return el('button', {
         type: 'button', class: 'secondary song-themes-quick', 'data-icon': 'edit', 'aria-label': t('library.themesFor', { title: song.title }), title: t('library.themesButton'),
         onclick: () => window.THEMES_UI.open(song, { onSaved: (saved) => { song.themes = saved.themes; renderLocal(); loadThemes(); } }),
@@ -246,6 +263,7 @@
       else if (local.lastQuery) setStatus(t('library.noResults', { q: local.lastQuery }));
       else if (noKey()) setStatus(t('library.noKeyNone'));
       else if (theme()) setStatus(t('library.themeNone', { theme: theme() }));
+      else if (collection() === 'school') setStatus(t('library.emptySchool'));
       else if (mode === 'pick') setStatus(options.emptyQuery === 'none' ? '' : t('library.emptyMember'));
       else setStatus(t(canEdit(me) ? 'library.empty' : 'library.emptyMember'));
     }
@@ -259,6 +277,7 @@
         if (sort.value !== 'az') qs.set('sort', sort.value);
         if (noKey()) qs.set('noKey', '1');
         if (theme()) qs.set('theme', theme());
+        if (collection() === 'school') qs.set('collection', 'school');
         const search = qs.toString();
         window.history.replaceState(null, '', search ? `?${search}` : window.location.pathname);
       } else if (!query && options.emptyQuery === 'none') {
@@ -272,6 +291,7 @@
         if (options.withHistory) qs.withHistory = '1';
         if (noKey()) qs.noKey = '1';
         if (theme()) qs.theme = theme();
+        if (collection() !== 'main') qs.collection = collection();
         const { ok, body } = await api(`/api/songs?${new URLSearchParams(qs)}`);
         if (id !== local.request) return; // a newer search is on its way
         if (!ok) {
@@ -701,6 +721,16 @@
       setOnline(allowed) {
         online.allowed = Boolean(allowed);
         render();
+      },
+      // library mode: which library is shown (from the URL / the rights); onCollection(cb)
+      // hears every change (cb(collection), at once too)
+      setCollection(value) {
+        collectionValue = value === 'school' ? 'school' : 'main';
+        renderCollection();
+      },
+      onCollection(cb) {
+        collectionListeners.push(cb);
+        cb(collectionValue);
       },
       // library mode: the theme to filter by (from the URL); the list is loaded first
       setTheme(value) {
