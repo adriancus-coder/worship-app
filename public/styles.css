@@ -2561,6 +2561,8 @@ dialog, .op-add { --pane-bg: var(--surface); }
 .library-collections { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; }
 .library-collections .sort-label { font-size: 0.875rem; font-weight: 500; color: var(--text-muted); }
 .library-collections .collection-switch { flex: 1 1 auto; flex-wrap: nowrap; min-width: 0; }
+/* phones: the "Biblioteca" label goes (the group keeps its accessible name), the two libraries share the row */
+@media (max-width: 599px) { .library-collections .sort-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); } }
 .library-collections .collection-switch > button { flex: 1 1 0; min-width: 0; padding: 8px 6px; font-size: 0.9375rem; white-space: nowrap; }
 /* Phones: the search hint goes (the field and the "Caută și pe resurse" button say enough), so
    the fixed header leaves room for the list under the library switch. */
