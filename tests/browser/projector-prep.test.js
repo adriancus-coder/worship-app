@@ -33,9 +33,8 @@ module.exports = {
     check((await op.getAttribute('#projector-prep-link', 'href')) === `/events/${E}/operator`, 'operator: the card leads to the console');
     const lead = await signIn('leader', { width: 1024 });
     await lead.goto(`${app.url}/events/${E}/edit`);
-    await lead.click('#tab-projector');
-    await lead.waitForSelector('#projector-card:not([hidden])');
-    check((await lead.getAttribute('#projector-prep-link', 'href')) === `/events/${E}/live?view=full`, 'leader: the card leads to the live page');
+    await lead.waitForSelector('#items .item-main');
+    check(await lead.isHidden('#tab-projector') && await lead.isHidden('#projector-card'), 'leader: no "Proiector" tab (preparing the projector is the screens right\'s)');
     const mem = await signIn('member', { width: 375 });
     await mem.goto(`${app.url}/events/${E}`);
     await mem.waitForSelector('#event:not([hidden])');

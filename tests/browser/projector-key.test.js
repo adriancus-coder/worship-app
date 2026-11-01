@@ -62,9 +62,14 @@ module.exports = {
     check(!b.overflow && !b.small.length, 'the console panel: no overflow, targets >= 44 px', b);
     await op.context().close();
 
-    // The live page (leader) has the same panel
+    // The live page has the same panel once the leader holds the projector (until then the
+    // panel is not theirs)
     const lp = await signIn('leader', { width: 1024, lang: 'en' });
     await lp.goto(`${app.url}/events/${E}/live?view=full`);
+    await lp.waitForSelector('#live:not([hidden])');
+    check(await lp.evaluate(() => document.body.classList.contains('projector-away')), 'the leader without the projector: no panel');
+    await app.takeProjector('leader');
+    await lp.waitForFunction(() => !document.body.classList.contains('projector-away'));
     await lp.waitForSelector('#key-panel .clock-toggle:not([disabled])');
     check((await lp.textContent('#key-panel .clock-toggle')) === 'Key' && (await lp.getAttribute('#key-panel .clock-toggle', 'aria-pressed')) === 'true', 'the live page: "Key" on, next to the clock');
     await lp.keyboard.press('g');

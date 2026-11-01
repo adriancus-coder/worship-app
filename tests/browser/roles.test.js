@@ -16,7 +16,7 @@ module.exports = {
     await o.goto(`${app.url}/team?tab=roles`);
     await o.waitForSelector('#roles-panel:not([hidden]) .role-row.builtin');
     const builtIn = await o.$$eval('#roles-panel .role-row.builtin', (rows) => rows.map((r) => r.textContent));
-    check(builtIn.length === 5 && /Totul/.test(builtIn[0]) && /Urmărește și repetă/.test(builtIn[4]), 'the five built-in roles with their rights', builtIn);
+    check(builtIn.length === 5 && /Totul/.test(builtIn[0]) && /Urmărește/.test(builtIn[4]), 'the five built-in roles with their rights', builtIn);
     check(await o.isVisible('#roles-empty'), 'no role yet: the empty line');
     await o.click('#role-add');
     await o.waitForSelector('#role-dialog[open]');
