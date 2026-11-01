@@ -7,7 +7,7 @@
 
 (function () {
   let dialog = null;
-  let state = null; // { song, onSaved, chosen: [names], lists: { index, used }, status, error }
+  let state = null; // { song, onSaved, chosen: [names], lists: { index, used }, status, error, resurse: { status, found, themes } }
 
   const norm = (s) => String(s).trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 
@@ -40,6 +40,21 @@
     return el('button', { type: 'button', class: 'theme-pick', 'data-theme': name, 'aria-pressed': String(has(name)), text: name, onclick: () => toggle(name) });
   }
 
+  // "Verifică pe resurse": the site's themes for this song, pressed into the choice
+  async function checkResurse() {
+    const { api } = window.PAGE;
+    state.resurse = { status: 'loading', found: null, themes: [] };
+    render();
+    const res = await api(`/api/resurse/themes/${state.song.id}`).catch(() => null);
+    if (!res || !res.ok) {
+      state.resurse = { status: 'error', error: (res && res.body && res.body.error) || window.I18N.t('common.networkError'), found: null, themes: [] };
+    } else {
+      state.resurse = { status: 'done', found: res.body.found, themes: res.body.themes };
+      for (const name of res.body.themes) if (!has(name)) state.chosen.push(name);
+    }
+    render();
+  }
+
   async function save() {
     const { api } = window.PAGE;
     state.status = 'saving';
@@ -54,6 +69,16 @@
     }
     state.error = (res && res.body && res.body.error) || window.I18N.t('common.networkError');
     render();
+  }
+
+  function resurseText() {
+    const { t } = window.I18N;
+    const r = state.resurse;
+    if (!r) return '';
+    if (r.status === 'loading') return t('themes.resurseLoading');
+    if (r.status === 'error') return r.error;
+    if (!r.found) return t('themes.resurseNotFound');
+    return r.themes.length ? t('themes.resurseFound', { title: r.found.title, themes: r.themes.join(', ') }) : t('themes.resurseNone', { title: r.found.title });
   }
 
   function render() {
@@ -83,6 +108,10 @@
       el('div', { class: 'themes-other' },
         el('label', { for: 'themes-other', class: 'themes-group-title', text: t('themes.other') }),
         el('div', { class: 'input-row' }, other, el('button', { type: 'button', class: 'secondary', id: 'themes-other-add', 'data-icon': 'plus', text: t('themes.add'), onclick: addOther }))),
+      // the site's "Tematica" for this song (by the import link, else by title)
+      el('div', { class: 'themes-resurse' },
+        el('button', { type: 'button', class: 'secondary', id: 'themes-resurse', 'data-icon': 'search', disabled: state.resurse && state.resurse.status === 'loading', text: t('themes.resurseCheck'), onclick: checkResurse }),
+        el('p', { class: `muted themes-resurse-status${state.resurse && state.resurse.status === 'error' ? ' message error' : ''}`, id: 'themes-resurse-status', role: 'status', text: resurseText() })),
       el('p', { class: state.error ? 'message error' : 'message', role: 'alert', text: state.error || '' }),
       el('div', { class: 'form-actions' },
         el('button', { type: 'button', id: 'themes-save', 'data-icon': 'check', disabled: state.status === 'saving', text: t('themes.save'), onclick: save }),
@@ -93,7 +122,7 @@
   // The pop-up for a song ({ id, themes }); onSaved(song) after a save.
   async function open(song, { onSaved } = {}) {
     if (!dialog) build();
-    state = { song, onSaved, chosen: (song.themes || []).slice(), lists: await loadLists(), status: null, error: null };
+    state = { song, onSaved, chosen: (song.themes || []).slice(), lists: await loadLists(), status: null, error: null, resurse: null };
     render();
     if (!dialog.open) dialog.showModal();
   }

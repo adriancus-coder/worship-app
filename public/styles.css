@@ -2411,6 +2411,9 @@ button.song-key-change:hover { text-decoration: underline; }
 .themes-picks > .theme-pick[aria-pressed="true"]::before { content: "✓ "; }
 .themes-other .input-row { display: flex; gap: 8px; }
 .themes-other .input-row input { flex: 1 1 auto; min-width: 0; }
+.themes-resurse { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+.themes-resurse-status { margin: 6px 0 0; }
+.themes-resurse-status:empty { display: none; }
 .theme-chip { display: inline-flex; align-items: center; min-height: var(--touch); padding: 2px 12px; border: 1px solid var(--border); border-radius: 999px; color: var(--text); background: var(--surface); text-decoration: none; font-weight: 600; }
 .theme-chip:hover, .theme-chip:focus-visible { border-color: var(--accent-fill); }
 .theme-field select, .ideas-theme-field select { max-width: 14rem; }

@@ -2712,6 +2712,31 @@ test('resurse songPageThemes: the "Tematica" links of a song page; OpenSong <the
   assert.deepStrictEqual(R.parseOpenSongXml('<?xml version="1.0"?><song><title>T</title><lyrics>[V1]\n Rând unu\n Rând doi</lyrics></song>').themes, []);
 });
 
+testAsync('resurse lookupSongThemes: by the import link, else by the title; not found; the page\'s themes', async () => {
+  const R = require('../lib/resurse');
+  const calls = [];
+  const page = '<p>Tematica: <a href="/cantece/index-tematic/pasti">Paști</a>, <a href="/cantece/index-tematic/botez">Botez</a></p>';
+  const fetchImpl = async (url) => {
+    calls.push(String(url));
+    const u = new URL(url);
+    const ok = (body, type = 'text/html') => new Response(body, { status: 200, headers: { 'content-type': type } });
+    if (u.pathname === '/web-api-search') {
+      const q = u.searchParams.get('search_text');
+      if (u.searchParams.get('search_in') !== '2') return ok('{"Results":[]}', 'application/json');
+      return ok(JSON.stringify({ Results: /gloria/i.test(q) ? [{ id: '77', title: 'Gloria in excelsis', title_slug: 'gloria', slug: 'cantece' }, { id: '78', title: 'Gloria', title_slug: 'gloria-2', slug: 'cantece' }] : [] }), 'application/json');
+    }
+    if (/^\/cantece\/\d+\/cantare$/.test(u.pathname)) return ok(page);
+    return new Response('', { status: 404 });
+  };
+  const byLink = await R.lookupSongThemes({ title: 'Orice', sourceUrl: 'https://www.resursecrestine.ro/cantece/503/orice' }, { fetchImpl });
+  assert.deepStrictEqual(byLink, { found: { id: '503', title: 'Orice', url: 'https://www.resursecrestine.ro/cantece/503' }, themes: ['Paști', 'Botez'] });
+  assert.ok(calls.every((c) => !c.includes('web-api-search')), 'a link: no search');
+  const byTitle = await R.lookupSongThemes({ title: 'Gloria', sourceUrl: null }, { fetchImpl });
+  assert.deepStrictEqual([byTitle.found.id, byTitle.found.title, byTitle.themes], ['78', 'Gloria', ['Paști', 'Botez']], 'the exact title, not the first result');
+  assert.deepStrictEqual(await R.lookupSongThemes({ title: 'Nimic', sourceUrl: null }, { fetchImpl }), { found: null, themes: [] });
+  assert.deepStrictEqual(await R.lookupSongThemes({ title: 'Gloria', sourceUrl: 'https://www.resursecrestine.ro/acorduri/9001/x' }, { fetchImpl }).then((r) => r.found.id), '78', 'a sheet link: by title');
+});
+
 // --- bridge client (stage 8) --------------------------------------------------
 
 const bridgeClient = require('../lib/bridge/client');

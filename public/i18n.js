@@ -2017,6 +2017,11 @@
         otherPlaceholder: 'Scrie o temă…',
         add: 'Adaugă',
         save: 'Salvează temele',
+        resurseCheck: 'Verifică tematica pe resurse',
+        resurseLoading: 'Caut cântarea pe resursecrestine.ro…',
+        resurseNotFound: 'Nu am găsit cântarea pe resursecrestine.ro (după link sau după titlu).',
+        resurseNone: 'Pe resurse, „{title}” nu are tematică setată.',
+        resurseFound: 'De pe resurse („{title}”): {themes}. Le-am bifat; salvează dacă sunt bune.',
       },
       keyDetect: {
         button: 'Detectează gama',
@@ -4182,6 +4187,11 @@
         otherPlaceholder: 'Write a theme…',
         add: 'Add',
         save: 'Save the themes',
+        resurseCheck: 'Check the themes on resurse',
+        resurseLoading: 'Looking the song up on resursecrestine.ro…',
+        resurseNotFound: 'The song was not found on resursecrestine.ro (by link or by title).',
+        resurseNone: 'On resurse, “{title}” has no themes set.',
+        resurseFound: 'From resurse (“{title}”): {themes}. Ticked; save if they fit.',
       },
       keyDetect: {
         button: 'Detect the key',

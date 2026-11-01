@@ -70,6 +70,19 @@ function createResurseRouter({ db, auth, logger }) {
   }
 
   // Each result says whether a song with the same (normalized) title is already in the library.
+  // "Verifică pe resurse" in the song's themes pop-up: the site's "Tematica" for a library
+  // song (by its import link, else by title). -> { found, themes }
+  router.get('/api/resurse/themes/:songId', asyncRoute(async (req, res) => {
+    const id = /^\d{1,15}$/.test(req.params.songId) ? Number(req.params.songId) : null;
+    const song = id ? songs.get(req.adminId, id) : null;
+    if (!song) return res.status(404).json({ error: req.t('errors.songNotFound') });
+    try {
+      res.json(await resurse.lookupSongThemes({ title: song.title, sourceUrl: song.source_url }));
+    } catch (err) {
+      fail(req, res, err);
+    }
+  }));
+
   router.post('/api/resurse/search', asyncRoute(async (req, res) => {
     try {
       const results = await resurse.searchResurseCrestineSongs((req.body || {}).query);

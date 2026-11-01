@@ -66,6 +66,10 @@ module.exports = {
     await p.click('#themes-other-add');
     const chosen = await p.$eval('#themes-chosen', (x) => x.textContent);
     check(chosen === 'Alese: Paști, Botez, Tineret', 'tap to select / unselect, another theme typed', chosen);
+    // "Verifică tematica pe resurse": this title is not on the site
+    await p.click('#themes-resurse');
+    await p.waitForFunction(() => /Nu am găsit/.test(document.getElementById('themes-resurse-status').textContent));
+    check(true, '"Verifică pe resurse": a title the site does not have says so');
     await p.click('#themes-save');
     await p.waitForSelector('#themes-dialog:not([open])', { state: 'attached' });
     await p.waitForFunction(() => document.querySelectorAll('#song-themes .theme-chip').length === 3);
@@ -116,6 +120,23 @@ module.exports = {
     const after = (await app.api(owner, 'GET', '/api/songs/themes')).body.themes;
     check(after.find((x) => x.name === 'Paști').count === 5, 'the counts follow', after);
 
+    // a library song with a title the site has ("Fără acorduri", the mock's 503): found by title
+    await app.api(owner, 'DELETE', `/api/songs/${imported.id}`); // the same title, written by hand (no import link): found by title
+    const byTitle = (await song({ title: 'Fără acorduri', sections: [{ type: 'verse', content: 'x' }] })).id;
+    await p.goto(`${app.url}/songs/${byTitle}`);
+    await p.waitForSelector('#song-themes .song-themes-set');
+    await p.click('#song-themes .song-themes-set');
+    await p.waitForSelector('#themes-dialog[open] #themes-resurse');
+    await p.click('#themes-resurse');
+    await p.waitForFunction(() => /De pe resurse/.test(document.getElementById('themes-resurse-status').textContent));
+    const fromSite = await p.evaluate(() => ({ status: document.getElementById('themes-resurse-status').textContent, pressed: [...document.querySelectorAll('#themes-dialog .theme-pick[aria-pressed="true"]')].map((b) => b.dataset.theme).sort(), chosen: document.getElementById('themes-chosen').textContent }));
+    check(/Închinare, Paști/.test(fromSite.status) && fromSite.pressed.join() === 'Paști,Închinare' && /Închinare, Paști/.test(fromSite.chosen), 'found by title: the site\'s themes ticked, named in the status', fromSite);
+    await p.click('#themes-save');
+    await p.waitForSelector('#themes-dialog:not([open])', { state: 'attached' });
+    check((await app.api(owner, 'GET', `/api/songs/${byTitle}`)).body.song.themes.join() === 'Închinare,Paști', 'saved from the site', 'ok');
+    const api403 = await app.api(app.cookies.member, 'GET', `/api/resurse/themes/${byTitle}`);
+    check(api403.status === 403, 'GET resurse themes: members 403', api403.status);
+
     // --- the ideas panel by theme; "10 la întâmplare" uses it ------------------------------
     await p.goto(`${app.url}/events/${E}/edit`);
     await p.waitForSelector('#ideas:not([hidden])');
@@ -137,7 +158,7 @@ module.exports = {
     // --- the phone -------------------------------------------------------------------------------
     const m = await signIn('owner', { width: 375, lang: 'ro' });
     await m.goto(`${app.url}/library?theme=Pa%C8%99ti`);
-    await m.waitForFunction(() => document.querySelectorAll('#songs li').length === 5);
+    await m.waitForFunction(() => document.querySelectorAll('#songs li').length === 5); // the four and the one checked by title
     const c = await layoutAudit(m, '#library-search');
     check(!c.overflow && !c.small.length && (await m.$eval('#filter-theme', (x) => x.value)) === 'Paști', 'the phone: the theme filter from the URL, no overflow', c);
   },
