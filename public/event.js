@@ -106,6 +106,7 @@
         if (key) parts.push(key);
         parts.push(item.song.sectionCount === 1 ? t('setlist.sectionCountOne') : t('setlist.sectionCount', { n: item.song.sectionCount }));
       }
+      if (item.who) parts.push(item.who); // "Cine" on a song: the Sunday school's mark
     } else if (item.type === 'verse' && item.body) {
       parts.push(item.body.split('\n')[0].slice(0, 60));
     } else if (item.type === 'video' && item.media) {
@@ -160,6 +161,7 @@
     $('back-link').textContent = back.text;
     window.PAGE.linkBack($('back-link'));
     renderActions();
+    renderSchoolAdd();
     $('details-button').hidden = !state.editing;
     // "Retrage din live": a live event back to planned without ending it (event roles)
     $('withdraw-button').hidden = !(ev.status === 'live' && can(state.me, 'live'));
@@ -316,7 +318,9 @@
           toolButton('up', i, '↑', t('setlist.moveUp', { title }), i === 0),
           toolButton('down', i, '↓', t('setlist.moveDown', { title }), i === count - 1),
           toolButton('remove', i, '✕', t('setlist.remove', { title }), false))
-        : null;
+        : (schoolMode() && item.who === SCHOOL_WHO && item.id
+          ? el('span', { class: 'item-tools' }, toolButton('school-remove', i, '✕', t('setlist.schoolRemove', { title }), false))
+          : null);
       return el('li', { class: `setlist-item${selected ? ' selected' : ''}` }, el('div', { class: 'item-row' }, main, tools));
     }));
     placeDetail();
@@ -532,6 +536,7 @@
   }
 
   function onTool(action, index) {
+    if (action === 'school-remove') { removeSchoolSong(state.items[index]); return; }
     if (action === 'up') move(index, index - 1, 'up');
     else if (action === 'down') move(index, index + 1, 'down');
     else if (action === 'remove') {
@@ -1310,6 +1315,36 @@
   // The dialog stays open after "Adaugă" (several songs in a row): the added song's row says
   // "✓ Adăugată", the header counts ("3 adăugate"), the field is cleared and focused, the
   // Program list behind updates live. Închide / ✕ / Escape close it.
+  // --- the Sunday school adds its songs (the 'school' right, viewing; routes/events.js) ---
+  // The same picker, on the school library only; each song goes to the server at once,
+  // marked "Școala duminicală"; the school may take such a song out again.
+  const SCHOOL_WHO = 'Școala duminicală';
+  const schoolMode = () => Boolean(state.me && !state.editing && !canEdit(state.me) && can(state.me, 'school') && state.event && state.event.status !== 'finished');
+  function renderSchoolAdd() {
+    $('school-add').hidden = !schoolMode();
+  }
+  async function addSchoolSong(song) {
+    const res = await api(`/api/events/${eventId}/items/school`, { method: 'POST', body: { songId: song.id } });
+    if (!res.ok) return { error: res.body.error || t('common.networkError') };
+    picked.ids.add(song.id);
+    picked.count += 1;
+    renderPickedCount();
+    applyEvent(res.body, true);
+    return { done: t('setlist.pickAdded') };
+  }
+  async function removeSchoolSong(item) {
+    const res = await api(`/api/events/${eventId}/items/${item.id}/school`, { method: 'DELETE' });
+    if (!res.ok) { showAction(res.body.error || t('common.networkError')); return; }
+    applyEvent(res.body, false);
+    showAction(t('setlist.schoolRemoved', { title: item.title }));
+  }
+  $('school-add-button').addEventListener('click', () => {
+    songSearch.setCollection('school');
+    picked.ids = new Set(state.items.filter((it) => it.songId).map((it) => it.songId));
+    songDialog.showModal();
+    songSearch.focus();
+  });
+
   const songDialog = $('song-dialog');
   const picked = { ids: new Set(), count: 0, last: -1 };
 
@@ -1320,6 +1355,7 @@
   }
 
   function addSong(song) {
+    if (schoolMode()) return addSchoolSong(song);
     state.items.push({
       key: nextKey++, type: 'song', songId: song.id, title: song.title, body: '', reference: '', url: '',
       durationMin: null, song: { id: song.id, title: song.title, key: song.song_key, sectionCount: song.section_count }, songDeleted: false,
@@ -1357,7 +1393,7 @@
       },
     }],
   });
-  songSearch.setOnline(true); // the editor is for the event roles, who may import
+  songSearch.setOnline(true); // the editor is for the event roles, who may import (the school's picker turns it off)
 
   for (const close of [$('song-dialog-close'), $('song-dialog-x')]) close.addEventListener('click', () => songDialog.close());
   // Closed: the last added song is the selected one.
@@ -1505,6 +1541,7 @@
     }
     state.editing = editSegment === 'edit' && canEdit(state.me);
     $('add-bar').hidden = !state.editing;
+    if (!canEdit(state.me)) songSearch.setOnline(false); // the school's picker: the library only
     ideas.hidden = !state.editing;
     if (state.editing) loadIdeaThemes().catch(() => {});
     applyEvent(eventRes.body, false);

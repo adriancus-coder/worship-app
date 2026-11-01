@@ -4,7 +4,7 @@ const express = require('express');
 const { requirePerm, seesAllEvents } = require('../lib/roles');
 const { todayIn, nowTimeIn, nextServiceDate } = require('../lib/dates');
 const { createAdminSettings } = require('../lib/admin-settings');
-const { validateEventMeta, validateItems, createEventStore } = require('../lib/events');
+const { validateEventMeta, validateItems, createEventStore, SCHOOL_WHO } = require('../lib/events');
 const { validateSections } = require('../lib/songs');
 const { createAssignmentStore } = require('../lib/assignments');
 const { createSuggestStore } = require('../lib/suggest');
@@ -321,6 +321,34 @@ function createEventsRouter({ db, auth, logger, live }) {
     live.eventChanged(req.adminId, found.event.id);
     logger.info(`Event #${found.event.id} deleted by user #${req.user.id} (admin #${req.adminId})`);
     res.json({ ok: true });
+  });
+
+  // The Sunday school's songs in a programme (the 'school' right; the event right has the
+  // editor). POST { songId } appends a school-library song marked "Școala duminicală";
+  // DELETE takes such a song out. Not on a finished event (409). A live event's positions
+  // follow (live.setlistChanged).
+  router.post('/api/events/:id/items/school', requirePerm('school', 'events'), (req, res) => {
+    const found = load(req, res);
+    if (!found) return;
+    if (found.event.status === 'finished') return res.status(409).json({ code: 'eventFinished', error: req.t('errors.schoolEventClosed') });
+    const songId = Number((req.body || {}).songId);
+    const song = Number.isInteger(songId) && songId > 0 ? events.findSong(req.adminId, songId) : null;
+    if (!song || song.collection !== 'school') return res.status(400).json({ error: req.t('errors.schoolSongOnly') });
+    const before = live.setlistBefore(req.adminId, found.event.id);
+    const itemId = events.appendSchoolSong(req.adminId, found.event.id, song);
+    live.setlistChanged(req.adminId, found.event.id, before);
+    logger.info(`School song #${song.id} added to event #${found.event.id} by user #${req.user.id} (admin #${req.adminId})`);
+    res.status(201).json({ itemId, who: SCHOOL_WHO, ...events.get(req.adminId, found.event.id, { t: req.t }), today: today(req) });
+  });
+  router.delete('/api/events/:id/items/:itemId/school', requirePerm('school', 'events'), (req, res) => {
+    const found = load(req, res);
+    if (!found) return;
+    if (found.event.status === 'finished') return res.status(409).json({ code: 'eventFinished', error: req.t('errors.schoolEventClosed') });
+    const itemId = /^\d{1,15}$/.test(req.params.itemId) ? Number(req.params.itemId) : null;
+    const before = live.setlistBefore(req.adminId, found.event.id);
+    if (!itemId || !events.removeSchoolSong(req.adminId, found.event.id, itemId)) return res.status(404).json({ error: req.t('errors.itemNotFound') });
+    live.setlistChanged(req.adminId, found.event.id, before);
+    respond(req, res, found.event.id);
   });
 
   router.put('/api/events/:id/items', canEdit, (req, res) => {

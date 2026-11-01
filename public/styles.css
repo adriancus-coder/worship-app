@@ -539,6 +539,11 @@ dialog .message:empty { display: none; }
   }
 }
 
+/* the Sunday school's "+ Cântare de la școala duminicală" under the programme (viewing) */
+.school-add { margin: 12px 0 0; }
+.school-add[hidden] { display: none; }
+.school-add .hint { margin: 8px 0 0; }
+
 /* --- library file import -------------------------------------------------- */
 
 .import-review h2:focus { outline: none; }

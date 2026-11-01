@@ -175,6 +175,7 @@
             onProjector ? el('span', { class: 'marker projector', text: t('operator.onProjector') }) : null,
             item.id === worship.itemId ? el('span', { class: 'marker worship', text: t('operator.worship') }) : null)),
         el('span', { class: 'item-title', text: itemTitle(item) }),
+        item.who && item.title ? el('span', { class: 'item-sub', text: item.who }) : null, // "Cine" (the Sunday school's songs say so)
         tag ? el('span', { class: `op-tag tag-${tag}`, text: t(`operator.tags.${tag}`) }) : null));
       // Short tap: go there (projector, or the main position together); long press (or
       // "Aranjează"): the arrange sheet.

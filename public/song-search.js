@@ -102,8 +102,8 @@
     const noKey = () => Boolean(noKeyToggle && noKeyToggle.getAttribute('aria-pressed') === 'true');
     // which library (library mode): the church's or the Sunday school's; the picker searches both
     const collectionSwitch = mode === 'library' ? $('collection-switch') : null;
-    let collectionValue = 'main';
-    const collection = () => (mode === 'library' ? collectionValue : 'all');
+    let collectionValue = mode === 'library' ? 'main' : 'all'; // the picker searches both unless setCollection narrows it
+    const collection = () => collectionValue;
     const collectionListeners = [];
     function renderCollection() {
       if (!collectionSwitch) return;
@@ -725,8 +725,9 @@
       // library mode: which library is shown (from the URL / the rights); onCollection(cb)
       // hears every change (cb(collection), at once too)
       setCollection(value) {
-        collectionValue = value === 'school' ? 'school' : 'main';
+        collectionValue = value === 'school' ? 'school' : (value === 'all' && mode === 'pick' ? 'all' : 'main');
         renderCollection();
+        if (mode === 'pick') load();
       },
       onCollection(cb) {
         collectionListeners.push(cb);
