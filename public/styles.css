@@ -9,6 +9,9 @@
   --text-muted: #a9a3b3;
   --accent-fill: #e8a33d;     /* filled buttons, selected options, highlights */
   --on-accent: #141318;       /* text on accent-fill */
+  --paper: #ffffff;           /* printing: the sheet */
+  --ink: #000000;             /* printing: the text */
+  --ink-rule: #999999;        /* printing: light lines */
   --accent-text: #e8a33d;     /* accent-coloured text and links on the background */
   --accent-soft: #3a2d18;     /* the current item's background */
   --focus: #e8a33d;
@@ -2151,6 +2154,7 @@ button, .button { gap: 0.5em; }
 [data-icon="plus"] { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 5v14M5 12h14'/%3E%3C/svg%3E"); }
 [data-icon="list"] { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01'/%3E%3C/svg%3E"); }
 [data-icon="check"] { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7'/%3E%3C/svg%3E"); }
+[data-icon="print"] { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v7H6z'/%3E%3C/svg%3E"); }
 [data-icon="share"] { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 16V4M7 9l5-5 5 5M5 20h14'/%3E%3C/svg%3E"); }
 [data-icon="stop"] { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='black' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6.5 6.5h11v11h-11z'/%3E%3C/svg%3E"); }
 [data-icon="pause"] { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 5v14M16 5v14'/%3E%3C/svg%3E"); }
@@ -2984,4 +2988,26 @@ dialog.whats-new[open] { display: flex; }
   body.list-page .save-bar .delete-link:has(+ .save-state.error) { flex: 0 1 auto; min-width: var(--touch); overflow: hidden; }
   body.list-page .save-state.error { flex: 1 1 6rem; }
   body.list-page .item-detail { padding: 10px; }
+}
+
+/* --- printing a song (the song page's "Tipărește"): a clean sheet for the people who sing
+   from paper. Only the title, author, key, themes and the lyrics as shown (with or without
+   chords); no shell, no buttons, no history. --- */
+@media print {
+  body[data-shell="library"] { padding: 0; background: var(--paper); color: var(--ink); }
+  body[data-shell="library"] .app-shell, body[data-shell="library"] .back, body[data-shell="library"] .song-actions,
+  body[data-shell="library"] .song-history, body[data-shell="library"] .song-key-change, body[data-shell="library"] .song-key-dot,
+  body[data-shell="library"] .song-themes-set, body[data-shell="library"] #status, body[data-shell="library"] .dismiss,
+  body[data-shell="library"] dialog { display: none !important; }
+  body[data-shell="library"] main { max-width: none; padding: 0; }
+  body[data-shell="library"] #song-title { margin: 0 0 6pt; font-size: 20pt; }
+  body[data-shell="library"] .song-key-box, body[data-shell="library"] .song-themes, body[data-shell="library"] #song-meta { margin: 0 0 4pt; font-size: 11pt; color: var(--ink); }
+  body[data-shell="library"] .song-key-value { font-size: 12pt; }
+  body[data-shell="library"] .theme-chip { min-height: 0; padding: 0 6pt; border-color: var(--ink-rule); color: var(--ink); background: none; }
+  body[data-shell="library"] #sections { margin-top: 10pt; }
+  body[data-shell="library"] #sections h2, body[data-shell="library"] #sections h3, body[data-shell="library"] .section-label { margin: 10pt 0 2pt; font-size: 10pt; letter-spacing: 0.05em; color: var(--ink); }
+  body[data-shell="library"] #sections p, body[data-shell="library"] #sections .lyrics, body[data-shell="library"] #sections pre, body[data-shell="library"] .chord-line, body[data-shell="library"] .lyric-line { font-size: 12.5pt; line-height: 1.35; color: var(--ink); break-inside: avoid; }
+  body[data-shell="library"] .projector-chord, body[data-shell="library"] .chord-tap, body[data-shell="library"] .chord-line { color: var(--ink); font-weight: 700; }
+  body[data-shell="library"] .chord-tap { cursor: default; text-decoration: none; }
+  body[data-shell="library"] .song-section { break-inside: avoid; }
 }

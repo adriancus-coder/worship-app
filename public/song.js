@@ -82,6 +82,9 @@
     document.getElementById('sections').replaceChildren(...window.SONG_RENDER.sectionsView(song.sections, { textOnly, tappable: true }));
   }
 
+  // "Tipărește": the browser's print dialog over the print styles (public/styles.css @media print)
+  document.getElementById('print-song').addEventListener('click', () => window.print());
+
   textOnlyButton.addEventListener('click', () => {
     textOnly = !textOnly;
     try {
