@@ -5,7 +5,8 @@ const { isLang, setLangCookie } = require('../lib/i18n');
 const { NOTATIONS, createAdminSettings } = require('../lib/admin-settings');
 const { isTheme, setThemeCookie } = require('../lib/theme');
 const asyncRoute = require('../lib/async-route');
-const { hashPassword, verifyPassword, VIEW_AS_ROLES } = require('../lib/auth');
+const { hashPassword, verifyPassword, VIEW_AS_ROLES, VIEW_AS_CUSTOM_RE } = require('../lib/auth');
+const { createRoleStore } = require('../lib/roles');
 const { MIN_PASSWORD_LENGTH, validateName, createTeamStore } = require('../lib/team');
 const { createPositionStore } = require('../lib/positions');
 const { createFailureLimiter } = require('../lib/rate-limit');
@@ -20,6 +21,7 @@ function createMeRouter({ db, auth, config, logger, live }) {
 
   const updateLocale = db.prepare('UPDATE users SET locale = ? WHERE id = ? AND admin_id = ?');
   const team = createTeamStore(db);
+  const roleStore = createRoleStore(db);
   const positions = createPositionStore(db);
   const updateProfile = db.prepare('UPDATE users SET name = ?, phone = ? WHERE id = ? AND admin_id = ?');
   const PHONE_RE = /^[+0-9][0-9 .\-()]{4,29}$/;
@@ -45,12 +47,15 @@ function createMeRouter({ db, auth, config, logger, live }) {
     res.json({ profile: { name: me.name, email: me.email, phone: me.phone, positionIds: positions.ofUserIds(req.adminId, req.user.id) } });
   });
 
-  // "Vezi aplicația ca" (an owner only): { role: 'leader' | 'operator' | 'member' | null }.
+  // "Vezi aplicația ca" (an owner only): { role: 'leader' | 'operator' | 'member' |
+  // 'custom:<id>' (one of the admin's custom roles) | null }.
   // The page reloads after; sockets pick the new role up on their next join / command.
   router.put('/api/me/view-as', auth.requireUser, (req, res) => {
     if (req.user.realRole !== 'owner') return res.status(403).json({ error: req.t('errors.forbidden') });
     const role = (req.body || {}).role;
-    if (role !== null && !VIEW_AS_ROLES.includes(role)) return res.status(400).json({ error: req.t('errors.badRequest') });
+    const customMatch = typeof role === 'string' ? role.match(VIEW_AS_CUSTOM_RE) : null;
+    const customOk = customMatch && roleStore.get(req.adminId, Number(customMatch[1]));
+    if (role !== null && !VIEW_AS_ROLES.includes(role) && !customOk) return res.status(400).json({ error: req.t('errors.badRequest') });
     auth.setViewAs(req.sessionId, role);
     logger.info(`User #${req.user.id} (owner, admin #${req.adminId}) ${role ? `views the app as ${role}` : 'is back to owner'}`);
     res.json({ ok: true, viewAs: role });

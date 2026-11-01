@@ -96,6 +96,8 @@ function createAuthRouter({ db, auth, config, logger, live }) {
       platformOwner: Boolean(req.platformOwner), // "Mai mult → Platformă"
       platformAccount: Boolean(req.platformAccount), // the account is the platform's owner (even viewing as)
       roleNames: roleStore.names(req.adminId), // built-in roles the owner renamed: { role: { name, emoji } }
+      // the admin's custom roles, for "Vezi aplicația ca" (a real owner, also while viewing as)
+      customRoles: (req.user.realRole || req.user.role) === 'owner' ? roleStore.list(req.adminId).map((r) => ({ id: r.id, name: r.name, emoji: r.emoji })) : undefined,
     });
   });
 

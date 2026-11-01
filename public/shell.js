@@ -102,7 +102,8 @@
     viewAsBar.hidden = !active;
     body.classList.toggle('has-view-as', active);
     if (!active) return;
-    viewAsText.textContent = t('shell.viewAsBar', { role: t(`roles.${me.user.viewAs}`) });
+    const custom = me.user.viewAs.startsWith('custom:') && me.user.customRole;
+    viewAsText.textContent = t('shell.viewAsBar', { role: custom ? custom.name : t(`roles.${me.user.viewAs}`) });
     viewAsBack.textContent = t('shell.viewAsBack');
   }
   mePromise.then((me) => renderViewAs(me));
@@ -245,17 +246,26 @@
     }
   }
 
-  // "Vezi aplicația ca": Proprietar · Lider · Operator · Membru (an owner only). Choosing one
-  // reloads to Acasă as that role; the bar above the page brings the owner back.
+  // "Vezi aplicația ca": Proprietar · Lider · Operator · Membru and the church's own roles
+  // (an owner only). Choosing one reloads to Acasă as that role; the bar above the page
+  // brings the owner back.
   const viewAsLabel = el('span', { class: 'shell-setting-label', id: 'shell-view-as-label' });
-  const viewAsButtons = ['owner', ...VIEW_AS_ROLES].map((value) => el('button', {
+  const viewAsButton = (value) => el('button', {
     type: 'button', 'data-view-as': value, 'aria-pressed': 'false',
     onclick: () => {
       const current = me && (me.user.viewAs || 'owner');
       if (value !== current) setViewAs(value === 'owner' ? null : value);
     },
-  }));
+  });
+  let viewAsButtons = ['owner', ...VIEW_AS_ROLES].map(viewAsButton);
   const viewAsSwitch = el('div', { class: 'choice-group view-as-switch', role: 'group', 'aria-labelledby': 'shell-view-as-label' }, ...viewAsButtons);
+  // the custom roles join the switch once /api/auth/me names them
+  function viewAsCustom(roles) {
+    const wanted = ['owner', ...VIEW_AS_ROLES, ...roles.map((r) => `custom:${r.id}`)];
+    if (viewAsButtons.map((b) => b.dataset.viewAs).join() === wanted.join()) return;
+    viewAsButtons = wanted.map(viewAsButton);
+    viewAsSwitch.replaceChildren(...viewAsButtons);
+  }
   const viewAsRow = el('div', { class: 'shell-setting shell-setting-stack', hidden: true }, viewAsLabel, viewAsSwitch);
 
   const logoutLabel = el('span', { class: 'shell-row-label' });
@@ -409,7 +419,11 @@
     for (const p of pageLinks) p.label.textContent = t(p.key);
     if (notationGroup.renderSwitch) notationGroup.renderSwitch();
     viewAsLabel.textContent = t('shell.viewAs');
-    for (const b of viewAsButtons) b.textContent = window.PAGE && window.PAGE.roleName ? window.PAGE.roleName(b.dataset.viewAs) : t(`team.roles.${b.dataset.viewAs}`);
+    if (me && me.customRoles) viewAsCustom(me.customRoles);
+    for (const b of viewAsButtons) {
+      const custom = b.dataset.viewAs.startsWith('custom:') ? (me.customRoles || []).find((r) => `custom:${r.id}` === b.dataset.viewAs) : null;
+      b.textContent = custom ? `${custom.emoji ? `${custom.emoji} ` : ''}${custom.name}` : window.PAGE && window.PAGE.roleName ? window.PAGE.roleName(b.dataset.viewAs) : t(`team.roles.${b.dataset.viewAs}`);
+    }
     if (me) {
       whoName.textContent = me.user.name;
       // who the account really is (also while "Vezi aplicația ca" shows another role): the

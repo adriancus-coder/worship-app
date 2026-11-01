@@ -2058,6 +2058,18 @@ async function main() {
     assert.deepStrictEqual([me.user.role, me.user.viewAs, me.platformOwner], ['owner', null, true]);
     assert.strictEqual((await api('GET', '/api/team', owner)).status, 200);
     assert.strictEqual((await api('GET', '/api/platform/admins', owner)).status, 200);
+    // a custom role: its base and its rights; another admin's or a missing one is refused
+    const schoolRole = (await api('POST', '/api/roles', owner, { name: 'Școala duminicală', emoji: '🎒', base: 'member', perms: ['school'] })).body.role;
+    assert.strictEqual((await viewAs(owner, `custom:${schoolRole.id}`)).status, 200, 'a custom role of the admin');
+    me = (await api('GET', '/api/auth/me', owner)).body;
+    assert.deepStrictEqual([me.user.role, me.user.realRole, me.user.viewAs, me.user.perms, me.user.customRole && me.user.customRole.name, (me.customRoles || []).some((r) => r.id === schoolRole.id)],
+      ['member', 'owner', `custom:${schoolRole.id}`, ['school'], 'Școala duminicală', true], 'as the school role: member experience, the school right, the role named, the switch still lists the roles');
+    assert.strictEqual((await api('POST', '/api/songs', owner, { title: 'Ca școala', sections: [{ type: 'verse', content: 'x' }] })).body.song.collection, 'school', 'as the school role: a new song lands in the school library');
+    assert.strictEqual((await api('GET', '/api/team', owner)).status, 403, 'as the school role: no team');
+    assert.strictEqual((await viewAs(owner, 'custom:999999')).status, 400, 'a missing custom role');
+    assert.strictEqual((await viewAs(owner, 'custom:x')).status, 400);
+    assert.strictEqual((await viewAs(owner, null)).status, 200);
+    await api('DELETE', `/api/roles/${schoolRole.id}`, owner);
     // a password change clears it
     await viewAs(owner, 'member');
     assert.strictEqual((await api('POST', '/api/me/password', owner, { current: PASSWORD, password: `${PASSWORD}-x` })).status, 200);
