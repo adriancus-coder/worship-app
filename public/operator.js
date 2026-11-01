@@ -19,7 +19,7 @@
   const eventId = Number(window.location.pathname.split('/')[2]);
   const RESULTS_MAX = 8;
 
-  const state = { snap: null, event: null, client: null, queue: Promise.resolve(), screens: 0, logoUrl: null };
+  const state = { snap: null, event: null, client: null, queue: Promise.resolve(), screens: 0, logoUrl: null, audioId: null };
 
   // --- helpers ----------------------------------------------------------------------
 
@@ -176,7 +176,8 @@
             item.id === worship.itemId ? el('span', { class: 'marker worship', text: t('operator.worship') }) : null)),
         el('span', { class: 'item-title', text: itemTitle(item) }),
         item.who && item.title ? el('span', { class: 'item-sub', text: item.who }) : null, // "Cine" (the Sunday school's songs say so)
-        tag ? el('span', { class: `op-tag tag-${tag}`, text: t(`operator.tags.${tag}`) }) : null));
+        tag ? el('span', { class: `op-tag tag-${tag}`, text: t(`operator.tags.${tag}`) }) : null,
+        item.type === 'song' && item.song && item.song.audioMediaId ? el('span', { class: 'op-tag tag-audio', text: t('operator.tags.audio') }) : null));
       // Short tap: go there (projector, or the main position together); long press (or
       // "Aranjează"): the arrange sheet.
       window.PRESS.bind(main, { tap: goThere, hold: canArrange ? () => arrange(item, goThere) : null });
@@ -237,6 +238,16 @@
     $('op-edit-lyrics').hidden = !(item && item.type === 'song' && item.songId && enabled);
     if (item) $('op-edit-lyrics').setAttribute('aria-label', t('lyricsEdit.buttonLabel', { title: titleText }));
     $('op-lyrics-edited').hidden = !(item && item.lyricsEdited);
+    // the backing track of the song on the projector: the player keeps playing across
+    // snapshots (its src changes only with the song)
+    const audioId = item && item.type === 'song' && item.song && item.song.audioMediaId ? item.song.audioMediaId : null;
+    if (audioId !== state.audioId) {
+      state.audioId = audioId;
+      const player = $('op-audio-player');
+      player.pause();
+      if (audioId) player.src = `/api/media/${audioId}/file`; else player.removeAttribute('src');
+    }
+    $('op-audio').hidden = !audioId;
     $('op-item-note').hidden = !(item && item.teamNote);
     $('op-item-note').replaceChildren(...(item && item.teamNote ? [el('span', { class: 'ro-label', text: t('rehearse.teamNote') }), el('p', { text: item.teamNote })] : []));
     $('op-item-title').replaceChildren(item && arrangeable(item) && enabled

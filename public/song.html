@@ -20,6 +20,9 @@
       <div id="song-themes"></div>
       <!-- "Cântată ultima dată: …" + the events it was sung at (GET /api/songs/:id/history) -->
       <details id="song-history" class="song-history" hidden></details>
+      <!-- "Negativ": the backing track, played here by everyone; added / removed by the song's
+           editors (public/song-audio.js) -->
+      <div id="song-audio-box"></div>
       <div class="song-actions">
         <button type="button" id="text-only" class="secondary" aria-pressed="false" data-i18n="song.textOnly"></button>
         <span data-notation-switch></span>
@@ -40,6 +43,7 @@
   <script src="/chord-diagrams.js"></script>
   <script src="/song-render.js"></script>
   <script src="/song-pdf.js"></script>
+  <script src="/song-audio.js"></script>
   <script src="/arrange-sheet.js"></script>
   <script src="/key-detect.js"></script>
   <script src="/key-detect-ui.js"></script>

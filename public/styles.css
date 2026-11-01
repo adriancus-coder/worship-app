@@ -539,6 +539,15 @@ dialog .message:empty { display: none; }
   }
 }
 
+/* the backing track ("negativ"): the song page's box and the operator console's player */
+.song-audio { margin: 12px 0 16px; }
+.song-audio audio, .op-audio audio { display: block; width: 100%; max-width: 520px; margin: 6px 0; }
+.song-audio-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0; }
+.song-audio .hint { margin: 4px 0 0; }
+.song-audio .message:empty { display: none; }
+.op-audio { margin: 0 0 10px; }
+.op-audio[hidden] { display: none; }
+
 /* the Sunday school's "+ Cântare de la școala duminicală" under the programme (viewing) */
 .school-add { margin: 12px 0 0; }
 .school-add[hidden] { display: none; }

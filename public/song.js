@@ -77,6 +77,8 @@
     metaEl.hidden = !meta;
     // "Tematică: [chips] · Setează" (public/themes-ui.js): the editor roles pick from the index
     document.getElementById('song-themes').replaceChildren(window.THEMES_UI.box(song, canSetKey, () => render()));
+    // "Negativ": the backing track (public/song-audio.js); everyone plays it, editors set it
+    document.getElementById('song-audio-box').replaceChildren(window.SONG_AUDIO.box(song, canSetKey, () => render()));
 
     textOnlyButton.setAttribute('aria-pressed', String(textOnly));
     document.getElementById('sections').replaceChildren(...window.SONG_RENDER.sectionsView(song.sections, { textOnly, tappable: true }));

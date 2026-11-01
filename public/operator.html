@@ -69,6 +69,11 @@
           </header>
           <!-- "Notă pentru echipă" of the item on the projector (never on the screen itself) -->
           <div id="op-item-note" class="team-note op-item-note" role="note" hidden></div>
+          <!-- "Negativ": the song's backing track, played on this device (the sound desk) -->
+          <div id="op-audio" class="op-audio" hidden>
+            <span class="ro-label" id="op-audio-label" data-i18n="operator.audioLabel"></span>
+            <audio id="op-audio-player" controls preload="none" aria-labelledby="op-audio-label"></audio>
+          </div>
           <ol id="op-steps" class="op-steps" data-i18n-aria-label="operator.stepsLabel"></ol>
           <p class="big-open-row"><button type="button" class="secondary big-open" id="op-big-open" hidden data-icon="expand" aria-keyshortcuts="F" data-i18n="big.open"></button></p>
           <p class="op-legend">

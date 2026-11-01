@@ -1,11 +1,14 @@
 'use strict';
 
+const fs = require('fs');
 const express = require('express');
 const { requirePerm, can } = require('../lib/roles');
 const { LIMITS, KEYS, COLLECTIONS, SORT_MODES, DuplicateTitleError, validateSong, validateThemes, createSongStore } = require('../lib/songs');
 const { THEME_INDEX } = require('../lib/themes');
 const { parseChoice, createBackgroundStore } = require('../lib/backgrounds');
-const { createMediaSigner } = require('../lib/media');
+const { createMediaSigner, createMediaStore, sniffAudio } = require('../lib/media');
+const { createMediaQuota } = require('../lib/platform');
+const { receiveUpload } = require('../lib/upload');
 const { MAX_SONGS, LibraryFileError, parseLibraryFile, planImport } = require('../lib/library-import');
 const { createEventStore } = require('../lib/events');
 const { createAdminSettings } = require('../lib/admin-settings');
@@ -16,10 +19,13 @@ const IMPORT_BODY_LIMIT = '10mb';
 
 // All routes are scoped to req.adminId from the session. A song of another admin
 // simply does not exist here: 404, never 403.
-function createSongsRouter({ db, auth, config, logger, live }) {
+function createSongsRouter({ db, auth, config, logger, live, storage }) {
   const backgrounds = createBackgroundStore(db, createMediaSigner(config.DATA_DIR));
   const router = express.Router();
   const songs = createSongStore(db);
+  const media = createMediaStore(db, config.DATA_DIR); // the backing tracks (kind 'audio')
+  const quota = createMediaQuota(db, config.MEDIA_MAX_ADMIN_BYTES);
+  const mb = (bytes) => { const v = bytes / (1024 * 1024); return `${v < 10 ? Number(v.toFixed(1)) : Math.round(v)} MB`; };
   const events = createEventStore(db);
   const settings = createAdminSettings(db);
   // Writing: the 'library' right (both libraries) or the 'school' right (the Sunday school's
@@ -195,11 +201,80 @@ function createSongsRouter({ db, auth, config, logger, live }) {
     res.json({ songId: id, today: day, lastSung: lastSung ? lastSung.eventDate : null, dates });
   });
 
+  // The backing track ("negativ") as the pages see it: { id, title, mime, sizeBytes, src }
+  // or null. src is the session-guarded file route (the song page, the operator console).
+  function audioOf(adminId, song) {
+    const row = song.audioMediaId ? media.get(adminId, song.audioMediaId) : null;
+    return row ? { id: row.id, title: row.title, mime: row.mime, sizeBytes: row.sizeBytes, src: `/api/media/${row.id}/file` } : null;
+  }
+  const withAudio = (adminId, song) => ({ ...song, audio: audioOf(adminId, song) });
+
   router.get('/api/songs/:id', (req, res) => {
     const id = songId(req);
     const song = id && songs.get(req.adminId, id);
     if (!song) return notFound(req, res);
-    res.json({ song });
+    res.json({ song: withAudio(req.adminId, song) });
+  });
+
+  // The backing track: the body is the audio file (MP3 / M4A / WAV / OGG), streamed to disk
+  // like a media upload (the file limit MEDIA_MAX_AUDIO_BYTES, the church's quota, the
+  // disk), checked by its first bytes, stored as media kind 'audio' and linked to the song
+  // (a previous track goes). Those who may edit the song (the library right; the school
+  // right on the school's songs). DELETE unlinks and removes the file.
+  router.post('/api/songs/:id/audio', canEdit, (req, res) => {
+    const id = songId(req);
+    const song = id && songs.get(req.adminId, id);
+    if (!song) return notFound(req, res);
+    if (!mayWrite(req, song.collection)) return forbidden(req, res);
+    const maxFile = config.MEDIA_MAX_AUDIO_BYTES;
+    const maxAdmin = quota(req.adminId);
+    const room = maxAdmin - media.usedBytes(req.adminId);
+    const diskRoom = storage.room();
+    const limit = Math.min(maxFile, room, diskRoom);
+    const tooLarge = (bytes) => {
+      if (bytes > maxFile) return [413, req.t('errors.audioTooLarge', { max: mb(maxFile) })];
+      if (bytes > room) return [413, req.t('errors.mediaQuotaExceeded', { max: mb(maxAdmin) })];
+      return [507, req.t('errors.diskFull', { free: mb(Math.max(0, diskRoom)), pct: config.DISK_MIN_FREE_PCT })];
+    };
+    const temp = media.tempPath(req.adminId);
+    receiveUpload(req, res, { temp, limit, tooLarge, t: req.t, logger }).then((got) => {
+      if (!got) return;
+      const mime = sniffAudio(got.head);
+      if (!mime) {
+        fs.rm(temp, { force: true }, () => {});
+        return res.status(400).json({ error: req.t('errors.audioInvalid') });
+      }
+      const title = typeof req.query.title === 'string' && req.query.title.trim() ? req.query.title.trim().slice(0, 120) : `${song.title} – negativ`;
+      const before = live.songBefore(req.adminId, id);
+      const item = db.transaction(() => {
+        const added = media.addUpload(req.adminId, req.user.id, { title, temp, mime, size: got.size, kind: 'audio' });
+        songs.setAudio(req.adminId, id, added.id);
+        if (song.audioMediaId) media.remove(req.adminId, song.audioMediaId);
+        return added;
+      })();
+      live.songChanged(req.adminId, before);
+      storage.refresh();
+      logger.info(`Backing track #${item.id} (${mime}, ${got.size} bytes) set on song #${id} by user #${req.user.id} (admin #${req.adminId})`);
+      res.status(201).json({ audio: audioOf(req.adminId, { audioMediaId: item.id }) });
+    }).catch((err) => {
+      logger.error('backing track upload failed', err);
+      if (!res.headersSent) res.status(500).json({ error: req.t('errors.internal') });
+    });
+  });
+  router.delete('/api/songs/:id/audio', canEdit, (req, res) => {
+    const id = songId(req);
+    const song = id && songs.get(req.adminId, id);
+    if (!song) return notFound(req, res);
+    if (!mayWrite(req, song.collection)) return forbidden(req, res);
+    if (song.audioMediaId) {
+      const before = live.songBefore(req.adminId, id);
+      songs.setAudio(req.adminId, id, null);
+      media.remove(req.adminId, song.audioMediaId);
+      live.songChanged(req.adminId, before);
+      storage.refreshSoon();
+      logger.info(`Backing track removed from song #${id} by user #${req.user.id} (admin #${req.adminId})`);
+    }
+    res.json({ audio: null });
   });
 
   router.post('/api/songs', canEdit, (req, res) => {
