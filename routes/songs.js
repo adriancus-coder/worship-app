@@ -75,6 +75,11 @@ function createSongsRouter({ db, auth, config, logger, live }) {
     // a school-only writer: everything lands in the school's library, nothing is updated
     const schoolOnly = !can(req.user, 'library');
     if (schoolOnly && mode === 'update') return res.status(400).json({ error: req.t('errors.importMode') });
+    // ?collection=main|school: the library the new songs go into (the import form's choice);
+    // without it the file's own collection of each song counts. Songs that already exist
+    // keep their library either way: an update replaces their content, not their shelf.
+    if (req.query.collection !== undefined && !COLLECTIONS.includes(req.query.collection)) return res.status(400).json({ error: req.t('errors.songCollectionInvalid') });
+    const target = schoolOnly ? 'school' : (req.query.collection || null);
 
     let file;
     try {
@@ -102,14 +107,16 @@ function createSongsRouter({ db, auth, config, logger, live }) {
     const before = mode === 'update' ? live.songBefore(req.adminId) : [];
     const result = db.transaction(() => {
       const p = plan();
-      for (const { value, meta } of p.add) songs.create(req.adminId, req.user.id, schoolOnly ? { ...value, collection: 'school' } : value, meta);
+      for (const { value, meta } of p.add) songs.create(req.adminId, req.user.id, target ? { ...value, collection: target } : value, meta);
       if (mode === 'update') {
         for (const { id, value, meta, keepAuthor } of p.existing) {
-          const song = keepAuthor ? { ...value, author: songs.get(req.adminId, id).author } : value;
+          const current = songs.get(req.adminId, id);
+          const song = { ...value, collection: current.collection, ...(keepAuthor ? { author: current.author } : {}) };
           songs.update(req.adminId, id, song, meta);
         }
       }
       return {
+        collection: target || 'file',
         added: p.add.length,
         updated: mode === 'update' ? p.existing.length : 0,
         skipped: mode === 'update' ? 0 : p.existing.length,
@@ -117,7 +124,7 @@ function createSongsRouter({ db, auth, config, logger, live }) {
       };
     })();
     live.songChanged(req.adminId, before);
-    logger.info(`Library import (${file.format}, mode=${mode}) by user #${req.user.id} (admin #${req.adminId}): `
+    logger.info(`Library import (${file.format}, mode=${mode}, into=${target || 'file'}) by user #${req.user.id} (admin #${req.adminId}): `
       + `added=${result.added} updated=${result.updated} skipped=${result.skipped} invalid=${result.invalid}`);
     res.json(result);
   });

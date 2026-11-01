@@ -113,6 +113,17 @@
         <details class="import-list" id="import-existing"><summary></summary><ul></ul></details>
         <details class="import-list" id="import-invalid"><summary></summary><ul></ul></details>
 
+        <!-- Which library the new songs go into (a selection; hidden for a school-only writer,
+             whose songs always land in the school's) -->
+        <div class="field import-collection-field" id="import-collection-field" hidden>
+          <span class="field-label" id="import-collection-label" data-i18n="import.collectionLabel"></span>
+          <div class="choice-group import-collection" id="import-collection" role="group" aria-labelledby="import-collection-label">
+            <button type="button" data-collection="main" aria-pressed="true" data-i18n="library.collectionMain"></button>
+            <button type="button" data-collection="school" aria-pressed="false" data-i18n="library.collectionSchool"></button>
+          </div>
+          <span class="hint" data-i18n="import.collectionHint"></span>
+        </div>
+
         <fieldset class="choice" id="import-mode">
           <legend data-i18n="import.modeLegend"></legend>
           <label class="checkbox"><input type="radio" name="import-mode" value="skip" checked><span data-i18n="import.modeSkip"></span></label>

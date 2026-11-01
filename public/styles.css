@@ -563,6 +563,10 @@ dialog .message:empty { display: none; }
 .import-list ul { margin: 0; padding: 0 14px 12px 32px; overflow-wrap: anywhere; }
 .import-list li + li { margin-top: 4px; }
 #import-invalid summary { color: var(--error); }
+.import-collection-field { margin: 16px 0 0; }
+.import-collection-field[hidden] { display: none; }
+.import-collection-field .field-label { font-weight: 600; }
+.import-collection > button { flex: 1 1 0; min-width: 0; }
 
 .choice { margin: 16px 0; gap: 0; }
 .choice legend { color: var(--text); }

@@ -57,6 +57,7 @@
       $('export-library').href = collection === 'school' ? '/api/songs/export?collection=school' : '/api/songs/export';
     });
     search.setMe(me);
+    if (window.LIBRARY_IMPORT) window.LIBRARY_IMPORT.setMe(me); // the import's library choice
     // resursecrestine.ro: the event roles (operators import, but never write songs by hand).
     search.setOnline(['library', 'events', 'live'].some((p) => can(me, p))); // routes/resurse.js
     search.reload();

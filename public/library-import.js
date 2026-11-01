@@ -1,10 +1,11 @@
 'use strict';
 
 // Library file import on /library: pick a .json file -> dry run preview (new / existing /
-// invalid) -> choose skip or update -> import -> summary (owner and leader).
+// invalid) -> choose the library the new songs go into (preset to the one shown; fixed to
+// the school's for a school-only writer) and skip or update -> import -> summary.
 
 (function () {
-  const { api, el } = window.PAGE;
+  const { api, el, can } = window.PAGE;
   const { t } = window.I18N;
   const MAX_BYTES = 10 * 1024 * 1024;
 
@@ -21,7 +22,21 @@
   const summary = document.getElementById('import-summary');
   const libraryParts = ['library-collections', 'library-search', 'library-results'].map((id) => document.getElementById(id));
 
-  const state = { name: '', text: null, status: null, error: null, plan: null, result: null, busy: false };
+  const collectionField = document.getElementById('import-collection-field');
+  const collectionButtons = [...document.querySelectorAll('#import-collection [data-collection]')];
+  const state = { name: '', text: null, status: null, error: null, plan: null, result: null, busy: false, collection: 'main', choice: false };
+
+  // the library the new songs go into: a choice for the library right, the school's otherwise
+  function setMe(me) {
+    state.choice = can(me, 'library');
+    if (!state.choice) state.collection = 'school';
+    renderCollection();
+  }
+  function renderCollection() {
+    for (const button of collectionButtons) button.setAttribute('aria-pressed', String(button.dataset.collection === state.collection));
+    collectionField.hidden = !state.choice;
+  }
+  for (const button of collectionButtons) button.addEventListener('click', () => { state.collection = button.dataset.collection; renderCollection(); });
   let hiddenBefore = [];
 
   function mode() {
@@ -67,6 +82,7 @@
       const r = state.result;
       summary.replaceChildren(
         el('li', { text: t('import.done') }),
+        el('li', { text: t('import.into', { name: t(r.collection === 'school' ? 'library.collectionSchool' : 'library.collectionMain') }) }),
         el('li', { text: t('import.added', { n: r.added }) }),
         el('li', { text: t('import.updated', { n: r.updated }) }),
         el('li', { text: t('import.skipped', { n: r.skipped }) }),
@@ -76,6 +92,10 @@
   }
 
   function open() {
+    // the library shown when the file was picked is the preset
+    const shown = document.querySelector('#collection-switch [aria-pressed="true"]');
+    if (state.choice) state.collection = shown && shown.dataset.collection === 'school' ? 'school' : 'main';
+    renderCollection();
     hiddenBefore = libraryParts.map((node) => node.hidden);
     libraryParts.forEach((node) => { node.hidden = true; });
     review.hidden = false;
@@ -134,7 +154,7 @@
     state.error = null;
     render();
     try {
-      const res = await api(`/api/songs/import?mode=${mode()}`, { method: 'POST', body: state.text, headers: { 'Content-Type': 'application/json' } });
+      const res = await api(`/api/songs/import?mode=${mode()}&collection=${state.collection}`, { method: 'POST', body: state.text, headers: { 'Content-Type': 'application/json' } });
       if (res.ok) {
         state.result = res.body;
         state.status = null;
@@ -158,4 +178,6 @@
     if (state.error && !state.error.key) state.error = null;
     if (!review.hidden) render();
   });
+
+  window.LIBRARY_IMPORT = { setMe };
 })();
