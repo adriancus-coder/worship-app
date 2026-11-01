@@ -6,7 +6,7 @@ const { requirePerm, can } = require('../lib/roles');
 const { LIMITS, KEYS, COLLECTIONS, SORT_MODES, DuplicateTitleError, validateSong, validateThemes, createSongStore } = require('../lib/songs');
 const { THEME_INDEX } = require('../lib/themes');
 const { parseChoice, createBackgroundStore } = require('../lib/backgrounds');
-const { createMediaSigner, createMediaStore, sniffAudio } = require('../lib/media');
+const { createMediaSigner, createMediaStore, sniffAudio, parseVideoUrl } = require('../lib/media');
 const { createMediaQuota } = require('../lib/platform');
 const { receiveUpload } = require('../lib/upload');
 const { MAX_SONGS, LibraryFileError, parseLibraryFile, planImport } = require('../lib/library-import');
@@ -201,12 +201,19 @@ function createSongsRouter({ db, auth, config, logger, live, storage }) {
     res.json({ songId: id, today: day, lastSung: lastSung ? lastSung.eventDate : null, dates });
   });
 
-  // The backing track ("negativ") as the pages see it: { id, title, mime, sizeBytes, src }
-  // or null. src is the session-guarded file route (the song page, the operator console).
+  // The backing track ("negativ") as the pages see it: a file { kind: 'file', id, title,
+  // mime, sizeBytes, src } (src: the session-guarded file route), a link { kind: 'youtube',
+  // id, url }, or null.
   function audioOf(adminId, song) {
+    if (song.audioUrl) {
+      const parsed = parseVideoUrl(song.audioUrl);
+      if (parsed && parsed.kind === 'youtube') return { kind: 'youtube', id: parsed.id, url: song.audioUrl };
+    }
     const row = song.audioMediaId ? media.get(adminId, song.audioMediaId) : null;
-    return row ? { id: row.id, title: row.title, mime: row.mime, sizeBytes: row.sizeBytes, src: `/api/media/${row.id}/file` } : null;
+    return row ? { kind: 'file', id: row.id, title: row.title, mime: row.mime, sizeBytes: row.sizeBytes, src: `/api/media/${row.id}/file` } : null;
   }
+  // a track replaced: the previous file goes
+  const dropAudioFile = (adminId, song) => { if (song.audioMediaId) media.remove(adminId, song.audioMediaId); };
   const withAudio = (adminId, song) => ({ ...song, audio: audioOf(adminId, song) });
 
   router.get('/api/songs/:id', (req, res) => {
@@ -248,8 +255,8 @@ function createSongsRouter({ db, auth, config, logger, live, storage }) {
       const before = live.songBefore(req.adminId, id);
       const item = db.transaction(() => {
         const added = media.addUpload(req.adminId, req.user.id, { title, temp, mime, size: got.size, kind: 'audio' });
-        songs.setAudio(req.adminId, id, added.id);
-        if (song.audioMediaId) media.remove(req.adminId, song.audioMediaId);
+        songs.setAudio(req.adminId, id, { mediaId: added.id });
+        dropAudioFile(req.adminId, song);
         return added;
       })();
       live.songChanged(req.adminId, before);
@@ -261,17 +268,37 @@ function createSongsRouter({ db, auth, config, logger, live, storage }) {
       if (!res.headersSent) res.status(500).json({ error: req.t('errors.internal') });
     });
   });
+  // The backing track as a YouTube link { url } (youtube.com / youtu.be; the embedded player
+  // plays it, so it needs the internet). It replaces a file.
+  router.put('/api/songs/:id/audio-url', canEdit, (req, res) => {
+    const id = songId(req);
+    const song = id && songs.get(req.adminId, id);
+    if (!song) return notFound(req, res);
+    if (!mayWrite(req, song.collection)) return forbidden(req, res);
+    const parsed = parseVideoUrl((req.body || {}).url);
+    if (!parsed || parsed.kind !== 'youtube') return res.status(400).json({ error: req.t('errors.audioUrlInvalid') });
+    const url = `https://www.youtube.com/watch?v=${parsed.id}`;
+    const before = live.songBefore(req.adminId, id);
+    db.transaction(() => {
+      songs.setAudio(req.adminId, id, { url });
+      dropAudioFile(req.adminId, song);
+    })();
+    live.songChanged(req.adminId, before);
+    if (song.audioMediaId) storage.refreshSoon();
+    logger.info(`Backing track link set on song #${id} by user #${req.user.id} (admin #${req.adminId})`);
+    res.json({ audio: audioOf(req.adminId, { audioUrl: url }) });
+  });
   router.delete('/api/songs/:id/audio', canEdit, (req, res) => {
     const id = songId(req);
     const song = id && songs.get(req.adminId, id);
     if (!song) return notFound(req, res);
     if (!mayWrite(req, song.collection)) return forbidden(req, res);
-    if (song.audioMediaId) {
+    if (song.audioMediaId || song.audioUrl) {
       const before = live.songBefore(req.adminId, id);
-      songs.setAudio(req.adminId, id, null);
-      media.remove(req.adminId, song.audioMediaId);
+      songs.setAudio(req.adminId, id, {});
+      dropAudioFile(req.adminId, song);
       live.songChanged(req.adminId, before);
-      storage.refreshSoon();
+      if (song.audioMediaId) storage.refreshSoon();
       logger.info(`Backing track removed from song #${id} by user #${req.user.id} (admin #${req.adminId})`);
     }
     res.json({ audio: null });

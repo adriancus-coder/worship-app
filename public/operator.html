@@ -73,6 +73,8 @@
           <div id="op-audio" class="op-audio" hidden>
             <span class="ro-label" id="op-audio-label" data-i18n="operator.audioLabel"></span>
             <audio id="op-audio-player" controls preload="none" aria-labelledby="op-audio-label"></audio>
+            <!-- a YouTube link: the embedded player (public/song-audio.js youtubeFrame) -->
+            <div id="op-audio-youtube"></div>
           </div>
           <ol id="op-steps" class="op-steps" data-i18n-aria-label="operator.stepsLabel"></ol>
           <p class="big-open-row"><button type="button" class="secondary big-open" id="op-big-open" hidden data-icon="expand" aria-keyshortcuts="F" data-i18n="big.open"></button></p>
@@ -148,6 +150,7 @@
   <script src="/clock-panel.js"></script>
   <script src="/background-picker.js"></script>
   <script src="/video-panel.js"></script>
+  <script src="/song-audio.js"></script>
   <script src="/projector-window.js"></script>
   <script src="/screen-picker.js"></script>
   <script src="/event-cache.js"></script>

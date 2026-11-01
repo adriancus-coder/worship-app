@@ -177,7 +177,7 @@
         el('span', { class: 'item-title', text: itemTitle(item) }),
         item.who && item.title ? el('span', { class: 'item-sub', text: item.who }) : null, // "Cine" (the Sunday school's songs say so)
         tag ? el('span', { class: `op-tag tag-${tag}`, text: t(`operator.tags.${tag}`) }) : null,
-        item.type === 'song' && item.song && item.song.audioMediaId ? el('span', { class: 'op-tag tag-audio', text: t('operator.tags.audio') }) : null));
+        item.type === 'song' && item.song && (item.song.audioMediaId || item.song.audioUrl) ? el('span', { class: 'op-tag tag-audio', text: t('operator.tags.audio') }) : null));
       // Short tap: go there (projector, or the main position together); long press (or
       // "Aranjează"): the arrange sheet.
       window.PRESS.bind(main, { tap: goThere, hold: canArrange ? () => arrange(item, goThere) : null });
@@ -240,12 +240,16 @@
     $('op-lyrics-edited').hidden = !(item && item.lyricsEdited);
     // the backing track of the song on the projector: the player keeps playing across
     // snapshots (its src changes only with the song)
-    const audioId = item && item.type === 'song' && item.song && item.song.audioMediaId ? item.song.audioMediaId : null;
+    const songRow = item && item.type === 'song' && item.song ? item.song : null;
+    const audioId = songRow && songRow.audioMediaId ? `file:${songRow.audioMediaId}` : songRow && songRow.audioUrl ? `url:${songRow.audioUrl}` : null;
     if (audioId !== state.audioId) {
       state.audioId = audioId;
       const player = $('op-audio-player');
       player.pause();
-      if (audioId) player.src = `/api/media/${audioId}/file`; else player.removeAttribute('src');
+      player.hidden = !(audioId && audioId.startsWith('file:'));
+      if (player.hidden) player.removeAttribute('src'); else player.src = `/api/media/${songRow.audioMediaId}/file`;
+      const link = audioId && audioId.startsWith('url:') ? (songRow.audioUrl.match(/[?&]v=([A-Za-z0-9_-]{11})/) || [])[1] : null;
+      $('op-audio-youtube').replaceChildren(...(link ? [window.SONG_AUDIO.youtubeFrame(link, 'op-audio-frame', t('song.audioYoutube'))] : []));
     }
     $('op-audio').hidden = !audioId;
     $('op-item-note').hidden = !(item && item.teamNote);

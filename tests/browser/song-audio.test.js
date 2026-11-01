@@ -58,6 +58,17 @@ module.exports = {
     const kids = (await app.api(school, 'POST', '/api/songs', { title: 'Isus mă iubește', sections: [{ type: 'verse', content: 'x' }] })).body.song;
     check((await raw(school, 'POST', `/api/songs/${songs.G}/audio`, wav(), 'audio/wav')).status === 403 && (await raw(school, 'POST', `/api/songs/${kids.id}/audio`, wav(), 'audio/wav')).status === 201, 'the school right: 403 on a church song, 201 on its own');
 
+    // --- a YouTube link instead of a file ------------------------------------------------
+    const badLink = await app.api(owner, 'PUT', `/api/songs/${songs.T3}/audio-url`, { url: 'https://example.com/x.mp3' });
+    check(badLink.status === 400 && /YouTube/.test(badLink.body.error), 'a link that is not YouTube: 400', badLink.body);
+    const link = await app.api(owner, 'PUT', `/api/songs/${songs.T3}/audio-url`, { url: 'https://youtu.be/dQw4w9WgXcQ?t=3' });
+    check(link.status === 200 && link.body.audio.kind === 'youtube' && link.body.audio.id === 'dQw4w9WgXcQ' && (await app.api(owner, 'GET', `/api/songs/${songs.T3}`)).body.song.audio.kind === 'youtube', 'a youtu.be link saved as the track', link.body);
+    const fileThenLink = await app.api(owner, 'PUT', `/api/songs/${songs.G}/audio-url`, { url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' });
+    const afterLink = (await app.api(owner, 'GET', `/api/songs/${songs.G}`)).body.song;
+    check(fileThenLink.status === 200 && afterLink.audio.kind === 'youtube' && afterLink.audioMediaId === null && (await fetch(`${app.url}/api/media/${again.body.audio.id}/file`, { headers: { Cookie: owner } })).status === 404, 'a link replaces a file (the file goes)');
+    const backToFile = await raw(owner, 'POST', `/api/songs/${songs.G}/audio`, wav(), 'audio/wav');
+    check(backToFile.status === 201 && (await app.api(owner, 'GET', `/api/songs/${songs.G}`)).body.song.audioUrl === null, 'a file replaces the link');
+
     // --- the song page: a member plays, the owner replaces / removes ---------------------
     const m = await signIn('member', { width: 375, lang: 'ro' });
     await m.goto(`${app.url}/songs/${songs.G}`);
@@ -69,10 +80,23 @@ module.exports = {
     const o = await signIn('owner', { width: 1024, lang: 'ro' });
     await o.goto(`${app.url}/songs/${songs.SIX}`);
     await o.waitForSelector('#song-audio-add');
-    check((await o.textContent('#song-audio-add')).trim() === 'Adaugă negativ' && !(await o.locator('#song-audio-player').count()), 'the owner on a song without a track: "Adaugă negativ", no player');
+    check((await o.textContent('#song-audio-add')).trim() === 'Adaugă negativ' && (await o.textContent('#song-audio-link-button')).trim() === 'Link YouTube' && !(await o.locator('#song-audio-player').count()), 'the owner on a song without a track: "Adaugă negativ", "Link YouTube", no player');
+    // the link form: a bad link stays with a message, a good one shows the YouTube player
+    await o.click('#song-audio-link-button');
+    await o.waitForSelector('#song-audio-link:not([hidden])');
+    await o.fill('#song-audio-url', 'https://example.com/nu');
+    await o.click('#song-audio-url-save');
+    await o.waitForFunction(() => /YouTube/.test(document.querySelector('#song-audio .message').textContent));
+    await o.fill('#song-audio-url', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+    await o.click('#song-audio-url-save');
+    await o.waitForSelector('#song-audio-youtube iframe');
+    const frame = await o.evaluate(() => ({ src: document.querySelector('#song-audio-youtube iframe').getAttribute('src'), form: document.getElementById('song-audio-link').hidden, remove: Boolean(document.getElementById('song-audio-remove')) }));
+    check(/youtube-nocookie\.com\/embed\/dQw4w9WgXcQ/.test(frame.src) && frame.form && frame.remove, 'the link saved: the embedded YouTube player, the form closed, "Șterge negativul"', frame);
+    const a2 = await layoutAudit(o, '#song-audio');
+    check(!a2.overflow && !a2.small.length, 'the box with the player: no overflow, targets >= 44 px', a2);
     await o.setInputFiles('#song-audio-file', { name: 'negativ.wav', mimeType: 'audio/wav', buffer: wav() });
     await o.waitForSelector('#song-audio-player');
-    check((await o.textContent('#song-audio-add')).trim() === 'Înlocuiește negativul' && (await o.locator('#song-audio-remove').count()) === 1 && (await app.api(owner, 'GET', `/api/songs/${songs.SIX}`)).body.song.audio !== null, 'uploaded from the page: the player, "Înlocuiește" and "Șterge"');
+    check((await o.textContent('#song-audio-add')).trim() === 'Înlocuiește negativul' && (await o.locator('#song-audio-remove').count()) === 1 && !(await o.locator('#song-audio-youtube').count()) && (await app.api(owner, 'GET', `/api/songs/${songs.SIX}`)).body.song.audio.kind === 'file', 'a file uploaded from the page replaces the link: the audio player, "Înlocuiește" and "Șterge"');
     o.once('dialog', (d) => d.accept());
     await o.click('#song-audio-remove');
     await o.waitForSelector('#song-audio-player', { state: 'detached' });
@@ -85,10 +109,14 @@ module.exports = {
     await op.waitForSelector('#op-list li');
     await op.waitForFunction(() => !document.getElementById('op-audio').hidden, null, { timeout: 8000 });
     const console1 = await op.evaluate(() => ({ src: document.getElementById('op-audio-player').getAttribute('src'), tags: [...document.querySelectorAll('#op-list .tag-audio')].length, label: document.getElementById('op-audio-label').textContent }));
-    check(/\/api\/media\/\d+\/file/.test(console1.src) && console1.tags === 1 && /Negativ/.test(console1.label), 'the operator: the player for the first song (on the projector), ♪ on that song only', console1);
+    check(/\/api\/media\/\d+\/file/.test(console1.src) && console1.tags === 2 && /Negativ/.test(console1.label), 'the operator: the player for the first song (on the projector), ♪ on the two songs with a track', console1);
     check((await app.command({ type: 'worship.goto', itemId: app.seed.items[1], step: 0 })).ok, 'the team moves to the verse');
     await op.waitForFunction(() => document.getElementById('op-audio').hidden, null, { timeout: 8000 });
     check(await op.evaluate(() => !document.getElementById('op-audio-player').getAttribute('src')), 'the next item (a verse): no player');
+    check((await app.command({ type: 'worship.goto', itemId: app.seed.items[4], step: 0 })).ok, 'the team moves to the third song (a YouTube link)');
+    await op.waitForSelector('#op-audio-youtube iframe', { timeout: 8000 });
+    const opFrame = await op.evaluate(() => ({ src: document.querySelector('#op-audio-youtube iframe').getAttribute('src'), player: document.getElementById('op-audio-player').hidden, tags: document.querySelectorAll('#op-list .tag-audio').length }));
+    check(/embed\/dQw4w9WgXcQ/.test(opFrame.src) && opFrame.player && opFrame.tags === 2, 'the operator: the YouTube player for the linked song, the audio player hidden, ♪ on both songs', opFrame);
     await app.command({ type: 'event.end' });
   },
 };
