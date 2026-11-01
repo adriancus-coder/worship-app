@@ -110,10 +110,6 @@ function createEventsRouter({ db, auth, logger, live }) {
   // A new programme ("+ Eveniment nou", "Planifică") starts with 10 random song ideas
   // (lib/suggest.js); the editor keeps, swaps or deletes them. Planned one after another,
   // each counts as recent for the next. Returns how many were added.
-  function fillRandomSongs(req, id) {
-    return events.appendSongs(req.adminId, id, suggest.randomSongs(req.adminId, { eventId: id, today: today(req) }).songs);
-  }
-
   // The defaults of a new event: "Serviciu de duminică" at the church's usual time, on the
   // next usual service day (timezone-aware; today until 2 h after the service time).
   function quickDefaults(req) {
@@ -218,6 +214,17 @@ function createEventsRouter({ db, auth, logger, live }) {
     const service = settings.service(req.adminId);
     const name = typeof body.name === 'string' ? body.name.trim() : '';
     const startTime = typeof body.startTime === 'string' && body.startTime ? body.startTime : null;
+    // the starting programme of every event, as "+ Eveniment nou" offers it: random songs
+    // (from any or one theme), a copy of a past event (its items and its team), or empty
+    const programme = ['random', 'copy', 'empty'].includes(body.programme) ? body.programme : 'random';
+    const theme = typeof body.theme === 'string' ? body.theme.trim().slice(0, 40) : '';
+    let sourceId = null;
+    if (programme === 'copy') {
+      const raw = String(body.fromEventId ?? '');
+      const source = /^\d{1,15}$/.test(raw) ? events.get(req.adminId, Number(raw)) : null;
+      if (!source) return res.status(400).json({ error: req.t('errors.eventSourceInvalid') });
+      sourceId = source.event.id;
+    }
     const metas = [];
     for (const eventDate of dates) {
       const weekday = new Intl.DateTimeFormat(req.lang === 'en' ? 'en' : 'ro', { weekday: 'long', timeZone: 'UTC' }).format(new Date(`${eventDate}T12:00:00Z`));
@@ -232,11 +239,12 @@ function createEventsRouter({ db, auth, logger, live }) {
       metas.push(value);
     }
     const created = db.transaction(() => metas.map((value) => {
-      const id = events.create(req.adminId, req.user.id, value);
-      fillRandomSongs(req, id);
+      const id = events.create(req.adminId, req.user.id, value, { sourceId });
+      if (sourceId !== null) assignments.copyFrom(req.adminId, sourceId, id, req.user.id);
+      if (programme === 'random') events.appendSongs(req.adminId, id, suggest.randomSongs(req.adminId, { eventId: id, today: today(req), theme }).songs);
       return { id, name: value.name, eventDate: value.eventDate };
     }))();
-    logger.info(`${created.length} event(s) planned by user #${req.user.id} (admin #${req.adminId})`);
+    logger.info(`${created.length} event(s) planned by user #${req.user.id} (admin #${req.adminId}): ${programme}${sourceId ? ` of #${sourceId}` : ''}${theme ? ` (${theme})` : ''}`);
     for (const ev of created) live.eventChanged(req.adminId, ev.id);
     res.status(201).json({ created: created.length, events: created });
   });

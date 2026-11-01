@@ -76,9 +76,18 @@
         <p id="plan-count" class="plan-count" role="status" aria-live="polite"></p>
         <div class="field-row">
           <label class="field"><span data-i18n="plan.nameLabel"></span><input type="text" id="plan-name" maxlength="120" autocomplete="off"></label>
-          <label class="field"><span data-i18n="plan.timeLabel"></span><input type="time" id="plan-time"></label>
+          <label class="field"><span data-i18n="plan.timeLabel"></span><select id="plan-time"></select></label>
         </div>
-        <label><span data-i18n="plan.notesLabel"></span><textarea id="plan-notes" rows="2" maxlength="2000"></textarea></label>
+        <!-- the same starting programme as "+ Eveniment nou", for every day chosen -->
+        <span class="field-label" id="plan-programme-label" data-i18n="plan.programmeLabel"></span>
+        <div class="choice-group new-programme" id="plan-programme" role="group" aria-labelledby="plan-programme-label">
+          <button type="button" data-programme="random" aria-pressed="true" data-i18n="newEvent.programmeRandom"></button>
+          <button type="button" data-programme="copy" aria-pressed="false" data-i18n="newEvent.programmeCopy"></button>
+          <button type="button" data-programme="empty" aria-pressed="false" data-i18n="newEvent.programmeEmpty"></button>
+        </div>
+        <label class="field" id="plan-theme-field"><span data-i18n="newEvent.themeLabel"></span><select id="plan-theme"></select></label>
+        <label class="field" id="plan-copy-field" hidden><span data-i18n="newEvent.copyLabel"></span><select id="plan-copy"></select></label>
+        <label class="field"><span data-i18n="plan.notesLabel"></span><textarea id="plan-notes" rows="2" maxlength="2000"></textarea></label>
         <p id="plan-message" class="message error" role="alert"></p>
         <div class="form-actions">
           <button type="submit" id="plan-create" data-icon="check"></button>

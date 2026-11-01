@@ -11,6 +11,32 @@
   const { t } = window.I18N;
   const $ = (id) => document.getElementById(id);
   const LOCALES = { ro: 'ro-RO', en: 'en-GB' };
+  // --- shared with "Planifică" (public/events-plan.js) ------------------------------------
+  // the time list: every quarter of an hour from 06:00 to 22:00, plus the usual time, preset
+  function fillTimes(select, usual) {
+    const times = [];
+    for (let h = 6; h <= 22; h += 1) for (const m of [0, 15, 30, 45]) times.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`);
+    if (usual && !times.includes(usual)) times.push(usual);
+    times.sort();
+    select.replaceChildren(el('option', { value: '', text: t('newEvent.noTime') }), ...times.map((x) => el('option', { value: x, text: x })));
+    select.value = usual || '';
+  }
+  // the theme list ("Oricare" + the library's themes) and the past events to copy
+  function fillProgrammeLists(themeSelect, copySelect, { themes, past, today }) {
+    themeSelect.replaceChildren(el('option', { value: '', text: t('newEvent.anyTheme') }), ...themes.map((x) => el('option', { value: x.name, text: `${x.name} (${x.count})` })));
+    const year = String(today || '').slice(0, 4);
+    copySelect.replaceChildren(el('option', { value: '', text: t(past.length ? 'setlist.pickEvent' : 'events.noEvents') }),
+      ...past.map((e) => el('option', { value: String(e.id), text: `${window.PAGE.formatDate(e.eventDate, year)} — ${e.name}` })));
+    copySelect.disabled = !past.length;
+  }
+  // the programme switch (random / copy / empty): the pressed button, the theme / copy fields
+  function renderProgrammeChoice(group, value, themeField, copyField) {
+    for (const button of group.querySelectorAll('[data-programme]')) button.setAttribute('aria-pressed', String(button.dataset.programme === value));
+    themeField.hidden = value !== 'random';
+    copyField.hidden = value !== 'copy';
+  }
+  window.EVENT_NEW = { fillTimes, fillProgrammeLists, renderProgrammeChoice };
+
   const dialog = $('new-dialog');
   if (!dialog) return;
 
@@ -24,15 +50,7 @@
     $('new-message').textContent = text || '';
   }
 
-  // the time list: every quarter of an hour from 06:00 to 22:00, plus the usual time
-  function renderTimes(usual) {
-    const times = [];
-    for (let h = 6; h <= 22; h += 1) for (const m of [0, 15, 30, 45]) times.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`);
-    if (usual && !times.includes(usual)) times.push(usual);
-    times.sort();
-    $('new-time').replaceChildren(el('option', { value: '', text: t('newEvent.noTime') }), ...times.map((x) => el('option', { value: x, text: x })));
-    $('new-time').value = usual || '';
-  }
+  const renderTimes = (usual) => fillTimes($('new-time'), usual);
 
   function renderCalendar() {
     const { y, m } = state.month;
@@ -65,11 +83,7 @@
     renderCalendar();
   }
 
-  function renderProgramme() {
-    for (const button of document.querySelectorAll('#new-programme [data-programme]')) button.setAttribute('aria-pressed', String(button.dataset.programme === state.programme));
-    $('new-theme-field').hidden = state.programme !== 'random';
-    $('new-copy-field').hidden = state.programme !== 'copy';
-  }
+  const renderProgramme = () => renderProgrammeChoice($('new-programme'), state.programme, $('new-theme-field'), $('new-copy-field'));
 
   async function open() {
     say('');
@@ -91,13 +105,7 @@
     $('new-notes').value = '';
     renderTimes(defaults.body.startTime || '');
     renderCalendar();
-    const list = themes.ok ? themes.body.themes : [];
-    $('new-theme').replaceChildren(el('option', { value: '', text: t('newEvent.anyTheme') }), ...list.map((x) => el('option', { value: x.name, text: `${x.name} (${x.count})` })));
-    $('new-theme-field').hidden = false;
-    const year = state.today.slice(0, 4);
-    $('new-copy').replaceChildren(el('option', { value: '', text: t(state.past.length ? 'setlist.pickEvent' : 'events.noEvents') }),
-      ...state.past.map((e) => el('option', { value: String(e.id), text: `${window.PAGE.formatDate(e.eventDate, year)} — ${e.name}` })));
-    $('new-copy').disabled = !state.past.length;
+    fillProgrammeLists($('new-theme'), $('new-copy'), { themes: themes.ok ? themes.body.themes : [], past: state.past, today: state.today });
     state.programme = 'random';
     renderProgramme();
     $('new-create').disabled = false;
@@ -136,5 +144,5 @@
   $('new-cancel').addEventListener('click', () => dialog.close());
   document.addEventListener('i18n:change', () => { if (dialog.open) { renderCalendar(); renderProgramme(); } });
 
-  window.EVENT_NEW = { open };
+  window.EVENT_NEW.open = open;
 })();

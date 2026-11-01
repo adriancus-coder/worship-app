@@ -3,16 +3,19 @@
 // "Planifică" on Evenimente (the 'events' right): many events at once. A month calendar (‹ ›
 // between months, weeks from Monday): tap days to choose them (the chosen ones filled and
 // checked; days already holding an event carry a dot; past days are off); tap a weekday name
-// ("DU") to choose / clear every such day of the month. A name, a time and a note apply to
-// every day (else the usual service); "Creează N evenimente" makes them all (POST
-// /api/events/plan, each with ten random songs) and the list reloads.
+// ("DU") to choose / clear every such day of the month. A name, a time (from a list, the
+// usual service time preset), the starting programme (ten random songs from any / one
+// theme, a copy of a past event, empty; the same as "+ Eveniment nou", public/event-new.js)
+// and a note apply to every day; "Creează N evenimente" makes them all (POST
+// /api/events/plan) and the list reloads.
 
 (function () {
   const { api, el, canEditEvents } = window.PAGE;
   const { t } = window.I18N;
   const $ = (id) => document.getElementById(id);
   const LOCALES = { ro: 'ro-RO', en: 'en-GB' };
-  const state = { today: null, month: null, chosen: new Set(), busy: new Map() };
+  const state = { today: null, month: null, chosen: new Set(), busy: new Map(), programme: 'random' };
+  const renderProgramme = () => window.EVENT_NEW.renderProgrammeChoice($('plan-programme'), state.programme, $('plan-theme-field'), $('plan-copy-field'));
 
   const iso = (y, m, d) => `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
   const locale = () => LOCALES[window.I18N.lang] || LOCALES.ro;
@@ -20,9 +23,15 @@
 
   async function open() {
     $('plan-message').textContent = '';
-    const upcoming = await api('/api/events?when=upcoming').catch(() => ({ ok: false }));
+    const [upcoming, defaults, past, themes] = await Promise.all([
+      api('/api/events?when=upcoming'), api('/api/events/quick-defaults'), api('/api/events?when=past'), api('/api/songs/themes'),
+    ]).catch(() => [{ ok: false }]);
     if (!upcoming.ok) return;
     state.today = upcoming.body.today;
+    window.EVENT_NEW.fillTimes($('plan-time'), defaults.ok ? defaults.body.startTime || '' : '');
+    window.EVENT_NEW.fillProgrammeLists($('plan-theme'), $('plan-copy'), { themes: themes.ok ? themes.body.themes : [], past: past.ok ? past.body.events : [], today: state.today });
+    state.programme = 'random';
+    renderProgramme();
     state.busy = new Map();
     for (const ev of upcoming.body.events) state.busy.set(ev.eventDate, [...(state.busy.get(ev.eventDate) || []), ev.name]);
     const [y, m] = state.today.split('-').map(Number);
@@ -86,7 +95,11 @@
     if (!state.chosen.size) return;
     const button = $('plan-create');
     button.disabled = true;
-    const body = { dates: [...state.chosen].sort(), name: $('plan-name').value.trim(), startTime: $('plan-time').value, notes: $('plan-notes').value.trim() };
+    if (state.programme === 'copy' && !$('plan-copy').value) { $('plan-message').textContent = t('newEvent.copyMissing'); button.disabled = false; $('plan-copy').focus(); return; }
+    const body = {
+      dates: [...state.chosen].sort(), name: $('plan-name').value.trim(), startTime: $('plan-time').value, notes: $('plan-notes').value.trim(),
+      programme: state.programme, theme: state.programme === 'random' ? $('plan-theme').value : '', fromEventId: state.programme === 'copy' ? Number($('plan-copy').value) : undefined,
+    };
     const res = await api('/api/events/plan', { method: 'POST', body }).catch(() => ({ ok: false, body: {} }));
     button.disabled = false;
     if (!res.ok) {
@@ -102,6 +115,9 @@
 
   $('plan-prev').addEventListener('click', () => move(-1));
   $('plan-next').addEventListener('click', () => move(1));
+  for (const button of document.querySelectorAll('#plan-programme [data-programme]')) {
+    button.addEventListener('click', () => { state.programme = button.dataset.programme; renderProgramme(); });
+  }
   $('plan-form').addEventListener('submit', create);
   $('plan-events').addEventListener('click', open);
   document.addEventListener('i18n:change', () => { if ($('plan-dialog').open) render(); });
