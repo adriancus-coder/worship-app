@@ -6,7 +6,7 @@
 // panel / "10 la întâmplare" drawing from one theme. 375 and 1024.
 
 const path = require('path');
-const { layoutAudit, FIXTURES } = require('./harness');
+const { layoutAudit, laterAnswers, FIXTURES } = require('./harness');
 
 module.exports = {
   name: 'themes',
@@ -30,8 +30,10 @@ module.exports = {
 
     // --- the editor: the field with suggestions; the song page: chips ------------------------
     const p = await signIn('owner', { width: 1024, lang: 'ro' });
+    await laterAnswers(p); // no invitation pop-up in the way
     await p.goto(`${app.url}/songs/${pasti[0]}/edit`);
     await p.waitForSelector('#song-key-themes');
+    await p.waitForFunction(() => document.querySelectorAll('#song-key-themes-list option').length >= 3); // the suggestions arrive async
     const field = await p.evaluate(() => ({ value: document.getElementById('song-key-themes').value, list: [...document.querySelectorAll('#song-key-themes-list option')].map((o) => o.value), label: document.querySelector('label[for="song-key-themes"]').textContent }));
     check(field.value === 'Paști, Închinare' && field.list.slice(0, 3).join() === 'botez,Închinare,Paști' && field.list.includes('Laudă și închinare') && /Teme/.test(field.label), 'the editor: the themes in one field, the library\'s themes then the index as suggestions', field);
     await p.fill('#song-key-themes', 'Paști, Cina Domnului , paști');
@@ -73,6 +75,9 @@ module.exports = {
     await member.goto(`${app.url}/songs/${pasti[0]}`);
     await member.waitForSelector('#song-themes .theme-chip');
     check(!(await member.locator('#song-themes .song-themes-set').count()), 'a member sees the chips, no "Setează"');
+    await member.goto(`${app.url}/library`);
+    await member.waitForSelector('#songs li');
+    check(!(await member.locator('#songs .song-themes-quick').count()), 'a member: no "Tematică" button on the library rows');
     const put = await app.api(app.cookies.member, 'PUT', `/api/songs/${pasti[0]}/themes`, { themes: ['x'] });
     check(put.status === 403, 'PUT themes: members 403', put.status);
     await app.api(owner, 'PUT', `/api/songs/${pasti[0]}/themes`, { themes: ['Paști', 'Cina Domnului'] }); // back, for the checks below
@@ -86,6 +91,16 @@ module.exports = {
     const lib = await p.evaluate(() => ({ select: document.getElementById('filter-theme').value, options: [...document.querySelectorAll('#filter-theme option')].map((o) => o.textContent), rows: [...document.querySelectorAll('#songs li')].map((li) => li.textContent) }));
     check(lib.select === 'Cina Domnului' && lib.options[0] === 'Toate temele' && lib.options.some((o) => /Paști \(4\)/.test(o)) && lib.rows.length === 1 && /Paște 1/.test(lib.rows[0]) && /Cina Domnului/.test(lib.rows[0]),
       'the library filtered by the chip\'s theme; the select lists every theme with its count; the row shows the themes', lib);
+    // the row's "Tematică" button: the same pop-up; the row and the filter counts follow
+    await p.click('#songs li .song-themes-quick >> nth=0');
+    await p.waitForSelector('#themes-dialog[open] .theme-pick');
+    await p.click('#themes-dialog .theme-pick[data-theme="Colinde"]');
+    await p.click('#themes-save');
+    await p.waitForSelector('#themes-dialog:not([open])', { state: 'attached' });
+    await p.waitForFunction(() => /Colinde/.test(document.querySelector('#songs li').textContent));
+    await p.waitForFunction(() => [...document.querySelectorAll('#filter-theme option')].some((o) => /Colinde \(1\)/.test(o.textContent)));
+    check(true, 'the library row: "Tematică" opens the pop-up; the row and the theme list update');
+    await app.api(owner, 'PUT', `/api/songs/${pasti[0]}/themes`, { themes: ['Paști', 'Cina Domnului'] });
     await p.selectOption('#filter-theme', 'botez');
     await p.waitForFunction(() => document.querySelectorAll('#songs li').length === 3);
     check(/theme=botez/.test(p.url()), 'the filter in the URL', p.url());

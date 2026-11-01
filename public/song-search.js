@@ -172,13 +172,25 @@
       }, busy ? el('span', { class: 'spinner', 'aria-hidden': 'true' }) : null, done ? action.done : action.label);
     }
 
+    // The library's quick "Tematică" button on a row (the editor roles, public/themes-ui.js):
+    // the same pop-up as the song page; the row and the theme filter follow the save.
+    function themesButton(song) {
+      if (!window.THEMES_UI || !me || !canEdit(me)) return null;
+      return el('button', {
+        type: 'button', class: 'secondary song-themes-quick', 'data-icon': 'edit', 'aria-label': t('library.themesFor', { title: song.title }), title: t('library.themesButton'),
+        onclick: () => window.THEMES_UI.open(song, { onSaved: (saved) => { song.themes = saved.themes; renderLocal(); loadThemes(); } }),
+      }, el('span', { class: 'song-themes-quick-text', text: t('library.themesButton') }));
+    }
+
     function localRow(song) {
       if (mode === 'library') {
-        return el('li', null,
+        const button = themesButton(song);
+        return el('li', { class: button ? 'song-row' : null },
           el('a', { class: 'song-link', href: `/songs/${song.id}` },
             el('span', { class: 'song-title', text: song.title }),
             metaLine(song),
-            song.matchedIn === 'lyrics' ? el('span', { class: 'song-hint', text: t('library.matchedInLyrics') }) : null));
+            song.matchedIn === 'lyrics' ? el('span', { class: 'song-hint', text: t('library.matchedInLyrics') }) : null),
+          button);
       }
       const hint = options.songHint ? options.songHint(song) : (song.matchedIn === 'lyrics' ? t('library.matchedInLyrics') : '');
       const actions = options.localActions ? options.localActions(song) : [];

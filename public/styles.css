@@ -300,6 +300,11 @@ h2 { font-size: 1.15rem; margin: 24px 0 8px; }
 }
 
 .song-link:hover { border-color: var(--accent-fill); }
+/* a library row with the quick "Tematică" button beside the link (the editor roles) */
+.song-row { display: flex; align-items: stretch; gap: 8px; }
+.song-row > .song-link { flex: 1 1 auto; min-width: 0; }
+.song-row > .song-themes-quick { flex: none; align-self: center; min-height: var(--touch); padding: 8px 10px; }
+@media (max-width: 599px) { .song-row > .song-themes-quick .song-themes-quick-text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); } .song-row > .song-themes-quick { min-width: var(--touch); padding: 8px; } }
 .song-title { font-weight: 600; }
 .song-meta { font-size: 0.875rem; color: var(--text-muted); }
 .song-hint { font-size: 0.8125rem; color: var(--accent-text); }
