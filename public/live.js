@@ -279,7 +279,8 @@
     $('next-button').hidden = status !== 'live';
     $('end-item-button').hidden = status !== 'live';
     if (status === 'planned') {
-      box.replaceChildren(el('p', { class: 'live-note', text: t('live.notStartedLeader') }));
+      // the 'screens' right starts it; the others wait for the operator
+      box.replaceChildren(el('p', { class: 'live-note', text: t(state.me && window.PAGE.can(state.me, 'screens') ? 'live.notStartedLeader' : 'live.notStartedOperator') }));
       return;
     }
     if (status === 'finished') {
