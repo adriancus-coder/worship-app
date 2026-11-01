@@ -82,8 +82,51 @@
     document.getElementById('sections').replaceChildren(...window.SONG_RENDER.sectionsView(song.sections, { textOnly, tappable: true }));
   }
 
-  // "Tipărește": the browser's print dialog over the print styles (public/styles.css @media print)
-  document.getElementById('print-song').addEventListener('click', () => window.print());
+  // "Tipărește": the song as a PDF made here (public/song-pdf.js) from what the page shows
+  // (the key, the themes, chords or text only): the share sheet on a phone (Tipărește /
+  // Salvează în Fișiere…), a download elsewhere. window.print() does nothing in the
+  // installed app on phones; the print styles (styles.css @media print) still serve Ctrl+P.
+  function pdfDoc() {
+    const textOf = (node) => (node ? node.textContent.trim() : '');
+    const keyValue = textOf(document.querySelector('#song-key-box .song-key-value'));
+    const themes = [...document.querySelectorAll('#song-themes .theme-chip')].map((a) => a.textContent.trim());
+    const sections = [...document.querySelectorAll('#sections .song-section')].map((sec) => {
+      const base = { label: textOf(sec.querySelector('.section-label')), note: textOf(sec.querySelector('.section-note')) };
+      const sheet = sec.querySelector('.chord-sheet');
+      if (!sheet) return { ...base, text: textOf(sec.querySelector('.lyrics')) };
+      const lines = [];
+      for (const row of sheet.children) {
+        if (row.classList.contains('chord-line')) lines.push({ chords: row.textContent, lyrics: null });
+        else if (row.classList.contains('lyric-line')) {
+          const last = lines[lines.length - 1];
+          if (last && last.lyrics === null) last.lyrics = row.textContent.replace(/\s+$/, '');
+          else lines.push({ chords: null, lyrics: row.textContent.replace(/\s+$/, '') });
+        }
+      }
+      return { ...base, lines };
+    });
+    return {
+      title: song.title,
+      subtitle: [keyValue ? `${t('song.keyLabel')}: ${keyValue}` : '', ...themes].filter(Boolean).join(' · '),
+      meta: song.author ? t('song.author', { author: song.author }) : '',
+      sections,
+      producer: document.documentElement.dataset.appName || 'worship-app',
+    };
+  }
+  const printButton = document.getElementById('print-song');
+  printButton.addEventListener('click', async () => {
+    if (!song || !window.SONG_PDF) return;
+    printButton.disabled = true;
+    setStatus(t('song.pdfMaking'));
+    try {
+      const bytes = await window.SONG_PDF.make(pdfDoc());
+      const how = await window.SONG_PDF.deliver(bytes, window.SONG_PDF.fileName(song.title), song.title);
+      setStatus(how === 'downloaded' ? t('song.pdfDownloaded') : how === 'shared' ? t('song.pdfShared') : '');
+    } catch (err) {
+      setStatus(t('song.pdfError'));
+    }
+    printButton.disabled = false;
+  });
 
   textOnlyButton.addEventListener('click', () => {
     textOnly = !textOnly;
@@ -118,5 +161,7 @@
     setStatus('');
     article.hidden = false;
     render();
+    // the PDF's fonts, fetched once in the background so "Tipărește" answers at once
+    if (window.SONG_PDF) setTimeout(() => window.SONG_PDF.preload().catch(() => {}), 1500);
   })().catch(() => setStatus(t('common.networkError')));
 })();

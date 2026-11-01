@@ -24,8 +24,8 @@
         <button type="button" id="text-only" class="secondary" aria-pressed="false" data-i18n="song.textOnly"></button>
         <span data-notation-switch></span>
         <a class="button secondary" id="edit-song" hidden data-icon="edit" data-i18n="song.edit"></a>
-        <!-- "Tipărește": a clean sheet (title, key, lyrics as shown: with or without chords);
-             the print dialog also saves it as a PDF -->
+        <!-- "Tipărește": the song as a PDF (public/song-pdf.js): the share sheet on a phone,
+             a download elsewhere; title, key, themes, the lyrics as shown (chords or text) -->
         <button type="button" id="print-song" class="secondary" data-icon="print" data-i18n="song.print"></button>
       </div>
       <div id="sections"></div>
@@ -39,6 +39,7 @@
   <script src="/shell.js"></script>
   <script src="/chord-diagrams.js"></script>
   <script src="/song-render.js"></script>
+  <script src="/song-pdf.js"></script>
   <script src="/arrange-sheet.js"></script>
   <script src="/key-detect.js"></script>
   <script src="/key-detect-ui.js"></script>
