@@ -27,6 +27,15 @@
           <button type="button" id="start-button" hidden data-icon="play" data-i18n="live.start"></button>
           <button type="button" class="danger" id="end-button" hidden data-icon="stop" data-i18n="live.end"></button>
         </div>
+        <!-- The view: the full page, or the compact list (only the Program: titles, keys and a
+             tick on the songs the projector has shown; the phone stays on). Kept on the device. -->
+        <div class="live-view-row">
+          <span class="field-label" id="live-view-label" data-i18n="live.viewLabel"></span>
+          <div class="choice-group live-view" id="live-view" role="group" aria-labelledby="live-view-label">
+            <button type="button" data-view="full" aria-pressed="true" data-i18n="live.viewFull"></button>
+            <button type="button" data-view="compact" aria-pressed="false" data-i18n="live.viewCompact"></button>
+          </div>
+        </div>
         <p id="live-message" class="message" role="status" aria-live="polite"></p>
       </header>
       <div id="emergency-banner" class="emergency-banner" role="alert" hidden>

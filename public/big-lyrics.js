@@ -58,7 +58,7 @@
   // every second while the view is open.
   // onClose(): after the view closed (the leader goes back to the event page); fullPage() with
   // showFullPage() -> true adds a small "Pagina completă" tool (the leader's way to the page).
-  function create({ api, eventId, position, commands, connection, drivesProjector = () => false, extraStatus = () => '', member = null, standalone = false, loadSong: pageLoadSong = null, onClose = null, fullPage = null, showFullPage = () => false }) {
+  function create({ api, eventId, position, commands, connection, drivesProjector = () => false, extraStatus = () => '', member = null, standalone = false, loadSong: pageLoadSong = null, onClose = null, fullPage = null, compactPage = null, showFullPage = () => false }) {
     const { el } = window.PAGE;
     const { t } = window.I18N;
     const state = { snap: null, items: [], scale: Number(stored(SCALE_KEY, '1')) || 1, textOnly: stored(TEXT_ONLY_KEY, '0') === '1', songs: new Map(), setlistKey: null, renderId: 0 };
@@ -99,6 +99,8 @@
       parts.smaller = el('button', { type: 'button', class: 'secondary big-tool', text: 'A−', onclick: () => setScale(-SCALE.step) });
       parts.larger = el('button', { type: 'button', class: 'secondary big-tool', text: 'A+', onclick: () => setScale(SCALE.step) });
       parts.full = fullPage ? el('button', { type: 'button', class: 'secondary big-tool big-full', 'data-icon': 'more', hidden: true, onclick: () => fullPage() }) : null;
+      // "Listă": the page's compact view (the leader's list with keys and ticks)
+      parts.list = compactPage ? el('button', { type: 'button', class: 'secondary big-tool big-list', 'data-icon': 'list', hidden: true, onclick: () => compactPage() }) : null;
       parts.close = el('button', { type: 'button', class: 'secondary big-tool big-close', 'data-icon': 'close', onclick: close });
       // "✕ Ieși" first in the bottom bar too: a way out on every device, no hidden gesture.
       parts.exit = el('button', { type: 'button', class: 'secondary big-exit', 'data-icon': 'close', onclick: close });
@@ -108,7 +110,7 @@
       parts.nextButton = el('button', { type: 'button', class: member ? 'secondary' : null, onclick: () => commands.next() });
       parts.nav = el('div', { class: `big-nav${member ? ' big-nav-member' : ''}`, role: 'group', 'aria-label': t(member ? 'follow.navLabel' : 'live.navLabel') }, parts.exit, parts.prev, parts.end, parts.backLive, parts.nextButton);
       dialog = el('dialog', { class: `big-lyrics${member ? ' big-lyrics-member' : ''}`, 'aria-label': t('big.title') },
-        el('div', { class: 'big-top' }, parts.label, el('span', { class: 'big-tools' }, parts.textOnly, parts.smaller, parts.larger, parts.full, parts.close)),
+        el('div', { class: 'big-top' }, parts.label, el('span', { class: 'big-tools' }, parts.textOnly, parts.smaller, parts.larger, parts.list, parts.full, parts.close)),
         parts.body,
         parts.next,
         standalone ? null : parts.status,
@@ -303,6 +305,11 @@
         parts.full.hidden = !showFullPage();
         parts.full.textContent = t('big.fullPage');
         parts.full.setAttribute('aria-label', t('big.fullPageLabel'));
+      }
+      if (parts.list) {
+        parts.list.hidden = !showFullPage();
+        parts.list.textContent = t('big.listPage');
+        parts.list.setAttribute('aria-label', t('big.listPageLabel'));
       }
       parts.smaller.setAttribute('aria-label', t('big.smaller'));
       parts.larger.setAttribute('aria-label', t('big.larger'));

@@ -960,6 +960,23 @@ main.live-page { max-width: 1400px; }
 
 .live-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 
+/* The view switch: Complet / Compact (a selection, aria-pressed) */
+.live-view-row { display: flex; align-items: center; gap: 8px; }
+.live-view-row .field-label { font-size: 0.875rem; font-weight: 500; color: var(--text-muted); }
+/* the tick on a sung item (the projector showed more than 70 % of its screens) */
+.item-done { flex: none; align-self: flex-start; margin-top: 2px; display: inline-flex; align-items: center; justify-content: center; min-width: 28px; min-height: 28px; border-radius: 50%; font-weight: 800; color: var(--on-accent); background: var(--success); }
+/* The compact view: only the Program, large rows with the key and the tick; the current
+   song, the info panel, the projector panel and the hints go. */
+body.live-compact .live-current, body.live-compact .live-info, body.live-compact #mode-controls, body.live-compact .key-hint, body.live-compact .live-meta #presence { display: none; }
+body.live-compact .live-grid { display: block; }
+body.live-compact .live-setlist { width: 100%; max-width: 720px; }
+body.live-compact .live-item { padding: 12px; }
+body.live-compact .live-item .item-title { font-size: 1.125rem; }
+body.live-compact .live-item .item-key { font-size: 1rem; font-weight: 700; color: var(--text); }
+body.live-compact .live-item .type-badge, body.live-compact .live-item .op-markers { display: none; }
+body.live-compact .live-item.current { box-shadow: inset 0 0 0 1px var(--accent-fill); }
+body.live-compact .item-arrange, body.live-compact .press-hint { display: none; } /* the long press still arranges */
+
 .live-item {
   display: flex;
   align-items: flex-start;

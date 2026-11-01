@@ -368,7 +368,11 @@ async function main() {
     assert.strictEqual((await send(lead.socket, { type: 'worship.goto', itemId: i1, step: 6 })).code, 'badPosition');
     assert.strictEqual((await send(lead.socket, { type: 'worship.goto', itemId: 999, step: 0 })).code, 'badPosition');
     await send(lead.socket, { type: 'worship.goto', itemId: i3, step: 1 });
-    await memberAt(version);
+    s = await memberAt(version);
+    // what the projector has shown so far (migration 059): i1 fully (its 6 steps), i2 and i3 partly
+    assert.deepStrictEqual([s.shown[i1].total, s.shown[i1].shown, s.shown[i1].done], [6, 6, true], 'the first song: every screen shown, done');
+    assert.deepStrictEqual([s.shown[i2].shown, s.shown[i3].shown], [1, 2]);
+    assert.strictEqual(s.shown[i3].done, s.shown[i3].total && 2 / s.shown[i3].total > 0.7, 'done follows the 70 % rule');
     const atEnd = version;
     const reply = await send(lead.socket, { type: 'worship.next' });
     assert.deepStrictEqual([reply.ok, reply.version], [true, atEnd], 'next at the end changes nothing');

@@ -28,6 +28,42 @@
   const state = { event: null, items: [], loadedKey: null, loading: null, songs: new Map(), snap: null, seq: 0, client: null, queue: Promise.resolve(), cached: null,
     openLyrics: view === 'lyrics', view, leader: false, pageMode: view === 'full' };
   const FOLLOW_KEY = 'wa_live_follow';
+  // The compact view (only the Program with keys and ticks), remembered on the device.
+  const COMPACT_KEY = 'wa_live_compact';
+  const readCompact = () => { try { return localStorage.getItem(COMPACT_KEY) === '1'; } catch { return false; } };
+  state.compact = readCompact();
+  function setCompact(value) {
+    state.compact = Boolean(value);
+    try { localStorage.setItem(COMPACT_KEY, state.compact ? '1' : '0'); } catch { /* this page only */ }
+    renderView();
+  }
+  function renderView() {
+    document.body.classList.toggle('live-compact', state.compact);
+    for (const button of document.querySelectorAll('#live-view [data-view]')) {
+      button.setAttribute('aria-pressed', String((button.dataset.view === 'compact') === state.compact));
+    }
+  }
+  for (const button of document.querySelectorAll('#live-view [data-view]')) button.addEventListener('click', () => setCompact(button.dataset.view === 'compact'));
+  renderView();
+
+  // --- the screen stays on while the event is live (the leader's phone) ---------------------
+  let wakeLock = null;
+  async function keepScreenOn() {
+    const wanted = state.snap && state.snap.status === 'live' && document.visibilityState === 'visible';
+    if (!('wakeLock' in navigator)) return;
+    if (!wanted) {
+      if (wakeLock && !wakeLock.released) wakeLock.release().catch(() => {});
+      wakeLock = null;
+      return;
+    }
+    if (wakeLock && !wakeLock.released) return;
+    try {
+      wakeLock = await navigator.wakeLock.request('screen');
+    } catch (err) {
+      // refused (battery saver): the screen may dim; nothing else to do
+    }
+  }
+  document.addEventListener('visibilitychange', keepScreenOn); // the browser drops it when hidden
   const readFollow = () => { try { return localStorage.getItem(FOLLOW_KEY) === 'projector' ? 'projector' : 'team'; } catch { return 'team'; } };
   state.follow = readFollow();
   const eventPage = () => `/events/${eventId}${new URLSearchParams(window.location.search).get('from') === 'home' ? '?from=home' : ''}`;
@@ -171,6 +207,12 @@
     $('connection-text').textContent = t(`live.connection.${value}`);
   }
 
+  // The projector has shown more than 70 % of the item's screens (snapshot.shown, lib/live.js).
+  function sung(item) {
+    const s = state.snap && state.snap.shown && state.snap.shown[item.id];
+    return Boolean(s && s.done);
+  }
+
   function renderSetlist() {
     const { pos } = current();
     const live = state.snap.status === 'live';
@@ -186,13 +228,15 @@
         disabled: !live,
       },
       el('span', { class: 'item-number', text: String(i + 1) }),
+      // the tick: the projector has shown more than 70 % of this item's screens
+      sung(item) ? el('span', { class: 'item-done', role: 'img', 'aria-label': t('live.sungLabel') }, el('span', { 'aria-hidden': 'true', text: '✓' })) : null,
       // Top row: the type and, at the top right, the status badge; the title below.
       el('span', { class: 'item-text' },
         el('span', { class: 'op-item-top' },
           el('span', { class: `type-badge type-${item.type}`, text: t(`setlist.types.${item.type}`) }),
           isCurrent ? el('span', { class: 'op-markers' }, el('span', { class: 'live-badge', text: t('live.liveBadge') })) : null),
         el('span', { class: 'item-title', text: itemTitle(item) }),
-        item.type === 'song' && item.displayKey ? el('span', { class: 'item-sub', text: t('options.songKeyShort', { key: window.NOTATION.chord(item.displayKey) }) }) : null,
+        item.type === 'song' && item.displayKey ? el('span', { class: 'item-sub item-key', text: t('options.songKeyShort', { key: window.NOTATION.chord(item.displayKey) }) }) : null,
         item.who ? el('span', { class: 'item-sub', text: item.who }) : null));
       // Short tap: the team goes there; long press (or "Aranjează"): the arrange sheet.
       window.PRESS.bind(main, { tap: goThere, hold: canArrange ? () => arrange(item, goThere) : null });
@@ -352,6 +396,7 @@
     arrangedNote();
     big.update(state.snap, state.items);
     bridgePanel.update(state.snap);
+    keepScreenOn();
   }
 
   // "⤢ Versuri mari" (public/big-lyrics.js): the team's position, the page's own commands.
@@ -368,7 +413,9 @@
     onClose: () => {
       if (state.leader && !state.pageMode) window.location.assign(eventPage());
     },
-    fullPage: () => { state.pageMode = true; big.close(); },
+    fullPage: () => { state.pageMode = true; setCompact(false); big.close(); },
+    // "Listă": the page in its compact view (only the Program, with keys and ticks)
+    compactPage: () => { state.pageMode = true; setCompact(true); big.close(); },
     showFullPage: () => state.leader,
   });
 
