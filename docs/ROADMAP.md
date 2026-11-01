@@ -35,9 +35,11 @@ never implement a later stage early. Mockups: claude.ai design canvas
     separate "Repetiție" page was removed in November 2026: the programme, the song pages
     and the big lyrics cover it.)
   Home card and event page, by role and state (planned / live): owner "Pornește live" /
-  "Intră live"; presenter "Pregătește" (+ "Pornește live") / "Intră live"; leader "Repetiție"
-  (+ "Pornește live") / "Versuri mari"; operator "Pregătește" (+ "Pornește live") / "Consolă
-  operator"; member "Repetiție" / "Urmărește live". "Pornește live" starts the event and
+  "Intră live"; presenter "Pregătește" (+ "Live") / "Intră live"; leader "Pregătește" (+
+  "Versuri mari") / "Versuri mari"; operator "Pregătește" (+ "Pornește live") / "Consolă".
+  Since November 2026 only the 'screens' right (operator, owner) starts, ends or withdraws an
+  event (lib/live.js START_COMMANDS); the leader's projector panel shows only while they hold
+  the projector. Member "Vezi programul" / "Urmărește live". "Pornește live" starts the event and
   opens that role's own page. Never show the internal role word in the UI (labels through
   `team.roles.*`). The owner can look at the app as any other role ("Vezi aplicația ca").
 - **Rights and custom roles** (migration 045, `lib/roles.js`): every guard reads RIGHTS, never

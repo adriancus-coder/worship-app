@@ -1060,7 +1060,8 @@ button.live-item:disabled { opacity: 1; cursor: default; }
 /* Separate mode on the leader page: no projector panel; the info column moves under the steps
    and the step grid takes the width (5 columns from 1180 px). */
 .split-keys-hint { margin: 0 0 12px; }
-.live-body.split-mode .projector-panel { display: none; }
+.live-body.split-mode .projector-panel, .live-body.projector-away .projector-panel { display: none; }
+.operator-starts { margin: 0; }
 @media (min-width: 900px) {
   .live-body.split-mode .live-grid { grid-template-columns: minmax(220px, 1fr) minmax(0, 3.2fr); grid-template-areas: "setlist current" "setlist info"; }
 }

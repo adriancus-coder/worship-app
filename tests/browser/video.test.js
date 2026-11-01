@@ -32,8 +32,8 @@ module.exports = {
     const sp = await pairScreen(app, browser, 'Proiector sală');
     const csp = [];
     sp.on('console', (m) => { if (/Content Security Policy/i.test(m.text())) csp.push(m.text().slice(0, 120)); });
-    const lp = await signIn('leader', { width: 1280, height: 900 });
-    await lp.goto(`${app.url}/events/${E}/live?view=full`); // the leader lands in the big lyrics otherwise
+    const lp = await signIn('owner', { width: 1280, height: 900 });
+    await lp.goto(`${app.url}/events/${E}/live`); // the owner's live page (the leader no longer starts events)
     await lp.waitForSelector('#live:not([hidden])');
     await lp.click('#start-button');
     await sp.waitForFunction(() => /Ne ridici/.test(document.querySelector('#output .projector-stage').innerText));

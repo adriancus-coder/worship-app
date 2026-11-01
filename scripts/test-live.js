@@ -344,12 +344,16 @@ async function main() {
   };
 
   await step('start -> live at the first item, step 0', async () => {
-    const reply = await send(lead.socket, { type: 'event.start', expectedVersion: version });
+    const reply = await send(ownerSocket, { type: 'event.start', expectedVersion: version }); // starting is the owner's / operator's; the leader's commands follow
     assert.strictEqual(reply.ok, true);
     const s = await memberAt(reply.version);
     assert.deepStrictEqual([s.status, s.worship.itemId, s.worship.step, s.projector.follows, s.projector.source],
       ['live', i1, 0, 'worship', 'content']);
     assert.ok(s.startedAt);
+    // the owner started, so the owner holds the projector; the leader takes it (as the
+    // steps below assume: the leader holds it, together mode)
+    await takeProjector(lead.socket, ownerSocket);
+    assert.strictEqual((await memberAt(version)).holder.role, 'leader');
   });
 
   await step('next x6 -> verse, next -> second song, prev back, goto, next at the end stays', async () => {
@@ -1282,11 +1286,17 @@ async function main() {
 
   await step('a second event cannot start while one is live', async () => {
     const ev2 = (await api('POST', '/api/events', owner, { name: 'Seara', eventDate: day(0) })).body.event;
-    const { socket } = await joined(leader, ev2.id);
+    const { socket } = await joined(operator, ev2.id);
     assert.strictEqual((await emit(socket, 'live:command', { type: 'event.start', eventId: ev2.id })).code, 'anotherLive');
     socket.emit('live:leave', {});
+    // starting is the operator's (the screens right) and the owner's: the leader is refused
+    const { socket: leaderSocket } = await joined(leader, ev2.id);
+    assert.strictEqual((await emit(leaderSocket, 'live:command', { type: 'event.start', eventId: ev2.id })).code, 'forbidden', 'the leader may not start');
+    leaderSocket.emit('live:leave', {});
+    assert.strictEqual((await api('POST', `/api/events/${ev2.id}/start`, leader, {})).status, 403, 'the leader may not start (route)');
+    assert.strictEqual((await api('POST', `/api/events/${ev.id}/end`, leader, {})).status, 403, 'nor end');
     // "▶ Pornește live" from Acasă: 409 names the live event; the live one itself just enters
-    const refused = await api('POST', `/api/events/${ev2.id}/start`, leader, {});
+    const refused = await api('POST', `/api/events/${ev2.id}/start`, operator, {});
     assert.deepStrictEqual([refused.status, refused.body.code, refused.body.live && refused.body.live.id], [409, 'anotherLive', ev.id]);
     assert.strictEqual((await api('POST', `/api/events/${ev.id}/start`, operator, {})).status, 200, 'already live: enter');
     assert.strictEqual((await api('POST', `/api/events/${ev2.id}/start`, member, {})).status, 403);
@@ -1608,7 +1618,7 @@ async function main() {
   });
 
   await step('end -> finished for the whole room; commands then refused', async () => {
-    const l = await joined(leader, ev.id);
+    const l = await joined(owner, ev.id); // ending / restarting: the owner's (or the operator's)
     const m = await joined(member, ev.id);
     const ended = next(m.socket, 'live:state', (s) => s.status === 'finished');
     assert.strictEqual((await emit(l.socket, 'live:command', { type: 'event.end', eventId: ev.id })).ok, true);

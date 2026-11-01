@@ -185,8 +185,11 @@
     const status = snap.status;
     $('event-status').className = `pill pill-${status}`;
     $('event-status').textContent = t(`events.status.${status}`);
-    $('start-button').hidden = status !== 'planned';
-    $('end-button').hidden = status !== 'live';
+    // starting / ending: the 'screens' right (the operator, the owner); the others are told
+    const starter = Boolean(state.me && window.PAGE.can(state.me, 'screens'));
+    $('start-button').hidden = status !== 'planned' || !starter;
+    $('end-button').hidden = status !== 'live' || !starter;
+    $('operator-starts').hidden = status !== 'planned' || starter;
     renderPresence();
     liveClock.update(snap, viewPos());
   }
@@ -498,6 +501,10 @@
     // switches stay, and the step grid takes the width. B / L / K do nothing here then.
     const split = live && snap.mode === 'split';
     document.body.classList.toggle('split-mode', split);
+    // The projector panel is for whoever holds the projector (and the 'screens' right): a
+    // leader / presenter sees it only once the projector was handed to them.
+    const holdsIt = Boolean(state.me && snap && snap.holder && snap.holder.userId === state.me.user.id);
+    document.body.classList.toggle('projector-away', !(holdsIt || (state.me && window.PAGE.can(state.me, 'screens'))));
     $('split-keys-hint').hidden = !split;
     $('cross').hidden = !split;
     renderFollow(split);

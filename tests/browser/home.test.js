@@ -27,8 +27,8 @@ module.exports = {
       check(!a.overflow && !a.small.length, `${role}: no overflow, targets >= 44 px`, a);
     }
     for (const p of Object.values(pages)) await p.evaluate(() => { window.notReloaded = true; });
-    const tab = await pages.leader.context().newPage();
-    await tab.goto(`${app.url}/events/${E}/live?view=full`); // a leader lands in the lyrics otherwise
+    const tab = await pages.owner.context().newPage(); // the owner starts (the operator too; the leader may not)
+    await tab.goto(`${app.url}/events/${E}/live`);
     await tab.waitForSelector('#start-button:not([hidden])');
     const t0 = Date.now();
     await tab.click('#start-button');

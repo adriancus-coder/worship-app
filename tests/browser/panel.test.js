@@ -17,8 +17,8 @@ module.exports = {
     await sp.waitForFunction(() => /\d{3} \d{3}/.test(document.getElementById('pairing-code').textContent));
     await app.api(app.cookies.owner, 'POST', '/api/screens/claim', { code: (await sp.textContent('#pairing-code')).replace(' ', ''), name: 'Proiector sală' });
     await sp.waitForSelector('#output:not([hidden])', { timeout: 6000 });
-    const lp = await signIn('leader', { width: 1280 });
-    await lp.goto(`${app.url}/events/${E}/live?view=full`); // the leader lands in the big lyrics otherwise
+    const lp = await signIn('owner', { width: 1280 });
+    await lp.goto(`${app.url}/events/${E}/live`); // the owner's live page (the leader no longer starts events)
     await lp.waitForSelector('#live:not([hidden])');
     check(await lp.waitForFunction(() => /Un ecran/.test(document.getElementById('projector-screens').textContent), null, { timeout: 5000 }).then(() => true, () => false), '"Un ecran conectat"');
     const pressed = () => lp.$$eval('[data-source][aria-pressed=true]', (l) => l.map((x) => x.dataset.source).join(','));
@@ -97,16 +97,20 @@ module.exports = {
     check(gone && !(await clockOn(lp, '#projector-preview')) && await lp.getAttribute('.clock-toggle', 'aria-pressed') === 'true', 'a song section: no clock over the lyrics (screen and preview), the "Ceas" setting stays on');
     await app.command({ type: 'worship.goto', itemId: app.seed.items[1], step: 0 });
     check(await sp.waitForFunction(() => /Cezar/.test(document.querySelector('#output .projector-stage').innerText) && !document.querySelector('#output .display-clock').hidden, null, { timeout: 3000 }).then(() => true, () => false), 'the verse: the clock is back');
-    // "Deschide proiectorul" is the operator's (and the owner's): hidden for the leader,
-    // who still sees the count of screens the operator opens.
-    check(await lp.isHidden('#open-projector'), 'leader: no "Deschide proiectorul" button');
+    // The leader: no "Deschide proiectorul", and no projector panel at all until the
+    // projector is handed to them (the owner holds it here).
+    const lead = await signIn('leader', { width: 1280 });
+    await lead.goto(`${app.url}/events/${E}/live?view=full`);
+    await lead.waitForSelector('#live:not([hidden])');
+    check(await lead.isHidden('#open-projector') && await lead.evaluate(() => document.body.classList.contains('projector-away') && getComputedStyle(document.querySelector('.projector-panel')).display === 'none') && await lead.isHidden('#start-button') && await lead.isHidden('#end-button'), 'leader: no "Deschide proiectorul", no projector panel, no start / end (the owner holds the projector)');
+    await lead.context().close();
     const op = await signIn('owner', { width: 1280 });
     await op.goto(`${app.url}/events/${E}/live`);
     await op.waitForSelector('#open-projector:not([hidden])');
     const [popup] = await Promise.all([op.waitForEvent('popup'), op.click('#open-projector')]);
     await popup.waitForURL(/\/screen\/[a-z0-9]{12}$/, { timeout: 5000 });
     check(await popup.waitForSelector('#output:not([hidden])', { timeout: 6000 }).then(() => true, () => false), 'owner: "Deschide proiectorul" opens the window on its static link');
-    check(await lp.waitForFunction(() => /2/.test(document.getElementById('projector-screens').textContent), null, { timeout: 5000 }).then(() => true, () => false), 'the leader\'s panel counts 2 screens');
+    check(await lp.waitForFunction(() => /2/.test(document.getElementById('projector-screens').textContent), null, { timeout: 5000 }).then(() => true, () => false), 'the live page\'s panel counts 2 screens');
     await popup.close();
     await op.context().close();
     check(await lp.waitForFunction(() => /Un ecran/.test(document.getElementById('projector-screens').textContent), null, { timeout: 5000 }).then(() => true, () => false), 'popup closed: back to one screen');

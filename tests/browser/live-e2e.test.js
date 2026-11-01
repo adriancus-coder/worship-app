@@ -13,13 +13,13 @@ module.exports = {
   timeout: 240000,
   async run({ app, signIn, check }) {
     const { eventId: E } = app.seed;
-    const lp = await signIn('leader', { width: 1024 });
+    const lp = await signIn('owner', { width: 1024 });
     const mp = await signIn('member', { width: 375 });
     await mp.goto(`${app.url}/events/${E}/follow`);
     await mp.waitForSelector('#follow:not([hidden])');
     await mp.waitForFunction(() => document.getElementById('connection-text').textContent === 'Conectat');
     check(await mp.locator('#prev-button, #next-button, #start-button, #end-button, .step, .live-item').count() === 0, 'member follow page: no command controls');
-    await lp.goto(`${app.url}/events/${E}/live?view=full`); // the leader lands in the big lyrics otherwise
+    await lp.goto(`${app.url}/events/${E}/live`); // the owner's live page (the leader no longer starts events)
     await lp.waitForSelector('#live:not([hidden])');
     await lp.waitForFunction(() => /2/.test(document.getElementById('presence').textContent), null, { timeout: 5000 });
     check(true, 'leader sees the member online');

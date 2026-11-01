@@ -164,7 +164,7 @@
     renderSchoolAdd();
     $('details-button').hidden = !state.editing;
     // "Retrage din live": a live event back to planned without ending it (event roles)
-    $('withdraw-button').hidden = !(ev.status === 'live' && can(state.me, 'live'));
+    $('withdraw-button').hidden = !(ev.status === 'live' && can(state.me, 'screens')); // ending is the operator's (and the owner's)
     renderToolsMenu();
   }
 
@@ -231,8 +231,9 @@
         if (role === 'leader') actions.push({ key: 'live.fullPage', icon: 'follow', href: keepFrom(`/events/${ev.id}/live?view=full`) });
       } else {
         // Before the start, by role (the same order as the home card): the owner starts first
-        // (today / tomorrow), the others prepare first.
-        const live = !entry ? null : { key: soon ? 'home.startLive' : 'live.link', icon: 'play', href: livePage };
+        // (today / tomorrow), the others prepare first. Only the 'screens' right starts (the
+        // operator, the owner); the leader and the presenter just enter their live page.
+        const live = !entry ? null : { key: soon && can(state.me, 'screens') ? 'home.startLive' : 'live.link', icon: 'play', href: livePage };
         if (role === 'owner') actions.push(...(soon ? [live, edit] : [edit, live]));
         else actions.push(edit, live);
       }
@@ -356,11 +357,11 @@
   }
 
   // "Proiector": before the start the projector can already be prepared (clock, background,
-  // screens, video) on the console (owner, operator) or the live page (presenter, leader); the
-  // start keeps it (lib/live.js PREPARE_COMMANDS). Event roles, planned or live events.
+  // screens, video) on the console (owner, operator); the start keeps it (lib/live.js
+  // PREPARE_COMMANDS). The 'screens' right, planned or live events.
   function renderProjectorPrep() {
     const ev = state.event;
-    const show = Boolean(ev && ev.status !== 'finished' && can(state.me, 'live'));
+    const show = Boolean(ev && ev.status !== 'finished' && can(state.me, 'screens'));
     $('projector-card').hidden = !show;
     setTabAvailable('projector', show);
     if (!show) return;

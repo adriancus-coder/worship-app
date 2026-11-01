@@ -32,8 +32,8 @@ module.exports = {
         chords: /\[|\b(Em|Bm|G\/B)\b/.test(o.querySelector('.projector-stage').innerText),
       };
     });
-    const lp = await signIn('leader', { width: 1280 });
-    await lp.goto(`${app.url}/events/${E}/live?view=full`); // the leader lands in the big lyrics otherwise
+    const lp = await signIn('owner', { width: 1280 });
+    await lp.goto(`${app.url}/events/${E}/live`); // the owner's live page (the leader no longer starts events)
     await lp.waitForSelector('#live:not([hidden])');
     const moveTo = async (label, action, pattern) => {
       const t0 = Date.now();

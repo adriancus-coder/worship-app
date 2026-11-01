@@ -24,8 +24,8 @@ module.exports = {
     // [home primary, home secondary, event page primary]
     const planned = {
       owner: [/Pornește live/, /Pregătește/, /Pornește live/],
-      presenter: [/Pregătește/, /Pornește live/, /Editează/],
-      leader: [/Pregătește/, /Pornește live/, /Editează/],
+      presenter: [/Pregătește/, /^Live$/, /Editează/],
+      leader: [/Pregătește/, /Versuri mari/, /Editează/],
       operator: [/Pregătește/, /Pornește live/, /Editează/],
       member: [/Vezi programul/, null, null],
     };
@@ -56,13 +56,15 @@ module.exports = {
     await pr.goto(`${app.url}/events/${E}/edit`);
     await pr.waitForSelector('#items li');
     check(/\/edit$/.test(new URL(pr.url()).pathname), 'presenter: the editor opens');
-    // the presenter starts from home -> the live page
+    // the presenter enters the live page from home without starting (the operator starts)
     await pr.goto(`${app.url}/app`);
-    await pr.waitForSelector('#start-live');
-    await pr.click('#start-live');
+    await pr.waitForSelector('#now .now-card');
+    check(!(await pr.locator('#start-live').count()), 'presenter: no "Pornește live" on the home card');
+    await pr.click('#now .now-actions a[href*="/live"]');
     await pr.waitForURL(`**/events/${E}/live**`);
     await pr.waitForSelector('#live:not([hidden])');
-    check((await app.state(E)).status === 'live' && !(await pr.locator('dialog.big-lyrics[open]').count()), 'presenter: "Pornește live" -> the event is live, the live page (no big lyrics)');
+    check((await app.state(E)).status === 'planned' && await pr.isHidden('#start-button') && !(await pr.isHidden('#operator-starts')) && !(await pr.locator('dialog.big-lyrics[open]').count()), 'presenter: the live page, still planned, no "Pornește", the hint that the operator starts');
+    check((await app.command({ type: 'event.start' }, 'operator')).ok, 'the operator starts the event');
     await pr.goto(`${app.url}/app`);
     await pr.waitForSelector('#now .now-card.live');
     check(/Intră live/.test((await card(pr)).primary), 'presenter live: "Intră live"');

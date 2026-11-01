@@ -25,6 +25,7 @@ function createEventsRouter({ db, auth, logger, live }) {
   const canEdit = requirePerm('events');
   const suggest = createSuggestStore(db);
   const canLive = requirePerm('live');
+  const canStart = requirePerm('screens'); // start / end / withdraw: the operator (and the owner)
 
   const isEditor = (req) => seesAllEvents(req.user);
   const today = (req) => todayIn(settings.timezone(req.adminId));
@@ -242,7 +243,7 @@ function createEventsRouter({ db, auth, logger, live }) {
 
   // "▶ Pornește live" from Acasă: starts the event in one tap (the page then opens the live
   // page or the console). Another event live: 409 with its name, unless { endOther: true }.
-  router.post('/api/events/:id/start', canLive, (req, res) => {
+  router.post('/api/events/:id/start', canStart, (req, res) => {
     const found = load(req, res);
     if (!found) return;
     const out = live.startEvent(req.adminId, found.event.id, { role: req.user.liveRole, userId: req.user.id, endOther: (req.body || {}).endOther === true });
@@ -257,7 +258,7 @@ function createEventsRouter({ db, auth, logger, live }) {
 
   // "Încheie" on the home card (a live event forgotten since yesterday): ends it. 409 when
   // it is not live.
-  router.post('/api/events/:id/end', canLive, (req, res) => {
+  router.post('/api/events/:id/end', canStart, (req, res) => {
     const found = load(req, res);
     if (!found) return;
     const out = live.endEvent(req.adminId, found.event.id, { role: req.user.liveRole, userId: req.user.id });
@@ -267,7 +268,7 @@ function createEventsRouter({ db, auth, logger, live }) {
   });
 
   // "Retrage din live" (the event page): back to planned without ending it. 409 when not live.
-  router.post('/api/events/:id/withdraw', canLive, (req, res) => {
+  router.post('/api/events/:id/withdraw', canStart, (req, res) => {
     const found = load(req, res);
     if (!found) return;
     const out = live.endEvent(req.adminId, found.event.id, { role: req.user.liveRole, userId: req.user.id, withdraw: true });

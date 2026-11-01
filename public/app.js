@@ -48,15 +48,19 @@
       if (entry) return [{ text: t(entry.key), href: eventUrl(event, entry.path), icon: 'play' }];
       return [{ text: t('home.follow'), href: eventUrl(event, '/follow'), icon: 'follow' }];
     }
-    // Event roles: "▶ Pornește live" starts it and opens that role's page in one tap. The
-    // owner starts first; the others prepare first (primary) and start second. Without the
-    // events right: "Vezi programul" (the event page).
+    // Event roles: "▶ Pornește live" starts it and opens that role's page in one tap, for
+    // those who start events (the 'screens' right: the operator, and the owner). The owner
+    // starts first; the operator prepares first (primary) and starts second. The leader and
+    // the presenter prepare, and enter their live page (the operator starts the event).
+    // Without the events right: "Vezi programul" (the event page).
     const prepare = can(state.me, 'events') ? { text: t('home.prepare'), href: eventUrl(event, '/edit'), icon: 'edit' } : null;
     const programme = { text: t('home.programme'), href: eventUrl(event, ''), icon: 'list' };
     if (entry) {
+      const starter = can(state.me, 'screens');
       const start = { text: t('home.startLive'), icon: 'play', run: () => startLive(event, eventUrl(event, entry.path)) };
+      const enter = { text: t(role === 'leader' ? 'home.bigLyrics' : 'live.link'), href: eventUrl(event, entry.path), icon: 'play' };
       if (role === 'owner') return [start, prepare];
-      return [prepare || programme, start];
+      return [prepare || programme, starter ? start : enter];
     }
     return [prepare || programme];
   }
@@ -204,7 +208,7 @@
       // Live for more than a day (someone forgot to end it): a small hint with "Încheie".
       live && staleLive(event) ? el('p', { class: 'now-stale', id: 'stale-live' },
         el('span', { text: t('home.staleLive') }),
-        can(state.me, 'live')
+        can(state.me, 'screens')
           ? el('button', { type: 'button', class: 'secondary danger-text', id: 'end-stale', 'data-icon': 'stop', text: t('home.staleEnd'), onclick: () => endStale(event) })
           : null) : null,
       el('p', { class: 'message error', id: 'start-message', role: 'alert' }));
