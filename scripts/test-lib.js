@@ -1147,11 +1147,11 @@ test('item lyrics (migration 051): a song item\'s own sections replace the libra
   mem.close();
 });
 
-test('live permissions: the event roles alike in both modes; member nothing', () => {
+test('live permissions: the event roles alike in both modes (start / end: owner and operator); member nothing', () => {
   const { permission } = require('../lib/live');
   const E = ['owner', 'presenter', 'leader', 'operator'];
   const together = {
-    'worship.next': E, 'worship.goto': E, 'event.start': E, 'event.end': E, 'projector.request': E, 'team.mode': E,
+    'worship.next': E, 'worship.goto': E, 'event.start': ['owner', 'operator'], 'event.end': ['owner', 'operator'], 'projector.request': E, 'team.mode': E,
     'projector.next': [], 'projector.goto': [], 'projector.syncToWorship': [],
     'projector.source': E, 'video.play': E, 'operator.addItem': E,
   };
@@ -1178,7 +1178,9 @@ test('live store: together and split; switching keeps positions; team mode', () 
   const snap = () => live.snapshot(1, eventId);
   const pos = (p) => [p.itemId, p.step];
   assert.strictEqual(code({ type: 'projector.request' }, 'operator'), 'notLive');
-  cmd({ type: 'event.start' }, 'leader'); // the leader starts (no operator connected): the leader holds the projector
+  assert.strictEqual(code({ type: 'event.start' }, 'leader'), 'forbidden', 'starting is the owner\'s / operator\'s');
+  cmd({ type: 'event.start' }, 'owner'); // the owner starts (no operator connected): the starter holds the projector
+  cmd({ type: 'projector.request' }, 'leader'); // nobody connected: the leader takes it at once
   assert.deepStrictEqual([snap().mode, snap().teamMode, snap().projector.follows, snap().holder.role], ['together', 'follow', 'worship', 'leader']);
   // together: leader and operator move the same main position; projector commands refused
   cmd({ type: 'worship.next' }, 'leader');
@@ -1251,7 +1253,7 @@ test('live store: "Pe ce ecrane" (migration 040): null = every screen; chosen id
   const a = screens.create(1, 1, 'Sală').id;
   const b = screens.create(1, 1, 'Hol').id;
   const foreign = screens.create(2, null, 'Al altuia').id;
-  const cmd = (c, role = 'leader') => live.command(1, eventId, c, undefined, role);
+  const cmd = (c, role = 'owner') => live.command(1, eventId, c, undefined, role);
   const code = (c, role) => { try { cmd(c, role); return 'ok'; } catch (err) { return err.code; } };
   const snap = () => live.snapshot(1, eventId);
   assert.strictEqual(snap().screens, null, 'before any start: every screen');
@@ -1316,19 +1318,19 @@ test('live store: projector preparation before the start (migration 043): clock,
   }
   assert.strictEqual(code({ type: 'clock.set', show: true }, 'member'), 'forbidden');
   // the start keeps the preparation (and clears the mark), positions start as usual
-  cmd({ type: 'event.start' }, 'leader');
+  cmd({ type: 'event.start' }, 'owner');
   s = snap();
   assert.deepStrictEqual([s.status, s.prepared, s.clock.show, s.clock.position, s.backgroundOverride, s.screens, s.video.state, s.video.mediaId, s.video.volume, s.projector.source, s.worship.step],
     ['live', false, false, 'top-left', 50, [a], 'prepared', 51, 0.5, 'content', 0]);
   assert.strictEqual(code({ type: 'video.play' }), 'ok', 'the prepared video plays live');
   // a second run of the same event (reopened) without preparation starts from the defaults
-  cmd({ type: 'event.end' }, 'leader');
+  cmd({ type: 'event.end' }, 'owner');
   mem.prepare("UPDATE events SET status = 'planned' WHERE id = ?").run(eventId);
-  cmd({ type: 'event.start' }, 'leader');
+  cmd({ type: 'event.start' }, 'owner');
   s = snap();
   assert.deepStrictEqual([s.clock.show, s.backgroundOverride, s.screens, s.video.state], [true, null, null, 'none'], 'not prepared: the church defaults');
   // finished events and templates are never prepared
-  cmd({ type: 'event.end' }, 'leader');
+  cmd({ type: 'event.end' }, 'owner');
   assert.strictEqual(code({ type: 'clock.set', show: false }), 'notLive', 'finished');
   mem.prepare("UPDATE events SET status = 'planned', is_template = 1 WHERE id = ?").run(eventId);
   assert.strictEqual(code({ type: 'clock.set', show: false }), 'notLive', 'a template');
@@ -1340,29 +1342,30 @@ test('live store: "Retrage din live" (event.withdraw): back to planned, not fini
   const cmd = (c, role = 'leader', ctx = {}) => live.command(1, eventId, c, undefined, role, ctx);
   const code = (c, role) => { try { cmd(c, role); return 'ok'; } catch (err) { return err.code; } };
   const snap = () => live.snapshot(1, eventId);
-  assert.strictEqual(code({ type: 'event.withdraw' }), 'notLive', 'only a live event');
+  assert.strictEqual(code({ type: 'event.withdraw' }, 'owner'), 'notLive', 'only a live event');
   cmd({ type: 'event.start' }, 'operator', { userId: 7, online: [{ userId: 7, role: 'operator' }] });
   cmd({ type: 'clock.set', show: false });
   cmd({ type: 'worship.next' });
   cmd({ type: 'projector.source', source: 'logo' });
   assert.strictEqual(code({ type: 'event.withdraw' }, 'member'), 'forbidden');
-  cmd({ type: 'event.withdraw' }, 'presenter');
+  assert.strictEqual(code({ type: 'event.withdraw' }, 'presenter'), 'forbidden', 'withdrawing is the owner\'s / operator\'s too');
+  cmd({ type: 'event.withdraw' }, 'operator');
   let s = snap();
   assert.deepStrictEqual([s.status, s.prepared, s.holder, s.handover, s.projector.source, s.clock.show], ['planned', true, null, null, 'content', false], 'planned again, nobody holds the projector, the clock kept as preparation');
   assert.strictEqual(require('../lib/events').createEventStore(mem).get(1, eventId).event.status, 'planned', 'the event row too');
   assert.strictEqual(code({ type: 'worship.next' }), 'notLive', 'nothing moves while planned');
-  cmd({ type: 'event.start' }, 'leader', { userId: 5, online: [{ userId: 5, role: 'leader' }] });
+  cmd({ type: 'event.start' }, 'owner', { userId: 1, online: [{ userId: 1, role: 'owner' }] });
   s = snap();
-  assert.deepStrictEqual([s.status, s.worship.step, s.clock.show, s.holder.role], ['live', 0, false, 'leader'], 'started again: the first item, the clock as left');
-  cmd({ type: 'event.end' });
-  assert.strictEqual(code({ type: 'event.withdraw' }), 'notLive', 'a finished event cannot be withdrawn');
+  assert.deepStrictEqual([s.status, s.worship.step, s.clock.show, s.holder.role], ['live', 0, false, 'owner'], 'started again: the first item, the clock as left');
+  cmd({ type: 'event.end' }, 'owner');
+  assert.strictEqual(code({ type: 'event.withdraw' }, 'owner'), 'notLive', 'a finished event cannot be withdrawn');
   mem.close();
 });
 
 test('live store: both positions clamp on their own after a setlist change; persisted', () => {
   const { mem, live, eventId, items, save } = liveFixture();
   const [song, v1, v2] = items.map((it) => it.id);
-  const cmd = (c, role = 'leader') => live.command(1, eventId, c, undefined, role);
+  const cmd = (c, role = 'owner') => live.command(1, eventId, c, undefined, role);
   cmd({ type: 'event.start' });
   cmd({ type: 'worship.goto', itemId: song, step: 2 });
   cmd({ type: 'projector.request' }, 'operator');
@@ -1387,7 +1390,8 @@ test('live store: additions go where the sender chooses, no approval; a notice f
   const code = (c, role) => { try { cmd(c, role); return 'ok'; } catch (err) { return err.code; } };
   const shared = () => evs.get(1, eventId).items.map((it) => it.title || it.reference);
   const all = () => evs.get(1, eventId, { scope: 'all' }).items.map((it) => `${it.title || it.reference}${it.scope === 'projector' ? '*' : ''}`);
-  cmd({ type: 'event.start' }, 'leader'); // the leader holds the projector: together
+  cmd({ type: 'event.start' }, 'owner'); // the owner starts; the leader takes the projector: together
+  cmd({ type: 'projector.request' }, 'leader');
   const key = live.snapshot(1, eventId).setlistKey;
   // "Doar pe proiector": after what the projector shows (together: the main item); the team never sees it
   let r = cmd({ type: 'operator.addItem', target: 'projector', item: { type: 'verse', reference: 'Ioan 3:16', body: 'Fiindcă' } });
@@ -1866,7 +1870,7 @@ test('migration 014: projector_follows -> together / split; pending requests -> 
 test('events: the editor save keeps projector-only items where they were', () => {
   const { mem, evs, live, eventId, items, save } = liveFixture();
   const [song, v1, v2] = items.map((it) => it.id);
-  live.command(1, eventId, { type: 'event.start' }, undefined, 'leader');
+  live.command(1, eventId, { type: 'event.start' }, undefined, 'owner');
   live.command(1, eventId, { type: 'worship.goto', itemId: v1, step: 0 }, undefined, 'leader');
   live.command(1, eventId, { type: 'operator.addItem', target: 'projector', item: { type: 'verse', reference: 'Op 1' } }, undefined, 'operator');
   live.command(1, eventId, { type: 'worship.goto', itemId: v2, step: 0 }, undefined, 'leader');
@@ -2141,7 +2145,7 @@ test('corner clock: settings, the three fields on every frame, hidden while a vi
   const settings = require('../lib/admin-settings').createAdminSettings(mem);
   assert.deepStrictEqual(settings.clock(1), { show: true, position: 'bottom-right', scale: 1.8 }, 'the defaults');
   assert.deepStrictEqual(settings.setClock(1, { position: 'top-right', scale: 0.55 }), { show: true, position: 'top-right', scale: 0.7 }, 'clamped');
-  const cmd = (c, role = 'leader') => live.command(1, eventId, c, undefined, role);
+  const cmd = (c, role = 'owner') => live.command(1, eventId, c, undefined, role);
   const code = (c, role) => { try { cmd(c, role); return 'ok'; } catch (err) { return err.code; } };
   const snap = () => live.snapshot(1, eventId);
   assert.deepStrictEqual(snap().clock, { show: true, position: 'top-right', scale: 0.7, timeZone: 'Europe/Oslo', format: '24' }, 'not yet live: what it would start with');
@@ -2166,7 +2170,7 @@ test('corner clock: settings, the three fields on every frame, hidden while a vi
   assert.strictEqual(snap().clock.show, true);
   cmd({ type: 'event.end' });
   const again = require('../lib/events').createEventStore(mem).create(1, 1, { name: 'E2', eventDate: '2026-10-11', startTime: null, notes: null });
-  live.command(1, again, { type: 'event.start' }, undefined, 'leader');
+  live.command(1, again, { type: 'event.start' }, undefined, 'owner');
   settings.set(1, 'time_format', '12');
   assert.deepStrictEqual(live.snapshot(1, again).clock, { show: false, position: 'top-right', scale: 0.7, timeZone: 'Europe/Oslo', format: '12' }, 'the time format is a church setting, read live');
   settings.set(1, 'time_format', 'x');
@@ -2189,14 +2193,18 @@ test('projector holder (migration 041): the start gives it to a connected operat
   const code = (c, role, ctx) => { try { cmd(c, role, ctx); return 'ok'; } catch (err) { return err.code; } };
   const snap = () => live.snapshot(1, eventId);
   const who = () => { const h = snap().holder; return h ? [h.userId, h.role] : null; };
-  // the start: the leader starts with an operator connected -> the operator holds (split)
-  cmd({ type: 'event.start' }, 'leader', { userId: 5, online: [LEAD, OP] });
+  // the start: the owner starts with an operator connected -> the operator holds (split)
+  cmd({ type: 'event.start' }, 'owner', { userId: 1, online: [LEAD, OP] });
   assert.deepStrictEqual([who(), snap().mode, snap().projector.follows], [[7, 'operator'], 'split', 'operator']);
   assert.deepStrictEqual([snap().projector.itemId, snap().projector.step], [snap().worship.itemId, 0], 'the operator\'s projector starts at the first item, not on nothing');
-  cmd({ type: 'event.end' }, 'leader');
+  cmd({ type: 'event.end' }, 'owner');
   mem.prepare("UPDATE events SET status = 'planned' WHERE id = ?").run(eventId); // a second start
-  live.command(1, eventId, { type: 'event.start' }, undefined, 'leader', { now: T, userId: 5, online: [LEAD, OWNER] });
-  assert.deepStrictEqual([who(), snap().mode], [[5, 'leader'], 'together'], 'no operator connected: the starter holds');
+  live.command(1, eventId, { type: 'event.start' }, undefined, 'owner', { now: T, userId: 1, online: [LEAD, OWNER] });
+  assert.deepStrictEqual([who(), snap().mode], [[1, 'owner'], 'together'], 'no operator connected: the starter holds');
+  // the leader asks; the owner (connected) accepts: the leader holds, together
+  cmd({ type: 'projector.request' }, 'leader', { userId: 5, online: [LEAD, OWNER] });
+  cmd({ type: 'handover.accept' }, 'owner', { userId: 1, online: [LEAD, OWNER] });
+  assert.deepStrictEqual([who(), snap().mode], [[5, 'leader'], 'together'], 'handed to the leader');
   // mine already: nothing
   const v0 = snap().version;
   assert.strictEqual(cmd({ type: 'projector.request' }, 'leader', { userId: 5, online: [LEAD, OP] }).changed, false);
@@ -2276,7 +2284,7 @@ test('projector holder (migration 041): the start gives it to a connected operat
   assert.strictEqual(live.clearHandovers(), 1, 'a restart clears pending requests');
   assert.strictEqual(snap().handover, null);
   cmd({ type: 'projector.request' }, 'leader', { userId: 5, online: [LEAD, OWNER] });
-  cmd({ type: 'event.end' }, 'leader');
+  cmd({ type: 'event.end' }, 'owner');
   assert.strictEqual(snap().handover, null, 'the end of the event clears it');
 });
 
