@@ -2,7 +2,7 @@
 
 // The home card as a programme sheet: the Program with each song's key on the right (in the
 // reader's notation), the team as circles with initials and a dot with each answer (Vin /
-// Poate / Nu pot / none), and, for the editors, "Gamă": tap a song, pick a key, the song is
+// Poate / Nu pot / none), and, for the editors, "Gamă": tap a song's key, pick one, the song is
 // transposed for this event in one tap. Members see the keys and the team, no choice.
 
 const { layoutAudit, laterAnswers } = require('./harness');
@@ -26,11 +26,11 @@ module.exports = {
     const m = await signIn('member', { width: 375, lang: 'ro' });
     await m.waitForSelector('#now .now-items');
     const card = await m.evaluate(() => ({
-      items: [...document.querySelectorAll('#now .now-item')].map((li) => ({ title: li.querySelector('.now-item-title').textContent, key: li.querySelector('.now-item-key') ? li.querySelector('.now-item-key').textContent : null, button: Boolean(li.querySelector('button')) })),
+      items: [...document.querySelectorAll('#now .now-item')].map((li) => ({ title: li.querySelector('.now-item-title').textContent, key: li.querySelector('.now-item-key') ? li.querySelector('.now-item-key').textContent : null, keyButton: Boolean(li.querySelector('button.now-item-key')) })),
       people: [...document.querySelectorAll('#now .now-person')].map((p) => ({ initials: p.querySelector('.now-avatar').textContent, status: [...p.classList].find((c) => /^now-person-/.test(c)).replace('now-person-', '') })),
       keys: Boolean(document.querySelector('#now .now-keys')), hint: Boolean(document.querySelector('#now .now-key-hint')),
     }));
-    check(card.items.length === 5 && card.items[0].title === 'Sfânt în G' && card.items[0].key === 'G' && card.items[1].key === null && card.items.every((it) => !it.button), 'member: the Program, the songs with their key on the right, nothing to tap', card.items);
+    check(card.items.length === 5 && card.items[0].title === 'Sfânt în G' && card.items[0].key === 'G' && card.items[1].key === null && !card.items.some((it) => it.keyButton), 'member: the Program, the songs with their key on the right, no key to change', card.items);
     check(card.people.length >= 4 && card.people.some((p) => p.status === 'accepted') && card.people.some((p) => p.status === 'maybe') && card.people.some((p) => p.status === 'declined') && card.people.every((p) => /^[A-ZĂÂÎȘȚ?]{1,2}$/.test(p.initials)), 'member: the team as initials with a dot per answer (Vin / Poate / Nu pot)', card.people);
     check(!card.keys && !card.hint, 'member: no key choice');
     const a = await layoutAudit(m, '#now');
@@ -41,8 +41,8 @@ module.exports = {
     const o = await signIn('owner', { width: 1024, lang: 'ro' });
     await laterAnswers(o); // the owner's own invitation pop-up is not this test's
     await o.waitForSelector('#now .now-items');
-    check(await o.isVisible('#now .now-key-hint') && !(await o.$('#now .now-keys')), 'owner: "Atinge o cântare…", the choice waits for a song');
-    await o.click('#now .now-item button >> nth=0');
+    check(await o.isVisible('#now .now-key-hint') && !(await o.$('#now .now-keys')), 'owner: "Atinge gama…", the choice waits for a song');
+    await o.click('#now .now-item .now-item-key >> nth=0');
     await o.waitForSelector('#now .now-keys');
     const keys = await o.$$eval('#now .now-keys button', (l) => ({ labels: l.map((b) => b.dataset.key), pressed: l.filter((b) => b.getAttribute('aria-pressed') === 'true').map((b) => b.dataset.key) }));
     check(keys.labels.length === 12 && keys.labels[0] === 'C' && keys.labels.includes('G') && keys.pressed.join() === 'G', 'the 12 keys from C, the song\'s own (G) selected', keys);
@@ -50,7 +50,7 @@ module.exports = {
     await o.waitForFunction(() => document.querySelector('#now .now-item .now-item-key') && document.querySelector('#now .now-item .now-item-key').textContent === 'A', null, { timeout: 5000 });
     const item = (await app.api(owner, 'GET', `/api/events/${E}`)).body.items[0];
     check(item.transpose === 2 && item.displayKey === 'A', 'A: the song is transposed by 2 for this event (the badge says A)', { transpose: item.transpose, displayKey: item.displayKey });
-    check((await o.$eval('#now .now-keys [aria-pressed="true"]', (b) => b.dataset.key)) === 'A' && (await o.$eval('#now .now-item button >> nth=0', (b) => b.getAttribute('aria-pressed'))) === 'true', 'the choice shows A selected, the song still picked');
+    check((await o.$eval('#now .now-keys [aria-pressed="true"]', (b) => b.dataset.key)) === 'A' && (await o.$eval('#now .now-item .now-item-key >> nth=0', (b) => b.getAttribute('aria-pressed'))) === 'true', 'the choice shows A selected, the song still picked');
     await o.click('#now .now-keys [data-key="G"]');
     await o.waitForFunction(() => document.querySelector('#now .now-item .now-item-key').textContent === 'G', null, { timeout: 5000 });
     check((await app.api(owner, 'GET', `/api/events/${E}`)).body.items[0].transpose === 0, 'back to G: no transposition');
@@ -63,7 +63,7 @@ module.exports = {
     await o.reload();
     await laterAnswers(o);
     await o.waitForSelector('#now .now-item:nth-child(6) .now-item-key.is-unset');
-    await o.click('#now .now-item:nth-child(6) button');
+    await o.click('#now .now-item:nth-child(6) .now-item-key');
     await o.waitForSelector('#now .now-key-minor');
     const setter = await o.$$eval('#now .now-keys button', (l) => l.map((b) => b.dataset.key));
     check(setter.length === 12 && setter[0] === 'C' && setter.includes('Bb') && !(await o.$('#now .now-keys [aria-pressed="true"]')), 'no key: the 12 keys to pick from, none selected', setter);

@@ -29,7 +29,7 @@ module.exports = {
     });
     for (const [lang, width, role] of [['ro', 375, 'leader'], ['en', 1024, 'presenter'], ['ro', 1180, 'leader'], ['en', 1440, 'owner']]) {
       const tag = `[${lang} ${width} ${role}]`;
-      await app.takeProjector('owner');
+      await app.takeProjector(role); // the panel is the holder's: a leader / presenter sees it only holding the projector
       await app.command({ type: 'projector.source', source: 'content' });
       await app.command({ type: 'worship.goto', itemId: items[0], step: 0 });
       const p = await signIn(role, { width, lang });
@@ -37,7 +37,7 @@ module.exports = {
       await p.waitForSelector('#live:not([hidden])');
       await p.waitForSelector('.step[aria-current=step]');
       const together = await layout(p);
-      check(together.panel && !together.cross && !together.hint, `${tag} together: the projector panel is there`, together);
+      check(together.panel && !together.cross && !together.hint, `${tag} together (holding the projector): the projector panel is there`, together);
       await app.takeProjector('operator');
       await p.waitForFunction(() => document.body.classList.contains('split-mode'));
       await wait(300);
@@ -58,7 +58,7 @@ module.exports = {
       check(/(Proiectorul e la|The projector is at)/.test(status), `${tag} big lyrics status: "Proiectorul e la …"`, status);
       await p.keyboard.press('Escape');
       await wait(200);
-      await app.takeProjector('owner');
+      await app.takeProjector(role); // the panel is the holder's: a leader / presenter sees it only holding the projector
       await p.waitForFunction(() => !document.body.classList.contains('split-mode'));
       await wait(300);
       const back = await layout(p);

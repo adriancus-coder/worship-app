@@ -20,12 +20,15 @@
 //   big.update(snap, items)   // on every render: follows live; closed views ignore it
 //   big.isOpen()
 //
-// The team (the follow page) opens the SAME view members-style:
+// The team (the follow page) and the home card (public/app.js) open the SAME view members-style:
 //   BIG_LYRICS.create({ ..., member: { nav, backToLive } })
 //     no live commands: in follow mode it just follows; commands.prev / next move only this
 //     person's place (swipe, ← →); nav() -> { show, away, canPrev, canNext } decides the bottom
 //     bar: "← Înapoi" / "Înainte →" when show (free mode, or detached), plus "Revino la live"
 //     when away; keys E / B / Space do nothing.
+//   standalone: true      a page with its own place (the home card's programme): no live
+//                         snapshot, no status line; position() is that place, the view
+//                         behaves as live.
 //   loadSong(item)        the page's own song loader (its cache, offline too).
 
 (function () {
@@ -56,7 +59,7 @@
   // every second while the view is open.
   // onClose(): after the view closed (the leader goes back to the event page); fullPage() with
   // showFullPage() -> true adds a small "Pagina completă" tool (the leader's way to the page).
-  function create({ api, eventId, position, commands, connection, drivesProjector = () => false, extraStatus = () => '', member = null, loadSong: pageLoadSong = null, onClose = null, fullPage = null, compactPage = null, showFullPage = () => false }) {
+  function create({ api, eventId, position, commands, connection, drivesProjector = () => false, extraStatus = () => '', member = null, standalone = false, loadSong: pageLoadSong = null, onClose = null, fullPage = null, compactPage = null, showFullPage = () => false }) {
     const { el } = window.PAGE;
     const { t } = window.I18N;
     const state = { snap: null, items: [], scale: Number(stored(SCALE_KEY, '1')) || 1, textOnly: stored(TEXT_ONLY_KEY, '0') === '1', songs: new Map(), setlistKey: null, renderId: 0 };
@@ -111,7 +114,7 @@
         el('div', { class: 'big-top' }, parts.label, el('span', { class: 'big-tools' }, parts.textOnly, parts.smaller, parts.larger, parts.list, parts.full, parts.close)),
         parts.body,
         parts.next,
-        parts.status,
+        standalone ? null : parts.status,
         parts.nav);
       dialog.addEventListener('close', () => { releaseWake(); clearInterval(extraTimer); extraTimer = null; if (onClose) onClose(); });
       dialog.addEventListener('cancel', (event) => { event.preventDefault(); close(); }); // Escape
@@ -171,7 +174,7 @@
       keepScreenOn();
       (parts.nextButton.hidden || parts.nextButton.disabled ? parts.exit : parts.nextButton).focus();
       clearInterval(extraTimer);
-      extraTimer = setInterval(renderExtra, 1000);
+      if (!standalone) extraTimer = setInterval(renderExtra, 1000);
     }
 
     function close() {
@@ -289,10 +292,10 @@
     }
 
     async function render() {
-      if (!isOpen() || !state.snap) return;
+      if (!isOpen() || (!state.snap && !standalone)) return;
       const renderId = ++state.renderId;
       const snap = state.snap;
-      const isLive = snap.status === 'live';
+      const isLive = standalone || snap.status === 'live';
       const pos = position();
       const item = pos && state.items.find((it) => it.id === pos.itemId);
       parts.textOnly.textContent = t('song.textOnly');
@@ -314,7 +317,7 @@
       parts.smaller.disabled = state.scale <= SCALE.min + 1e-9;
       parts.larger.disabled = state.scale >= SCALE.max - 1e-9;
       parts.prev.textContent = t('live.prev');
-      {
+      if (!standalone) {
         const { value, conn, text } = statusLine();
         parts.statusText.replaceChildren(el('span', { class: 'big-dot', 'data-state': value, 'aria-hidden': 'true' }), `${conn} · ${text}`);
         renderExtra();
