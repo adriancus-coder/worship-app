@@ -47,8 +47,10 @@ module.exports = {
     await pages.owner.goto(`${app.url}/app`);
     await pages.owner.waitForSelector('#now .now-card');
     await pages.owner.click('#quick-section a[href="/events?new=1"]');
+    await pages.owner.waitForSelector('#new-dialog[open]', { timeout: 5000 });
+    await pages.owner.click('#new-create');
     const opened = await pages.owner.waitForURL(/\/events\/\d+\/edit/, { timeout: 5000 }).then(() => true, () => false);
-    check(opened, '"+ Eveniment nou" creates the event at once and opens the editor');
+    check(opened, '"+ Eveniment nou" opens the form; "Creează evenimentul" opens the editor');
     await pages.member.request.put(`${app.url}/api/me/locale`, { data: { locale: 'en' } });
     await pages.member.reload();
     await pages.member.waitForSelector('#now .now-card');

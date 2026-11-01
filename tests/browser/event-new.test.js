@@ -1,8 +1,9 @@
 'use strict';
 
 // "+ Eveniment nou": one button on /events (sharing the row with "Planifică" on phones); the
-// editor opens with "Detalii" open: name, date, time, notes and "Program de la" (Copie a
-// evenimentului / Gol), nothing selected until a choice is made. A copy of a past event
+// form first (public/event-new.js, tested in quick-create), then the editor; "Detalii" from
+// the header: name, date, time, notes and "Program de la" (Copie a evenimentului / Gol),
+// nothing selected until a choice is made. A copy of a past event
 // copies its items with new ids; "Gol" empties after a confirmation; an edited Program asks
 // before a copy replaces it; the row reopens from the header. Home's quick action does the
 // same. No template picker anywhere. RO 375 / EN 1024.
@@ -44,7 +45,12 @@ module.exports = {
       check(head.buttons.length === 1 && head.plan && !head.dialog && (width > 600 || head.width > head.main * 0.45) && head.tabs.join() === 'tab-upcoming,tab-past',
         `${tag} /events: one primary "+ Eveniment nou" (+ the secondary "Planifică"), two tabs, no templates`, head);
       await p.click('#new-event');
+      await p.waitForSelector('#new-dialog[open] .plan-day[aria-pressed="true"]');
+      await p.click('#new-create');
       await p.waitForURL(/\/events\/\d+\/edit$/);
+      await p.waitForSelector('#items .item-main, #setlist-empty:not([hidden])');
+      if (width < 600) { await p.click('#event-more'); await wait(150); }
+      await p.click('#details-button');
       await p.waitForSelector('#quick-details[open]:not([hidden])');
       const id = Number(new URL(p.url()).pathname.split('/')[2]);
       await p.waitForFunction(() => document.querySelectorAll('#q-copy option').length > 1);
@@ -115,9 +121,10 @@ module.exports = {
     const o = await signIn('owner', { width: 1024 });
     await o.waitForSelector('#quick-section a[href="/events?new=1"]');
     await o.click('#quick-section a[href="/events?new=1"]');
+    await o.waitForSelector('#new-dialog[open]', { timeout: 8000 });
+    await o.click('#new-create');
     await o.waitForURL(/\/events\/\d+\/edit$/, { timeout: 8000 });
-    await o.waitForSelector('#quick-details[open]:not([hidden])');
-    check(true, 'home "+ Eveniment nou": the editor with Detalii open');
+    check(true, 'home "+ Eveniment nou": the form, then the editor');
     // the API: apply-copy refuses itself; clear works; the template routes are gone
     const nid = Number(new URL(o.url()).pathname.split('/')[2]);
     check((await app.api(owner, 'POST', `/api/events/${nid}/apply-copy`, { fromEventId: nid })).status === 400, 'apply-copy: itself is refused');

@@ -2892,6 +2892,16 @@ dialog.plan-dialog { width: min(440px, calc(100vw - 24px)); padding: 12px; }
 .plan-grid > button.plan-day::before { position: absolute; top: 3px; right: 3px; width: 0.7em; height: 0.7em; }
 .plan-grid > button.plan-day:disabled { opacity: 0.35; }
 .plan-day.today { outline: 1px dashed var(--accent-fill); outline-offset: -3px; }
+/* "+ Eveniment nou": the form (the calendar shares the plan styles; the weekday heads are plain) */
+dialog.new-dialog { max-height: calc(100dvh - 24px); overflow-y: auto; }
+.new-dialog .field { display: flex; flex-direction: column; gap: 4px; }
+.new-dialog .field > span:first-child, .new-dialog .field-label { font-size: 0.875rem; font-weight: 600; color: var(--text-muted); }
+.new-dialog > form > * + * { margin-top: 10px; }
+.new-date { display: flex; align-items: baseline; gap: 8px; }
+.new-date-text { font-size: 1.0625rem; }
+.plan-grid > .new-wd { display: flex; align-items: center; justify-content: center; }
+.new-programme > button { flex: 1 1 auto; }
+.new-dialog .field[hidden] { display: none; }
 .plan-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--worship); }
 .plan-day[aria-pressed="true"] .plan-dot { background: currentColor; }
 .plan-count { font-weight: 600; }

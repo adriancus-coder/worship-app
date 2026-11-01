@@ -28,6 +28,40 @@
       <ul id="events" class="event-list"></ul>
     </div>
 
+    <!-- "+ Eveniment nou" (public/event-new.js): the event is created only after the form:
+         name, the date on a calendar, the time from a list, the programme it starts with, a note. -->
+    <dialog id="new-dialog" class="plan-dialog new-dialog" aria-labelledby="new-heading">
+      <form id="new-form" method="dialog" novalidate>
+        <h2 id="new-heading" data-i18n="newEvent.heading"></h2>
+        <label class="field"><span data-i18n="plan.nameLabel"></span><input type="text" id="new-name" maxlength="120" autocomplete="off" required></label>
+        <div class="new-date">
+          <span class="field-label" id="new-date-label" data-i18n="newEvent.dateLabel"></span>
+          <strong id="new-date-text" class="new-date-text" aria-live="polite"></strong>
+        </div>
+        <div class="plan-month-row">
+          <button type="button" class="secondary" id="new-prev" data-i18n-aria-label="plan.prev"><span aria-hidden="true">‹</span></button>
+          <strong id="new-month" aria-live="polite"></strong>
+          <button type="button" class="secondary" id="new-next" data-i18n-aria-label="plan.next"><span aria-hidden="true">›</span></button>
+        </div>
+        <div id="new-grid" class="plan-grid choice-group" role="group" aria-labelledby="new-date-label"></div>
+        <label class="field"><span data-i18n="plan.timeLabel"></span><select id="new-time"></select></label>
+        <span class="field-label" id="new-programme-label" data-i18n="newEvent.programmeLabel"></span>
+        <div class="choice-group new-programme" id="new-programme" role="group" aria-labelledby="new-programme-label">
+          <button type="button" data-programme="random" aria-pressed="true" data-i18n="newEvent.programmeRandom"></button>
+          <button type="button" data-programme="copy" aria-pressed="false" data-i18n="newEvent.programmeCopy"></button>
+          <button type="button" data-programme="empty" aria-pressed="false" data-i18n="newEvent.programmeEmpty"></button>
+        </div>
+        <label class="field" id="new-theme-field"><span data-i18n="newEvent.themeLabel"></span><select id="new-theme"></select></label>
+        <label class="field" id="new-copy-field" hidden><span data-i18n="newEvent.copyLabel"></span><select id="new-copy"></select></label>
+        <label class="field"><span data-i18n="newEvent.notesLabel"></span><textarea id="new-notes" rows="2" maxlength="2000"></textarea></label>
+        <p id="new-message" class="message error" role="alert"></p>
+        <div class="form-actions">
+          <button type="submit" id="new-create" data-icon="plus" data-i18n="newEvent.create"></button>
+          <button type="button" class="secondary" id="new-cancel" data-i18n="plan.cancel"></button>
+        </div>
+      </form>
+    </dialog>
+
     <!-- "Planifică": pick days on a month calendar, one event per day (public/events-plan.js) -->
     <dialog id="plan-dialog" class="plan-dialog" aria-labelledby="plan-heading">
       <form id="plan-form" method="dialog" novalidate>
@@ -57,6 +91,7 @@
   <script src="/page.js"></script>
   <script src="/list-pane.js"></script>
   <script src="/shell.js"></script>
+  <script src="/event-new.js"></script>
   <script src="/events.js"></script>
   <script src="/events-plan.js"></script>
 </body>

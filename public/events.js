@@ -82,25 +82,8 @@
     load();
   });
 
-  // "+ Eveniment nou": one tap. The server picks the defaults (the next
-  // usual service day and time) and the editor opens with its "Detalii" row, where the
-  // Program's starting point (a copy of a past event / empty) is chosen.
-  async function quickCreate() {
-    newButton.disabled = true;
-    try {
-      const res = await api('/api/events/quick', { method: 'POST' });
-      if (res.status === 201) {
-        window.location.assign(`/events/${res.body.event.id}/edit?new=1`);
-        return;
-      }
-      setStatus(res.body.error || t('common.networkError'));
-    } catch (err) {
-      setStatus(t('common.networkError'));
-    } finally {
-      newButton.disabled = false;
-    }
-  }
-  newButton.addEventListener('click', quickCreate);
+  // "+ Eveniment nou": the form (public/event-new.js); the event is created only after it.
+  newButton.addEventListener('click', () => window.EVENT_NEW.open());
 
   document.addEventListener('i18n:change', render);
   // "Planifică" (public/events-plan.js) made events: the list again, with how many.

@@ -60,6 +60,11 @@ function createEventsRouter({ db, auth, logger, live }) {
     res.json({ today: day, when, events: events.list(req.adminId, { when, today: day, teamOnly: !isEditor(req) }) });
   });
 
+  // "+ Eveniment nou" (public/event-new.js): the form's defaults. Before /api/events/:id.
+  router.get('/api/events/quick-defaults', canEdit, (req, res) => {
+    res.json(quickDefaults(req));
+  });
+
   router.get('/api/events/:id', (req, res) => {
     const found = load(req, res);
     if (found) res.json({ ...found, today: today(req) });
@@ -108,29 +113,54 @@ function createEventsRouter({ db, auth, logger, live }) {
     return events.appendSongs(req.adminId, id, suggest.randomSongs(req.adminId, { eventId: id, today: today(req) }).songs);
   }
 
-  // One tap: an event with smart defaults, opened in the editor right away: "Serviciu de
-  // duminică" at the church's usual time; the date is the next usual service day
-  // (timezone-aware; today until 2 h after the service time); ten random songs.
-  router.post('/api/events/quick', canEdit, (req, res) => {
+  // The defaults of a new event: "Serviciu de duminică" at the church's usual time, on the
+  // next usual service day (timezone-aware; today until 2 h after the service time).
+  function quickDefaults(req) {
     const tz = settings.timezone(req.adminId);
     const service = settings.service(req.adminId);
     // "Serviciu de duminică" / "Sunday service" (2023-01-01 was a Sunday).
     const weekday = new Intl.DateTimeFormat(req.lang === 'en' ? 'en' : 'ro', { weekday: 'long', timeZone: 'UTC' })
       .format(new Date(Date.UTC(2023, 0, 1 + service.weekday)));
     const day = req.lang === 'en' ? weekday : weekday.toLowerCase();
-    const meta = {
+    return {
       name: req.t('events.quickName', { day }),
       eventDate: nextServiceDate(todayIn(tz), nowTimeIn(tz), service.weekday, service.time),
       startTime: service.time,
-      notes: '',
+      today: today(req),
+    };
+  }
+
+  // "+ Eveniment nou": the event is created with what the form chose (every field optional:
+  // the defaults above), and its programme: ten random songs (programme 'random', the
+  // default; theme: from one theme), a copy of a past event ('copy', fromEventId) or nothing
+  // ('empty'). Opened in the editor right away.
+  router.post('/api/events/quick', canEdit, (req, res) => {
+    const body = req.body || {};
+    const defaults = quickDefaults(req);
+    const given = (key) => (typeof body[key] === 'string' && body[key].trim() ? body[key].trim() : undefined);
+    const meta = {
+      name: given('name') || defaults.name,
+      eventDate: given('eventDate') || defaults.eventDate,
+      startTime: body.startTime === '' ? '' : (given('startTime') || defaults.startTime),
+      notes: typeof body.notes === 'string' ? body.notes : '',
     };
     const { error, value } = validateEventMeta(meta, req.t);
     if (error) return res.status(400).json({ error });
-    const id = events.create(req.adminId, req.user.id, value);
-    const ideas = fillRandomSongs(req, id);
-    logger.info(`Event #${id} quick-created by user #${req.user.id} (admin #${req.adminId}), ${ideas} random songs`);
+    const programme = ['random', 'copy', 'empty'].includes(body.programme) ? body.programme : 'random';
+    let sourceId = null;
+    if (programme === 'copy') {
+      const raw = String(body.fromEventId ?? '');
+      const source = /^\d{1,15}$/.test(raw) ? events.get(req.adminId, Number(raw)) : null;
+      if (!source) return res.status(400).json({ error: req.t('errors.eventSourceInvalid') });
+      sourceId = source.event.id;
+    }
+    const theme = typeof body.theme === 'string' ? body.theme.trim().slice(0, 40) : '';
+    const id = events.create(req.adminId, req.user.id, value, { sourceId });
+    if (sourceId !== null) assignments.copyFrom(req.adminId, sourceId, id, req.user.id);
+    const ideas = programme === 'random' ? events.appendSongs(req.adminId, id, suggest.randomSongs(req.adminId, { eventId: id, today: today(req), theme }).songs) : 0;
+    logger.info(`Event #${id} created by user #${req.user.id} (admin #${req.adminId}): ${programme}${sourceId ? ` of #${sourceId}` : ''}${ideas ? `, ${ideas} random songs${theme ? ` (${theme})` : ''}` : ''}`);
     live.eventChanged(req.adminId, id);
-    res.status(201).json({ ...events.get(req.adminId, id, { t: req.t }), today: today(req) });
+    res.status(201).json({ ...events.get(req.adminId, id, { t: req.t }), today: defaults.today });
   });
 
   // Random song ideas for a programme (lib/suggest.js): the library (or one theme of it,
