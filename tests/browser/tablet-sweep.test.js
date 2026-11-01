@@ -16,13 +16,13 @@ module.exports = {
     const { eventId: E, songs } = app.seed;
     const pages = [
       ['owner', '/app', '#now .now-card'], ['owner', '/events', '#events, .events-page'], ['owner', `/events/${E}`, '#items .item-main'],
-      ['owner', `/events/${E}/edit`, '#items .item-main'], ['owner', `/events/${E}/rehearse`, '#rehearse:not([hidden])'],
+      ['owner', `/events/${E}/edit`, '#items .item-main'],
       ['owner', '/library', '#songs'], ['owner', `/songs/${songs.G}`, '#sections'], ['owner', `/songs/${songs.G}/edit`, '#song-form, form'],
       ['owner', '/songs/new', 'form'], ['owner', '/team', 'main'], ['owner', '/positions', 'main'], ['owner', '/settings', '#clock-panel'],
       ['owner', '/screens', 'main'], ['owner', '/media', 'main'], ['owner', '/guides', 'main'], ['owner', '/profile', 'main'], ['owner', '/notifications', 'main'],
       ['leader', `/events/${E}/live?view=full`, '#live-clock, .live-page'], ['operator', `/events/${E}/operator`, '#op-steps'],
       ['member', '/app', '#now .now-card'], ['member', `/events/${E}`, '#items .item-main'], ['member', `/events/${E}/follow`, '#slide'],
-      ['member', `/events/${E}/rehearse`, '#rehearse:not([hidden])'], ['member', '/library', '#songs'], ['member', `/songs/${songs.G}`, '#sections'],
+      ['member', '/library', '#songs'], ['member', `/songs/${songs.G}`, '#sections'],
     ];
     check((await app.command({ type: 'event.start' })).ok, 'the event is live (the live pages have content)');
     const audit = (p) => p.evaluate(() => {
@@ -44,7 +44,7 @@ module.exports = {
       const stacked = (x) => [...x.children].some((c) => !getComputedStyle(c).display.startsWith('inline')) || x.querySelector('br');
       // (the text's line boxes: more than one distinct top = the words wrapped)
       const lines = (x) => { const r = document.createRange(); r.selectNodeContents(x); return new Set([...r.getClientRects()].filter((b) => b.width > 0).map((b) => Math.round(b.top))).size; };
-      const wrapped = [...document.querySelectorAll('button, .pill, .key-badge, .type-badge, .tab-count')].filter(visible).filter((x) => !stacked(x)).filter((x) => !x.closest('.big-nav, .now-actions, .event-actions, .rehearse-nav, .save-bar, .form-actions')).filter((x) => x.textContent.trim().length > 1 && lines(x) > 1).map((x) => x.textContent.trim().slice(0, 30)).slice(0, 6);
+      const wrapped = [...document.querySelectorAll('button, .pill, .key-badge, .type-badge, .tab-count')].filter(visible).filter((x) => !stacked(x)).filter((x) => !x.closest('.big-nav, .now-actions, .event-actions, .save-bar, .form-actions')).filter((x) => x.textContent.trim().length > 1 && lines(x) > 1).map((x) => x.textContent.trim().slice(0, 30)).slice(0, 6);
       // a selection group whose options sit on more than one row
       const groups = [...document.querySelectorAll('.choice-group, .tabs, .source-buttons, .mode-switch, .notation-switch, .lang-switch')].filter(visible).filter((g) => { const tops = new Set([...g.children].filter(visible).map((c) => Math.round(c.getBoundingClientRect().top))); return tops.size > 1; }).map((g) => (g.getAttribute('aria-label') || g.id || g.className).slice(0, 30)).slice(0, 6);
       return { overflow: document.documentElement.scrollWidth > vw + 1, outside: out, small, clipped, wrapped, groups };

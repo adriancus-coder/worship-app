@@ -1,7 +1,7 @@
 'use strict';
 
 // Where each role lands (docs/ROADMAP.md "Roles"): the presenter prepares / starts and gets
-// the live page; the leader rehearses / starts and gets the big lyrics (?view=lyrics, ✕
+// the live page; the leader prepares / starts and gets the big lyrics (?view=lyrics, ✕
 // shows the live page underneath; next / prev move the team and the projector); the console
 // stays the operator's and the owner's (presenter and leader are redirected); operator and
 // member unchanged; the owner can "Vezi ca prezentator". RO / EN; 375 / 1024 / 1180.
@@ -25,9 +25,9 @@ module.exports = {
     const planned = {
       owner: [/Pornește live/, /Pregătește/, /Pornește live/],
       presenter: [/Pregătește/, /Pornește live/, /Editează/],
-      leader: [/Repetiție/, /Pornește live/, /Repetiție/],
+      leader: [/Pregătește/, /Pornește live/, /Editează/],
       operator: [/Pregătește/, /Pornește live/, /Editează/],
-      member: [/Repetiție/, null, /Repetiție/],
+      member: [/Vezi programul/, null, null],
     };
     const pages = {};
     for (const [role, [primary, secondary, eventPrimary]] of Object.entries(planned)) {
@@ -37,9 +37,10 @@ module.exports = {
       const c = await card(p);
       check(primary.test(c.primary) && (secondary ? secondary.test(c.secondary || '') : !c.secondary), `${role} planned: home "${c.primary}"${c.secondary ? ` + "${c.secondary}"` : ''}`, c);
       await p.goto(`${app.url}/events/${E}`);
-      await p.waitForSelector('#event-actions a');
+      await p.waitForSelector('#items .item-main');
       const row = await eventRow(p);
-      check(row.length && eventPrimary.test(row[0]) && row[0].startsWith('*'), `${role} planned: the event page's primary "${row[0]}"`, row);
+      if (eventPrimary) check(row.length && eventPrimary.test(row[0]) && row[0].startsWith('*'), `${role} planned: the event page's primary "${row[0]}"`, row);
+      else check(row.length === 0 && await p.isHidden('#event-actions'), `${role} planned: no action on the event page (the programme is the page)`, row);
       const a = await layoutAudit(p, 'main');
       check(!a.overflow && !a.small.length, `${role}: no overflow, targets >= 44 px`, a);
     }
@@ -93,7 +94,7 @@ module.exports = {
     check(new URL(l.url()).pathname === `/events/${E}`, 'leader: ✕ returns to the event page (from home: ?from=home kept)');
     await l.waitForSelector('#event-actions a');
     const lrow = await eventRow(l);
-    check(/^\*Versuri mari\|.*\/live\?view=lyrics/.test(lrow[0]) && lrow.some((x) => /Repetiție/.test(x)) && lrow.some((x) => /^Pagina Live completă\|.*\/live\?view=full/.test(x)), 'leader live: the event page\'s primary is "Versuri mari", rehearsal stays, "Pagina Live completă" secondary', lrow);
+    check(/^\*Versuri mari\|.*\/live\?view=lyrics/.test(lrow[0]) && !lrow.some((x) => /Repetiție|rehearse/.test(x)) && lrow.some((x) => /^Pagina Live completă\|.*\/live\?view=full/.test(x)), 'leader live: the event page\'s primary is "Versuri mari", no rehearsal, "Pagina Live completă" secondary', lrow);
     // "Versuri mari" from the event page -> big lyrics; "✕ Ieși" -> the event page
     await l.click('#event-actions a:has-text("Versuri mari")');
     await l.waitForSelector('dialog.big-lyrics[open]', { timeout: 6000 });
@@ -127,7 +128,7 @@ module.exports = {
     check(oc.primary === 'Consolă operator' && /\/operator/.test(oc.href), 'operator live: "Consolă operator"', oc);
     await op.goto(`${app.url}/events/${E}/rehearse`);
     await op.waitForSelector('#event-actions a');
-    check(new URL(op.url()).pathname === `/events/${E}`, 'operator: still no rehearsal (redirect)');
+    check(new URL(op.url()).pathname === `/events/${E}`, 'an old /rehearse link lands on the event page');
     const m = pages.member;
     await m.goto(`${app.url}/app`);
     await m.waitForSelector('#now .now-card.live');

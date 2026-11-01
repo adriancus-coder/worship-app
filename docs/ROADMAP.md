@@ -28,10 +28,12 @@ never implement a later stage early. Mockups: claude.ai design canvas
     Prepares the events and runs the songs for the team.
   - *leader* (Lider) — the SAME rights as the presenter → straight into the big lyrics
     (`/events/:id/live?view=lyrics`: the live page with "⤢ Versuri mari" open; ✕ shows the
-    page underneath). Leads the music from the stage; rehearsal at hand.
-  - *operator* — event + editor rights + the projector screens (SCREEN_ROLES), no
-    rehearsal → the operator console (only owner and operator open the console).
-  - *member* — follow + rehearsal → "Repetiție" before, "Urmărește live" during.
+    page underneath). Leads the music from the stage.
+  - *operator* — event + editor rights + the projector screens (SCREEN_ROLES) → the
+    operator console (only owner and operator open the console).
+  - *member* — follow → "Vezi programul" before, "Urmărește live" during. (The
+    separate "Repetiție" page was removed in November 2026: the programme, the song pages
+    and the big lyrics cover it.)
   Home card and event page, by role and state (planned / live): owner "Pornește live" /
   "Intră live"; presenter "Pregătește" (+ "Pornește live") / "Intră live"; leader "Repetiție"
   (+ "Pornește live") / "Versuri mari"; operator "Pregătește" (+ "Pornește live") / "Consolă

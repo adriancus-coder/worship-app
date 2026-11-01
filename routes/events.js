@@ -70,7 +70,7 @@ function createEventsRouter({ db, auth, logger, live }) {
     if (found) res.json({ ...found, today: today(req) });
   });
 
-  // A song item ready to render (rehearsal, previews): sections transposed and the
+  // A song item ready to render (the phone pages, previews): sections transposed and the
   // arrangement resolved. Same visibility as the event.
   router.get('/api/events/:id/items/:itemId/song', (req, res) => {
     const found = load(req, res);

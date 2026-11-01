@@ -49,17 +49,16 @@
       return [{ text: t('home.follow'), href: eventUrl(event, '/follow'), icon: 'follow' }];
     }
     // Event roles: "▶ Pornește live" starts it and opens that role's page in one tap. The
-    // owner starts first; the presenter and the operator prepare first (primary) and start
-    // second; the leader rehearses first. Rehearsal is never the operator's.
+    // owner starts first; the others prepare first (primary) and start second. Without the
+    // events right: "Vezi programul" (the event page).
     const prepare = can(state.me, 'events') ? { text: t('home.prepare'), href: eventUrl(event, '/edit'), icon: 'edit' } : null;
-    const rehearse = role === 'operator' ? null : { text: t('home.rehearse'), href: eventUrl(event, '/rehearse'), icon: 'rehearse' };
+    const programme = { text: t('home.programme'), href: eventUrl(event, ''), icon: 'list' };
     if (entry) {
       const start = { text: t('home.startLive'), icon: 'play', run: () => startLive(event, eventUrl(event, entry.path)) };
       if (role === 'owner') return [start, prepare];
-      if (role === 'leader') return [rehearse, start];
-      return [prepare, start].filter(Boolean);
+      return [prepare || programme, start];
     }
-    return [prepare, rehearse || { text: t('home.rehearse'), href: eventUrl(event, '/rehearse'), icon: 'rehearse' }].filter(Boolean);
+    return [prepare || programme];
   }
 
   // --- the card's Program with the keys, the key choice, the team row ----------------------

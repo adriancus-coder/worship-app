@@ -200,8 +200,8 @@
   // The event's actions: one row, exactly one primary, chosen by the moment.
   //   event roles  live -> "Intră live"; planned today / tomorrow -> "Pornește live";
   //                otherwise "Editează" (Live, if it can start, is then secondary).
-  //                "Repetiție" is always secondary. The operator's live page is the console.
-  //   members      live -> "Urmărește live", else "Repetiție": the only action.
+  //                The operator's live page is the console.
+  //   members      live -> "Urmărește live"; before, nothing (the programme is the page).
   // The live page of each event role (the same mapping as the home card, public/app.js):
   // live page (owner, presenter), big lyrics (leader), console (operator).
   const LIVE_ENTRY = {
@@ -219,27 +219,22 @@
     const entry = LIVE_ENTRY[liveEntryRole(state.me)] || null;
     const livePage = entry ? keepFrom(`/events/${ev.id}${entry.path}`) : null;
     const follow = { key: 'follow.link', icon: 'follow', href: keepFrom(`/events/${ev.id}/follow`) };
-    // Rehearsal is the musical team's (owner, presenter, leader, member): the operator never gets it.
-    const rehearse = role === 'operator' ? null : { key: 'rehearse.link', icon: 'rehearse', href: keepFrom(`/events/${ev.id}/rehearse`) };
     const actions = [];
     if (!editor) {
-      actions.push(ev.status === 'live'
-        ? { key: 'follow.link', icon: 'follow', href: keepFrom(`/events/${ev.id}/follow`) }
-        : rehearse);
+      if (ev.status === 'live') actions.push(follow);
     } else {
       const edit = state.editing || !canEdit(state.me) ? null : { key: 'setlist.edit', icon: 'edit', href: keepFrom(`/events/${ev.id}/edit`) };
       const soon = state.today && [state.today, dayAfter(state.today)].includes(ev.eventDate);
       if (ev.status === 'live') {
-        actions.push(entry ? { key: entry.key, icon: 'play', href: livePage } : follow, rehearse, edit);
+        actions.push(entry ? { key: entry.key, icon: 'play', href: livePage } : follow, edit);
         // The leader lands in the big lyrics; the full live page stays a secondary way in.
         if (role === 'leader') actions.push({ key: 'live.fullPage', icon: 'follow', href: keepFrom(`/events/${ev.id}/live?view=full`) });
       } else {
         // Before the start, by role (the same order as the home card): the owner starts first
-        // (today / tomorrow), the leader rehearses first, presenter and operator prepare first.
+        // (today / tomorrow), the others prepare first.
         const live = !entry ? null : { key: soon ? 'home.startLive' : 'live.link', icon: 'play', href: livePage };
-        if (role === 'leader') actions.push(rehearse, live, edit);
-        else if (role === 'owner') actions.push(...(soon ? [live, rehearse, edit] : [edit, live, rehearse]));
-        else actions.push(edit, live, rehearse);
+        if (role === 'owner') actions.push(...(soon ? [live, edit] : [edit, live]));
+        else actions.push(edit, live);
       }
     }
     const list = actions.filter(Boolean);
@@ -796,7 +791,7 @@
     return parts;
   }
 
-  // "Notă pentru echipă" on any item: for the rehearsal, live and phone pages, never the projector.
+  // "Notă pentru echipă" on any item: for the live and phone pages, never the projector.
   const teamNoteField = (item) => field('it-team-note', t('options.teamNoteLabel'), bind(item, 'teamNote', el('textarea', { id: 'it-team-note', rows: '2', maxlength: '500', value: item.teamNote || '' })));
 
   function editFields(item) {

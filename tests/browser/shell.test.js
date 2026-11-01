@@ -10,7 +10,7 @@ module.exports = {
   name: 'shell',
   async run({ app, signIn, check, browser }) {
     const { eventId: E, songs } = app.seed;
-    const pages = ['/app', '/library', '/events', `/events/${E}`, `/events/${E}/edit`, `/events/${E}/rehearse`, '/screens', '/settings', '/media', `/songs/${songs.G}`, `/songs/${songs.G}/edit`];
+    const pages = ['/app', '/library', '/events', `/events/${E}`, `/events/${E}/edit`, '/screens', '/settings', '/media', `/songs/${songs.G}`, `/songs/${songs.G}/edit`];
     for (const width of [375, 1024]) {
       const p = await signIn('owner', { width });
       for (const path of pages) {

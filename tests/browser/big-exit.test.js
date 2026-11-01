@@ -3,7 +3,7 @@
 // The big lyrics always have a way out: the top bar (Doar text · A− · A+ · ✕) stays at full
 // opacity, small; the bottom bar starts with "✕ Ieși" (44 px) on every device; tapping the
 // lyrics shows nothing extra; "✕ Ieși" and Escape return to the page at the same position.
-// Leader / operator view, the member's follow view and the rehearsal view; 375 and 1180.
+// Leader / operator view and the member's follow view; 375 and 1180.
 
 const { layoutAudit, wait } = require('./harness');
 
@@ -25,7 +25,7 @@ module.exports = {
     });
     for (const [lang, width, role, url, opener] of [
       ['ro', 375, 'leader', '/live?view=full', '.step[aria-current=step]'], ['en', 1180, 'operator', '/operator', '.op-step[aria-current=step]'],
-      ['ro', 375, 'member', '/follow', '#big-open'], ['en', 1180, 'member', '/follow', '#big-open'], ['ro', 1180, 'member', '/rehearse', '#big-open'],
+      ['ro', 375, 'member', '/follow', '#big-open'], ['en', 1180, 'member', '/follow', '#big-open'],
     ]) {
       const tag = `[${lang} ${width} ${role}${url}]`;
       const p = await signIn(role, { width, lang });
@@ -44,11 +44,11 @@ module.exports = {
       const a = await layoutAudit(p, 'dialog.big-lyrics');
       check(!a.overflow && !a.small.length, `${tag} targets >= 44 px, no overflow`, a);
       // "✕ Ieși" returns at the same position
-      const posBefore = url === '/rehearse' ? await p.textContent('#position') : (await app.state()).worship;
+      const posBefore = (await app.state()).worship;
       await p.click('dialog.big-lyrics .big-exit');
       await wait(200);
       const closed = !(await p.evaluate(() => Boolean(document.querySelector('dialog.big-lyrics[open]'))));
-      const posAfter = url === '/rehearse' ? await p.textContent('#position') : (await app.state()).worship;
+      const posAfter = (await app.state()).worship;
       check(closed && JSON.stringify(posBefore) === JSON.stringify(posAfter), `${tag} "✕ Ieși" closes at the same position`, { posBefore, posAfter });
       // Escape too
       await p.click(opener);

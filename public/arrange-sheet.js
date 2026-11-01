@@ -79,7 +79,7 @@
   // --- the sheet ----------------------------------------------------------------------
 
   const WIDE = window.matchMedia('(min-width: 900px)');
-  const TEXT_ONLY_KEY = 'wa_text_only'; // the same choice as the song and rehearsal pages
+  const TEXT_ONLY_KEY = 'wa_text_only'; // the same choice as the song page and the big lyrics
 
   function readTextOnly() {
     try {

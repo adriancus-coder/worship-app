@@ -83,11 +83,8 @@ function createPagesRouter({ db, auth, sendPage }) {
     sendPage(req, res, 'event');
   });
 
-  // Rehearsal is the musical team's: the operator is sent to the event page.
-  router.get('/events/:id(\\d+)/rehearse', noStore, signedIn, (req, res) => {
-    if (req.session.user.role === 'operator') return res.redirect(`/events/${req.params.id}`);
-    sendPage(req, res, 'rehearse');
-  });
+  // The rehearsal page is gone: an old link lands on the event page.
+  router.get('/events/:id(\\d+)/rehearse', noStore, signedIn, (req, res) => res.redirect(`/events/${req.params.id}`));
 
   // Team phones follow the live position; the live room decides what the user may see.
   router.get('/events/:id(\\d+)/follow', noStore, signedIn, (req, res) => {

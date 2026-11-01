@@ -78,7 +78,7 @@ Actions and selection must never look alike (styles in `public/styles.css`, "UI 
   tabs, section headings) stays fixed and only the list pane scrolls, with its own
   scrollbar (`body.list-page` + one `.list-pane`, `public/list-pane.js`; section headings
   in the pane are sticky, empty / loading states fill it). On phones this keeps the search
-  field and the bottom tab bar always reachable. Pages that are not lists (song, rehearsal,
+  field and the bottom tab bar always reachable. Pages that are not lists (song,
   follow, settings, help) scroll normally.
 - **Colours only through the tokens** in `public/styles.css` `:root` (dark) and
   `[data-theme="light"]`; never a literal colour elsewhere (CSS, inline, JS). New text /

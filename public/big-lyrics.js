@@ -20,19 +20,17 @@
 //   big.update(snap, items)   // on every render: follows live; closed views ignore it
 //   big.isOpen()
 //
-// The team (the follow page) and the rehearsal page open the SAME view members-style:
+// The team (the follow page) opens the SAME view members-style:
 //   BIG_LYRICS.create({ ..., member: { nav, backToLive } })
 //     no live commands: in follow mode it just follows; commands.prev / next move only this
 //     person's place (swipe, ← →); nav() -> { show, away, canPrev, canNext } decides the bottom
 //     bar: "← Înapoi" / "Înainte →" when show (free mode, or detached), plus "Revino la live"
 //     when away; keys E / B / Space do nothing.
-//   standalone: true      the rehearsal page: no live snapshot, no status line; position()
-//                         is the page's own place and the view is always "live".
 //   loadSong(item)        the page's own song loader (its cache, offline too).
 
 (function () {
   const SCALE_KEY = 'wa_big_scale';
-  const TEXT_ONLY_KEY = 'wa_text_only'; // the same choice as the song, rehearsal and follow pages
+  const TEXT_ONLY_KEY = 'wa_text_only'; // the same choice as the song and follow pages
   const SCALE = { min: 0.6, max: 1.6, step: 0.1 };
   const SWIPE_PX = 50;
   const MIN_FONT = 0.02; // of the box height, like the projector
@@ -58,7 +56,7 @@
   // every second while the view is open.
   // onClose(): after the view closed (the leader goes back to the event page); fullPage() with
   // showFullPage() -> true adds a small "Pagina completă" tool (the leader's way to the page).
-  function create({ api, eventId, position, commands, connection, drivesProjector = () => false, extraStatus = () => '', member = null, standalone = false, loadSong: pageLoadSong = null, onClose = null, fullPage = null, compactPage = null, showFullPage = () => false }) {
+  function create({ api, eventId, position, commands, connection, drivesProjector = () => false, extraStatus = () => '', member = null, loadSong: pageLoadSong = null, onClose = null, fullPage = null, compactPage = null, showFullPage = () => false }) {
     const { el } = window.PAGE;
     const { t } = window.I18N;
     const state = { snap: null, items: [], scale: Number(stored(SCALE_KEY, '1')) || 1, textOnly: stored(TEXT_ONLY_KEY, '0') === '1', songs: new Map(), setlistKey: null, renderId: 0 };
@@ -113,7 +111,7 @@
         el('div', { class: 'big-top' }, parts.label, el('span', { class: 'big-tools' }, parts.textOnly, parts.smaller, parts.larger, parts.list, parts.full, parts.close)),
         parts.body,
         parts.next,
-        standalone ? null : parts.status,
+        parts.status,
         parts.nav);
       dialog.addEventListener('close', () => { releaseWake(); clearInterval(extraTimer); extraTimer = null; if (onClose) onClose(); });
       dialog.addEventListener('cancel', (event) => { event.preventDefault(); close(); }); // Escape
@@ -173,7 +171,7 @@
       keepScreenOn();
       (parts.nextButton.hidden || parts.nextButton.disabled ? parts.exit : parts.nextButton).focus();
       clearInterval(extraTimer);
-      if (!standalone) extraTimer = setInterval(renderExtra, 1000);
+      extraTimer = setInterval(renderExtra, 1000);
     }
 
     function close() {
@@ -291,10 +289,10 @@
     }
 
     async function render() {
-      if (!isOpen() || (!state.snap && !standalone)) return;
+      if (!isOpen() || !state.snap) return;
       const renderId = ++state.renderId;
       const snap = state.snap;
-      const isLive = standalone || snap.status === 'live';
+      const isLive = snap.status === 'live';
       const pos = position();
       const item = pos && state.items.find((it) => it.id === pos.itemId);
       parts.textOnly.textContent = t('song.textOnly');
@@ -316,7 +314,7 @@
       parts.smaller.disabled = state.scale <= SCALE.min + 1e-9;
       parts.larger.disabled = state.scale >= SCALE.max - 1e-9;
       parts.prev.textContent = t('live.prev');
-      if (!standalone) {
+      {
         const { value, conn, text } = statusLine();
         parts.statusText.replaceChildren(el('span', { class: 'big-dot', 'data-state': value, 'aria-hidden': 'true' }), `${conn} · ${text}`);
         renderExtra();

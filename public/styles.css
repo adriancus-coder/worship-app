@@ -334,7 +334,7 @@ h2 { font-size: 1.15rem; margin: 24px 0 8px; }
 
 .chord-line, .lyric-line { white-space: pre; }
 .chord-line { color: var(--chord); font-weight: 700; }
-/* A tappable chord (song page, rehearsal): dotted underline, the diagram pop-up on tap */
+/* A tappable chord (song page): dotted underline, the diagram pop-up on tap */
 .chord-tap { cursor: pointer; border-bottom: 1px dotted var(--chord); border-radius: 3px; }
 .chord-tap:hover, .chord-tap:focus-visible { background: var(--accent-soft); outline: none; }
 .result-kind { vertical-align: middle; font-size: 0.6875rem; color: var(--chord); border-color: var(--chord); }
@@ -863,23 +863,13 @@ span.chip { min-height: 36px; }
   border-radius: 0 var(--radius) var(--radius) 0;
 }
 
-/* --- rehearsal view ------------------------------------------------------------------ */
+/* --- the follow page's slide (class names kept from the old rehearsal view) ----------- */
 
-/* The page fills the screen so Previous / Next always sit at the bottom, even on short items.
-   The slide's font size follows A− / A+; everything inside is sized in em so it scales. */
-body.rehearse-body { display: flex; flex-direction: column; min-height: 100vh; min-height: 100dvh; }
-main.rehearse-page { flex: 1 0 auto; display: flex; flex-direction: column; padding-bottom: 0; }
-#rehearse { flex: 1 0 auto; display: flex; flex-direction: column; }
+/* The slide's font size follows A− / A+; everything inside is sized in em so it scales. */
 
 .rehearse-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 12px; }
 .rehearse-position { margin: 0; font-size: 0.875rem; font-weight: 700; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 /* "Elementul 3 din 5" as a button: the Program to jump from */
-.rehearse-position-button { flex: 0 1 auto; min-height: var(--touch); padding: 6px 12px; }
-.rehearse-jump { width: min(94vw, 30rem); max-height: 85vh; padding: 12px 14px 14px; }
-.rehearse-jump-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
-.rehearse-jump-head h2 { margin: 0; font-size: 1.125rem; }
-.rehearse-jump-head button { min-width: var(--touch); min-height: var(--touch); padding: 0 10px; }
-.rehearse-jump-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .jump-index { flex: none; min-width: 1.4em; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 .rehearse-tools { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 8px; margin-left: auto; max-width: 100%; }
 .rehearse-tools > button.secondary:not(.icon-button) { padding: 10px 14px; }
@@ -923,20 +913,6 @@ main.rehearse-page { flex: 1 0 auto; display: flex; flex-direction: column; padd
 .rehearse-slide .lyrics { font-size: 1.0625em; }
 .video-url { overflow-wrap: anywhere; }
 
-.rehearse-nav {
-  position: sticky;
-  bottom: var(--shell-bottom, 0px);
-  z-index: 5;
-  display: flex;
-  gap: 12px;
-  margin: 16px -16px 0;
-  padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
-  background: var(--background);
-  border-top: 1px solid var(--border);
-}
-
-.rehearse-nav button { flex: 1 1 0; }
-.rehearse-nav button:disabled { opacity: 0.35; cursor: not-allowed; }
 
 /* --- live: leader control ---------------------------------------------------------------- */
 

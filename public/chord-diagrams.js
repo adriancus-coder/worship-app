@@ -1,6 +1,6 @@
 'use strict';
 
-// Chord diagrams ("Diagrame"): tap a chord on the song page or at the rehearsal and see how
+// Chord diagrams ("Diagrame"): tap a chord on the song page and see how
 // to play it, on the guitar (frets and dots) or on the piano (the keys), with a Chitară / Pian
 // switch kept on the device (wa_chord_instrument). Nothing leaves the device: the shapes and
 // the notes are computed here (shared with the server for tests: lib/chord-diagrams.js).

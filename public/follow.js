@@ -21,7 +21,7 @@
   const eventId = Number(window.location.pathname.split('/')[2]);
   const slide = $('slide');
   const textOnlyButton = $('text-only');
-  // Same saved preferences as the song view and the rehearsal view.
+  // Same saved preferences as the song view (the keys keep their old names).
   const TEXT_ONLY_KEY = 'wa_text_only';
   const SCALE_KEY = 'wa_rehearse_scale';
   const WAKE_HINT_KEY = 'wa_wake_hint_seen';

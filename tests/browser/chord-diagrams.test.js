@@ -1,6 +1,6 @@
 'use strict';
 
-// Chord diagrams: on the song page and at the rehearsal every chord is tappable; a tap opens
+// Chord diagrams: on the song page every chord is tappable; a tap opens
 // the pop-up with the chord's name (in the reader's notation), a Chitară / Pian selection
 // (kept on the device) and the drawing: the guitar shape (strings, dots, a barre) or the
 // piano keys lit. Escape closes it; "Doar text" has no chords to tap. 375 and 1024.
@@ -43,16 +43,16 @@ module.exports = {
     await p.click('#text-only');
     await p.context().close();
 
-    // solfège: the pop-up names the chord as the reader reads it; the rehearsal has the taps too
+    // solfège: the pop-up names the chord as the reader reads it
     const l = await signIn('leader', { width: 1024, lang: 'ro' });
-    await l.goto(`${app.url}/events/${E}/rehearse`);
-    await l.waitForSelector('#slide .chord-tap');
+    await l.goto(`${app.url}/songs/${app.seed.songs.G}`);
+    await l.waitForSelector('#sections .chord-tap');
     await l.evaluate(() => window.NOTATION.set('solfege'));
-    await l.waitForFunction(() => /^(Do|Re|Mi|Fa|Sol|La|Si)/.test(document.querySelector('#slide .chord-tap').textContent));
-    const first = await l.$eval('#slide .chord-tap', (x) => x.textContent);
-    await l.click('#slide .chord-tap >> nth=0');
+    await l.waitForFunction(() => /^(Do|Re|Mi|Fa|Sol|La|Si)/.test(document.querySelector('#sections .chord-tap').textContent));
+    const first = await l.$eval('#sections .chord-tap', (x) => x.textContent);
+    await l.click('#sections .chord-tap >> nth=0');
     await l.waitForSelector('#chord-dialog[open]');
-    check((await l.textContent('#chord-dialog-title')) === first && /^(Do|Re|Mi|Fa|Sol|La|Si)/.test(first), `the rehearsal, in solfège: the pop-up says "${first}"`);
+    check((await l.textContent('#chord-dialog-title')) === first && /^(Do|Re|Mi|Fa|Sol|La|Si)/.test(first), `in solfège: the pop-up says "${first}"`);
     await l.evaluate(() => window.NOTATION.set('letters'));
     await l.context().close();
   },

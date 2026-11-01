@@ -3,7 +3,7 @@
 // Renders song sections the same way everywhere (song view, online preview):
 // computed labels, optional note, chords above lyrics in monospace or lyrics only.
 // tappable: each chord is a .chord-tap (role button) that opens its diagram
-// (public/chord-diagrams.js, loaded by the song and rehearsal pages).
+// (public/chord-diagrams.js, loaded by the song page).
 
 (function () {
   // labels: optional display labels aligned with `sections` (e.g. computed on the whole song

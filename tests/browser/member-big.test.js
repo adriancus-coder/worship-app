@@ -3,8 +3,7 @@
 // "⤢ Versuri mari" for members: on the follow page the same full-screen view (chords above,
 // label, next line, A− / A+, ✕ / Escape / F, wake lock), no live commands; in follow mode it
 // follows every move with no control buttons; free mode -> "← Înapoi" / "Înainte →" move only
-// this phone; detached -> "Revino la live"; ✕ returns at the same position; the rehearsal
-// page has the same view with its own navigation. RO 375 / EN 1024 / RO 1180.
+// this phone; detached -> "Revino la live"; ✕ returns at the same position.
 
 const { layoutAudit, wait } = require('./harness');
 
@@ -87,28 +86,5 @@ module.exports = {
       await p.context().close();
     }
 
-    // the rehearsal page: the same view, own navigation through the steps and items
-    await app.command({ type: 'event.end' });
-    const r = await signIn('member', { width: 1024 });
-    await r.goto(`${app.url}/events/${E}/rehearse`);
-    await r.waitForSelector('#big-open:not([hidden])');
-    await r.click('#slide .song-section');
-    await r.waitForSelector('dialog.big-lyrics[open]');
-    await r.waitForFunction(() => document.querySelector('dialog.big-lyrics .big-text').innerText.trim().length > 0, null, { timeout: 4000 }).catch(() => {});
-    let b = await big(r);
-    check(b && /Sfânt în G/.test(b.label) && /Ne ridici/.test(b.text) && b.nav && b.buttons.length === 2 && b.end === 0 && !b.status, 'rehearsal: tapping the section opens the view, own navigation, no status line', b);
-    await r.click('dialog.big-lyrics .big-nav > button:last-child');
-    await wait(200);
-    b = await big(r);
-    check(/Refren/.test(b.label), 'rehearsal: "Înainte →" -> the chorus', b.label);
-    await r.click('dialog.big-lyrics .big-nav > button:last-child');
-    await wait(400);
-    b = await big(r);
-    check(/Luca/.test(b.label) && /2 \/ 5|2 din 5|Elementul 2/.test(await r.textContent('#position')), 'rehearsal: past the song -> the next item; the page follows', { label: b.label, position: await r.textContent('#position') });
-    await r.keyboard.press('Escape');
-    await wait(200);
-    check(!(await big(r)) && /Luca/.test(await r.textContent('#slide')), 'rehearsal: Escape returns at the same item');
-    const ra = await layoutAudit(r, 'main');
-    check(!ra.overflow && !ra.small.length, 'rehearsal page: no overflow, targets >= 44 px', ra);
   },
 };

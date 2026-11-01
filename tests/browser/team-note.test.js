@@ -1,7 +1,7 @@
 'use strict';
 
 // "Notă pentru echipă" on any Program item (not only songs) and the song page's history.
-// The editor writes it on a verse; the team reads it at the rehearsal, on the phone (follow),
+// The editor writes it on a verse; the team reads it on the phone (follow),
 // on the live page and in the operator console; the projector never shows it. The song page
 // says when the song was last sung and lists the events; a song never sung says so.
 
@@ -31,12 +31,6 @@ module.exports = {
     await p.click('#items li:nth-child(2) .item-main');
     await p.waitForSelector('#detail .team-note');
     check((await p.textContent('#detail .team-note')).includes(NOTE), 'the event page: the note under the verse');
-    // the rehearsal
-    await p.goto(`${app.url}/events/${E}/rehearse`);
-    await p.waitForSelector('.rehearse-slide, #slide-title');
-    await p.keyboard.press('ArrowRight');
-    const reh = await p.waitForFunction((n) => [...document.querySelectorAll('.team-note')].some((x) => x.textContent.includes(n)), NOTE, { timeout: 4000 }).then(() => true, () => false);
-    check(reh, 'the rehearsal: the note on the verse');
     await p.context().close();
 
     // live: the screen never shows it; the console and the phone do

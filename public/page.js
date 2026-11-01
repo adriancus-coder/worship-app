@@ -143,12 +143,12 @@
       : { href: '/events', text: window.I18N.t('nav.backEvents') };
   }
 
-  // A link to another page of the same trip (event -> editor / rehearsal), keeping ?from.
+  // A link to another page of the same trip (event -> editor / live), keeping ?from.
   function keepFrom(url) {
     return cameFromHome() ? `${url}${url.includes('?') ? '&' : '?'}from=home` : url;
   }
 
-  // The event page a sub-page (rehearsal, live, console, follow, a song) returns to.
+  // The event page a sub-page (live, console, follow, a song) returns to.
   function eventBack(eventId) {
     return { href: keepFrom(`/events/${eventId}`), text: window.I18N.t('nav.backEvent') };
   }

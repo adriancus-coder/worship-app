@@ -1,7 +1,7 @@
 'use strict';
 
 // Navigation around an event: the event header stays in view while the Program scrolls;
-// rehearsal, live, console, follow and a song opened from the event come back to the event;
+// live, console, follow and a song opened from the event come back to the event;
 // ?from=home keeps "← Acasă"; the browser's Back gives the same result (no loop).
 
 const { layoutAudit, wait } = require('./harness');
@@ -35,12 +35,12 @@ module.exports = {
       const a = await layoutAudit(o, '.event-head');
       check(!a.overflow && !a.small.length, `${tag} header: no overflow, targets >= 44 px`, a);
 
-      // Rehearsal: back link and browser Back
+      // The live page from the event's action: "← Ieși" and browser Back
       await o.goto(`${app.url}/events`); await settle(o);
       await o.goto(`${app.url}/events/${E}`); await o.waitForSelector('#event-actions a');
-      await o.click('#event-actions a[href*="/rehearse"]'); await o.waitForURL('**/rehearse**'); await settle(o);
-      await o.click('#back-link'); await o.waitForURL(`**/events/${E}`); await settle(o);
-      check(path(o) === `/events/${E}`, `${tag} Repetiție -> back link -> the event`, path(o));
+      await o.click('#event-actions a[href*="/live"]'); await o.waitForURL('**/live**'); await settle(o);
+      await o.click('.shell-exit'); await o.waitForURL(`**/events/${E}`); await settle(o);
+      check(path(o) === `/events/${E}`, `${tag} the live page -> "← Ieși" -> the event`, path(o));
       await o.goBack(); await settle(o);
       check(path(o) === '/events', `${tag} then browser Back -> /events (no loop)`, path(o));
 
@@ -68,9 +68,9 @@ module.exports = {
       // From Acasă: ?from=home keeps "← Acasă"
       await o.goto(`${app.url}/app`); await o.waitForSelector('#now-title a'); await settle(o);
       await o.click('#now-title a'); await o.waitForURL('**/events/**'); await settle(o);
-      await o.click('#event-actions a[href*="/rehearse"]'); await o.waitForURL('**/rehearse**'); await settle(o);
-      await o.click('#back-link'); await o.waitForURL('**/events/**'); await settle(o);
-      check(path(o) === `/events/${E}?from=home`, `${tag} Acasă -> event -> Repetiție -> back -> the event (from home)`, path(o));
+      await o.click('#event-actions a[href*="/live"]'); await o.waitForURL('**/live**'); await settle(o);
+      await o.click('.shell-exit'); await o.waitForURL('**/events/**'); await settle(o);
+      check(path(o) === `/events/${E}?from=home`, `${tag} Acasă -> event -> the live page -> "← Ieși" -> the event (from home)`, path(o));
       await o.click('#back-link'); await o.waitForURL('**/app'); await settle(o);
       check(path(o) === '/app', `${tag} its "← Acasă" -> /app`, path(o));
       await o.context().close();
