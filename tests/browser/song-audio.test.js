@@ -69,6 +69,20 @@ module.exports = {
     const backToFile = await raw(owner, 'POST', `/api/songs/${songs.G}/audio`, wav(), 'audio/wav');
     check(backToFile.status === 201 && (await app.api(owner, 'GET', `/api/songs/${songs.G}`)).body.song.audioUrl === null, 'a file replaces the link');
 
+    // --- the library and the event page say which songs have a track ---------------------
+    const rows = (await app.api(owner, 'GET', '/api/songs')).body.songs;
+    check(rows.find((r) => r.id === songs.G).audio === 'file' && rows.find((r) => r.id === songs.T3).audio === 'youtube' && rows.find((r) => r.id === songs.SIX).audio === null, 'GET songs: audio file / youtube / null per row');
+    const lib = await signIn('member', { width: 375, lang: 'ro' });
+    await lib.goto(`${app.url}/library`);
+    await lib.waitForSelector('#songs li');
+    const metas = await lib.evaluate(() => [...document.querySelectorAll('#songs li')].map((li) => li.textContent.replace(/\s+/g, ' ')));
+    check(metas.some((x) => /Sfânt în G.*🎧 negativ/.test(x) && !/YouTube/.test(x)) && metas.some((x) => /Mare ești Tu.*🎧 negativ YouTube/.test(x)) && !metas.some((x) => /Șase rânduri.*🎧/.test(x)), 'the library rows: "🎧 negativ" / "🎧 negativ YouTube" under the songs that have one', metas);
+    await lib.goto(`${app.url}/events/${E}`);
+    await lib.waitForSelector('#items .item-sub');
+    const subs = await lib.evaluate(() => [...document.querySelectorAll('#items li')].map((li) => li.textContent.replace(/\s+/g, ' ')));
+    check(subs.some((x) => /Sfânt în G.*🎧 negativ/.test(x)) && !subs.some((x) => /Șase rânduri.*🎧/.test(x)), 'the event page rows: the mark too', subs);
+    await lib.context().close();
+
     // --- the song page: a member plays, the owner replaces / removes ---------------------
     const m = await signIn('member', { width: 375, lang: 'ro' });
     await m.goto(`${app.url}/songs/${songs.G}`);

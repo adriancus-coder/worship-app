@@ -106,6 +106,7 @@
         if (key) parts.push(key);
         parts.push(item.song.sectionCount === 1 ? t('setlist.sectionCountOne') : t('setlist.sectionCount', { n: item.song.sectionCount }));
       }
+      if (item.song && (item.song.audioMediaId || item.song.audioUrl)) parts.push(t('library.audioTag')); // a backing track
       if (item.who) parts.push(item.who); // "Cine" on a song: the Sunday school's mark
     } else if (item.type === 'verse' && item.body) {
       parts.push(item.body.split('\n')[0].slice(0, 60));

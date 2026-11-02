@@ -166,7 +166,9 @@
       const themes = song.themes && song.themes.length ? song.themes.slice(0, 3).join(', ') : null;
       // the picker searches both libraries: a Sunday school song says so
       const school = mode === 'pick' && song.collection === 'school' ? t('library.collectionSchool') : null;
-      return [song.song_key ? t('library.key', { key: window.NOTATION.chord(song.song_key) }) : null, song.author, themes, school].filter(Boolean).join(' · ');
+      // a backing track on the song: "🎧 negativ" (a file or a YouTube link)
+      const audio = song.audio ? t(song.audio === 'youtube' ? 'library.audioYoutubeTag' : 'library.audioTag') : null;
+      return [song.song_key ? t('library.key', { key: window.NOTATION.chord(song.song_key) }) : null, audio, song.author, themes, school].filter(Boolean).join(' · ');
     }
 
     // Under the title: "Ton Sol · author", or the small "fără ton" tag for a song without a key.
