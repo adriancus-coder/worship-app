@@ -18,6 +18,9 @@
       <p id="song-meta" class="muted"></p>
       <!-- the song's themes ("tematică"), each a link to the library filtered by it -->
       <div id="song-themes"></div>
+      <!-- "Cum se cântă: V1 · Refren · V2 · Refren" (the song's own order, the default of every
+           event): the editors change it in the arrange sheet, everyone sees the flow -->
+      <div id="song-order" class="song-order"></div>
       <!-- "Cântată ultima dată: …" + the events it was sung at (GET /api/songs/:id/history) -->
       <details id="song-history" class="song-history" hidden></details>
       <!-- "Negativ": the backing track, played here by everyone; added / removed by the song's

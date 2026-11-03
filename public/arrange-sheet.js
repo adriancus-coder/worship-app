@@ -99,7 +99,9 @@
 
   // canSetKey: the "Original: <key> · Schimbă" row changes the library song's key.
   // goTo: the live pages' "Mergi la cântare" (tapping a song there opens this sheet).
-  function open({ title, song, codes, defaultCodes, transpose = 0, readOnly = false, canSetKey = false, goTo = null, onApply }) {
+  // transposable: false (the song page's "Cum se cântă") leaves out the key row; kicker: the
+  // small line over the title (a text key).
+  function open({ title, song, codes, defaultCodes, transpose = 0, readOnly = false, canSetKey = false, goTo = null, onApply, transposable = true, kicker = null }) {
     const { el } = window.PAGE;
     const { t } = window.I18N;
     const labels = SECTIONS.sectionLabels(song.sections, t);
@@ -138,7 +140,7 @@
     dialog.append(
       el('div', { class: 'preview-dialog-head' },
         el('div', { class: 'preview-dialog-title' },
-          el('p', { class: 'preview-kicker', text: t(readOnly ? 'arrange.kickerReadOnly' : 'arrange.kicker') }),
+          el('p', { class: 'preview-kicker', text: t(kicker || (readOnly ? 'arrange.kickerReadOnly' : 'arrange.kicker')) }),
           heading),
         el('button', { type: 'button', class: 'shell-close preview-close-x', id: 'arrange-close-x', 'aria-label': t('arrange.close'), onclick: close }, '✕')),
       body,
@@ -219,15 +221,15 @@
       };
       const setTranspose = (value) => { state.transpose = clampTranspose(value); render(); };
       keyOut.textContent = keyText();
-      panels.order.replaceChildren(
+      panels.order.replaceChildren(...[
         el('div', { class: 'arrange-panel-head' }, el('h3', { id: 'arrange-order-h', text: t('arrange.order') })),
         // "Original: Sol · Schimbă": the library song's key, always shown; the editor roles
         // change it here (saved to the song at once, sections untouched).
-        keyBox(song, canSetKey, () => render(), { label: 'arrange.keyOriginalLabel', id: 'arrange-original-key' }),
-        el('div', { class: 'key-row arrange-key-row', role: 'group', 'aria-label': t('options.keyLabel') },
+        transposable ? keyBox(song, canSetKey, () => render(), { label: 'arrange.keyOriginalLabel', id: 'arrange-original-key' }) : null,
+        transposable ? el('div', { class: 'key-row arrange-key-row', role: 'group', 'aria-label': t('options.keyLabel') },
           el('button', { type: 'button', class: 'secondary icon-button', id: 'arrange-key-down', 'aria-label': t('options.keyDown'), disabled: state.transpose <= -TRANSPOSE_MAX, onclick: () => setTranspose(state.transpose - 1) }, el('span', { 'aria-hidden': 'true', text: '−' })),
           keyOut,
-          el('button', { type: 'button', class: 'secondary icon-button', id: 'arrange-key-up', 'aria-label': t('options.keyUp'), disabled: state.transpose >= TRANSPOSE_MAX, onclick: () => setTranspose(state.transpose + 1) }, el('span', { 'aria-hidden': 'true', text: '+' }))),
+          el('button', { type: 'button', class: 'secondary icon-button', id: 'arrange-key-up', 'aria-label': t('options.keyUp'), disabled: state.transpose >= TRANSPOSE_MAX, onclick: () => setTranspose(state.transpose + 1) }, el('span', { 'aria-hidden': 'true', text: '+' }))) : null,
         state.codes.length
           ? el('ol', { class: 'arrange-list', 'aria-label': t('arrange.order') }, state.codes.map(row))
           : el('p', { class: 'muted', text: t('arrange.empty') }),
@@ -235,7 +237,7 @@
         el('button', {
           type: 'button', class: 'secondary', id: 'arrange-reset', disabled: sameCodes(state.codes, defaultCodes),
           onclick: () => { state.codes = defaultCodes.slice(); render(); },
-        }, t('options.resetArrangement')));
+        }, t('options.resetArrangement'))].filter(Boolean));
     }
 
     function renderFlow(sections) {

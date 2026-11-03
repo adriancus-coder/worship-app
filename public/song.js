@@ -77,11 +77,41 @@
     metaEl.hidden = !meta;
     // "Tematică: [chips] · Setează" (public/themes-ui.js): the editor roles pick from the index
     document.getElementById('song-themes').replaceChildren(window.THEMES_UI.box(song, canSetKey, () => render()));
+    renderOrder();
     // "Negativ": the backing track (public/song-audio.js); everyone plays it, editors set it
     document.getElementById('song-audio-box').replaceChildren(window.SONG_AUDIO.box(song, canSetKey, () => render()));
 
     textOnlyButton.setAttribute('aria-pressed', String(textOnly));
     document.getElementById('sections').replaceChildren(...window.SONG_RENDER.sectionsView(song.sections, { textOnly, tappable: true }));
+  }
+
+  // "Cum se cântă": the song's own section order (presentation, the default arrangement of
+  // every event). "V1 · Refren · V2 · Refren" with "Schimbă" (the editors: the arrange sheet
+  // without the key row, saved with PUT /api/songs/:id/presentation) or "Vezi" (everyone:
+  // the whole song in that order).
+  function renderOrder() {
+    const { SECTIONS } = window;
+    const codes = SECTIONS.defaultArrangement(song);
+    const canonical = SECTIONS.sectionCodes(song.sections);
+    const labels = SECTIONS.sectionLabels(song.sections, t);
+    const isDefault = codes.join(' ') === canonical.join(' ');
+    const names = codes.map((code) => labels[canonical.indexOf(code)] || code);
+    const openSheet = () => window.ARRANGE_SHEET.open({
+      title: song.title, song: { sections: song.sections, song_key: song.song_key }, codes, defaultCodes: canonical, transpose: 0,
+      readOnly: !canSetKey, transposable: false, kicker: canSetKey ? 'song.orderKicker' : 'song.orderKickerView',
+      onApply: async ({ codes: chosen, isDefault: backToDefault }) => {
+        const res = await api(`/api/songs/${song.id}/presentation`, { method: 'PUT', body: { codes: backToDefault ? [] : chosen } }).catch(() => ({ ok: false, body: {} }));
+        if (!res.ok) { setStatus(res.body.error || t('common.networkError')); return; }
+        song = res.body.song;
+        setStatus(t('song.orderSaved'));
+        render();
+      },
+    });
+    document.getElementById('song-order').replaceChildren(
+      el('span', { class: 'song-order-label', text: `${t('song.orderLabel')}:` }),
+      el('span', { class: `song-order-codes${isDefault ? ' is-default' : ''}`, id: 'song-order-codes', text: isDefault ? t('song.orderDefault') : names.join(' · ') }),
+      el('span', { class: 'song-order-sep', 'aria-hidden': 'true', text: '·' }),
+      el('button', { type: 'button', class: 'song-key-change song-order-open', id: 'song-order-open', 'data-icon': canSetKey ? 'edit' : 'list', text: t(canSetKey ? 'song.orderChange' : 'song.orderView'), onclick: openSheet }));
   }
 
   // "Tipărește": the song as a PDF made here (public/song-pdf.js) from what the page shows

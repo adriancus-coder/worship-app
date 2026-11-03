@@ -539,6 +539,13 @@ dialog .message:empty { display: none; }
   }
 }
 
+/* "Cum se cântă" on the song page: label, the order (or "în ordinea secțiunilor"), Schimbă / Vezi */
+.song-order { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin: 0 0 12px; }
+.song-order-label { color: var(--text-muted); }
+.song-order-codes { font-weight: 600; }
+.song-order-codes.is-default { font-weight: 400; color: var(--text-muted); }
+.song-order-sep { color: var(--text-muted); }
+
 /* the backing track ("negativ"): the song page's box and the operator console's player */
 .song-audio { margin: 12px 0 16px; }
 .song-audio audio, .op-audio audio { display: block; width: 100%; max-width: 520px; margin: 6px 0; }

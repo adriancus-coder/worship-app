@@ -5,6 +5,7 @@ const express = require('express');
 const { requirePerm, can } = require('../lib/roles');
 const { LIMITS, KEYS, COLLECTIONS, SORT_MODES, DuplicateTitleError, validateSong, validateThemes, createSongStore } = require('../lib/songs');
 const { THEME_INDEX } = require('../lib/themes');
+const { parseArrangement } = require('../lib/sections');
 const { parseChoice, createBackgroundStore } = require('../lib/backgrounds');
 const { createMediaSigner, createMediaStore, sniffAudio, parseVideoUrl } = require('../lib/media');
 const { createMediaQuota } = require('../lib/platform');
@@ -221,6 +222,24 @@ function createSongsRouter({ db, auth, config, logger, live, storage }) {
     const song = id && songs.get(req.adminId, id);
     if (!song) return notFound(req, res);
     res.json({ song: withAudio(req.adminId, song) });
+  });
+
+  // "Cum se cântă" (the song page): the song's own section order, the default arrangement
+  // of every event. { codes: ['V1', 'C', 'V2', 'C'] } of the song's sections (400 for a code
+  // that is not one of them); [] goes back to the sections' order. The song's editors.
+  router.put('/api/songs/:id/presentation', canEdit, (req, res) => {
+    const id = songId(req);
+    const song = id && songs.get(req.adminId, id);
+    if (!song) return notFound(req, res);
+    if (!mayWrite(req, song.collection)) return forbidden(req, res);
+    const codes = (req.body || {}).codes;
+    if (!Array.isArray(codes) || codes.length > 60 || !codes.every((c) => typeof c === 'string')) return res.status(400).json({ error: req.t('errors.presentationInvalid') });
+    const parsed = parseArrangement(codes.join(' '), song.sections);
+    if (parsed.unknown.length || parsed.codes.length !== codes.length) return res.status(400).json({ error: req.t('errors.presentationInvalid') });
+    const before = live.songBefore(req.adminId, id);
+    songs.setPresentation(req.adminId, id, parsed.codes.length ? parsed.codes.join(' ') : null);
+    live.songChanged(req.adminId, before);
+    res.json({ song: withAudio(req.adminId, songs.get(req.adminId, id)) });
   });
 
   // The backing track: the body is the audio file (MP3 / M4A / WAV / OGG), streamed to disk
