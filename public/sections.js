@@ -93,7 +93,7 @@
   // names. A leading "Refren:" / "Strofa 2" / "Chorus /:" line says what the section type
   // already says.
   const LABEL_TYPES = {
-    refren: 'chorus', chorus: 'chorus', cor: 'chorus',
+    refren: 'chorus', chorus: 'chorus', cor: 'chorus', ref: 'chorus', refr: 'chorus', r: 'chorus',
     strofa: 'verse', 'strofă': 'verse', vers: 'verse', verse: 'verse',
     'pre-refren': 'pre_chorus', prerefren: 'pre_chorus', 'pre refren': 'pre_chorus', 'pre-chorus': 'pre_chorus', prechorus: 'pre_chorus', 'pre chorus': 'pre_chorus',
     punte: 'bridge', bridge: 'bridge',
@@ -146,11 +146,53 @@
     return lines[1] || lines[0]; // a section that is only the label keeps it
   }
 
+  // --- a whole song pasted at once ("Lipește toată cântarea", the editor) -------------------
+
+  // Splits pasted lyrics into sections: blocks separated by blank lines. A block's first
+  // line names its type when it is a section label ("Refren:", "R:", "Strofa 2", "Bridge",
+  // label-only lines are dropped, "Refren: text" keeps the text) or a stanza number ("1.",
+  // "2)" dropped). Everything else is a verse, except a block repeated later (the same
+  // words): the first copy becomes the chorus and the repeats are dropped (the arrangement
+  // says the order). Chord lines above the words become inline chords. -> [{ type, label,
+  // content, note }]
+  function splitPastedSong(text) {
+    const chords = typeof module === 'object' && module.exports ? require('./chords.js') : root.CHORDS;
+    const normalized = String(text || '').replace(/\r\n?/g, '\n').replace(/[ \t]+$/gm, '');
+    const blocks = normalized.split(/\n\s*\n+/).map((b) => b.replace(/^\n+|\n+$/g, '')).filter((b) => b.trim());
+    const NUMBERED_RE = /^\s*(\d{1,2})\s*[.)]\s*(.*)$/;
+    const words = (content) => chords.stripChords(content).toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+    const out = [];
+    for (const block of blocks) {
+      const lines = block.split('\n');
+      let type = null;
+      const label = leadingLabel(lines[0]);
+      const numbered = NUMBERED_RE.exec(lines[0]);
+      if (label) {
+        type = label.type;
+        if (label.rest) lines[0] = label.rest; else lines.shift();
+      } else if (numbered) {
+        type = 'verse';
+        if (numbered[2].trim()) lines[0] = numbered[2]; else lines.shift();
+      }
+      const content = chords.chordsOverLyricsToInline(lines.join('\n')).replace(/^\n+|\n+$/g, '');
+      if (!content.trim()) continue;
+      const key = words(content);
+      const earlier = key ? out.find((x) => x.key === key) : null;
+      if (earlier && (!type || type === earlier.type)) {
+        if (!earlier.labelled && !type) earlier.type = 'chorus'; // the same words again: the chorus
+        continue;
+      }
+      out.push({ type: type || 'verse', label: '', content, note: '', key, labelled: Boolean(type) });
+    }
+    return out.map(({ type, label, content, note }) => ({ type, label, content, note }));
+  }
+
   const SECTIONS = {
     SECTION_TYPES,
     firstLyricLine,
     leadingLabel,
     stripLeadingLabel,
+    splitPastedSong,
     SONG_KEYS,
     TYPE_CODES,
     sectionLabels,

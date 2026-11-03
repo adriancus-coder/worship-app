@@ -1,7 +1,8 @@
 'use strict';
 
 // The song editor as a component: a "Detalii" card (title, author, key with its value
-// large and a hint while empty), the sections (type, label, text with
+// large and a hint while empty), "Lipește toată cântarea" (the whole text at once, split
+// into sections by "Recunoaște secțiunile"), the sections (type, label, text with
 // chords in brackets or pasted chord-over-lyrics lines, note; move / remove / add) and the
 // live preview in the reader's notation. The /songs/new and /songs/:id/edit page
 // (public/song-edit.js) and the live "+ Cântare nouă" sheet (public/live-new-song.js) use
@@ -59,6 +60,31 @@
       collectionField.hidden = collectionAllowed.length < 2;
       changed();
     }
+    // "Lipește toată cântarea": the whole text at once, "Recunoaște secțiunile" splits it
+    // (SECTIONS.splitPastedSong); the type of each section is then set in its own field.
+    // Open on an empty song, folded on one that has sections.
+    const pasteArea = el('textarea', { id: `${p}-paste`, class: 'mono', rows: 8, spellcheck: 'false', 'aria-describedby': `${p}-paste-hint` });
+    const pasteButton = el('button', { type: 'button', id: `${p}-paste-recognize`, class: 'secondary', 'data-icon': 'sparkle' });
+    const pasteHint = el('span', { class: 'hint', id: `${p}-paste-hint` });
+    const pasteMessage = el('p', { class: 'message', id: `${p}-paste-message`, role: 'status', 'aria-live': 'polite' });
+    const pasteSummary = el('summary');
+    const pasteBox = el('details', { class: 'editor-paste', id: `${p}-paste-box` }, pasteSummary,
+      el('div', { class: 'field' }, el('label', { for: pasteArea.id }), pasteArea, pasteHint), pasteButton, pasteMessage);
+    function recognise() {
+      const found = window.SECTIONS.splitPastedSong(pasteArea.value);
+      pasteMessage.className = 'message';
+      if (!found.length) { pasteMessage.textContent = t('editor.pasteNone'); pasteMessage.classList.add('error'); pasteArea.focus(); return; }
+      if (state.sections.some((x) => x.content.trim()) && !window.confirm(t('editor.pasteReplaceConfirm', { n: found.length }))) return;
+      state.sections = found;
+      pasteArea.value = '';
+      pasteBox.open = false;
+      renderSections();
+      pasteMessage.textContent = t(found.length === 1 ? 'editor.pasteDoneOne' : 'editor.pasteDone', { n: found.length });
+      pasteMessage.classList.add('success');
+      changed();
+      sectionsBox.querySelector(`#${sectionPrefix}-0-type`).focus();
+    }
+    pasteButton.addEventListener('click', recognise);
     const sectionsBox = el('div', { id: ids.sections, class: 'sections-editor' });
     const addButton = el('button', { type: 'button', id: ids.addSection, class: 'secondary', 'data-icon': 'plus' });
     const preview = el('div', { id: ids.preview });
@@ -81,6 +107,7 @@
         collectionField),
       options.extra || '',
       labels.sections,
+      pasteBox,
       sectionsBox,
       addButton,
       el('section', { class: 'editor-preview', 'aria-labelledby': `${ids.preview}-heading` },
@@ -237,6 +264,11 @@
       collectionLabel.textContent = t('editor.collectionLabel');
       for (const button of collectionButtons) button.textContent = t(button.dataset.collection === 'school' ? 'library.collectionSchool' : 'library.collectionMain');
       labels.sections.textContent = t('editor.sectionsHeading');
+      pasteSummary.textContent = t('editor.pasteSummary');
+      pasteBox.querySelector('label').textContent = t('editor.pasteLabel');
+      pasteArea.placeholder = t('editor.pastePlaceholder');
+      pasteHint.textContent = t('editor.pasteHint');
+      pasteButton.textContent = t('editor.pasteRecognize');
       labels.preview.textContent = t('editor.previewHeading');
       addButton.textContent = t('editor.addSection');
     }
@@ -273,6 +305,8 @@
       renderKeys();
       keySelect.value = s.song_key || '';
       renderKeyValue();
+      pasteBox.open = !state.sections.some((x) => x.content.trim()); // open for an empty song
+      pasteMessage.textContent = '';
       render();
       state.base = snapshot();
     }

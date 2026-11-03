@@ -2478,6 +2478,13 @@ body.list-page > main > .key-review[hidden] { display: none; }
 /* Song editor: the "Detalii" card (title, author, key) at the top. */
 .editor-details { display: flex; flex-direction: column; gap: 12px; margin: 0 0 16px; padding: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
 .editor-details > h2, .editor-details > h3 { margin: 0; }
+/* "Lipește toată cântarea": a folding box above the sections */
+.editor-paste { margin: 0 0 16px; padding: 0 12px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+.editor-paste > summary { min-height: var(--touch); padding: 10px 0; font-weight: 600; cursor: pointer; }
+.editor-paste .field { margin-bottom: 10px; }
+.editor-paste textarea { width: 100%; }
+.editor-paste .message:empty { display: none; }
+.editor-paste .message { margin: 8px 0 0; }
 .editor-key-row { display: flex; align-items: center; gap: 12px; }
 .editor-key-row select { flex: 0 1 12rem; width: auto; }
 .editor-key-value { flex: none; min-width: 2.5rem; }

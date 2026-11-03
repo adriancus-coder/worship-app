@@ -1611,6 +1611,13 @@ test('arrange sheet: insert after the chosen row, move, remove, reset, key, flow
   assert.strictEqual(S.firstLyricLine('Pre-refren:\nVino'), 'Vino');
   assert.strictEqual(S.firstLyricLine('Intro duce lumina\nMai departe'), 'Intro duce lumina', 'a name followed by words is lyrics');
   assert.strictEqual(S.firstLyricLine('Punte'), 'Punte', 'a section that is only the label keeps it');
+  // splitPastedSong: blocks at blank lines; labels, stanza numbers, repeats, chord lines
+  const split = S.splitPastedSong('1. Ne ridici din noaptea grea\nTu ești lumina mea\n\nRefren:\nSfânt, sfânt\n\n2) Al doilea\n\nSfânt, sfânt\n\nR: Sfânt, sfânt\n\nBridge\nPunte\n\nG      C\nRând cu acorduri\n\n\nRând cu acorduri\n');
+  assert.deepStrictEqual(split.map((x) => `${x.type}|${x.content}`), ['verse|Ne ridici din noaptea grea\nTu ești lumina mea', 'chorus|Sfânt, sfânt', 'verse|Al doilea', 'bridge|Punte', 'chorus|[G]Rând cu[C] acorduri'],
+    'labels and numbers name the type and go; a repeated block is dropped (an unlabelled one makes the first copy a chorus); chords above the words go inline');
+  assert.deepStrictEqual(S.splitPastedSong('  \n\n'), [], 'nothing to split');
+  assert.deepStrictEqual(S.splitPastedSong('Doar un rând').map((x) => x.type), ['verse'], 'one block: a verse');
+  assert.deepStrictEqual(S.splitPastedSong('Chorus: Aleluia\n\nStrofa 2\nText').map((x) => `${x.type}|${x.content}`), ['chorus|Aleluia', 'verse|Text'], 'a label with text keeps the text; "Strofa 2" alone goes');
   // stripLeadingLabel: only a label-only first line that names the section type
   assert.strictEqual(S.stripLeadingLabel('Refren:\n[F]Aleluia', 'chorus'), '[F]Aleluia');
   assert.strictEqual(S.stripLeadingLabel('Refren:\n[F]Aleluia', 'verse'), 'Refren:\n[F]Aleluia', 'another type: kept');
