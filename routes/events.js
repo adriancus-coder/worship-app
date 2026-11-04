@@ -151,11 +151,11 @@ function createEventsRouter({ db, auth, logger, live }) {
       if (!source) return res.status(400).json({ error: req.t('errors.eventSourceInvalid') });
       sourceId = source.event.id;
     }
-    const theme = typeof body.theme === 'string' ? body.theme.trim().slice(0, 40) : '';
+    const themes = themeNames(body);
     const id = events.create(req.adminId, req.user.id, value, { sourceId });
     if (sourceId !== null) assignments.copyFrom(req.adminId, sourceId, id, req.user.id);
-    const ideas = programme === 'random' ? events.appendSongs(req.adminId, id, suggest.randomSongs(req.adminId, { eventId: id, today: today(req), theme }).songs) : 0;
-    logger.info(`Event #${id} created by user #${req.user.id} (admin #${req.adminId}): ${programme}${sourceId ? ` of #${sourceId}` : ''}${ideas ? `, ${ideas} random songs${theme ? ` (${theme})` : ''}` : ''}`);
+    const ideas = programme === 'random' ? events.appendSongs(req.adminId, id, suggest.randomSongs(req.adminId, { eventId: id, today: today(req), themes }).songs) : 0;
+    logger.info(`Event #${id} created by user #${req.user.id} (admin #${req.adminId}): ${programme}${sourceId ? ` of #${sourceId}` : ''}${ideas ? `, ${ideas} random songs${themes.length ? ` (${themes.join(', ')})` : ''}` : ''}`);
     live.eventChanged(req.adminId, id);
     res.status(201).json({ ...events.get(req.adminId, id, { t: req.t }), today: defaults.today });
   });
@@ -167,8 +167,8 @@ function createEventsRouter({ db, auth, logger, live }) {
     const id = eventId(req);
     if (!id || !events.get(req.adminId, id)) return notFound(req, res);
     const exclude = String(req.query.exclude || '').split(',').filter((x) => /^\d{1,15}$/.test(x)).map(Number);
-    const theme = typeof req.query.theme === 'string' ? req.query.theme.slice(0, 40) : ''; // ?theme=Paști: only that theme
-    const result = suggest.randomSongs(req.adminId, { eventId: id, count: req.query.count, exclude, today: today(req), theme });
+    const themes = themeNames({ themes: [].concat(req.query.theme || []) }); // ?theme=Paști&theme=Crăciun: only those themes
+    const result = suggest.randomSongs(req.adminId, { eventId: id, count: req.query.count, exclude, today: today(req), themes });
     res.json(result);
   });
 
@@ -217,7 +217,7 @@ function createEventsRouter({ db, auth, logger, live }) {
     // the starting programme of every event, as "+ Eveniment nou" offers it: random songs
     // (from any or one theme), a copy of a past event (its items and its team), or empty
     const programme = ['random', 'copy', 'empty'].includes(body.programme) ? body.programme : 'random';
-    const theme = typeof body.theme === 'string' ? body.theme.trim().slice(0, 40) : '';
+    const themes = themeNames(body);
     let sourceId = null;
     if (programme === 'copy') {
       const raw = String(body.fromEventId ?? '');
@@ -241,10 +241,10 @@ function createEventsRouter({ db, auth, logger, live }) {
     const created = db.transaction(() => metas.map((value) => {
       const id = events.create(req.adminId, req.user.id, value, { sourceId });
       if (sourceId !== null) assignments.copyFrom(req.adminId, sourceId, id, req.user.id);
-      if (programme === 'random') events.appendSongs(req.adminId, id, suggest.randomSongs(req.adminId, { eventId: id, today: today(req), theme }).songs);
+      if (programme === 'random') events.appendSongs(req.adminId, id, suggest.randomSongs(req.adminId, { eventId: id, today: today(req), themes }).songs);
       return { id, name: value.name, eventDate: value.eventDate };
     }))();
-    logger.info(`${created.length} event(s) planned by user #${req.user.id} (admin #${req.adminId}): ${programme}${sourceId ? ` of #${sourceId}` : ''}${theme ? ` (${theme})` : ''}`);
+    logger.info(`${created.length} event(s) planned by user #${req.user.id} (admin #${req.adminId}): ${programme}${sourceId ? ` of #${sourceId}` : ''}${themes.length ? ` (${themes.join(', ')})` : ''}`);
     for (const ev of created) live.eventChanged(req.adminId, ev.id);
     res.status(201).json({ created: created.length, events: created });
   });
@@ -374,6 +374,13 @@ function createEventsRouter({ db, auth, logger, live }) {
   });
 
   return router;
+}
+
+// The themes a programme's random songs are drawn from: `themes: ['Paști', 'Crăciun']` (any
+// of them; up to 20 names of up to 40 characters) or the older `theme: 'Paști'`; [] = any song.
+function themeNames(body) {
+  const raw = Array.isArray(body.themes) ? body.themes : typeof body.theme === 'string' ? [body.theme] : [];
+  return [...new Set(raw.filter((x) => typeof x === 'string').map((x) => x.trim().slice(0, 40)).filter(Boolean))].slice(0, 20);
 }
 
 module.exports = createEventsRouter;

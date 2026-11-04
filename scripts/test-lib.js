@@ -2653,6 +2653,11 @@ test('suggest randomSongs: skips the last 3 events and the event\'s own songs, k
   assert.deepStrictEqual([themed.total, themed.left, themed.songs.map((s) => s.id).sort((a, b) => a - b)], [4, 3, [ids[0], ids[7], ids[12]]], 'S2 is recent; the three others, keyed first');
   assert.ok(ids.indexOf(themed.songs[themed.songs.length - 1].id) === 12, 'the unkeyed one last');
   assert.deepStrictEqual(store.randomSongs(1, { eventId: mine, theme: 'botez' }), { songs: [], total: 0, left: 0 });
+  // several themes: the songs of any of them (ids[9] carries Crăciun only)
+  mem.prepare("INSERT INTO song_themes (song_id, admin_id, position, name, name_norm) VALUES (?, 1, 0, 'Crăciun', 'craciun')").run(ids[9]);
+  const several = store.randomSongs(1, { eventId: mine, themes: ['Paști', 'Crăciun', ''] });
+  assert.deepStrictEqual([several.total, several.left, several.songs.map((s) => s.id).sort((a, b) => a - b)], [5, 4, [ids[0], ids[7], ids[9], ids[12]]], 'Paști or Crăciun');
+  assert.deepStrictEqual(store.randomSongs(1, { eventId: mine, themes: ['Botez'] }), { songs: [], total: 0, left: 0 });
   mem.close();
 });
 

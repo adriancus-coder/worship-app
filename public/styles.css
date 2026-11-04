@@ -2431,6 +2431,8 @@ button.song-key-change:hover { text-decoration: underline; }
 .themes-picks > .theme-pick { min-height: var(--touch); padding: 4px 12px; font-size: 0.9375rem; font-weight: 500; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 999px; }
 .themes-picks > .theme-pick[aria-pressed="true"] { font-weight: 700; color: var(--on-accent); background: var(--accent-fill); border-color: var(--accent-fill); }
 .themes-picks > .theme-pick[aria-pressed="true"]::before { content: "✓ "; }
+/* the theme chips of "+ Eveniment nou" / "Planifică" (several pressed = any of them) */
+.field > .programme-themes { margin-top: 6px; }
 .themes-other .input-row { display: flex; gap: 8px; }
 .themes-other .input-row input { flex: 1 1 auto; min-width: 0; }
 .themes-resurse { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }

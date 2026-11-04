@@ -51,7 +51,8 @@
           <button type="button" data-programme="copy" aria-pressed="false" data-i18n="newEvent.programmeCopy"></button>
           <button type="button" data-programme="empty" aria-pressed="false" data-i18n="newEvent.programmeEmpty"></button>
         </div>
-        <label class="field" id="new-theme-field"><span data-i18n="newEvent.themeLabel"></span><select id="new-theme"></select></label>
+        <div class="field" id="new-theme-field"><span id="new-theme-label" data-i18n="newEvent.themeLabel"></span>
+          <div class="themes-picks programme-themes" id="new-theme" role="group" aria-labelledby="new-theme-label"></div></div>
         <label class="field" id="new-copy-field" hidden><span data-i18n="newEvent.copyLabel"></span><select id="new-copy"></select></label>
         <label class="field"><span data-i18n="newEvent.notesLabel"></span><textarea id="new-notes" rows="2" maxlength="2000"></textarea></label>
         <p id="new-message" class="message error" role="alert"></p>
@@ -85,7 +86,8 @@
           <button type="button" data-programme="copy" aria-pressed="false" data-i18n="newEvent.programmeCopy"></button>
           <button type="button" data-programme="empty" aria-pressed="false" data-i18n="newEvent.programmeEmpty"></button>
         </div>
-        <label class="field" id="plan-theme-field"><span data-i18n="newEvent.themeLabel"></span><select id="plan-theme"></select></label>
+        <div class="field" id="plan-theme-field"><span id="plan-theme-label" data-i18n="newEvent.themeLabel"></span>
+          <div class="themes-picks programme-themes" id="plan-theme" role="group" aria-labelledby="plan-theme-label"></div></div>
         <label class="field" id="plan-copy-field" hidden><span data-i18n="newEvent.copyLabel"></span><select id="plan-copy"></select></label>
         <label class="field"><span data-i18n="plan.notesLabel"></span><textarea id="plan-notes" rows="2" maxlength="2000"></textarea></label>
         <p id="plan-message" class="message error" role="alert"></p>

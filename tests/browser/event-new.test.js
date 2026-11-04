@@ -26,6 +26,9 @@ module.exports = {
     const pastItems = (await app.api(owner, 'GET', `/api/events/${past.id}`)).body.items.map((it) => it.id);
     // songs the random ideas can draw from (the seed's three are all in recent events)
     for (let i = 1; i <= 4; i += 1) await app.api(owner, 'POST', '/api/songs', { title: `Nouă ${i}`, song_key: 'G', sections: [{ type: 'verse', content: `Rând ${i}` }] });
+    // two themed songs: the theme chips of the dialog can be pressed together
+    await app.api(owner, 'POST', '/api/songs', { title: 'Temă unu', song_key: 'G', themes: ['Rugăciune'], sections: [{ type: 'verse', content: 'u' }] });
+    await app.api(owner, 'POST', '/api/songs', { title: 'Temă doi', song_key: 'G', themes: ['Crăciun'], sections: [{ type: 'verse', content: 'd' }] });
     const items = async (id) => (await app.api(owner, 'GET', `/api/events/${id}`)).body.items;
 
     for (const [lang, width, role] of [['ro', 375, 'presenter'], ['en', 1024, 'owner']]) {
@@ -46,6 +49,17 @@ module.exports = {
         `${tag} /events: one primary "+ Eveniment nou" (+ the secondary "Planifică"), two tabs, no templates`, head);
       await p.click('#new-event');
       await p.waitForSelector('#new-dialog[open] .plan-day[aria-pressed="true"]');
+      // the themes: chips, "Oricare" pressed alone; two themes pressed together (Oricare off);
+      // the event then starts with the songs of either
+      await p.waitForSelector('#new-theme .theme-pick[data-theme="Crăciun"]');
+      const chips0 = await p.$$eval('#new-theme .theme-pick', (l) => l.map((x) => `${x.dataset.theme || 'any'}:${x.getAttribute('aria-pressed')}`));
+      check(chips0[0] === 'any:true' && chips0.includes('Rugăciune:false') && chips0.includes('Crăciun:false'), `${tag} the theme chips, "Oricare" pressed`, chips0);
+      await p.click('#new-theme .theme-pick[data-theme="Rugăciune"]');
+      await p.click('#new-theme .theme-pick[data-theme="Crăciun"]');
+      const chips1 = await p.$$eval('#new-theme .theme-pick[aria-pressed="true"]', (l) => l.map((x) => x.dataset.theme || 'any'));
+      check(chips1.sort().join() === 'Crăciun,Rugăciune', `${tag} two themes pressed, "Oricare" off`, chips1);
+      const ta = await layoutAudit(p, '#new-theme-field');
+      check(!ta.overflow && !ta.small.length, `${tag} the chips: no overflow, targets >= 44 px`, ta);
       await p.click('#new-create');
       await p.waitForURL(/\/events\/\d+\/edit$/);
       await p.waitForSelector('#items .item-main, #setlist-empty:not([hidden])');
@@ -69,8 +83,9 @@ module.exports = {
       });
       check(cols.sameRow && cols.dateEnd <= cols.timeStart && (cols.notesStart >= cols.timeEnd || cols.notesStart <= cols.dateEnd - 1), `${tag} date and time side by side, never overlapping`, cols);
       // the new event starts with random songs; a copy of a past event replaces them (after asking) with new ids
-      const start = (await items(id)).length;
-      check(start >= 1 && (await items(id)).every((it) => it.type === 'song'), `${tag} the new event starts with ${start} random songs`);
+      const started = await items(id);
+      const start = started.length;
+      check(start === 2 && started.every((it) => it.type === 'song' && /^Temă/.test(it.title)), `${tag} the new event starts with the ${start} songs of the two themes`, started.map((it) => it.title));
       await p.click('#quick-details [data-source="copy"]');
       await p.waitForSelector('#q-copy-field:not([hidden])');
       const options = await p.evaluate(() => [...document.querySelectorAll('#q-copy option')].map((o) => o.textContent));

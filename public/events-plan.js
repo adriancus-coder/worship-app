@@ -98,7 +98,7 @@
     if (state.programme === 'copy' && !$('plan-copy').value) { $('plan-message').textContent = t('newEvent.copyMissing'); button.disabled = false; $('plan-copy').focus(); return; }
     const body = {
       dates: [...state.chosen].sort(), name: $('plan-name').value.trim(), startTime: $('plan-time').value, notes: $('plan-notes').value.trim(),
-      programme: state.programme, theme: state.programme === 'random' ? $('plan-theme').value : '', fromEventId: state.programme === 'copy' ? Number($('plan-copy').value) : undefined,
+      programme: state.programme, themes: state.programme === 'random' ? window.EVENT_NEW.chosenThemes($('plan-theme')) : [], fromEventId: state.programme === 'copy' ? Number($('plan-copy').value) : undefined,
     };
     const res = await api('/api/events/plan', { method: 'POST', body }).catch(() => ({ ok: false, body: {} }));
     button.disabled = false;

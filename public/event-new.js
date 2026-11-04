@@ -21,13 +21,28 @@
     select.replaceChildren(el('option', { value: '', text: t('newEvent.noTime') }), ...times.map((x) => el('option', { value: x, text: x })));
     select.value = usual || '';
   }
-  // the theme list ("Oricare" + the library's themes) and the past events to copy
-  function fillProgrammeLists(themeSelect, copySelect, { themes, past, today }) {
-    themeSelect.replaceChildren(el('option', { value: '', text: t('newEvent.anyTheme') }), ...themes.map((x) => el('option', { value: x.name, text: `${x.name} (${x.count})` })));
+  // the theme chips ("Oricare" + the library's themes; several can be pressed, "Oricare" =
+  // none of them) and the past events to copy
+  function fillProgrammeLists(themeGroup, copySelect, { themes, past, today }) {
+    const chip = (value, text) => el('button', { type: 'button', class: 'theme-pick', 'data-theme': value, 'aria-pressed': String(!value), text, onclick: () => toggleTheme(themeGroup, value) });
+    themeGroup.replaceChildren(chip('', t('newEvent.anyTheme')), ...themes.map((x) => chip(x.name, `${x.name} (${x.count})`)));
     const year = String(today || '').slice(0, 4);
     copySelect.replaceChildren(el('option', { value: '', text: t(past.length ? 'setlist.pickEvent' : 'events.noEvents') }),
       ...past.map((e) => el('option', { value: String(e.id), text: `${window.PAGE.formatDate(e.eventDate, year)} — ${e.name}` })));
     copySelect.disabled = !past.length;
+  }
+  function toggleTheme(group, value) {
+    const chips = [...group.querySelectorAll('.theme-pick')];
+    if (value) {
+      const chip = chips.find((x) => x.dataset.theme === value);
+      chip.setAttribute('aria-pressed', String(chip.getAttribute('aria-pressed') !== 'true'));
+    } else for (const x of chips) if (x.dataset.theme) x.setAttribute('aria-pressed', 'false');
+    const any = chips.some((x) => x.dataset.theme && x.getAttribute('aria-pressed') === 'true');
+    chips[0].setAttribute('aria-pressed', String(!any));
+  }
+  // the pressed themes (none = any song)
+  function chosenThemes(group) {
+    return [...group.querySelectorAll('.theme-pick[aria-pressed="true"]')].map((x) => x.dataset.theme).filter(Boolean);
   }
   // the programme switch (random / copy / empty): the pressed button, the theme / copy fields
   function renderProgrammeChoice(group, value, themeField, copyField) {
@@ -35,7 +50,7 @@
     themeField.hidden = value !== 'random';
     copyField.hidden = value !== 'copy';
   }
-  window.EVENT_NEW = { fillTimes, fillProgrammeLists, renderProgrammeChoice };
+  window.EVENT_NEW = { fillTimes, fillProgrammeLists, renderProgrammeChoice, chosenThemes };
 
   const dialog = $('new-dialog');
   if (!dialog) return;
@@ -124,7 +139,7 @@
     say('');
     const body = {
       name, eventDate: state.date, startTime: $('new-time').value, notes: $('new-notes').value.trim(),
-      programme: state.programme, theme: state.programme === 'random' ? $('new-theme').value : '', fromEventId: state.programme === 'copy' ? Number($('new-copy').value) : undefined,
+      programme: state.programme, themes: state.programme === 'random' ? chosenThemes($('new-theme')) : [], fromEventId: state.programme === 'copy' ? Number($('new-copy').value) : undefined,
     };
     const res = await api('/api/events/quick', { method: 'POST', body }).catch(() => ({ ok: false, body: {} }));
     if (res.status === 201) {

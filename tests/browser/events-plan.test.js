@@ -80,8 +80,15 @@ module.exports = {
     check((await app.api(app.cookies.leader, 'POST', '/api/events/plan', { dates: [far(11)], programme: 'copy' })).status === 400, 'a copy without an event: 400');
     // a song of a theme, new (so no recent event excludes it)
     const prayer = (await app.api(app.cookies.owner, 'POST', '/api/songs', { title: 'Cu temă', song_key: 'D', themes: ['Rugăciune'], sections: [{ type: 'verse', content: 'x' }] })).body.song;
+    // several themes: the songs of any of them (planned first, on a later day: an earlier
+    // themed event would count as recent and keep its song out)
+    const carol = (await app.api(app.cookies.owner, 'POST', '/api/songs', { title: 'Cu altă temă', song_key: 'E', themes: ['Crăciun'], sections: [{ type: 'verse', content: 'x' }] })).body.song;
+    const two = await app.api(app.cookies.leader, 'POST', '/api/events/plan', { dates: [far(13)], programme: 'random', themes: ['Rugăciune', 'Crăciun'] });
+    const twoItems = two.status === 201 ? (await app.api(app.cookies.leader, 'GET', `/api/events/${two.body.events[0].id}`)).body.items : [];
+    check(twoItems.length === 2 && twoItems.map((it) => it.songId).sort().join() === [prayer.id, carol.id].sort().join(), 'two themes: the songs of either', twoItems.map((it) => it.title));
     const themed = await app.api(app.cookies.leader, 'POST', '/api/events/plan', { dates: [far(12)], programme: 'random', theme: 'Rugăciune' });
     const themedItems = themed.status === 201 ? (await app.api(app.cookies.leader, 'GET', `/api/events/${themed.body.events[0].id}`)).body.items : [];
     check(themedItems.length === 1 && themedItems[0].songId === prayer.id, 'a theme: only its songs', themedItems.map((it) => it.title));
+
   },
 };
