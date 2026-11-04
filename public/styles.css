@@ -2441,6 +2441,10 @@ button.song-key-change:hover { text-decoration: underline; }
 .theme-chip { display: inline-flex; align-items: center; min-height: var(--touch); padding: 2px 12px; border: 1px solid var(--border); border-radius: 999px; color: var(--text); background: var(--surface); text-decoration: none; font-weight: 600; }
 .theme-chip:hover, .theme-chip:focus-visible { border-color: var(--accent-fill); }
 .theme-field select, .ideas-theme-field select { max-width: 14rem; }
+/* the picker's theme filter ("Adaugă o cântare", the operator's add, proposals): a row under the search field */
+.pick-theme-field { display: flex; flex-direction: row; align-items: center; gap: 8px; margin: 6px 0 0; font-size: 0.875rem; font-weight: 500; color: var(--text-muted); }
+.pick-theme-field select { flex: 1 1 auto; width: auto; min-height: var(--touch); }
+.pick-theme-field[hidden] { display: none; }
 .ideas-theme-field { display: flex; flex-direction: row; align-items: center; gap: 8px; width: auto; margin: 0 0 8px; font-size: 0.875rem; font-weight: 500; color: var(--text-muted); }
 .ideas-theme-field select { flex: 1 1 auto; min-height: var(--touch); }
 .ideas-theme-field[hidden] { display: none; }

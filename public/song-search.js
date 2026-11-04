@@ -46,6 +46,9 @@
           <button type="submit" class="secondary" id="${p}online-search" hidden data-icon="search" data-i18n="online.searchBoth"></button>
         </div>
         <span class="hint" id="${p}q-hint"></span>
+        <label class="sort-field theme-field pick-theme-field" id="${p}theme-field" hidden><span class="sort-label" data-i18n="library.themeLabel"></span>
+          <select id="${p}filter-theme"></select>
+        </label>
       </form>
       <div class="ss-results" id="${p}results">
       <section class="results-section pane-section" aria-labelledby="${p}local-heading">
@@ -115,8 +118,9 @@
         button.addEventListener('click', () => { collectionValue = button.dataset.collection; renderCollection(); load(); });
       }
     }
-    // the theme filter (library mode): the select, filled from GET /api/songs/themes
-    const themeSelect = mode === 'library' ? $('filter-theme') : null;
+    // the theme filter (the library's tools row; the picker's, under the search field): the
+    // select, filled from GET /api/songs/themes, hidden while the library has no themes
+    const themeSelect = $('filter-theme');
     let themeWanted = '';
     const theme = () => (themeSelect ? themeSelect.value : '');
     async function loadThemes() {
@@ -282,7 +286,7 @@
         if (collection() === 'school') qs.set('collection', 'school');
         const search = qs.toString();
         window.history.replaceState(null, '', search ? `?${search}` : window.location.pathname);
-      } else if (!query && options.emptyQuery === 'none') {
+      } else if (!query && !theme() && options.emptyQuery === 'none') {
         local.songs = [];
         local.lastQuery = '';
         renderLocal();
@@ -662,6 +666,7 @@
     if (themeSelect) {
       themeSelect.addEventListener('change', load);
       document.addEventListener('library:changed', loadThemes);
+      if (mode === 'pick') loadThemes();
     }
 
     if (importButton) {
@@ -749,6 +754,7 @@
       // Back to an empty field (the pick dialog opening again).
       reset() {
         input.value = '';
+        if (themeSelect) themeSelect.value = '';
         local.songs = null;
         local.message = null;
         list.replaceChildren();
