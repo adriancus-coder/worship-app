@@ -30,10 +30,9 @@ module.exports = {
 
     for (const [lang, width] of [['ro', 375], ['en', 1024], ['ro', 1180]]) {
       const tag = `[${lang} ${width}]`;
-      await app.command({ type: 'team.mode', mode: 'follow' });
       await app.command({ type: 'worship.goto', itemId: G, step: 0 });
       const p = await signIn('member', { width, lang });
-      await p.evaluate(() => { try { localStorage.removeItem('wa_big_scale'); localStorage.setItem('wa_text_only', '0'); } catch (e) {} });
+      await p.evaluate(() => { try { localStorage.removeItem('wa_big_scale'); localStorage.setItem('wa_text_only', '0'); localStorage.setItem('wa_follow_mode', 'follow'); } catch (e) {} });
       await p.goto(`${app.url}/events/${E}/follow`);
       await p.waitForSelector('#big-open:not([hidden])');
       // follow mode: opens, follows, no control buttons
@@ -69,8 +68,8 @@ module.exports = {
       await p.click('dialog.big-lyrics .big-close');
       await wait(200);
       check(!(await big(p)) && /Refren|Chorus/i.test(await pageLabel(p)), `${tag} ✕ closes at the same position (Refren)`);
-      // free mode: Înapoi / Înainte move only this phone
-      await app.command({ type: 'team.mode', mode: 'free' });
+      // free mode (this phone's own switch, "Derulează liber"): Înapoi / Înainte move only this phone
+      await p.click('#follow-mode [data-mode="free"]');
       await wait(400);
       await p.keyboard.press('f');
       await p.waitForSelector('dialog.big-lyrics[open]');

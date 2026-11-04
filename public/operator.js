@@ -1,7 +1,7 @@
 'use strict';
 
 // Operator console (/events/:id/operator: the event roles), on the projector PC. Full
-// controls, like the leader page: start / end, the projector's holder and the team mode.
+// controls, like the leader page: start / end and the projector's holder.
 //   the operator holds the projector  the console moves the projector (projector.*); it shows
 //                                     where the team is, with "Sari acolo" (W) to bring the
 //                                     projector there ("Proiectorul e al tău")

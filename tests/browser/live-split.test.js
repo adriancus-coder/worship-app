@@ -22,7 +22,7 @@ module.exports = {
       const current = document.querySelector('.live-current').getBoundingClientRect().width;
       return {
         panel: Boolean(panel.getClientRects().length), cross: !document.getElementById('cross').hidden, hint: !document.getElementById('split-keys-hint').hidden,
-        modes: !document.getElementById('mode-controls').hidden && document.querySelectorAll('#mode-controls .mode-switch').length === 1 && !document.getElementById('projector-action').hidden,
+        modes: !document.getElementById('mode-controls').hidden && document.querySelectorAll('#mode-controls .mode-switch').length === 0 && !document.getElementById('projector-action').hidden,
         video: Boolean(document.querySelector('#video-panel') && document.querySelector('#video-panel').getClientRects().length),
         cols, current: Math.round(current), crossText: document.getElementById('cross-text').textContent,
       };

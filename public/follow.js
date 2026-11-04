@@ -1,14 +1,15 @@
 'use strict';
 
 // Team phones (/events/:id/follow): the live position of the team. Shows the current
-// section with chords (transposed) and what comes next; it sends no commands. The team mode
-// (set from the leader page or the console) decides how it follows:
+// section with chords (transposed) and what comes next; it sends no commands. How it follows
+// is this phone's own choice ("Urmărește live · Derulează liber", kept on the device; nobody
+// sets it for the team):
 //   follow  it moves with live. A person who moves away here (swipe, ← / →) sees their own
 //           place with a floating "Revino la live"; a tap, or 30 s without touching it,
 //           brings them back.
-//   free    it never jumps: everyone navigates on their own (← / →, the setlist), with a
-//           slim "Live: <song> · <section>" bar and "Mergi la live". Switching modes keeps
-//           the person's place in free mode and jumps to live in follow mode.
+//   free    it never jumps: the person navigates on their own (← / →, the setlist), with a
+//           slim "Live: <song> · <section>" bar and "Mergi la live". Switching keeps the
+//           person's place in free mode and jumps to live in follow mode.
 // Without the server for more than 5 s it keeps the event it holds (every song is loaded
 // up front) and offers manual Back / Next until it reconnects.
 
@@ -26,6 +27,7 @@
   const SCALE_KEY = 'wa_rehearse_scale';
   const WAKE_HINT_KEY = 'wa_wake_hint_seen';
   const SCALE = { min: 0.8, max: 1.8, step: 0.1 };
+  const MODE_KEY = 'wa_follow_mode'; // this phone's choice: 'follow' (default) | 'free'
   const REATTACH_MS = 30 * 1000;
   const SWIPE_PX = 60;
 
@@ -33,6 +35,7 @@
   // follow mode, or anywhere in free mode); null = live.
   const state = { event: null, items: [], loadedKey: null, loading: null, songs: new Map(), snap: null, textOnly: false, scale: 1, renderId: 0,
     manual: null, away: null, reattach: null,
+    mode: 'follow',
     // split mode (the operator runs the projector on its own): whom this phone follows -
     // 'projector' (what the operator shows) or 'worship' (the leader / presenter); kept on the device
     source: null };
@@ -54,6 +57,7 @@
   }
 
   state.textOnly = stored(TEXT_ONLY_KEY) === '1';
+  state.mode = stored(MODE_KEY) === 'free' ? 'free' : 'follow';
   const savedScale = Number(stored(SCALE_KEY));
   if (savedScale >= SCALE.min && savedScale <= SCALE.max) state.scale = savedScale;
 
@@ -249,6 +253,27 @@
         : (holder && holder.name ? t('follow.sourceProjector', { name: holder.name }) : t('follow.sourceProjectorNobody'));
     }
   }
+  // this phone's way of following: shown while live; a change keeps the place (free) or
+  // goes to live (follow)
+  function renderMode() {
+    $('follow-mode-row').hidden = !live();
+    for (const b of $('follow-mode').querySelectorAll('[data-mode]')) b.setAttribute('aria-pressed', String(b.dataset.mode === state.mode));
+  }
+  for (const b of $('follow-mode').querySelectorAll('[data-mode]')) {
+    b.addEventListener('click', () => {
+      if (state.mode === b.dataset.mode) return;
+      state.mode = b.dataset.mode;
+      store(MODE_KEY, state.mode);
+      if (free()) {
+        state.away = state.away || { ...livePos() }; // free now: stay where this phone is
+        stopReattach();
+      } else {
+        state.away = null; // follow again: straight to live
+        stopReattach();
+      }
+      render();
+    });
+  }
   for (const b of $('follow-source').querySelectorAll('[data-source]')) {
     b.addEventListener('click', () => {
       if (state.source === b.dataset.source) return;
@@ -260,7 +285,7 @@
   }
 
   const live = () => Boolean(state.snap) && state.snap.status === 'live';
-  const free = () => live() && state.snap.teamMode === 'free';
+  const free = () => live() && state.mode === 'free';
   // What this phone shows: offline its own place, else the person's place, else live.
   const shownPosition = () => state.manual || state.away || livePos();
 
@@ -311,6 +336,7 @@
     if (!state.event || !state.snap) return;
     renderHead();
     renderSource();
+    renderMode();
     renderNav();
     renderSlide();
     mountProposals();
@@ -331,6 +357,7 @@
         const layout = POS.layoutOf(state.items);
         const pos = shownPosition();
         return {
+          free: free(),
           show: free() || Boolean(state.away) || Boolean(state.manual),
           away: Boolean(state.away) && !free() && !state.manual,
           canPrev: !POS.samePosition(POS.prevPosition(layout, pos), pos),
@@ -395,19 +422,10 @@
     jumpTo(to);
   }
 
-  // A new snapshot: team mode switches, a changed setlist, live moving on.
+  // A new snapshot: the event no longer live (the place is dropped), a changed setlist.
   function followSnapshot(previous, snap) {
-    const wasFree = previous && previous.status === 'live' && previous.teamMode === 'free';
-    const isFree = snap.status === 'live' && snap.teamMode === 'free';
     if (snap.status !== 'live') {
       state.away = null;
-      stopReattach();
-    } else if (isFree && !wasFree) {
-      // Free now: everyone stays where they are.
-      state.away = state.away || (previous && previous.status === 'live' && followed.pos ? { ...followed.pos } : { ...snap.worship });
-      stopReattach();
-    } else if (!isFree && wasFree) {
-      state.away = null; // follow again: straight to live
       stopReattach();
     }
   }
@@ -531,7 +549,7 @@
         state.snap = snap;
         // While the event is live the "new version" toast waits (public/pwa.js).
         document.documentElement.toggleAttribute('data-pwa-hold', snap.status === 'live');
-        if (state.manual && snap !== initialState && snap.teamMode === 'free') state.away = state.manual; // keep the place
+        if (state.manual && snap !== initialState && state.mode === 'free') state.away = state.manual; // keep the place
         state.manual = null; // back online: follow the team again
         followSnapshot(previous, snap);
         if (!initialState || snap !== initialState) window.EVENT_CACHE.save({ eventId, snap });

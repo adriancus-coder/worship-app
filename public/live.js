@@ -606,7 +606,7 @@
     if (state.leader && state.view !== 'full') state.openLyrics = true;
   });
 
-  // Together / separate and the team mode; the info toast for additions from the console.
+  // The projector's holder and the handover flow; the info toast for additions from the console.
   const modes = window.LIVE_MODES.controls($('mode-controls'), { send, t, el, positionLabel });
   // "✎ Versuri": the song on screen edited now, for this event or for the library. A live
   // event reloads on its own (the setlist key changes); a planned one is reloaded here.

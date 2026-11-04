@@ -4,7 +4,7 @@
 //   "Proiectorul: Ion (operator)"  who holds it, with "Cere controlul proiectorului" (anyone
 //                                  else) or "Predă controlul proiectorului" (the holder: a
 //                                  list of the event-role people connected)
-//   "Echipa: Urmărește live · Derulează liber"  team.mode follow | free
+// (how the team phones follow is each phone's own choice on the follow page, not set here)
 // the request flow around them (a request waits for a connected holder: Acceptă / Refuză on
 // the holder's page; with the holder away it applies at once; whoever gets the projector is
 // told that what they change shows in church: lib/live.js; an owner may always answer, on
@@ -48,20 +48,6 @@
     const holderRow = el('div', { class: 'mode-row holder-row' }, holderLabel, holderText, action, badge);
     // The holder's list: "Predă lui <name> (<role>)" for every other event-role person connected.
     const pick = el('div', { class: 'handover-pick', role: 'group', 'aria-labelledby': 'projector-action', hidden: true });
-    const segmented = (labelKey, command, values) => {
-      const label = el('span', { class: 'mode-label' });
-      const buttons = values.map((value) => el('button', {
-        type: 'button',
-        class: 'secondary',
-        'data-value': value,
-        'aria-pressed': 'false',
-        onclick: () => { if ((snap && snap.teamMode) !== value) send(command, { mode: value }); },
-      }));
-      const group = el('div', { class: 'mode-switch', role: 'group' }, ...buttons);
-      const row = el('div', { class: 'mode-row' }, label, group);
-      return { row, label, group, buttons, labelKey, command, values };
-    };
-    const teamMode = segmented('live.modes.teamLabel', 'team.mode', ['follow', 'free']);
     const hint = el('p', { class: 'hint mode-hint', 'data-dismiss': 'mode-hint' });
     // The requester's line: "Cerere trimisă… 58 s" + Anulează, or the answer / the notice.
     const lineText = el('p');
@@ -78,7 +64,7 @@
     } });
     const choiceBox = el('div', { class: 'handover-line handover-choice', role: 'group', 'aria-live': 'polite', hidden: true }, choiceText, keep, restart);
     container.classList.add('mode-controls');
-    container.replaceChildren(holderRow, pick, teamMode.row, hint, line, choiceBox);
+    container.replaceChildren(holderRow, pick, hint, line, choiceBox);
     // The holder's toast, on the page body so it floats over nothing important.
     const toastText = el('p');
     const accept = el('button', { type: 'button', 'data-icon': 'check', onclick: () => send('handover.accept') });
@@ -182,14 +168,6 @@
           text: t('live.modes.handTo', { name: personLabel(person) }),
           onclick: () => { pickOpen = false; send('projector.handover', { toUserId: person.userId }); },
         })));
-      }
-      // the team switch
-      teamMode.label.id = 'team-mode-label';
-      teamMode.label.textContent = t(teamMode.labelKey);
-      teamMode.group.setAttribute('aria-labelledby', 'team-mode-label');
-      for (const button of teamMode.buttons) {
-        button.textContent = t(`live.modes.${button.dataset.value}`);
-        button.setAttribute('aria-pressed', String(button.dataset.value === snap.teamMode));
       }
       // what the projector follows, for this page
       const name = holderName();

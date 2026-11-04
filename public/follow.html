@@ -38,6 +38,15 @@
         </div>
       </div>
 
+      <!-- how THIS phone follows (its own choice, kept on the device): with live, or freely -->
+      <div id="follow-mode-row" class="follow-source-row follow-mode-row" hidden>
+        <span id="follow-mode-label" class="follow-source-label" data-i18n="follow.modeLabel"></span>
+        <div class="choice-group follow-source follow-mode" id="follow-mode" role="group" aria-labelledby="follow-mode-label">
+          <button type="button" data-mode="follow" aria-pressed="false" data-i18n="live.modes.follow"></button>
+          <button type="button" data-mode="free" aria-pressed="false" data-i18n="live.modes.free"></button>
+        </div>
+      </div>
+
       <div class="rehearse-bar">
         <p id="position" class="rehearse-position" aria-live="polite"></p>
         <div class="rehearse-tools">

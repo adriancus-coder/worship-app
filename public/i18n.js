@@ -1508,6 +1508,7 @@
       },
       follow: {
         sourceLabel: 'Urmăresc:',
+        modeLabel: 'Pe telefonul meu:',
         sourceTeam: '{leader} / {presenter}',
         sourceProjector: 'Proiectorul ({name})',
         sourceProjectorNobody: 'Proiectorul',
@@ -1587,7 +1588,6 @@
           holderTogetherHint: 'Proiectorul e al tău și urmează poziția echipei: ce muți aici apare pe proiector, în fața bisericii.',
           otherSplitHint: 'Proiectorul e la {name}, care îl mută de pe consolă. Cere controlul dacă ai nevoie de el.',
           otherTogetherHint: 'Proiectorul e la {name} și urmează poziția echipei: ce muți aici apare pe proiector, în fața bisericii.',
-          teamLabel: 'Echipa',
           follow: 'Urmărește live',
           free: 'Derulează liber',
           projectorAt: 'Proiectorul e la {label}',
@@ -3751,6 +3751,7 @@
       },
       follow: {
         sourceLabel: 'Following:',
+        modeLabel: 'On my phone:',
         sourceTeam: '{leader} / {presenter}',
         sourceProjector: 'The projector ({name})',
         sourceProjectorNobody: 'The projector',
@@ -3830,7 +3831,6 @@
           holderTogetherHint: 'The projector is yours and follows the team’s position: what you move here shows on the projector, in front of the church.',
           otherSplitHint: 'The projector is with {name}, who moves it from the console. Ask for control if you need it.',
           otherTogetherHint: 'The projector is with {name} and follows the team’s position: what you move here shows on the projector, in front of the church.',
-          teamLabel: 'Team',
           follow: 'Follow live',
           free: 'Scroll freely',
           projectorAt: 'The projector is at {label}',

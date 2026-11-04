@@ -86,7 +86,7 @@ never implement a later stage early. Mockups: claude.ai design canvas
   gets the current state, so two people moving at once never skip a section.
 - **Event rights.** Owner, presenter, leader and operator (EVENT_ROLES, defined once in
   `lib/events.js`) have the same rights over events, always: create, edit, delete, start,
-  end, move the live position, projector, sources, video, live mode and team mode.
+  end, move the live position, projector, sources, video and live mode.
   Members see every event as soon as it exists and send no commands. The same roles (EDITOR_ROLES = EVENT_ROLES) edit
   the library (create, edit, delete, file import / export, the key, backgrounds) and
   media; presenter, leader and operator differ by the page an event opens on (live page /
@@ -134,13 +134,15 @@ never implement a later stage early. Mockups: claude.ai design canvas
   where the projector was, so the screen never jumps to the new holder's place. The one who got
   it is asked: "Ai proiectorul. Proiecția continuă de unde a rămas: <X>" with *Continui de aici*
   (keeps it) or *Încep de unde eram: <Y>* (back to their own place; the screen follows).
-- **Team mode** (`team.mode`, any event role; a new start is *follow*):
-  - *Urmărește live* (follow) — phones follow the main position. Someone who moves away on
-    their own phone (swipe, ← / →) keeps their place with a floating "Revino la live";
-    a tap, or 30 s without touching the page, returns them.
-  - *Derulează liber* (free) — phones never jump; each person navigates the whole setlist,
-    with a slim "Live: <song> · <section>" bar and "Mergi la live".
-  Switching is instant for everyone; free mode keeps each person's place.
+- **How a phone follows** is each person's own choice, on their follow page ("Pe telefonul
+  meu: Urmărește live · Derulează liber", kept on the device); nobody sets it for the team
+  (the `team.mode` command is still accepted but nothing reads it):
+  - *Urmărește live* (follow, the default) — the phone follows the main position. Someone
+    who moves away (swipe, ← / →) keeps their place with a floating "Revino la live"; a tap,
+    or 30 s without touching the page, returns them.
+  - *Derulează liber* (free) — the phone never jumps; the person navigates the whole
+    setlist, with a slim "Live: <song> · <section>" bar and "Mergi la live".
+  Switching keeps the person's place in free mode and goes to live in follow mode.
 - **The projector never changes on its own.** Every source change is an explicit action.
   Projector sources: song, verse, video, logo, translation (bridge), black screen.
 - **Tap or hold** (`public/press.js`, one convention for every Program list): a short tap

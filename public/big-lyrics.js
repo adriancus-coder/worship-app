@@ -23,7 +23,7 @@
 // The team (the follow page) and the home card (public/app.js) open the SAME view members-style:
 //   BIG_LYRICS.create({ ..., member: { nav, backToLive } })
 //     no live commands: in follow mode it just follows; commands.prev / next move only this
-//     person's place (swipe, ← →); nav() -> { show, away, canPrev, canNext } decides the bottom
+//     person's place (swipe, ← →); nav() -> { free, show, away, canPrev, canNext } decides the bottom
 //     bar: "← Înapoi" / "Înainte →" when show (free mode, or detached), plus "Revino la live"
 //     when away; keys E / B / Space do nothing.
 //   standalone: true      a page with its own place (the home card's programme): no live
@@ -276,7 +276,7 @@
       // The team: the connection and how this phone follows (follow / free / its own place).
       if (member) {
         const nav = member.nav();
-        const key = nav.away ? 'big.memberAway' : (snap.teamMode === 'free' ? 'big.memberFree' : 'big.memberFollow');
+        const key = nav.away ? 'big.memberAway' : (nav.free ? 'big.memberFree' : 'big.memberFollow');
         return { value, conn: t(`live.connection.${value}`), text: t(key) };
       }
       const holder = snap.holder ? `${snap.holder.name || t('live.modes.someone')} (${window.PAGE.roleName(snap.holder.role)})` : t('live.modes.nobody');
