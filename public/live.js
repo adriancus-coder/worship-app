@@ -26,7 +26,8 @@
   // the leader asked for the full page.
   const view = new URLSearchParams(window.location.search).get('view');
   const state = { event: null, items: [], loadedKey: null, loading: null, songs: new Map(), snap: null, seq: 0, client: null, queue: Promise.resolve(), cached: null,
-    openLyrics: view === 'lyrics', view, leader: false, pageMode: view === 'full' };
+    openLyrics: view === 'lyrics', view, leader: false, pageMode: view === 'full',
+    expanded: null }; // before the start: the song opened under its row (as on the home card)
   const FOLLOW_KEY = 'wa_live_follow';
   // The compact view (only the Program with keys and ticks), remembered on the device.
   const COMPACT_KEY = 'wa_live_compact';
@@ -216,19 +217,38 @@
     return Boolean(s && s.done);
   }
 
+  // Before the start the Program is read as on the home card (public/programme-big.js): a
+  // tap on a song opens it under its row, a tap on a section opens "⤢ Versuri mari" with
+  // its own place. Live, a tap sends the team there and the live big view takes over.
+  const programme = window.PROGRAMME_BIG.create({
+    api, eventId: () => eventId,
+    items: () => state.items.filter((it) => it.type === 'song' && it.songId),
+    onItemChange: (itemId) => { if (state.expanded !== itemId) { state.expanded = itemId; renderSetlist(); } },
+  });
+  function toggleSong(item) {
+    state.expanded = state.expanded === item.id ? null : item.id;
+    if (state.expanded) programme.load(item).then(() => { if (state.expanded === item.id) renderSetlist(); });
+    renderSetlist();
+  }
+
   function renderSetlist() {
     const { pos } = current();
     const live = state.snap.status === 'live';
+    if (live && programme.isOpen()) programme.close(); // the event started: the live view takes over
     $('setlist').replaceChildren(...state.items.map((item, i) => {
       const isCurrent = live && pos.itemId === item.id;
       const canArrange = live && arrangeable(item);
+      const readable = !live && item.type === 'song' && Boolean(item.songId);
+      const open = readable && state.expanded === item.id;
       const goThere = () => move('goto', { itemId: item.id, step: 0 });
       const main = el('button', {
         type: 'button',
         class: `live-item${isCurrent ? ' current' : ''}`,
         'aria-current': isCurrent ? 'step' : null,
         'aria-keyshortcuts': canArrange ? 'Shift+Enter' : null,
-        disabled: !live,
+        'aria-expanded': readable ? String(open) : null,
+        'aria-controls': readable ? `now-song-${item.id}` : null,
+        disabled: !live && !readable,
       },
       el('span', { class: 'item-number', text: String(i + 1) }),
       // the tick: the projector has shown more than 70 % of this item's screens
@@ -241,9 +261,10 @@
         el('span', { class: 'item-title', text: itemTitle(item) }),
         item.type === 'song' && item.displayKey ? el('span', { class: 'item-sub item-key', text: t('options.songKeyShort', { key: window.NOTATION.chord(item.displayKey) }) }) : null,
         item.who ? el('span', { class: 'item-sub', text: item.who }) : null));
-      // Short tap: the team goes there; long press (or "Aranjează"): the arrange sheet.
-      window.PRESS.bind(main, { tap: goThere, hold: canArrange ? () => arrange(item, goThere) : null });
-      return el('li', { class: canArrange ? 'has-arrange' : null }, main, canArrange ? arrangeButton(item, () => arrange(item, goThere)) : null);
+      // Short tap: the team goes there (before the start: the song opens under the row);
+      // long press (or "Aranjează"): the arrange sheet.
+      window.PRESS.bind(main, { tap: readable ? () => toggleSong(item) : goThere, hold: canArrange ? () => arrange(item, goThere) : null });
+      return el('li', { class: `${canArrange ? 'has-arrange' : ''}${open ? ' is-open' : ''}` || null }, main, canArrange ? arrangeButton(item, () => arrange(item, goThere)) : null, open ? programme.box(item) : null);
     }));
     if (!state.items.length) $('setlist').replaceChildren(el('li', { class: 'muted', text: t('setlist.empty') }));
     showPressHint();
@@ -883,10 +904,15 @@
           renderProjector();
           videoPanel.setSetlist(state.items);
           videoPanel.update(state.snap); // with the presence that may have arrived meanwhile
-          // ?view=lyrics (the leader's entry point): the big lyrics open over the page at once.
-          if (state.openLyrics && snap.status === 'live') { // a planned event shows the page until it starts
+          // ?view=lyrics (the leader's entry point): the big lyrics open over the page at once;
+          // before the start, the programme's first song in the read-only big view (its own
+          // place), and the live view takes over when the event starts.
+          if (state.openLyrics && snap.status === 'live') {
             state.openLyrics = false;
             big.open();
+          } else if (state.openLyrics && !state.lyricsShown) {
+            state.lyricsShown = true; // once: ✕ returns to the page, the live view later
+            programme.openFirst();
           }
         }).catch(() => {}); // server unreachable meanwhile: the next snapshot tries again
       },

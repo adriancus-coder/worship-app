@@ -5,7 +5,9 @@
 // mari" there, swiping on into the next song (whose row opens); inside the big view a tap on
 // the text ("Toată cântarea", the tool too on wide screens) lists the sections and a tap on one goes there, back to
 // the large view; the editor keeps its preview as it was (no tap targets). A member at 375,
-// the leader at 1024; the leader's live big view has the whole-song tool too.
+// the leader at 1024; the leader's live big view has the whole-song tool too. Before the
+// start, the leader's "Versuri mari" opens the first song big and the live page's rows read
+// the songs the same way.
 
 const { layoutAudit, wait } = require('./harness');
 
@@ -60,6 +62,33 @@ module.exports = {
       check(!(await p.locator('dialog.big-lyrics[open]').count()) && await p.evaluate(() => Boolean(document.querySelector('#detail .detail-sections'))), `${tag} "Ieși": back on the page, the song still shown`);
       await p.context().close();
     }
+
+    // the leader's "Versuri mari" before the start: the big view at the first song (its own
+    // place); ✕ returns to the live page, where a song row opens the song and a section the
+    // big view; when the event starts, the live big view takes over
+    const l = await signIn('leader', { width: 375, lang: 'ro' });
+    await l.goto(`${app.url}/app`);
+    await l.waitForSelector('#now .now-card');
+    await l.click('#now .now-actions :text("Versuri mari")');
+    await l.waitForSelector('dialog.big-lyrics[open]', { timeout: 8000 });
+    check(/Sfânt în G · Strofa 1/.test(await l.textContent('dialog.big-lyrics .big-label')) && !(await l.locator('dialog.big-lyrics .big-status').count()), 'leader, planned event: "Versuri mari" opens the first song big (its own place, no live status)');
+    await l.click('dialog.big-lyrics .big-nav .big-exit');
+    await l.waitForSelector('dialog.big-lyrics[open]', { state: 'detached' }).catch(() => null);
+    await wait(200);
+    check(/\/live/.test(l.url()) && !(await l.locator('dialog.big-lyrics[open]').count()), '"Ieși": the live page with the programme');
+    await l.click('#setlist li:nth-child(1) .live-item');
+    await l.waitForSelector('#setlist li.is-open .now-song .song-section');
+    check(await l.locator('#setlist li.is-open .song-section').count() === 2 && await l.getAttribute('#setlist li:nth-child(1) .live-item', 'aria-expanded') === 'true', 'a song row before the start: the whole song under it');
+    const la = await layoutAudit(l, '#setlist');
+    check(!la.overflow && !la.small.length, 'the list with a song open 375: no overflow, targets >= 44 px', la);
+    await l.click('#setlist li.is-open .song-section >> nth=1');
+    await l.waitForSelector('dialog.big-lyrics[open]');
+    check(/Refren/.test(await l.textContent('dialog.big-lyrics .big-label')), 'a section: the big view there');
+    await app.api(app.cookies.owner, 'POST', `/api/events/${E}/start`, {});
+    await l.waitForFunction(() => document.querySelectorAll('dialog.big-lyrics[open]').length === 1 && document.querySelector('dialog.big-lyrics[open] .big-status'), null, { timeout: 8000 });
+    check(true, 'the event starts: the live big view takes over (one dialog, with the live status line)');
+    await app.api(app.cookies.owner, 'POST', `/api/events/${E}/withdraw`, {});
+    await l.context().close();
 
     // the editor: the preview is not a tap target
     const o = await signIn('owner', { width: 1024, lang: 'ro' });

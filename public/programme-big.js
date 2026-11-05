@@ -16,6 +16,8 @@
 //   songs.sections(it, { hint })  -> the same sections alone, for a page's own box
 //   songs.load(it)       -> promise of the song (cached); songs.song(it) -> the settled one
 //   songs.open(it, sectionId)     -> the big view at that section of that song
+//   songs.openFirst()    -> the big view at the first song (an entry point before the start)
+//   songs.close()        -> closes the big view (the event went live: the live view takes over)
 //   songs.update()       -> after the items changed (the big view re-reads them)
 
 (function () {
@@ -127,7 +129,14 @@
       member: { nav: () => ({ show: true, away: false, canPrev: canMove(-1), canNext: canMove(1) }), backToLive: () => {} },
     });
 
-    return { box, sections, load, song, open, update: () => big.update(null, bigItems()), isOpen: () => big.isOpen() };
+    // openFirst(): the big view at the first song's first section (an entry point before the start)
+    async function openFirst() {
+      const first = items()[0];
+      if (!first) return;
+      const s = await load(first);
+      if (s) open(first, (stepsOf(s)[0] || {}).sectionId);
+    }
+    return { box, sections, load, song, open, openFirst, update: () => big.update(null, bigItems()), isOpen: () => big.isOpen(), close: () => big.close() };
   }
 
   window.PROGRAMME_BIG = { create };
