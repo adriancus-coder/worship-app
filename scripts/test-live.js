@@ -244,10 +244,13 @@ async function main() {
     assert.strictEqual((await api('PUT', '/api/songs/1', leader, { song_key: 'G' })).status, 200);
     assert.ok(!(await api('GET', '/api/songs?noKey=1', member)).body.songs.some((s) => s.id === 1), 'a song with a key leaves the filter');
     assert.ok((await api('GET', '/api/songs', member)).body.songs.some((s) => s.id === 1), 'without the filter: every song');
-    assert.strictEqual((await api('POST', '/api/songs/import', operator, { songs: [] })).status, 400, 'the operator may import (an empty file is refused as such)');
-    assert.strictEqual((await api('GET', '/api/songs/export', operator)).status, 200);
-    for (const [method, url, body] of [['POST', '/api/songs/import', { songs: [] }], ['GET', '/api/songs/export']]) {
-      assert.strictEqual((await api(method, url, member, body)).status, 403, `member ${url}`);
+    // the whole-library tools (import, export) are the owner's: an empty file is refused as such
+    assert.strictEqual((await api('POST', '/api/songs/import', owner, { songs: [] })).status, 400, 'the owner may import (an empty file is refused as such)');
+    assert.strictEqual((await api('GET', '/api/songs/export', owner)).status, 200);
+    for (const who of [operator, member]) {
+      for (const [method, url, body] of [['POST', '/api/songs/import', { songs: [] }], ['GET', '/api/songs/export']]) {
+        assert.strictEqual((await api(method, url, who, body)).status, 403, `${who === member ? 'member' : 'operator'} ${url}`);
+      }
     }
     // ... but resursecrestine.ro is open to the event roles (a too-short query stops before
     // any network access, past the role check); members stay out

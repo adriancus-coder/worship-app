@@ -2,7 +2,7 @@
 
 const express = require('express');
 const asyncRoute = require('../lib/async-route');
-const { requirePerm, can } = require('../lib/roles');
+const { requirePerm } = require('../lib/roles');
 const { createRequestLimiter } = require('../lib/rate-limit');
 const { validateSong, createSongStore, DuplicateTitleError } = require('../lib/songs');
 const resurse = require('../lib/resurse');
@@ -33,13 +33,11 @@ function createResurseRouter({ db, auth, logger, live, sync }) {
   const resurseSync = sync || createResurseSync({ db, logger, live, resurse, delayMs: Number(process.env.RESURSE_SYNC_DELAY_MS ?? DEFAULT_DELAY_MS) });
 
   // "Acorduri și teme de pe resurse" (lib/resurse-sync.js): a job over a library's songs
-  // without chords or themes, for whoever writes that library (the church's: the library
-  // right; the school's: the school right too). Outside the per-user limiter: the page
+  // without chords or themes, the owner's (like export / import). Outside the per-user limiter: the page
   // polls GET while it runs; the job itself paces its requests to the site.
   const syncAccess = (req, res, next) => {
     const collection = req.query.collection === 'school' ? 'school' : req.query.collection === 'all' ? 'all' : 'main';
-    const allowed = can(req.user, 'library') || (can(req.user, 'school') && collection === 'school');
-    if (!allowed) return res.status(403).json({ error: req.t('errors.forbidden') });
+    if (req.user.role !== 'owner') return res.status(403).json({ error: req.t('errors.forbidden') }); // the whole-library tools are the owner's
     req.syncCollection = collection;
     res.set('Cache-Control', 'no-store');
     next();

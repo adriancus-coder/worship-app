@@ -42,8 +42,9 @@ module.exports = {
     check(!listMain.some((s) => s.collection === 'school') && listSchool.length === 1 && listSchool[0].collection === 'school' && listAll.length === listMain.length + 1, 'GET songs: the church library by default, ?collection=school, ?collection=all', { main: listMain.length, school: listSchool.length, all: listAll.length });
     const ownerSchool = await app.api(owner, 'POST', '/api/songs', { title: 'Cântec de copii', collection: 'school', sections: [{ type: 'verse', content: 'La, la' }] });
     check(ownerSchool.status === 201 && ownerSchool.body.song.collection === 'school', 'the library right writes into the school library too');
-    const exported = (await app.api(school, 'GET', '/api/songs/export')).body;
-    check(exported.songs.length === 2 && exported.songs.every((s) => s.collection === 'school'), 'the school writer exports only the school library', exported.songs.map((s) => s.title));
+    check((await app.api(school, 'GET', '/api/songs/export')).status === 403, 'the school writer: no export (the owner\'s)');
+    const exported = (await app.api(owner, 'GET', '/api/songs/export?collection=school')).body;
+    check(exported.songs.length === 2 && exported.songs.every((s) => s.collection === 'school'), 'the owner exports the school library alone', exported.songs.map((s) => s.title));
     const ideas = (await app.api(owner, 'GET', `/api/events/${E}/suggestions`)).body;
     check(!ideas.songs.some((s) => /copii|iubește/i.test(s.title)), 'random ideas: never the school\'s songs', ideas.songs.map((s) => s.title));
 

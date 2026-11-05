@@ -1,11 +1,9 @@
 'use strict';
 
-// The operator has every leader right: creates and edits a song, imports a library file,
+// The operator has every leader right: creates and edits a song (the library's ⋯ menu stays the owner's),
 // uploads media, renames a screen; a leader opens the console and an operator the live
 // page (roles differ only by where an event lands them).
 
-const fs = require('fs');
-const os = require('os');
 const path = require('path');
 const { FIXTURES } = require('./harness');
 
@@ -29,22 +27,11 @@ module.exports = {
     await p.click('#save');
     await p.waitForURL(`**/songs/${songId}`);
     check((await app.api(app.cookies.operator, 'GET', `/api/songs/${songId}`)).body.song.title === 'Cântarea operatorului (v2)', 'edits it');
-    // import a library file (the export of this church, so it is valid)
+    // the whole-library tools (the ⋯ menu: export, import, the key detection, resurse) are the owner's
     await p.goto(`${app.url}/library`);
     await p.waitForFunction(() => document.querySelectorAll('#songs li').length > 0);
-    check(await p.isVisible('#library-menu') && await p.isVisible('#new-song'), 'library: the ⋯ menu and "Cântare nouă"');
-    await p.click('#library-menu-button');
-    const [download] = await Promise.all([p.waitForEvent('download'), p.click('#export-library')]);
-    const file = path.join(os.tmpdir(), `wa-op-export-${process.pid}.json`);
-    await download.saveAs(file);
-    await p.click('#library-menu-button');
-    const [chooser] = await Promise.all([p.waitForEvent('filechooser'), p.click('#import-library')]);
-    await chooser.setFiles(file);
-    await p.waitForSelector('#import-review:not([hidden])');
-    await p.waitForFunction(() => !document.getElementById('import-plan').hidden);
-    check(true, 'imports a library file (review shown)');
-    await p.click('#import-cancel');
-    fs.rmSync(file, { force: true });
+    check(await p.isHidden('#library-menu') && await p.isVisible('#new-song'), 'library: "Cântare nouă", but no ⋯ menu (the owner\'s)');
+    check((await app.api(app.cookies.operator, 'GET', '/api/songs/export')).status === 403 && (await app.api(app.cookies.operator, 'POST', '/api/songs/import', { type: 'worship-app-library', version: 1, songs: [] })).status === 403, 'export / import refused to the operator');
     // media
     await p.goto(`${app.url}/media`);
     await p.waitForFunction(() => !/^Se încarcă/.test(document.getElementById('status').textContent));

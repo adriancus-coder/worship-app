@@ -2,6 +2,7 @@
 
 const fs = require('fs');
 const express = require('express');
+const { requireRole } = require('../lib/auth');
 const { requirePerm, can } = require('../lib/roles');
 const { LIMITS, KEYS, COLLECTIONS, SORT_MODES, DuplicateTitleError, validateSong, validateThemes, createSongStore } = require('../lib/songs');
 const { THEME_INDEX } = require('../lib/themes');
@@ -32,6 +33,8 @@ function createSongsRouter({ db, auth, config, logger, live, storage }) {
   // Writing: the 'library' right (both libraries) or the 'school' right (the Sunday school's
   // library only: a song with collection 'school'). mayWrite says which, per song.
   const canEdit = requirePerm('library', 'school');
+  // The whole-library tools (export, import, "Detectează gama la toate"): the owner only.
+  const ownerOnly = requireRole('owner');
   const mayWrite = (req, collection) => can(req.user, 'library') || (can(req.user, 'school') && collection === 'school');
   const forbidden = (req, res) => res.status(403).json({ error: req.t('errors.forbidden') });
   // A school-only writer always writes into the school's library.
@@ -75,7 +78,7 @@ function createSongsRouter({ db, auth, config, logger, live, storage }) {
 
   // Library file import. ?dryRun=1 only reports; otherwise mode=skip (default) keeps
   // existing songs, mode=update replaces their sections and metadata. One transaction.
-  router.post('/api/songs/import', canEdit, express.json({ limit: IMPORT_BODY_LIMIT }), (req, res) => {
+  router.post('/api/songs/import', ownerOnly, express.json({ limit: IMPORT_BODY_LIMIT }), (req, res) => {
     const dryRun = req.query.dryRun === '1' || req.query.dryRun === 'true';
     const mode = req.query.mode === undefined ? 'skip' : req.query.mode;
     if (!['skip', 'update'].includes(mode)) return res.status(400).json({ error: req.t('errors.importMode') });
@@ -173,13 +176,13 @@ function createSongsRouter({ db, auth, config, logger, live, storage }) {
   // "Detectează gama la toate" (public/key-suggest.js): the keyless songs with chords and
   // their estimated key; then the keys the user approved, set only where none is set.
   // Registered before /api/songs/:id.
-  router.get('/api/songs/key-suggestions', canEdit, (req, res) => {
+  router.get('/api/songs/key-suggestions', ownerOnly, (req, res) => {
     const out = songs.keySuggestions(req.adminId);
     if (!can(req.user, 'library')) out.songs = out.songs.filter((s) => (songs.get(req.adminId, s.id) || {}).collection === 'school');
     res.json(out);
   });
 
-  router.put('/api/songs/keys', canEdit, (req, res) => {
+  router.put('/api/songs/keys', ownerOnly, (req, res) => {
     const list = req.body && req.body.keys;
     if (!Array.isArray(list) || list.length > MAX_SONGS) return res.status(400).json({ error: req.t('errors.songKeyInvalid') });
     const keys = [];
@@ -198,7 +201,7 @@ function createSongsRouter({ db, auth, config, logger, live, storage }) {
   });
 
   // Registered before /api/songs/:id.
-  router.get('/api/songs/export', canEdit, (req, res) => {
+  router.get('/api/songs/export', ownerOnly, (req, res) => {
     const payload = songs.exportLibrary(req.adminId, config.APP_NAME, can(req.user, 'library') ? (['main', 'school'].includes(req.query.collection) ? req.query.collection : 'all') : 'school');
     const filename = `worship-app-library-${payload.exportedAt.slice(0, 10)}.json`;
     logger.info(`Library exported by user #${req.user.id} (admin #${req.adminId}, ${payload.count} songs)`);

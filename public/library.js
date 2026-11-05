@@ -3,7 +3,7 @@
 // /library: ONE search field (public/song-search.js): typing filters the library under
 // "Din bibliotecă"; owner, leader and operator can also search resursecrestine.ro with
 // Enter or "Caută și pe resurse" and import from there. New songs, editing and the "⋯"
-// menu stay with owner and leader. Import / export of the whole library live in the "⋯" menu of the
+// menu is the owner's. Import / export of the whole library live in the "⋯" menu of the
 // header (public/library-import.js).
 
 (function () {
@@ -48,7 +48,7 @@
     const res = await api('/api/auth/me');
     const me = res.body;
     $('new-song').hidden = !canEdit(me);
-    menu.hidden = !canEdit(me);
+    menu.hidden = !(me && me.user && me.user.role === 'owner'); // export / import / the whole-library tools: the owner's
     // a school-only writer sees the school's library first and writes only there
     if (!can(me, 'library') && can(me, 'school') && !params.has('collection')) search.setCollection('school');
     search.onCollection((collection) => {

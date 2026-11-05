@@ -2,7 +2,7 @@
 
 // The library import chooses where the new songs go: "În care bibliotecă intră cântările noi"
 // (Biserica / Școala duminicală), preset to the library shown when the file was picked; the
-// summary names the library. A school-only writer has no choice: the school's. The API:
+// summary names the library. The import is the owner's (a school-only writer gets 403). The API:
 // ?collection= puts every new song there whatever the file says, existing songs keep their
 // library on an update. 375 RO and 1024 EN.
 
@@ -71,7 +71,7 @@ module.exports = {
       await p.context().close();
     }
 
-    // --- a school-only writer: no choice, the school's --------------------------------------
+    // --- a school-only writer: the import is the owner's (403, no menu) ---------------------
     const role = (await app.api(owner, 'POST', '/api/roles', { name: 'Școala', emoji: '🎒', base: 'member', perms: ['school'] })).body.role;
     const maria = (await app.api(owner, 'POST', '/api/team', { name: 'Maria', email: 'maria@x.ro', role: `custom:${role.id}` })).body.user;
     const db = new Database(path.join(app.dataDir, 'worship.db'));
@@ -85,17 +85,10 @@ module.exports = {
     await s.click('button[type=submit]');
     await s.waitForURL('**/app');
     await s.goto(`${app.url}/library`);
-    await s.waitForSelector('#library-menu:not([hidden])');
-    const f = write('school', ['A școlii']);
-    await s.click('#library-menu-button');
-    const [chooser] = await Promise.all([s.waitForEvent('filechooser'), s.click('#import-library')]);
-    await chooser.setFiles(f);
-    await s.waitForFunction(() => !document.getElementById('import-plan').hidden);
-    check(await s.evaluate(() => document.getElementById('import-collection-field').hidden), 'the school writer: no library choice');
-    await s.click('#import-run');
-    await s.waitForSelector('#import-result:not([hidden])');
-    check(await where('A școlii') === 'school' && /Școala duminicală/.test(await s.textContent('#import-summary')), 'the school writer\'s import lands in the school library, the summary says so');
-    fs.rmSync(f, { force: true });
+    await s.waitForSelector('#new-song:not([hidden])');
+    check(await s.isHidden('#library-menu'), 'the school writer: no ⋯ menu (import / export are the owner\'s)');
+    const asMaria = await s.request.post(`${app.url}/api/songs/import`, { data: file(['A școlii']) });
+    check(asMaria.status() === 403, 'the school writer\'s import: 403');
     await context.close();
   },
 };
