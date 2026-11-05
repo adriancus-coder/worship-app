@@ -349,7 +349,7 @@
   const big = window.BIG_LYRICS.create({
     api, eventId,
     position: () => (live() ? shownPosition() : null),
-    commands: { prev: () => moveLocal(-1), next: () => moveLocal(1) },
+    commands: { prev: () => moveLocal(-1), next: () => moveLocal(1), goTo: (pos) => { if (live()) jumpTo(pos); } },
     connection: () => (client ? client.connection : 'connecting'),
     loadSong,
     member: {

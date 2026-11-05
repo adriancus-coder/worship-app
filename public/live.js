@@ -407,7 +407,7 @@
   const big = window.BIG_LYRICS.create({
     api, eventId,
     position: () => (state.snap && state.snap.status === 'live' ? viewPos() : null),
-    commands: { prev: () => move('prev'), next: () => move('next'), end: endItem, toggleBlack: () => toggleSource('black') },
+    commands: { prev: () => move('prev'), next: () => move('next'), end: endItem, toggleBlack: () => toggleSource('black'), goTo: (pos) => move('goto', pos) },
     drivesProjector: followsProjector, // the status line then says where the team is
     connection: () => (state.client ? state.client.connection : 'connecting'),
     extraStatus: () => modes.statusText(), // the handover request / answer

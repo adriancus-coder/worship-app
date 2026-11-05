@@ -2822,9 +2822,19 @@ dialog.big-lyrics::backdrop { background: var(--background); }
 .big-top { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 6px 10px 2px; opacity: 1; } /* never fades: the way out stays visible */
 .big-top .big-tool { min-height: var(--touch); padding: 4px 8px; font-size: 0.875rem; }
 .big-label { flex: 1 1 auto; min-width: 0; margin: 0; font-weight: 700; color: var(--accent-text); text-transform: uppercase; letter-spacing: 0.04em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* "Toată cântarea" inside the view: the sections readable and scrolling, the one on screen marked, each a tap target */
+dialog.big-lyrics.whole .big-body { align-items: flex-start; overflow-y: auto; }
+.big-whole-song { width: 100%; max-width: 44rem; margin: 0 auto; text-align: left; }
+.big-whole-section { margin: 0 0 8px; padding: 8px 10px; border: 1px solid transparent; border-radius: var(--radius); cursor: pointer; }
+.big-whole-section:hover, .big-whole-section:focus-visible { border-color: var(--border); background: var(--surface); }
+.big-whole-section.is-current { border-color: var(--accent-fill); background: var(--surface); }
+.big-whole-section .section-label { margin: 0 0 4px; font-size: 0.7em; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-muted); }
 .big-tools { display: flex; gap: 6px; flex: none; }
 .big-tool { min-width: var(--touch); min-height: var(--touch); padding: 6px 10px; font-weight: 700; white-space: nowrap; }
 .big-tool[aria-pressed] { font-size: 0.875rem; }
+/* phones: no room in the top bar for "Toată cântarea"; a tap on the text does it there */
+@media (max-width: 599px) { .big-whole { display: none; } }
+dialog.big-lyrics:not(.whole) .big-text { cursor: pointer; }
 .big-body { display: flex; align-items: center; justify-content: center; min-width: 0; min-height: 0; padding: 8px 16px; overflow: hidden; touch-action: pan-y; }
 dialog.big-lyrics.scrolls .big-body { align-items: flex-start; overflow-y: auto; }
 .big-text { max-width: 100%; text-align: center; line-height: 1.25; }

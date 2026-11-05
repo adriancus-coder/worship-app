@@ -2,7 +2,8 @@
 
 // The big lyrics always have a way out: the top bar (Doar text · A− · A+ · ✕) stays at full
 // opacity, small; the bottom bar starts with "✕ Ieși" (44 px) on every device; tapping the
-// lyrics shows nothing extra; "✕ Ieși" and Escape return to the page at the same position.
+// lyrics shows the whole song (and back) with both bars staying; "✕ Ieși" and Escape return
+// to the page at the same position.
 // Leader / operator view and the member's follow view; 375 and 1180.
 
 const { layoutAudit, wait } = require('./harness');
@@ -36,11 +37,13 @@ module.exports = {
       await wait(300);
       let b = await bar(p);
       check(b && b.topOpacity === '1' && b.topHeight <= 60 && b.hasClose && b.exitFirst && b.exitH >= 44 && b.exitW >= 44 && /^(Ieși|Exit)$/.test(b.exitText), `${tag} top bar visible and small, "✕ Ieși" first in the bottom bar (${b && b.exitW}x${b && b.exitH})`, b);
-      // a tap on the lyrics shows nothing extra
-      const beforeTap = await p.evaluate(() => document.querySelector('dialog.big-lyrics').innerHTML.length);
+      // a tap on the lyrics: the whole song (no hidden menu); both bars stay; a tap beside the sections: back
       await p.click('dialog.big-lyrics .big-body');
-      await wait(200);
-      check(await p.evaluate((n) => Math.abs(document.querySelector('dialog.big-lyrics').innerHTML.length - n) < 40, beforeTap) && (await bar(p)).topOpacity === '1', `${tag} tapping the lyrics changes nothing, the bar stays`);
+      await p.waitForSelector('dialog.big-lyrics.whole .big-whole-section');
+      b = await bar(p);
+      check(b.topOpacity === '1' && b.hasClose && b.exitFirst, `${tag} tapping the lyrics shows the whole song, the bars stay`, b);
+      await p.click('dialog.big-lyrics .big-body', { position: { x: 10, y: 10 } });
+      await p.waitForFunction(() => !document.querySelector('dialog.big-lyrics').classList.contains('whole'));
       const a = await layoutAudit(p, 'dialog.big-lyrics');
       check(!a.overflow && !a.small.length, `${tag} targets >= 44 px, no overflow`, a);
       // "✕ Ieși" returns at the same position

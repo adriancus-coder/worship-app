@@ -2,7 +2,9 @@
 
 // "⤢ Versuri mari": a full-screen lyrics view for whoever leads (the leader live page and
 // the operator console). The current section's lyrics, large (auto-fitted like the
-// projector) with the chords ABOVE the lines in the reader's notation ("Doar text" hides
+// projector); "Toată cântarea" (a tap on the text, or the tool on wide screens) shows the whole song in its
+// event order instead, readable and scrolling, and a tap on a section there goes to that
+// section (commands.goTo) and back to the large view, as on the home card. Otherwise with the chords ABOVE the lines in the reader's notation ("Doar text" hides
 // them), the section label on top and the next section's first line small at the bottom.
 // The bottom bar sends the SAME live commands as the page (prev / next / "■ Sfârșit"): the
 // projector and the team follow per mode; the view follows live updates too (if the other
@@ -16,6 +18,8 @@
 //     commands            { prev(), next(), end(), toggleBlack() } (the page's own)
 //     connection()        -> the page's connection state; drivesProjector() -> true when the
 //                            position is the projector's (the console in split mode)
+//     commands.goTo({ itemId, step })  optional: where a tap in "Toată cântarea" sends this
+//                            page (the live position, the projector's, or the person's place)
 //   big.open()            // from the current step, the button or key F
 //   big.update(snap, items)   // on every render: follows live; closed views ignore it
 //   big.isOpen()
@@ -62,7 +66,8 @@
   function create({ api, eventId, position, commands, connection, drivesProjector = () => false, extraStatus = () => '', member = null, standalone = false, loadSong: pageLoadSong = null, onClose = null, fullPage = null, compactPage = null, showFullPage = () => false }) {
     const { el } = window.PAGE;
     const { t } = window.I18N;
-    const state = { snap: null, items: [], scale: Number(stored(SCALE_KEY, '1')) || 1, textOnly: stored(TEXT_ONLY_KEY, '0') === '1', songs: new Map(), setlistKey: null, renderId: 0 };
+    const state = { snap: null, items: [], scale: Number(stored(SCALE_KEY, '1')) || 1, textOnly: stored(TEXT_ONLY_KEY, '0') === '1', songs: new Map(), setlistKey: null, renderId: 0,
+      whole: false }; // "Toată cântarea": the whole song instead of the one section
     let dialog = null;
     let wakeLock = null;
 
@@ -87,6 +92,8 @@
     const parts = {};
     function build() {
       parts.label = el('p', { class: 'big-label' });
+      // "Toată cântarea": the tool (wide screens), or a tap on the text itself (everywhere)
+      parts.whole = el('button', { type: 'button', class: 'secondary big-tool big-whole', 'data-icon': 'follow', 'aria-pressed': 'false', onclick: () => setWhole(!state.whole) });
       parts.text = el('div', { class: 'big-text' });
       parts.next = el('p', { class: 'big-next' });
       parts.body = el('div', { class: 'big-body' }, parts.text);
@@ -111,7 +118,7 @@
       parts.nextButton = el('button', { type: 'button', class: member ? 'secondary' : null, onclick: () => commands.next() });
       parts.nav = el('div', { class: `big-nav${member ? ' big-nav-member' : ''}`, role: 'group', 'aria-label': t(member ? 'follow.navLabel' : 'live.navLabel') }, parts.exit, parts.prev, parts.end, parts.backLive, parts.nextButton);
       dialog = el('dialog', { class: `big-lyrics${member ? ' big-lyrics-member' : ''}`, 'aria-label': t('big.title') },
-        el('div', { class: 'big-top' }, parts.label, el('span', { class: 'big-tools' }, parts.textOnly, parts.smaller, parts.larger, parts.list, parts.full, parts.close)),
+        el('div', { class: 'big-top' }, parts.label, el('span', { class: 'big-tools' }, parts.textOnly, parts.smaller, parts.larger, parts.whole, parts.list, parts.full, parts.close)),
         parts.body,
         parts.next,
         standalone ? null : parts.status,
@@ -119,9 +126,12 @@
       dialog.addEventListener('close', () => { releaseWake(); clearInterval(extraTimer); extraTimer = null; if (onClose) onClose(); });
       dialog.addEventListener('cancel', (event) => { event.preventDefault(); close(); }); // Escape
       dialog.addEventListener('keydown', onKey);
-      // A horizontal swipe on the text: next / prev.
+      // A horizontal swipe on the text: next / prev. A tap on it: the whole song (and, off a
+      // section, back to the one section); a finger that moved is not a tap.
       let swipe = null;
+      let moved = false;
       parts.body.addEventListener('pointerdown', (event) => {
+        moved = false;
         if (event.pointerType === 'mouse') return;
         swipe = { x: event.clientX, y: event.clientY, id: event.pointerId };
       });
@@ -130,7 +140,12 @@
         const dx = event.clientX - swipe.x;
         const dy = event.clientY - swipe.y;
         swipe = null;
+        moved = Math.abs(dx) >= 10 || Math.abs(dy) >= 10;
         if (Math.abs(dx) >= SWIPE_PX && Math.abs(dx) > Math.abs(dy) * 1.5) (dx < 0 ? commands.next : commands.prev)();
+      });
+      parts.body.addEventListener('click', (event) => {
+        if (moved || parts.whole.hidden || event.target.closest('.big-whole-section, a, button')) return;
+        setWhole(!state.whole);
       });
       parts.body.addEventListener('pointercancel', () => { swipe = null; });
       window.addEventListener('resize', () => { if (isOpen()) fit(); });
@@ -197,6 +212,14 @@
     }
     document.addEventListener('visibilitychange', () => { if (isOpen()) keepScreenOn(); });
 
+    // "Toată cântarea" on / off: the body switches between the one large section and the
+    // whole song (every section once, in the event's order), the view re-renders.
+    function setWhole(on) {
+      if (state.whole === Boolean(on)) return;
+      state.whole = Boolean(on);
+      render();
+    }
+
     // --- settings ---------------------------------------------------------------------
 
     function setScale(delta) {
@@ -226,6 +249,12 @@
     // the size stays above 60 % of the maximum, else balanced rows with no short tails.
     function fit() {
       const box = parts.text;
+      if (dialog.classList.contains('whole')) {
+        // the whole song: a reading size scaled by A− / A+; the body scrolls
+        box.style.fontSize = `${Math.round(20 * state.scale)}px`;
+        dialog.classList.add('scrolls');
+        return;
+      }
       const cs = getComputedStyle(parts.body);
       const height = parts.body.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
       const width = parts.body.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
@@ -312,6 +341,9 @@
         parts.list.textContent = t('big.listPage');
         parts.list.setAttribute('aria-label', t('big.listPageLabel'));
       }
+      parts.whole.textContent = t('big.whole');
+      parts.whole.setAttribute('aria-label', t('big.wholeLabel'));
+      parts.whole.setAttribute('aria-pressed', String(state.whole));
       parts.smaller.setAttribute('aria-label', t('big.smaller'));
       parts.larger.setAttribute('aria-label', t('big.larger'));
       parts.smaller.disabled = state.scale <= SCALE.min + 1e-9;
@@ -344,6 +376,9 @@
       }
       const index = state.items.indexOf(item);
       const steps = item.type === 'song' && item.songId && item.arrangementResolved ? item.arrangementResolved : null;
+      parts.whole.hidden = !steps; // only a song has a whole to show
+      const whole = Boolean(steps) && state.whole && !pos.ended;
+      dialog.classList.toggle('whole', whole);
       const step = steps ? steps[pos.step] : null;
       const following = state.items[index + 1];
       // The label after this step: the next section, else the next item.
@@ -366,6 +401,39 @@
       } else if (!steps) {
         const lines = String(item.body || '').split('\n');
         parts.text.replaceChildren(el('div', { class: 'big-lines' }, lines.map((line) => el('div', { class: 'lyric-line', text: line || ' ' }))));
+      } else if (whole) {
+        // The whole song: every section once, in the event's order (first appearance), the
+        // one on screen marked; a tap on a section goes there (commands.goTo) and back to
+        // the large view. Readable size (A− / A+ scale it), the body scrolls.
+        const song = await loadSong(item);
+        if (renderId !== state.renderId) return;
+        if (!song) {
+          parts.text.replaceChildren(el('p', { class: 'big-lines', text: t('common.networkError') }));
+        } else {
+          const order = []; // section indexes, each once, with the step they first appear at
+          song.arrangement.forEach((entry, stepIndex) => {
+            const sectionIndex = song.sections.findIndex((x) => x.id === entry.sectionId);
+            if (sectionIndex >= 0 && !order.some((o) => o.sectionIndex === sectionIndex)) order.push({ sectionIndex, step: stepIndex });
+          });
+          const labels = window.SECTIONS.sectionLabels(song.sections, t);
+          const current = song.arrangement[pos.step] ? song.sections.findIndex((x) => x.id === song.arrangement[pos.step].sectionId) : -1;
+          const views = window.SONG_RENDER.sectionsView(order.map((o) => song.sections[o.sectionIndex]), { textOnly: state.textOnly, headingLevel: 3, labels: order.map((o) => labels[o.sectionIndex]) });
+          views.forEach((view, i) => {
+            view.classList.add('big-whole-section');
+            if (order[i].sectionIndex === current) view.classList.add('is-current');
+            view.setAttribute('role', 'button');
+            view.setAttribute('tabindex', '0');
+            view.setAttribute('aria-label', t('big.wholeGoTo', { label: labels[order[i].sectionIndex] }));
+            const go = () => {
+              state.whole = false;
+              if (commands.goTo) commands.goTo({ itemId: item.id, step: order[i].step });
+              else render();
+            };
+            view.addEventListener('click', go);
+            view.addEventListener('keydown', (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); go(); } });
+          });
+          parts.text.replaceChildren(el('div', { class: 'big-whole-song' }, ...views));
+        }
       } else {
         const song = await loadSong(item);
         if (renderId !== state.renderId) return;

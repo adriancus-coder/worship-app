@@ -338,7 +338,7 @@
   const big = window.BIG_LYRICS.create({
     api, eventId,
     position: () => (live() ? projectorPos() : null),
-    commands: { prev: () => move('prev'), next: () => move('next'), end: endItem, toggleBlack: () => toggleSource('black') },
+    commands: { prev: () => move('prev'), next: () => move('next'), end: endItem, toggleBlack: () => toggleSource('black'), goTo: ({ itemId, step }) => { const item = items().find((it) => it.id === itemId); if (item) goto(item, step); } },
     connection: () => (state.client ? state.client.connection : 'connecting'),
     drivesProjector: split,
     extraStatus: () => modes.statusText(), // the leader's handover request
