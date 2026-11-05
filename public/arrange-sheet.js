@@ -260,7 +260,7 @@
           el('p', { class: 'arrange-pending-text', text: t('arrange.pendingText', { code: pending, label: labelOf(pending) }) }),
           el('div', { class: 'arrange-pending-actions' },
             el('button', { type: 'button', class: 'secondary', id: 'arrange-place-first', 'data-icon': 'jump', text: t('arrange.placeFirst'), onclick: () => place(-1) }),
-            el('button', { type: 'button', class: 'secondary', id: 'arrange-place-cancel', 'data-icon': 'close', text: t('arrange.cancel'), onclick: () => { state.pending = null; render(); } }))) : null,
+            el('button', { type: 'button', class: 'secondary', id: 'arrange-place-cancel', 'data-icon': 'close', text: t('arrange.placeCancel'), onclick: () => { state.pending = null; render(); } }))) : null,
         el('p', { class: 'hint arrange-hint', text: t('arrange.addHint') }),
         el('button', {
           type: 'button', class: 'secondary', id: 'arrange-reset', disabled: sameCodes(state.codes, defaultCodes),
