@@ -41,7 +41,7 @@ module.exports = {
         time: document.getElementById('new-time').value,
         times: document.querySelectorAll('#new-time option').length,
         programme: document.querySelector('#new-programme [aria-pressed="true"]').dataset.programme,
-        themes: [...document.querySelectorAll('#new-theme option')].map((o) => o.value),
+        themes: [...document.querySelectorAll('#new-theme .theme-pick')].map((b) => b.dataset.theme),
         noTyping: document.getElementById('new-grid').querySelectorAll('input').length === 0 && document.getElementById('new-time').tagName === 'SELECT',
       }));
       // the default day is the next usual service (today until 2 h after the service time, else the next Sunday)
@@ -59,7 +59,7 @@ module.exports = {
         return next.dataset.date;
       });
       await p.selectOption('#new-time', '18:00');
-      await p.selectOption('#new-theme', 'Rugăciune');
+      await p.click('#new-theme .theme-pick[data-theme="Rugăciune"]');
       await p.fill('#new-notes', `Notă ${lang}`);
       await p.fill('#new-name', `Seară ${lang}`);
       await p.click('#new-create');
