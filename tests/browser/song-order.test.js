@@ -32,9 +32,22 @@ module.exports = {
       check(!sheet.key && sheet.apply && /(salvat în bibliotecă|kept in the library)/.test(sheet.kicker), `${tag} the sheet: no key row, its own kicker, Aplică`, sheet);
       // the chorus appended: on the phone from the order tab's "Adaugă la sfârșit: + C", on
       // the desktop from the song's "+ Adaugă"
-      if (width < 900) await p.click('.arrange-append-button[data-code="C"]');
-      else await p.click('.arrange-add >> nth=1');
-      check(await p.$$eval('.arrange-append-button', (l) => l.map((b) => b.dataset.code).join()) === 'V1,C', `${tag} "Adaugă la sfârșit": a + button per section on the order panel`);
+      if (width < 900) {
+        await p.click('.arrange-append-button[data-code="C"]');
+        const waiting = await p.evaluate(() => ({ pressed: document.querySelector('.arrange-append-button[data-code="C"]').getAttribute('aria-pressed'), targets: document.querySelectorAll('.arrange-row-target').length, text: document.querySelector('.arrange-pending-text').textContent, first: Boolean(document.getElementById('arrange-place-first')), tools: [...document.querySelectorAll('.arrange-row-tools button')].every((b) => b.disabled) }));
+        check(waiting.pressed === 'true' && waiting.targets === 2 && /după care pui C/.test(waiting.text) && waiting.first && waiting.tools, `${tag} "+ C": C waits; the rows are the targets, "La început" offered, ↑ ↓ ✕ paused`, waiting);
+        await p.click('.arrange-row-target[data-after="1"]'); // after the chorus: V1 C C
+        check(await p.$$eval('.arrange-row .step-code', (l) => l.map((x) => x.textContent).join(' ')) === 'V1 C C' && !(await p.locator('.arrange-pending').count()), `${tag} a row tapped: C placed after it, the wait over`);
+        // "La început", then taken out again with ✕; "Renunță" leaves the order alone
+        await p.click('.arrange-append-button[data-code="C"]');
+        await p.click('#arrange-place-first');
+        check(await p.$$eval('.arrange-row .step-code', (l) => l.map((x) => x.textContent).join(' ')) === 'C V1 C C', `${tag} "La început": C first`);
+        await p.click('.arrange-row:nth-child(1) .arrange-row-tools button:nth-child(3)');
+        await p.click('.arrange-append-button[data-code="V1"]');
+        await p.click('#arrange-place-cancel');
+        check(await p.$$eval('.arrange-row .step-code', (l) => l.map((x) => x.textContent).join(' ')) === 'V1 C C' && !(await p.locator('.arrange-pending').count()), `${tag} "Renunță": nothing added`);
+      } else await p.click('.arrange-add >> nth=1');
+      check(await p.$$eval('.arrange-append-button', (l) => l.map((b) => b.dataset.code).join()) === 'V1,C', `${tag} "Adaugă:": a + button per section on the order panel`);
       const a = await layoutAudit(p, 'dialog.arrange-sheet');
       check(!a.overflow && !a.small.length, `${tag} the sheet: no overflow, targets >= 44 px`, a);
       await p.click('#arrange-apply');

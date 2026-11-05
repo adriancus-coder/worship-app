@@ -109,6 +109,7 @@
     const labelOf = (code) => labels[canonical.indexOf(code)] || code;
     const state = {
       codes: codes.slice(),
+      pending: null, // "+ C" tapped on the order panel: C waits for the row it goes after
       transpose: clampTranspose(transpose),
       tab: readOnly ? 'flow' : 'order',
       textOnly: readTextOnly(),
@@ -204,20 +205,26 @@
     }
 
     function renderOrder() {
+      const pending = state.pending;
+      const place = (after) => { state.codes = insert(state.codes, pending, after); state.pending = null; render(); };
       const row = (code, i) => {
         const index = SECTIONS.codeIndex(code, song.sections);
         const line = index >= 0 ? firstLine(song.sections[index].content) : '';
         const tool = (symbol, labelKey, disabled, onclick) => el('button', {
           type: 'button', class: 'secondary icon-button', disabled, 'aria-label': t(labelKey, { label: labelOf(code), n: i + 1 }), onclick,
         }, el('span', { 'aria-hidden': 'true', text: symbol }));
-        return el('li', { class: 'arrange-row' },
-          el('div', { class: 'arrange-row-main', title: line || null },
-            el('span', { class: 'step-head' }, el('span', { class: 'step-code', text: code }), el('span', { class: 'step-label', text: labelOf(code) })),
-            line ? el('span', { class: 'step-line', text: line }) : null),
+        const content = [
+          el('span', { class: 'step-head' }, el('span', { class: 'step-code', text: code }), el('span', { class: 'step-label', text: labelOf(code) })),
+          line ? el('span', { class: 'step-line', text: line }) : null,
+        ];
+        return el('li', { class: `arrange-row${pending ? ' is-target' : ''}` },
+          pending
+            ? el('button', { type: 'button', class: 'arrange-row-main arrange-row-target', 'data-after': String(i), 'aria-label': t('arrange.placeAfter', { code: pending, label: `${code} · ${labelOf(code)}`, n: i + 1 }), onclick: () => place(i) }, ...content)
+            : el('div', { class: 'arrange-row-main', title: line || null }, ...content),
           el('span', { class: 'arrange-row-tools' },
-            tool('↑', 'arrange.upLabel', i === 0, () => { state.codes = move(state.codes, i, -1); render(); }),
-            tool('↓', 'arrange.downLabel', i === state.codes.length - 1, () => { state.codes = move(state.codes, i, 1); render(); }),
-            tool('✕', 'arrange.removeLabel', false, () => { state.codes = remove(state.codes, i); render(); })));
+            tool('↑', 'arrange.upLabel', Boolean(pending) || i === 0, () => { state.codes = move(state.codes, i, -1); render(); }),
+            tool('↓', 'arrange.downLabel', Boolean(pending) || i === state.codes.length - 1, () => { state.codes = move(state.codes, i, 1); render(); }),
+            tool('✕', 'arrange.removeLabel', Boolean(pending), () => { state.codes = remove(state.codes, i); render(); })));
       };
       const setTranspose = (value) => { state.transpose = clampTranspose(value); render(); };
       keyOut.textContent = keyText();
@@ -233,15 +240,27 @@
         state.codes.length
           ? el('ol', { class: 'arrange-list', 'aria-label': t('arrange.order') }, state.codes.map(row))
           : el('p', { class: 'muted', text: t('arrange.empty') }),
-        // "Adaugă la sfârșit: + V1 + C …": one button per section, here too (on phones the
-        // song's "+ Adaugă" buttons are on another tab)
+        // "Adaugă: + V1 + C …": one button per section, here too (on phones the song's
+        // "+ Adaugă" buttons are on another tab). A tap puts the section in waiting: the next
+        // tap on a row places it after that row ("La început" before everything; "Renunță");
+        // an empty order takes it straight away. The pressed + taps back out.
         el('div', { class: 'arrange-append', role: 'group', 'aria-labelledby': 'arrange-append-label' },
           el('span', { class: 'arrange-append-label', id: 'arrange-append-label', text: t('arrange.appendLabel') }),
           ...canonical.map((code, i) => el('button', {
-            type: 'button', class: 'secondary arrange-append-button', 'data-icon': 'plus', 'data-code': code,
+            type: 'button', class: 'secondary arrange-append-button', 'data-icon': 'plus', 'data-code': code, 'aria-pressed': String(pending === code),
             'aria-label': t('arrange.addLabel', { label: `${code} · ${labels[i]}` }),
-            onclick: () => { state.codes = insert(state.codes, code); render(); },
+            onclick: () => {
+              if (pending === code) state.pending = null;
+              else if (!state.codes.length) state.codes = [code];
+              else state.pending = code;
+              render();
+            },
           }, code))),
+        pending ? el('div', { class: 'arrange-pending', role: 'status', 'aria-live': 'polite' },
+          el('p', { class: 'arrange-pending-text', text: t('arrange.pendingText', { code: pending, label: labelOf(pending) }) }),
+          el('div', { class: 'arrange-pending-actions' },
+            el('button', { type: 'button', class: 'secondary', id: 'arrange-place-first', 'data-icon': 'jump', text: t('arrange.placeFirst'), onclick: () => place(-1) }),
+            el('button', { type: 'button', class: 'secondary', id: 'arrange-place-cancel', 'data-icon': 'close', text: t('arrange.cancel'), onclick: () => { state.pending = null; render(); } }))) : null,
         el('p', { class: 'hint arrange-hint', text: t('arrange.addHint') }),
         el('button', {
           type: 'button', class: 'secondary', id: 'arrange-reset', disabled: sameCodes(state.codes, defaultCodes),
