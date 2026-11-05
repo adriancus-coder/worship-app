@@ -217,10 +217,14 @@
           el('span', { class: 'step-head' }, el('span', { class: 'step-code', text: code }), el('span', { class: 'step-label', text: labelOf(code) })),
           line ? el('span', { class: 'step-line', text: line }) : null,
         ];
+        // Without a waiting section a long press on a row (public/press.js: 500 ms, a buzz;
+        // right-click / Shift+Enter on a desktop) copies it: the copy waits for its place.
+        const main = pending
+          ? el('button', { type: 'button', class: 'arrange-row-main arrange-row-target', 'data-after': String(i), 'aria-label': t('arrange.placeAfter', { code: pending, label: `${code} · ${labelOf(code)}`, n: i + 1 }), onclick: () => place(i) }, ...content)
+          : el('button', { type: 'button', class: 'arrange-row-main arrange-row-copy', 'data-code': code, title: line || null, 'aria-label': t('arrange.copyLabel', { code, label: labelOf(code), n: i + 1 }) }, ...content);
+        if (!pending && window.PRESS) window.PRESS.bind(main, { tap: () => {}, hold: () => { state.pending = code; render(); } });
         return el('li', { class: `arrange-row${pending ? ' is-target' : ''}` },
-          pending
-            ? el('button', { type: 'button', class: 'arrange-row-main arrange-row-target', 'data-after': String(i), 'aria-label': t('arrange.placeAfter', { code: pending, label: `${code} · ${labelOf(code)}`, n: i + 1 }), onclick: () => place(i) }, ...content)
-            : el('div', { class: 'arrange-row-main', title: line || null }, ...content),
+          main,
           el('span', { class: 'arrange-row-tools' },
             tool('↑', 'arrange.upLabel', Boolean(pending) || i === 0, () => { state.codes = move(state.codes, i, -1); render(); }),
             tool('↓', 'arrange.downLabel', Boolean(pending) || i === state.codes.length - 1, () => { state.codes = move(state.codes, i, 1); render(); }),

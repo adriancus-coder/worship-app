@@ -46,6 +46,16 @@ module.exports = {
         await p.click('.arrange-append-button[data-code="V1"]');
         await p.click('#arrange-place-cancel');
         check(await p.$$eval('.arrange-row .step-code', (l) => l.map((x) => x.textContent).join(' ')) === 'V1 C C' && !(await p.locator('.arrange-pending').count()), `${tag} "Renunță": nothing added`);
+        // a long press on the V1 row copies it (press.js); placed after the last chorus: V1 C C V1
+        const box = await p.locator('.arrange-row-copy[data-code="V1"]').boundingBox();
+        await p.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+        await p.mouse.down();
+        await p.waitForSelector('.arrange-pending', { timeout: 3000 });
+        await p.mouse.up();
+        check(await p.getAttribute('.arrange-append-button[data-code="V1"]', 'aria-pressed') === 'true', `${tag} a long press on a row: its copy waits`);
+        await p.click('.arrange-row-target[data-after="2"]');
+        check(await p.$$eval('.arrange-row .step-code', (l) => l.map((x) => x.textContent).join(' ')) === 'V1 C C V1', `${tag} placed after the row tapped`);
+        await p.click('.arrange-row:nth-child(4) .arrange-row-tools button:nth-child(3)');
       } else await p.click('.arrange-add >> nth=1');
       check(await p.$$eval('.arrange-append-button', (l) => l.map((b) => b.dataset.code).join()) === 'V1,C', `${tag} "Adaugă:": a + button per section on the order panel`);
       const a = await layoutAudit(p, 'dialog.arrange-sheet');

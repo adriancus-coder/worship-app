@@ -2394,6 +2394,7 @@ dialog.arrange-sheet.read-only { width: min(720px, calc(100vw - 24px)); }
 .arrange-append-label { flex: 0 0 100%; font-size: 0.875rem; font-weight: 500; color: var(--text-muted); }
 .arrange-append-button { min-height: var(--touch); padding: 6px 12px; font-weight: 700; }
 /* a section waiting for its place: the rows are the targets (accent dashed), the notice with "La început" / "Renunță" */
+.arrange-row-copy { width: 100%; text-align: left; font: inherit; color: var(--text); cursor: default; }
 .arrange-row-target { width: 100%; text-align: left; font: inherit; color: var(--text); cursor: pointer; border-style: dashed; border-color: var(--accent-fill); }
 .arrange-row-target:hover, .arrange-row-target:focus-visible { background: var(--surface-2); }
 .arrange-pending { margin: 10px 0 0; padding: 10px 12px; background: var(--surface); border: 1px solid var(--accent-fill); border-radius: var(--radius); }
