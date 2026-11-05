@@ -233,6 +233,15 @@
         state.codes.length
           ? el('ol', { class: 'arrange-list', 'aria-label': t('arrange.order') }, state.codes.map(row))
           : el('p', { class: 'muted', text: t('arrange.empty') }),
+        // "Adaugă la sfârșit: + V1 + C …": one button per section, here too (on phones the
+        // song's "+ Adaugă" buttons are on another tab)
+        el('div', { class: 'arrange-append', role: 'group', 'aria-labelledby': 'arrange-append-label' },
+          el('span', { class: 'arrange-append-label', id: 'arrange-append-label', text: t('arrange.appendLabel') }),
+          ...canonical.map((code, i) => el('button', {
+            type: 'button', class: 'secondary arrange-append-button', 'data-icon': 'plus', 'data-code': code,
+            'aria-label': t('arrange.addLabel', { label: `${code} · ${labels[i]}` }),
+            onclick: () => { state.codes = insert(state.codes, code); render(); },
+          }, code))),
         el('p', { class: 'hint arrange-hint', text: t('arrange.addHint') }),
         el('button', {
           type: 'button', class: 'secondary', id: 'arrange-reset', disabled: sameCodes(state.codes, defaultCodes),

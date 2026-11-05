@@ -30,9 +30,11 @@ module.exports = {
       await p.waitForSelector('dialog.arrange-sheet[open]');
       const sheet = await p.evaluate(() => ({ key: Boolean(document.querySelector('#arrange-key-up, #arrange-original-key')), kicker: document.querySelector('dialog.arrange-sheet .preview-kicker').textContent, apply: Boolean(document.getElementById('arrange-apply')) }));
       check(!sheet.key && sheet.apply && /(salvat în bibliotecă|kept in the library)/.test(sheet.kicker), `${tag} the sheet: no key row, its own kicker, Aplică`, sheet);
-      if (width < 900) await p.click('#arrange-tab-song');
-      await p.click('.arrange-add >> nth=1'); // + Adaugă the chorus
-      if (width < 900) await p.click('#arrange-tab-order');
+      // the chorus appended: on the phone from the order tab's "Adaugă la sfârșit: + C", on
+      // the desktop from the song's "+ Adaugă"
+      if (width < 900) await p.click('.arrange-append-button[data-code="C"]');
+      else await p.click('.arrange-add >> nth=1');
+      check(await p.$$eval('.arrange-append-button', (l) => l.map((b) => b.dataset.code).join()) === 'V1,C', `${tag} "Adaugă la sfârșit": a + button per section on the order panel`);
       const a = await layoutAudit(p, 'dialog.arrange-sheet');
       check(!a.overflow && !a.small.length, `${tag} the sheet: no overflow, targets >= 44 px`, a);
       await p.click('#arrange-apply');

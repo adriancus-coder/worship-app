@@ -2389,6 +2389,10 @@ dialog.arrange-sheet.read-only { width: min(720px, calc(100vw - 24px)); }
 .arrange-sections > li { padding: 8px 12px 10px; background: var(--background); border: 1px solid var(--border); border-radius: var(--radius); }
 .arrange-sections .song-section { margin-bottom: 6px; }
 .arrange-add { min-height: var(--touch); }
+/* "Adaugă la sfârșit: + V1 + C …" on the order panel */
+.arrange-append { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 10px 0 0; }
+.arrange-append-label { flex: 0 0 100%; font-size: 0.875rem; font-weight: 500; color: var(--text-muted); }
+.arrange-append-button { min-height: var(--touch); padding: 6px 12px; font-weight: 700; }
 .arrange-key-row { margin-bottom: 12px; }
 .arrange-list { list-style: none; margin: 0 0 8px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .arrange-row { display: flex; align-items: stretch; gap: 6px; min-width: 0; }
