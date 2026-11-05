@@ -5,8 +5,8 @@
 // event. The owner sees "Cum se cântă: în ordinea secțiunilor · Schimbă", opens the arrange
 // sheet without the key row, appends the chorus, applies: the row shows the order and a new
 // event item of the song gets it as its default; "Resetează la implicit" goes back. A member
-// sees "Vezi" and a read-only sheet. The API refuses a code that is not a section. RO 375 /
-// EN 1024.
+// sees "Vezi" and a read-only sheet. The API refuses a code that is not a section. The
+// leader (the library right) has the whole tool too. RO 375 / EN 1024.
 
 const { layoutAudit } = require('./harness');
 
@@ -54,6 +54,20 @@ module.exports = {
       check((await song()).presentation == null, `${tag} "Resetează la implicit": presentation cleared`);
       await p.context().close();
     }
+
+    // the leader: the same tool, saved through the API
+    const l = await signIn('leader', { width: 375, lang: 'ro' });
+    await l.goto(`${app.url}/songs/${songs.G}`);
+    await l.waitForSelector('#song-order-open');
+    check(/Schimbă/.test(await text(l)), 'leader: "Schimbă" on the row');
+    await l.click('#song-order-open');
+    await l.waitForSelector('dialog.arrange-sheet[open] #arrange-apply');
+    await l.click('#arrange-tab-song');
+    await l.click('.arrange-add >> nth=1');
+    await l.click('#arrange-apply');
+    await l.waitForFunction(() => /Refren · Refren/.test(document.getElementById('song-order-codes').textContent));
+    check((await song()).presentation === 'V1 C C' && (await app.api(app.cookies.leader, 'PUT', `/api/songs/${songs.G}/presentation`, { codes: [] })).status === 200, 'leader: the order saved, the API open to the leader');
+    await l.context().close();
 
     // a member: "Vezi", the sheet read-only
     await app.api(owner, 'PUT', `/api/songs/${songs.G}/presentation`, { codes: ['C', 'V1'] });
