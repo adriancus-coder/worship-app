@@ -61,6 +61,14 @@ module.exports = {
     await o.click('#now .now-item:nth-child(1) .now-item-button');
     await o.waitForSelector('#now .now-song .song-section');
     check(await o.evaluate(() => Boolean(document.querySelector('#now .now-keys'))), 'the row opens the song; the key choice stays');
+    // another song's row: the first song's key choice closes with its box (one current song)
+    await o.click('#now .now-item:nth-child(3) .now-item-button');
+    await o.waitForSelector('#now-song-' + app.seed.items[2] + ' .song-section');
+    check(await o.evaluate(() => !document.querySelector('#now .now-keys') && document.querySelectorAll('#now .now-song').length === 1 && !document.querySelector('#now .now-item.is-picked')), 'another song tapped: the previous key choice and box close');
+    // its key badge while the third is open: the box closes, the key choice is this song's
+    await o.click('#now .now-item:nth-child(1) .now-item-key');
+    await o.waitForSelector('#now .now-keys');
+    check(await o.evaluate(() => document.querySelectorAll('#now .now-song').length === 0 && document.querySelector('#now .now-item:nth-child(1)').classList.contains('is-picked')), 'another song\'s key badge: the open box closes, the choice moves');
     await window_transpose(app, owner, E, 0);
   },
 };

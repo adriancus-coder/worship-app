@@ -71,8 +71,11 @@
   const itemLabel = (it) => it.title || it.who || it.reference || t(`setlist.types.${it.type}`);
 
   // Picks the item whose key is changed (editors); a tap on it again lets go.
+  // The card has one current song: the key choice and the opened song belong to it; a tap
+  // on another song's key badge or row closes what the previous one had open.
   function pickItem(it) {
     state.pickedItem = state.pickedItem === it.id ? null : it.id;
+    if (state.pickedItem && state.expanded && state.expanded !== it.id) state.expanded = null;
     render();
   }
 
@@ -146,6 +149,7 @@
   });
   function toggleSong(it) {
     state.expanded = state.expanded === it.id ? null : it.id;
+    if (state.expanded && state.pickedItem && state.pickedItem !== it.id) state.pickedItem = null; // another song: its key choice closes
     if (state.expanded) songs.load(it).then(() => { if (state.expanded === it.id) render(); });
     render();
   }
