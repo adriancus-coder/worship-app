@@ -374,13 +374,13 @@
   }
 
   // The bridge to Sanctuary Voice (stage 8): the same shared panel as the live page and the
-  // operator console, for every event role (a member never edits events, so never sees it).
-  // Mounted once; the panel reads its own state from /api/events/:id/bridge. No projector here,
+  // operator console, for the owner and the 'screens' right (the operator) only: the
+  // translation is theirs; a leader / presenter / member never sees it. Mounted once; the panel reads its own state from /api/events/:id/bridge. No projector here,
   // so no translation source buttons — those live on the live pages.
   const bridgeBox = { ui: null, mounted: false };
   function renderBridge() {
     const ev = state.event;
-    const show = Boolean(ev && can(state.me, 'live'));
+    const show = Boolean(ev && can(state.me, 'screens'));
     $('bridge-card').hidden = !show;
     setTabAvailable('bridge', show);
     if (!show || bridgeBox.mounted) return;

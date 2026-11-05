@@ -4,10 +4,10 @@
 // calls to connect a code, flip the two direction switches (available to every event role) and
 // disconnect. All server-to-server work happens in lib/bridge; nothing here exposes the token.
 //
-//   GET    /api/events/:id/bridge              status (event roles) + the church pairing
+//   GET    /api/events/:id/bridge              status (the owner, the 'screens' right) + the church pairing
 //   GET    /api/events/:id/bridge/sv-events    SV's events the paired church may connect to
 //   POST   /api/events/:id/bridge/connect      { svEventId } (paired, no code) or { code, svBaseUrl? }
-//   POST   /api/events/:id/bridge/switches     { dirIn, dirOut }     (every event role)
+//   POST   /api/events/:id/bridge/switches     { dirIn, dirOut }     (the same)
 //   POST   /api/events/:id/bridge/refresh      re-check liveness at SV
 //   POST   /api/events/:id/bridge/disconnect   revoke + forget
 // The church pairing (owner only; docs/BRIDGE.md "Church pairing"):
@@ -33,7 +33,7 @@ const STATUS_BY_CODE = {
 function createBridgeRouter({ db, auth, logger, bridge }) {
   const router = express.Router();
   const events = createEventStore(db);
-  const canEdit = requirePerm('live');
+  const canEdit = requirePerm('screens'); // the translation bridge: the owner and the operator
   const ownerOnly = requireRole('owner');
 
   function eventId(req) {

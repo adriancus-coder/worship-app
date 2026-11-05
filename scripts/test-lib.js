@@ -896,6 +896,7 @@ test('live store: translation projector source keeps the picked language', () =>
   assert.strictEqual(snap.projector.source, 'translation');
   assert.strictEqual(snap.projector.translationLang, 'en', 'lower-cased and kept');
   assert.throws(() => store.command(1, eventId, { type: 'projector.source', source: 'translation', lang: '??' }, undefined, 'owner'), /badCommand/);
+  assert.throws(() => store.command(1, eventId, { type: 'projector.source', source: 'translation', lang: 'en' }, undefined, 'leader'), /forbidden/, 'the translation source is the owner\'s / operator\'s');
   // Leaving translation keeps the last language stored (re-picking is easy); source changes.
   store.command(1, eventId, { type: 'projector.source', source: 'black' }, undefined, 'owner');
   snap = store.snapshot(1, eventId);

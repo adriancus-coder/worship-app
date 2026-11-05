@@ -8,7 +8,8 @@
 // with a connection code — shows the connection state, carries the two direction switches (both
 // default off), and a revoke control. It also offers the translation projector source
 // "Traducere · <limbă>" per target language, shown only when picked.
-// Every event role uses it fully (owner, presenter, leader, operator); a member never sees it.
+// The owner and the 'screens' right (the operator) use it; a leader / presenter / member never
+// sees it (routes/bridge.js, lib/live.js: the translation source is theirs too).
 //
 // Server-to-server only: the panel talks to /api/events/:id/bridge/* and never sees the token.
 

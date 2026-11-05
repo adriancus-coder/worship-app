@@ -44,9 +44,9 @@ never implement a later stage early. Mockups: claude.ai design canvas
   `team.roles.*`). The owner can look at the app as any other role ("Vezi aplicația ca").
 - **Rights and custom roles** (migration 045, `lib/roles.js`): every guard reads RIGHTS, never
   a role list: `library` (songs), `school` (the Sunday school's library only), `events` (events, setlists, proposals), `media`,
-  `live` (start / run / end / withdraw, live pages, additions, resursecrestine search, the
-  bridge), `screens` (console, screens page; holding the projector = split mode; needs
-  `live`), `schedule` (assignments, positions, everyone's unavailability). The built-in
+  `live` (run live: live pages, additions, resursecrestine search), `screens` (start / end /
+  withdraw, console, screens page, the translation bridge; holding the projector = split
+  mode; needs `live`), `schedule` (assignments, positions, everyone's unavailability). The built-in
   roles have fixed rights (owner: all; presenter: library, events, media, live; leader: +
   schedule; operator: + screens; member: none). The owner creates roles in Echipa → Roluri:
   name, emoji, "Se deschide ca" (presenter / leader / operator / member: the page an event

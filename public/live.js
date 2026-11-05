@@ -399,7 +399,7 @@
     renderCurrent();
     arrangedNote();
     big.update(state.snap, state.items);
-    bridgePanel.update(state.snap);
+    if (bridgePanel) bridgePanel.update(state.snap);
     keepScreenOn();
   }
 
@@ -600,6 +600,17 @@
       $('open-projector').hidden = true;
       $('projector-permission').hidden = true;
     }
+    // The bridge to Sanctuary Voice (stage 8): the same shared panel as the event page and
+    // the operator console, plus the "Traducere · <limbă>" projector sources, for the owner
+    // and the 'screens' right only (a leader / presenter has no translation).
+    if (me && window.PAGE.can(me, 'screens')) {
+      bridgePanel = window.BRIDGE_PANEL.create($('bridge-panel'), { api, eventId, sendCommand: send, sourcesContainer: $('live-translation-sources') });
+      bridgePanel.load();
+      if (state.snap) bridgePanel.update(state.snap);
+    } else {
+      $('bridge-panel').hidden = true;
+      $('live-translation-sources').hidden = true;
+    }
     if (me) modes.setMe(me.user); // the handover flow depends on who this page is
     state.me = me; // the lyrics sheet: "Salvează în bibliotecă" needs the library right
     state.leader = Boolean(me && me.user.role === 'leader');
@@ -622,10 +633,7 @@
   });
   // "Propuneri (n)" in the aside (public/proposals-ui.js): the same decisions as the toast.
   window.PROPOSALS_UI.roles($('proposals'), { eventId, live: () => Boolean(state.snap && state.snap.status === 'live'), position: 'afterCurrent' });
-  // The bridge to Sanctuary Voice (stage 8): the same shared panel as the event page and the
-  // operator console, plus the "Traducere · <limbă>" projector sources for this live page.
-  const bridgePanel = window.BRIDGE_PANEL.create($('bridge-panel'), { api, eventId, sendCommand: send, sourcesContainer: $('live-translation-sources') });
-  bridgePanel.load();
+  let bridgePanel = null; // created above once the rights are known (the 'screens' right)
 
   // A song proposal while live: the toast's actions decide it through the API (routes/proposals.js).
   const toast = window.LIVE_MODES.toast($('info-toast'), {

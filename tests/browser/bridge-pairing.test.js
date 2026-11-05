@@ -4,6 +4,8 @@
 // code from SV's admin; the event page / live page / console then connect with ONE tap
 // ("Conectează la Serviciu duminică (live)"), the code form behind "Conectează cu cod"; a
 // non-owner sees no pairing card; "Desparte" forgets it; the token never reaches a browser.
+// The bridge is the owner's and the operator's ('screens'): a leader has no Traducere tab,
+// no bridge API, no translation source.
 // Against the SV stand-in in fixtures/mock-sv.js (https://sv.test).
 
 const path = require('path');
@@ -17,12 +19,20 @@ module.exports = {
     const { eventId: E } = app.seed;
     const owner = app.cookies.owner;
     // not paired: the event page offers the code form and the hint; the API agrees
-    const lp = await signIn('leader', { width: 1024 });
+    const leader = await signIn('leader', { width: 1024 });
+    await leader.goto(`${app.url}/events/${E}`);
+    await leader.waitForSelector('#tab-team:not([hidden])');
+    check(await leader.isHidden('#tab-bridge') && (await app.api(app.cookies.leader, 'GET', `/api/events/${E}/bridge`)).status === 403, 'a leader: no Traducere tab, the bridge API refused (403)');
+    await leader.goto(`${app.url}/events/${E}/live`);
+    await leader.waitForSelector('#live:not([hidden])');
+    check(await leader.isHidden('#bridge-panel') && await leader.isHidden('#live-translation-sources'), 'a leader\'s live page: no bridge panel, no translation sources');
+    await leader.context().close();
+    const lp = await signIn('operator', { width: 1024 });
     await lp.goto(`${app.url}/events/${E}`);
     await lp.click('#tab-bridge'); // translation has its own tab
     await lp.waitForSelector('#bridge-card .bridge-connect');
-    check(/(Setări|Settings)/.test(await lp.textContent('#bridge-card')) && !(await lp.isHidden('#bridge-code')), 'not paired: the code form with the hint about pairing in Settings');
-    check((await app.api(app.cookies.leader, 'GET', '/api/bridge/pairing')).status === 403, 'the pairing API is the owner\'s');
+    check(/(Setări|Settings)/.test(await lp.textContent('#bridge-card')) && !(await lp.isHidden('#bridge-code')), 'not paired (the operator): the code form with the hint about pairing in Settings');
+    check((await app.api(app.cookies.operator, 'GET', '/api/bridge/pairing')).status === 403, 'the pairing API is the owner\'s');
     // the owner pairs in Settings
     const p = await signIn('owner', { width: 1024 });
     await p.goto(`${app.url}/settings`);
@@ -56,7 +66,7 @@ module.exports = {
     await lp.click('#bridge-card [data-sv-event="sv-live"]');
     await lp.waitForSelector('#bridge-card .bridge-connected', { timeout: 5000 });
     check(/(Limbi|Languages): en, no/.test(await lp.textContent('#bridge-card')), 'one tap: connected to the live SV event (languages en, no)', await lp.textContent('#bridge-card'));
-    const status = (await app.api(app.cookies.leader, 'GET', `/api/events/${E}/bridge`)).body;
+    const status = (await app.api(app.cookies.operator, 'GET', `/api/events/${E}/bridge`)).body;
     check(status.connected && status.connection.svEventId === 'sv-live' && status.pairing.paired && !JSON.stringify(status).includes('bt-sv-live'), 'the event bridge: SV event sv-live, no token in the API');
     // the console shows the same connection; disconnect there
     const op = await signIn('operator', { width: 1280 });
