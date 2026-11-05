@@ -738,7 +738,17 @@
       }, t('arrange.editorButton')) : null);
   }
 
+  // The song as on the home card (public/programme-big.js): from a section of the preview
+  // (viewing, not editing) "⤢ Versuri mari" opens there, with its own place; swipes step on
+  // into the next song, whose row then opens here.
+  const programmeBig = window.PROGRAMME_BIG.create({
+    api, eventId: () => state.event.id,
+    items: () => state.items.filter((it) => it.type === 'song' && it.songId && !it.songDeleted),
+    onItemChange: (itemId) => { const index = state.items.findIndex((it) => it.id === itemId); if (index >= 0 && index !== state.selected) select(index); },
+  });
+
   // Sections in arrangement order (first appearance), chords transposed, labels from the whole song.
+  // Viewing: a tap on a section opens "⤢ Versuri mari" there (like the home card).
   function previewBlock(item, song) {
     const codes = arrangementCodes(item, song);
     const seen = new Set();
@@ -753,8 +763,15 @@
     const labels = sectionLabels(song.sections, t);
     const key = keyAfter(song.song_key, item.transpose);
     const sections = indexes.map((i) => ({ ...song.sections[i], content: transposeContent(song.sections[i].content, item.transpose, key) }));
-    return el('div', { class: 'detail-sections' },
+    const tappable = !state.editing && Boolean(item.id);
+    return el('div', { class: `detail-sections${tappable ? ' is-tappable' : ''}`, onclick: tappable ? (event) => {
+      const section = event.target.closest('.song-section');
+      if (!section) return;
+      const at = [...section.parentNode.children].filter((n) => n.classList.contains('song-section')).indexOf(section);
+      if (at >= 0) programmeBig.open(item, song.sections[indexes[at]].id);
+    } : null },
       el('div', { class: 'preview-head' }, el('span', { class: 'ro-label', text: t('options.previewHeading') }), window.NOTATION.createSwitch()),
+      tappable ? el('p', { class: 'hint now-song-hint', text: t('home.sectionHint') }) : null,
       window.SONG_RENDER.sectionsView(sections, { headingLevel: 4, labels: indexes.map((i) => labels[i]) }));
   }
 

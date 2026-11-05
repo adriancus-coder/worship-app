@@ -765,6 +765,9 @@ main.wide.event-page { max-width: 1200px; }
 .detail-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .detail-head h3 { margin: 0; font-size: 1.125rem; overflow-wrap: anywhere; }
 .detail-sections .section-label { font-size: 0.875rem; }
+/* viewing: each section of the preview opens "⤢ Versuri mari" there (like the home card) */
+.detail-sections.is-tappable .song-section { padding: 6px 8px; margin: 0 -8px; border-radius: 6px; cursor: pointer; }
+.detail-sections.is-tappable .song-section:hover { background: var(--surface-2); }
 .ro-label { display: block; font-size: 0.8125rem; color: var(--text-muted); }
 .detail-pane .item-detail.is-empty { padding: 0; }
 .detail-pane .detail-empty:empty { display: none; }

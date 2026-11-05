@@ -13,10 +13,7 @@
   const { t } = window.I18N;
   const $ = (id) => document.getElementById(id);
 
-  const state = { me: null, home: null, failed: false, pickedItem: null, keyBusy: false, keyMinor: false, expanded: null, songs: new Map() };
-  // "⤢ Versuri mari" over the card: its own place in the programme (an item, an arrangement step)
-  const bigPos = { itemId: null, step: 0 };
-  const TEXT_ONLY_KEY = 'wa_text_only'; // the same choice as the song page
+  const state = { me: null, home: null, failed: false, pickedItem: null, keyBusy: false, keyMinor: false, expanded: null };
 
   const editor = () => can(state.me, 'events'); // creates events
 
@@ -138,103 +135,21 @@
   }
 
   // --- the song under its row, and the big view --------------------------------------------
-  // A tap on a song row opens the whole song under it (sections in their event order,
-  // transposed; GET /api/events/:id/items/:itemId/song, once each); a tap on a section opens
-  // "⤢ Versuri mari" (public/big-lyrics.js, members-style, its own place): swipes / ← →
-  // step through the song and on into the next song of the programme; ✕ returns to the card.
+  // A tap on a song row opens the whole song under it; a tap on a section opens "⤢ Versuri
+  // mari" with its own place (public/programme-big.js, shared with the event page).
   const topEvent = () => (state.home ? state.home.live || state.home.next : null); // the card's event
   const programItems = () => (state.home && state.home.program) || [];
   const songItems = () => programItems().filter((it) => it.type === 'song' && it.songId);
-  function loadSong(item) {
-    if (!state.songs.has(item.id)) {
-      state.songs.set(item.id, api(`/api/events/${topEvent().id}/items/${item.id}/song`)
-        .then((res) => (res.ok ? res.body.song : null)).catch(() => null));
-    }
-    return state.songs.get(item.id);
-  }
-  const textOnly = () => { try { return window.localStorage.getItem(TEXT_ONLY_KEY) === '1'; } catch (err) { return false; } };
-  // the sections in order of first appearance in the arrangement; labels from the whole song
-  function orderOf(song) {
-    const order = [];
-    for (const { sectionId } of song.arrangement || []) {
-      const index = song.sections.findIndex((x) => x.id === sectionId);
-      if (index >= 0 && !order.includes(index)) order.push(index);
-    }
-    if (!order.length) song.sections.forEach((x, i) => order.push(i));
-    return order;
-  }
+  const songs = window.PROGRAMME_BIG.create({
+    api, eventId: () => topEvent().id, items: songItems,
+    onItemChange: (itemId) => { if (state.expanded !== itemId) { state.expanded = itemId; render(); } },
+  });
   function toggleSong(it) {
     state.expanded = state.expanded === it.id ? null : it.id;
-    if (state.expanded) rememberSong(it).then(() => { if (state.expanded === it.id) render(); });
+    if (state.expanded) songs.load(it).then(() => { if (state.expanded === it.id) render(); });
     render();
   }
-  function songBox(it) {
-    const box = el('div', { class: 'now-song', id: `now-song-${it.id}` });
-    // the song as loaded (settledSongs: the promises' values, for a synchronous render)
-    const song = it.id in settledSongs ? settledSongs[it.id] : undefined;
-    if (song === undefined) { box.append(el('p', { class: 'muted', text: t('events.loading') })); return box; }
-    if (!song) { box.append(el('p', { class: 'message error', text: t('common.networkError') })); return box; }
-    const labels = window.SECTIONS.sectionLabels(song.sections, t);
-    const order = orderOf(song);
-    box.append(
-      el('p', { class: 'hint now-song-hint', text: t('home.sectionHint') }),
-      el('div', { class: 'now-song-sections', onclick: (event) => {
-        const section = event.target.closest('.song-section');
-        if (!section) return;
-        const index = [...section.parentNode.children].filter((n) => n.classList.contains('song-section')).indexOf(section);
-        openBig(it, song, order[index]);
-      } }, ...window.SONG_RENDER.sectionsView(order.map((i) => song.sections[i]), { textOnly: textOnly(), headingLevel: 3, labels: order.map((i) => labels[i]) })));
-    return box;
-  }
-  const settledSongs = {};
-  const rememberSong = (it) => loadSong(it).then((song) => { settledSongs[it.id] = song; return song; });
-
-  // --- "⤢ Versuri mari" from a section ------------------------------------------------------
-  // the big view reads the steps from item.arrangementResolved: the loaded song's arrangement
-  const bigItems = () => songItems().map((it) => (settledSongs[it.id] ? { ...it, arrangementResolved: settledSongs[it.id].arrangement } : it));
-  const stepsOf = (song) => ((song && song.arrangement && song.arrangement.length) ? song.arrangement : (song ? song.sections.map((x, i) => ({ sectionId: x.id, code: '', label: String(i + 1) })) : []));
-  function openBig(it, song, sectionIndex) {
-    const sectionId = song.sections[sectionIndex] && song.sections[sectionIndex].id;
-    const step = Math.max(0, stepsOf(song).findIndex((a) => a.sectionId === sectionId));
-    Object.assign(bigPos, { itemId: it.id, step });
-    big.update(null, bigItems());
-    big.open();
-  }
-  // the neighbour place: the next / previous step, then the next / previous song (step 0 / last)
-  async function neighbour(delta) {
-    const songs = songItems();
-    const index = songs.findIndex((x) => x.id === bigPos.itemId);
-    if (index < 0) return null;
-    const current = await rememberSong(songs[index]);
-    const count = stepsOf(current).length;
-    if (delta > 0 && bigPos.step + 1 < count) return { itemId: bigPos.itemId, step: bigPos.step + 1 };
-    if (delta < 0 && bigPos.step > 0) return { itemId: bigPos.itemId, step: bigPos.step - 1 };
-    const other = songs[index + delta];
-    if (!other) return null;
-    const song = await rememberSong(other);
-    return { itemId: other.id, step: delta > 0 ? 0 : Math.max(0, stepsOf(song).length - 1) };
-  }
-  async function bigMove(delta) {
-    const to = await neighbour(delta);
-    if (!to) return;
-    Object.assign(bigPos, to);
-    if (state.expanded !== to.itemId) { state.expanded = to.itemId; render(); }
-    big.update(null, bigItems());
-  }
-  const canMove = (delta) => {
-    const songs = songItems();
-    const index = songs.findIndex((x) => x.id === bigPos.itemId);
-    if (index < 0) return false;
-    const current = settledSongs[bigPos.itemId];
-    const count = current ? stepsOf(current).length : 1;
-    return delta > 0 ? (bigPos.step + 1 < count || index + 1 < songs.length) : (bigPos.step > 0 || index > 0);
-  };
-  const big = window.BIG_LYRICS.create({
-    api, eventId: null, standalone: true, loadSong: rememberSong,
-    position: () => (bigPos.itemId ? bigPos : null),
-    commands: { prev: () => bigMove(-1), next: () => bigMove(1) },
-    member: { nav: () => ({ show: true, away: false, canPrev: canMove(-1), canNext: canMove(1) }), backToLive: () => {} },
-  });
+  const songBox = (it) => songs.box(it);
 
   function programBlock(event) {
     const items = programItems();
@@ -461,7 +376,7 @@
     if (!res.ok) throw new Error('home');
     const was = topEvent();
     const now = res.body.live || res.body.next;
-    if (was && now && was.id !== now.id) { state.songs = new Map(); state.expanded = null; } // another event on the card: its songs are others
+    if (was && now && was.id !== now.id) state.expanded = null; // another event on the card: its songs are others
     state.home = res.body;
     state.failed = false;
     // the guides for my positions on the top event, only when I am scheduled there
