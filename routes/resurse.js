@@ -2,10 +2,11 @@
 
 const express = require('express');
 const asyncRoute = require('../lib/async-route');
-const { requirePerm } = require('../lib/roles');
+const { requirePerm, can } = require('../lib/roles');
 const { createRequestLimiter } = require('../lib/rate-limit');
 const { validateSong, createSongStore, DuplicateTitleError } = require('../lib/songs');
 const resurse = require('../lib/resurse');
+const { createResurseSync, DEFAULT_DELAY_MS } = require('../lib/resurse-sync');
 
 const RATE_LIMIT = { maxRequests: 30, windowMs: 10 * 60 * 1000 };
 
@@ -25,10 +26,42 @@ const ERRORS = {
 // Search, preview and import from resursecrestine.ro: the 'library', 'events' or 'live'
 // right, so a song can be brought in while preparing or during the service. Writing songs
 // by hand (/api/songs) needs the 'library' right. Rate limited per user.
-function createResurseRouter({ db, auth, logger }) {
+function createResurseRouter({ db, auth, logger, live, sync }) {
   const router = express.Router();
   const songs = createSongStore(db);
   const limiter = createRequestLimiter(RATE_LIMIT);
+  const resurseSync = sync || createResurseSync({ db, logger, live, resurse, delayMs: Number(process.env.RESURSE_SYNC_DELAY_MS ?? DEFAULT_DELAY_MS) });
+
+  // "Acorduri și teme de pe resurse" (lib/resurse-sync.js): a job over a library's songs
+  // without chords or themes, for whoever writes that library (the church's: the library
+  // right; the school's: the school right too). Outside the per-user limiter: the page
+  // polls GET while it runs; the job itself paces its requests to the site.
+  const syncAccess = (req, res, next) => {
+    const collection = req.query.collection === 'school' ? 'school' : req.query.collection === 'all' ? 'all' : 'main';
+    const allowed = can(req.user, 'library') || (can(req.user, 'school') && collection === 'school');
+    if (!allowed) return res.status(403).json({ error: req.t('errors.forbidden') });
+    req.syncCollection = collection;
+    res.set('Cache-Control', 'no-store');
+    next();
+  };
+  const jobView = (job) => (job ? { running: job.running, cancelled: job.cancelled, collection: job.collection, total: job.total, done: job.done, current: job.current, report: job.report, startedAt: job.startedAt, finishedAt: job.finishedAt } : null);
+  router.get('/api/resurse/sync', auth.requireUser, requirePerm('library', 'school'), syncAccess, (req, res) => {
+    res.json({ job: jobView(resurseSync.status(req.adminId)), plan: resurseSync.plan(req.adminId, req.syncCollection) });
+  });
+  router.post('/api/resurse/sync', auth.requireUser, requirePerm('library', 'school'), syncAccess, (req, res) => {
+    try {
+      const job = resurseSync.start(req.adminId, req.syncCollection, req.t);
+      logger.info(`resurse sync started by user #${req.user.id} (admin #${req.adminId}): ${job.total} songs (${req.syncCollection})`);
+      res.status(202).json({ job: jobView(job) });
+    } catch (err) {
+      if (err.message !== 'running') throw err;
+      res.status(409).json({ error: req.t('errors.resurseSyncRunning'), job: jobView(resurseSync.status(req.adminId)) });
+    }
+  });
+  router.delete('/api/resurse/sync', auth.requireUser, requirePerm('library', 'school'), syncAccess, (req, res) => {
+    resurseSync.cancel(req.adminId);
+    res.json({ job: jobView(resurseSync.status(req.adminId)) });
+  });
 
   router.use('/api/resurse', auth.requireUser, requirePerm('library', 'events', 'live'), (req, res, next) => {
     const retryAfter = limiter.take(`user:${req.user.id}`);

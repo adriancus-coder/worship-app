@@ -2488,6 +2488,19 @@ body.list-page > main > .key-review[hidden] { display: none; }
 .key-review-title { display: inline-flex; align-items: center; min-height: var(--touch); align-self: flex-start; font-weight: 600; overflow-wrap: anywhere; }
 .key-review-meta { font-size: 0.875rem; }
 .key-review-select { width: auto; min-width: 7rem; min-height: var(--touch); }
+/* "Acorduri și teme de pe resurse": the progress, the report rows with a status pill and "Caută pe resurse" */
+.sync-progress { display: flex; flex-direction: column; gap: 4px; }
+.sync-progress[hidden] { display: none; }
+.sync-progress progress { width: 100%; height: 10px; accent-color: var(--accent-fill); }
+.sync-progress p { margin: 0; font-size: 0.875rem; }
+.sync-row-status { flex: none; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border); color: var(--text-muted); }
+.sync-row-status.is-chords, .sync-row-status.is-themes { color: var(--on-accent); background: var(--accent-fill); border-color: var(--accent-fill); }
+.sync-row-status.is-error { color: var(--error); border-color: var(--error); }
+.sync-row { flex-wrap: wrap; }
+.sync-row .key-review-main { flex: 1 1 10rem; }
+.sync-row-search { flex: none; }
+@media (max-width: 599px) { .sync-row-search { flex: 1 1 100%; } }
+.sync-summary { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 0; padding: 0; list-style: none; font-size: 0.9375rem; }
 .key-review-note { padding: 12px 4px 0; }
 #key-review-finish[hidden] { display: none; }
 /* The song page's history ("Cântată ultima dată: … · n evenimente", opened: the events) */

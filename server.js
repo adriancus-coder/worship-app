@@ -139,7 +139,7 @@ app.use(createSetupRouter({ db, config, logger, sendPage }));
 app.use(createAuthRouter({ db, auth, config, logger, live }));
 app.use(createMeRouter({ db, auth, config, logger, live }));
 app.use(createSongsRouter({ db, auth, config, logger, live, storage }));
-app.use(createResurseRouter({ db, auth, logger }));
+app.use(createResurseRouter({ db, auth, logger, live }));
 app.use(createEventsRouter({ db, auth, logger, live }));
 app.use(createBridgeRouter({ db, auth, logger, bridge }));
 app.use(createHomeRouter({ db, auth }));

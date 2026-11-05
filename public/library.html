@@ -19,6 +19,7 @@
             <a class="menu-item" id="export-library" href="/api/songs/export" download data-i18n="library.export"></a>
             <button type="button" class="menu-item" id="import-library" data-i18n="library.import"></button>
             <button type="button" class="menu-item" id="detect-keys" data-i18n="keySuggest.menu"></button>
+            <button type="button" class="menu-item" id="resurse-sync" data-i18n="resurseSync.menu"></button>
           </div>
           <input type="file" id="import-file" accept=".json,application/json" hidden>
         </div>
@@ -163,6 +164,24 @@
         <button type="button" id="key-review-done" data-icon="check" data-i18n="keySuggest.back"></button>
       </div>
     </section>
+
+    <!-- "Acorduri și teme de pe resurse" (public/resurse-sync.js): the songs without chords or
+         themes looked up on resursecrestine.ro one by one (lib/resurse-sync.js); the progress,
+         then the report, one row per song. The rows scroll in their own pane. -->
+    <section id="sync-review" class="key-review sync-review" hidden aria-labelledby="sync-review-heading">
+      <h2 id="sync-review-heading" tabindex="-1" data-i18n="resurseSync.heading"></h2>
+      <p id="sync-review-status" class="muted" role="status" aria-live="polite"></p>
+      <p id="sync-review-error" class="message error" role="alert"></p>
+      <div class="sync-progress" id="sync-progress" hidden>
+        <progress id="sync-progress-bar" max="1" value="0"></progress>
+        <p id="sync-progress-text" class="muted"></p>
+      </div>
+      <div id="sync-review-list" class="key-review-list grow" data-list-pane="resurseSync.heading"></div>
+      <div class="form-actions" id="sync-review-actions">
+        <button type="button" id="sync-review-start" data-icon="search"></button>
+        <button type="button" class="secondary" id="sync-review-cancel" data-i18n="resurseSync.cancel"></button>
+      </div>
+    </section>
   </main>
   <script src="/i18n.js"></script>
   <script src="/chords.js"></script>
@@ -178,5 +197,6 @@
   <script src="/library.js"></script>
   <script src="/library-import.js"></script>
   <script src="/key-suggest.js"></script>
+  <script src="/resurse-sync.js"></script>
 </body>
 </html>
