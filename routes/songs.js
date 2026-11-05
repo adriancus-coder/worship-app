@@ -111,16 +111,31 @@ function createSongsRouter({ db, auth, config, logger, live, storage }) {
       });
     }
 
+    // An existing song never loses what the file does not bring: its library, key, author,
+    // "Cum se cântă", source and background / backing track stay unless the file has a
+    // value; its themes and the file's are merged (the file's "Caietul bisericii" lands on
+    // it). mode=update replaces the text (sections, title); skip leaves the text alone and
+    // still merges the themes.
+    const mergedThemes = (current, value) => validateThemes([...current.themes, ...value.themes.map((x) => x.name)], req.t).value;
     const before = mode === 'update' ? live.songBefore(req.adminId) : [];
     const result = db.transaction(() => {
       const p = plan();
       for (const { value, meta } of p.add) songs.create(req.adminId, req.user.id, target ? { ...value, collection: target } : value, meta);
-      if (mode === 'update') {
-        for (const { id, value, meta, keepAuthor } of p.existing) {
-          const current = songs.get(req.adminId, id);
-          const song = { ...value, collection: current.collection, ...(keepAuthor ? { author: current.author } : {}) };
-          songs.update(req.adminId, id, song, meta);
+      for (const { id, value, meta, keepAuthor } of p.existing) {
+        const current = songs.get(req.adminId, id);
+        const themes = mergedThemes(current, value);
+        if (mode !== 'update') {
+          if (themes.length !== current.themes.length) songs.setThemes(req.adminId, id, themes);
+          continue;
         }
+        const song = {
+          ...value, collection: current.collection, themes,
+          author: keepAuthor || !value.author ? current.author : value.author,
+          songKey: value.songKey || current.song_key || null,
+        };
+        const kept = {};
+        for (const key of ['sourceLang', 'sourceProvider', 'sourceUrl', 'presentation']) if (meta && meta[key]) kept[key] = meta[key];
+        songs.update(req.adminId, id, song, kept);
       }
       return {
         collection: target || 'file',

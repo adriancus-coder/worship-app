@@ -30,6 +30,16 @@ module.exports = {
     const update = await app.api(owner, 'POST', '/api/songs/import?mode=update&collection=main', file(['Școlar A']));
     check(update.status === 200 && update.body.updated === 1 && await where('Școlar A') === 'school', 'an update keeps the existing song in its library', update.body);
     check((await app.api(owner, 'POST', '/api/songs/import?collection=x', file(['Y']))).status === 400, 'an unknown library: 400');
+    // an existing song keeps what the file does not bring; the file's themes are merged (both modes)
+    const kept = (await app.api(owner, 'POST', '/api/songs', { title: 'Păstrată', author: 'Autor vechi', song_key: 'G', themes: ['Veche'], sections: [{ type: 'verse', content: 'Text vechi' }, { type: 'chorus', content: 'Refren vechi' }] })).body.song;
+    await app.api(owner, 'PUT', `/api/songs/${kept.id}/presentation`, { codes: ['C', 'V1'] });
+    const again = { type: 'worship-app-library', version: 1, songs: [{ title: 'Păstrată', themes: ['Caietul bisericii'], sections: [{ type: 'verse', content: 'Text nou' }] }] };
+    const skip = await app.api(owner, 'POST', '/api/songs/import', again);
+    let now = (await app.api(owner, 'GET', `/api/songs/${kept.id}`)).body.song;
+    check(skip.body.skipped === 1 && now.sections.map((x) => x.content).join('|') === 'Text vechi|Refren vechi' && now.themes.join() === 'Veche,Caietul bisericii' && now.song_key === 'G', 'skip: the text untouched, the file\'s theme added', { skipped: skip.body.skipped, themes: now.themes });
+    const upd = await app.api(owner, 'POST', '/api/songs/import?mode=update', again);
+    now = (await app.api(owner, 'GET', `/api/songs/${kept.id}`)).body.song;
+    check(upd.body.updated === 1 && now.sections.map((x) => x.content).join('|') === 'Text nou' && now.song_key === 'G' && now.author === 'Autor vechi' && now.themes.join() === 'Veche,Caietul bisericii' && now.presentation === 'C V1', 'update: the text replaced; key, author, themes and "Cum se cântă" kept', { key: now.song_key, author: now.author, themes: now.themes, presentation: now.presentation });
 
     // --- the owner's form: preset from the shown library, the choice, the summary ---------
     for (const [lang, width, tab, pick] of [['ro', 375, 'school', 'school'], ['en', 1024, 'main', 'school']]) {
