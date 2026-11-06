@@ -55,7 +55,7 @@ module.exports = {
     const pushes = lines('push-outbox.jsonl');
     const mails = lines('outbox.jsonl');
     const payload = pushes.length ? JSON.parse(P.decrypt(Buffer.from(pushes[0].body, 'base64'), client.getPrivateKey(), auth)) : null;
-    check(pushes.length === 1 && payload && /Ești programat: Chitară/.test(payload.title) && payload.url === `/events/${E2}`, 'the member got one push with the assignment', payload);
+    check(pushes.length === 1 && payload && /Ești programat: Chitară/.test(payload.title) && payload.url === `/events/${E2}?tab=team`, 'the member got one push with the assignment (its link opens the team tab)', payload);
     check(mails.length === 1 && mails[0].to === 'op@x.ro' && /Ești programat: Seara/.test(mails[0].subject) && /Operator/.test(mails[0].text) && mails[0].text.includes(`${app.url}/events/${E2}`) && /Lider/.test(mails[0].text), 'the operator (no push) got an email with the same text and the event link', mails[0] && { to: mails[0].to, subject: mails[0].subject });
     for (const [cookie, who] of [[app.cookies.member, 'member'], [app.cookies.operator, 'operator']]) {
       const n = (await app.api(cookie, 'GET', '/api/notifications')).body.notifications.find((x) => x.kind === 'assigned' && x.eventId === E2);

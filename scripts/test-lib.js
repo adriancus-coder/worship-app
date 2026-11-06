@@ -3809,7 +3809,7 @@ testAsync('notifications (migration 033): rows in the person\'s language + push 
   const out = await N.onAssigned(1, { id: 1, name: 'Duminică', eventDate: '2026-10-04', startTime: '10:00' }, rows.filter((r) => r.status === 'pending'), 'Lider');
   assert.deepStrictEqual({ ...out, positions: [...out.positions] }, { sent: 1, withPush: 1, withoutPush: 0, userIds: [3], positions: [[3, ['Chitară']]] });
   let maria = N.list(1, 3);
-  assert.deepStrictEqual([maria.length, maria[0].kind, maria[0].title, maria[0].url, maria[0].readAt], [1, 'assigned', 'You are scheduled: Chitară', '/events/1', null], 'English for Maria');
+  assert.deepStrictEqual([maria.length, maria[0].kind, maria[0].title, maria[0].url, maria[0].readAt], [1, 'assigned', 'You are scheduled: Chitară', '/events/1?tab=team', null], 'English for Maria (the link opens the team tab)');
   assert.deepStrictEqual([pushed.length, pushed[0].u, pushed[0].tag, pushed[0].title, typeof pushed[0].id], [1, 3, 'assigned-1', 'You are scheduled: Chitară', 'number']);
   // a second position sent later: the same notice, rewritten with every position (one per person and event)
   const voce = mem.prepare("INSERT INTO positions (admin_id, name, sort) VALUES (1, 'Voce', 1)").run().lastInsertRowid;

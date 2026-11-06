@@ -1827,7 +1827,7 @@ async function main() {
     assert.deepStrictEqual([sent.status, sent.body.sent, sent.body.assignments.filter((r) => r.notifiedAt).length], [200, { sent: 1, withoutPush: 1, emailed: 0 }, 1], 'only the new pending row counts; no push, no email here');
     assert.strictEqual((await api('GET', '/api/notifications/unread', member)).body.unread, unreadBefore + 1);
     const assignedRow = (await api('GET', '/api/notifications', member)).body.notifications.find((n) => n.kind === 'assigned' && n.eventId === ev2.id);
-    assert.ok(assignedRow && /Ești programat: Chitară/.test(assignedRow.title) && /Programare/.test(assignedRow.body) && assignedRow.url === `/events/${ev2.id}`, 'the "assigned" notification names the position and the event');
+    assert.ok(assignedRow && /Ești programat: Chitară/.test(assignedRow.title) && /Programare/.test(assignedRow.body) && assignedRow.url === `/events/${ev2.id}?tab=team`, 'the "assigned" notification names the position and the event (its link opens the team tab)');
     assert.deepStrictEqual((await api('POST', `/api/events/${ev2.id}/assignments/send`, leader)).body.sent, { sent: 0, withoutPush: 0, emailed: 0 }, 're-sending reaches nobody new');
     assert.strictEqual((await api('POST', `/api/events/${ev2.id}/assignments/send`, operator)).status, 403);
     // one person ("Trimite" / "Retrimite" under the name): that pending row, sent before or not

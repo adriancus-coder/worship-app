@@ -1559,6 +1559,9 @@
     ideas.hidden = !state.editing;
     if (state.editing) loadIdeaThemes().catch(() => {});
     applyEvent(eventRes.body, false);
+    // ?tab=team (a notification about the team): that tab first, when the person has it
+    const wantedTab = new URLSearchParams(window.location.search).get('tab');
+    if (wantedTab && TABS.some((x) => x.name === wantedTab) && tabState.available.has(wantedTab)) showEditorTab(wantedTab, false);
     if (state.editing) {
       // Just created with "+ Eveniment nou": the "Detalii" row is open.
       const params = new URLSearchParams(window.location.search);

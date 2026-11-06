@@ -121,6 +121,18 @@
     document.addEventListener('i18n:change', render);
     body.prepend(exit);
     body.classList.add('has-shell-exit');
+    // The browser's push subscription belongs to whoever is signed in now: told to the server
+    // once per visit (the same endpoint moves to this person), so a phone that signed in as
+    // someone else earlier gets this person's notices, not theirs.
+    mePromise.then((me) => {
+      if (!me || !('serviceWorker' in navigator) || !('PushManager' in window) || typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+      try { if (window.sessionStorage.getItem('wa_push_claimed') === String(me.user.id)) return; } catch (err) { /* no storage: tell it anyway */ }
+      navigator.serviceWorker.getRegistration('/').then((reg) => (reg ? reg.pushManager.getSubscription() : null)).then((sub) => {
+        if (!sub) return;
+        return fetch('/api/push/subscriptions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subscription: sub.toJSON() }) })
+          .then(() => { try { window.sessionStorage.setItem('wa_push_claimed', String(me.user.id)); } catch (err) { /* fine */ } });
+      }).catch(() => {});
+    });
     window.SHELL = { me: mePromise, setUnread, refreshUnread };
     return;
   }

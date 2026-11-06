@@ -39,6 +39,10 @@ module.exports = {
       }
       await p.click('#tab-program');
       check(!(await p.isHidden('#items')) && await p.isHidden('#bridge-panel'), `[${width}] back to Program`);
+      // ?tab=team (a notification's link): the Echipa tab first, viewing and editing
+      await p.goto(`${app.url}/events/${E}?tab=team`);
+      await p.waitForSelector('#team-panel:not([hidden])');
+      check((await p.getAttribute('#tab-team', 'aria-selected')) === 'true' && await p.isHidden('#editor-program'), `[${width}] ?tab=team opens the Echipa tab`);
       await p.context().close();
     }
     // "Detalii" never repeats the header as a collapsed row: only the "Detalii" button opens it
