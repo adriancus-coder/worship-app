@@ -75,7 +75,7 @@
         ? el('ul', { class: 'person-list' }, ...d.upcoming.map((a) => el('li', { class: 'person-event' },
           el('a', { class: 'person-event-name', href: `/events/${a.eventId}`, text: a.eventName }),
           el('span', { class: 'muted', text: `${when(a)} · ${window.PAGE.positionLabel({ name: a.positionName, emoji: a.positionEmoji })}` }),
-          el('span', { class: `pill assign-pill assign-${a.status}`, text: t(`assign.status.${a.status}`) }),
+          el('span', { class: `pill assign-pill assign-${window.PAGE.assignStatus(a)}`, text: t(`assign.status.${window.PAGE.assignStatus(a)}`) }),
           a.note ? el('span', { class: 'person-note', text: a.note }) : null)))
         : el('p', { class: 'muted', text: t('team.person.noUpcoming') })));
     $('person-heading').textContent = u.name;

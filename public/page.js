@@ -58,6 +58,11 @@
   function canEdit(me) {
     return can(me, 'library') || can(me, 'school');
   }
+  // An assignment's shown status: 'unsent' while the schedule has not reached the person
+  // (pending, not notified), else its own status (pending = waiting for the answer).
+  function assignStatus(row) {
+    return row.status === 'pending' && !row.notifiedAt ? 'unsent' : row.status;
+  }
   function canEditSong(me, song) {
     return can(me, 'library') || (can(me, 'school') && Boolean(song) && song.collection === 'school');
   }
@@ -206,5 +211,5 @@
   const roleLabel = (role) => withEmoji(roleEmoji(role), roleName(role));
   const positionLabel = (p) => (p ? withEmoji(p.emoji, p.name) : '');
 
-  window.PAGE = { api, el, ROLE_EMOJI, roleLabel, roleName, roleEmoji, setRoleNames, positionLabel, can, seesAll, liveEntryRole, canEdit, canEditSong, canEditEvents, EVENT_ROLES, setTitle, formatDate, dateBlock, setupTabs, backLink, keepFrom, eventBack, linkBack };
+  window.PAGE = { api, el, ROLE_EMOJI, roleLabel, roleName, roleEmoji, setRoleNames, positionLabel, can, seesAll, liveEntryRole, canEdit, canEditSong, canEditEvents, EVENT_ROLES, setTitle, formatDate, dateBlock, setupTabs, backLink, keepFrom, eventBack, linkBack, assignStatus };
 })();

@@ -23,7 +23,8 @@
   const summaryText = (s) => (s && s.total ? t('assign.summary', { accepted: s.accepted, pending: s.pending, declined: s.declined }) : t('assign.empty'));
 
   function statusPill(row) {
-    return el('span', { class: `pill assign-pill assign-${row.status}`, text: t(`assign.status.${row.status}`) });
+    const status = window.PAGE.assignStatus(row); // 'unsent' until the schedule was sent to them
+    return el('span', { class: `pill assign-pill assign-${status}`, text: t(`assign.status.${status}`) });
   }
 
   // A choice group of answers: the chosen one filled and checked; a tap on it again sends it

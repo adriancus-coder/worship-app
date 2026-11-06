@@ -1861,6 +1861,7 @@ button.op-step:disabled { opacity: 1; cursor: default; }
 .assign-accepted { color: var(--success); border-color: var(--success); }
 .assign-declined { color: var(--error); border-color: var(--error); }
 .assign-pending { color: var(--accent-text); border-color: var(--accent-fill); }
+.assign-unsent { color: var(--text-muted); border-color: var(--border); border-style: dashed; } /* the schedule not sent yet: no answer expected */
 .assign-note-text { flex: 1 1 100%; font-size: 0.875rem; color: var(--text-muted); }
 .assign-warning { flex: 1 1 100%; font-size: 0.875rem; color: var(--error); }
 .assign-answer { flex: 1 1 100%; display: flex; flex-wrap: wrap; gap: 8px; }
@@ -2662,6 +2663,10 @@ body.list-page .setlist-pane > * { flex: 0 0 auto; }
 body.list-page .setlist-pane > .setlist-scroll { flex: 1 1 0; height: 0; gap: 12px; }
 body.list-page .setlist-pane h2 { margin: 8px 0; }
 body.list-page .save-bar { position: static; margin-top: 8px; }
+/* The other tabs (Echipa, Propuneri, Proiector, Traducere) scroll in their own pane too, so
+   the save bar stays at the bottom of the screen on every tab. */
+body.list-page #event > .team-panel:not([hidden]), body.list-page #event > .event-tab-panel:not([hidden]) { flex: 1 1 0; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--scrollbar-thumb) transparent; }
+body.list-page #event > .team-panel:focus-visible, body.list-page #event > .event-tab-panel:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 @media (min-width: 900px) {
   body.list-page #event > .editor-grid { display: grid; grid-template-rows: minmax(0, 1fr); align-items: stretch; }
   body.list-page .detail-pane { position: static; align-self: stretch; margin-top: 44px; max-height: none; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--scrollbar-thumb) transparent; }

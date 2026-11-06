@@ -592,6 +592,7 @@
         summary: '{accepted} confirmați · {pending} așteaptă · {declined} nu poate',
         empty: 'Nimeni programat încă.',
         status: {
+          unsent: 'netrimisă',
           pending: 'așteaptă răspuns',
           accepted: 'confirmat',
           declined: 'nu poate',
@@ -2874,6 +2875,7 @@
         summary: '{accepted} confirmed · {pending} waiting · {declined} cannot',
         empty: 'Nobody scheduled yet.',
         status: {
+          unsent: 'not sent yet',
           pending: 'waiting for an answer',
           accepted: 'confirmed',
           declined: 'cannot come',

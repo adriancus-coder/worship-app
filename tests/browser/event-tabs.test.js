@@ -33,6 +33,9 @@ module.exports = {
         await p.waitForSelector(`#${panel}:not([hidden])`);
         const shown = await p.evaluate(({ panel, probe }) => ({ program: !document.getElementById('editor-program').hidden, panel: !document.getElementById(panel).hidden, content: Boolean(document.getElementById(panel).querySelector(probe)), selected: document.querySelector('[role="tab"][aria-selected="true"]').id }), { panel, probe });
         check(!shown.program && shown.panel && shown.content && shown.selected === `tab-${tab}`, `[${width}] "${tab}": its panel alone, the tab selected`, shown);
+        // the panel scrolls in its own pane: the save bar stays on screen whatever the tab holds
+        const bar = await p.evaluate((panel) => ({ barBottom: Math.round(document.getElementById('save-bar').getBoundingClientRect().bottom), height: window.innerHeight, scrolls: getComputedStyle(document.getElementById(panel)).overflowY === 'auto' }), panel);
+        check(bar.barBottom <= bar.height && bar.scrolls, `[${width}] "${tab}": the save bar on screen, the panel scrolls on its own`, bar);
       }
       await p.click('#tab-program');
       check(!(await p.isHidden('#items')) && await p.isHidden('#bridge-panel'), `[${width}] back to Program`);

@@ -29,7 +29,7 @@ module.exports = {
     await row.locator('.person-open').click();
     await m.waitForSelector('#person-dialog[open]');
     const card = await m.textContent('#person-dialog');
-    check(/Operator/.test(await m.textContent('#person-heading')) && /La nunta fratelui/.test(card) && new RegExp(ev.name).test(card) && /așteaptă răspuns/.test(card), 'the card: the reason, the coming event with the answer', card);
+    check(/Operator/.test(await m.textContent('#person-heading')) && /La nunta fratelui/.test(card) && new RegExp(ev.name).test(card) && /netrimisă/.test(card), 'the card: the reason, the coming event with its state (the schedule not sent yet)', card);
     check(!/@/.test(card), 'the team sees no email');
     const a = await layoutAudit(m, '#person-dialog');
     check(!a.overflow && !a.small.length, 'the card 375: no overflow, targets >= 44 px', a);
