@@ -41,7 +41,7 @@ module.exports = {
     await pick('Operator', 'Operator');
     await pick('Voce', 'Prezentator');
     const summary = await l.textContent('#team-edit-summary');
-    check(/0 confirmați · 3 așteaptă · 0 nu poate/.test(summary) && (await l.textContent('#tab-team-count')) === '3', `leader: three assigned, "${summary}", the tab counts 3`);
+    check(/0 confirmați · 0 așteaptă · 0 nu poate · 3 netrimise/.test(summary) && (await l.textContent('#tab-team-count')) === '3', `leader: three assigned, not sent yet: "${summary}", the tab counts 3`);
     check(!(await l.isDisabled('#send-schedule')), '"Trimite programarea" is enabled with 3 pending');
     const a = await layoutAudit(l, '#team-panel');
     check(!a.overflow && !a.small.length, 'Echipa tab 375: no overflow, targets >= 44 px', a);

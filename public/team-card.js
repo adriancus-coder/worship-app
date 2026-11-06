@@ -20,7 +20,8 @@
   const { api, el } = window.PAGE;
   const { t } = window.I18N;
 
-  const summaryText = (s) => (s && s.total ? t('assign.summary', { accepted: s.accepted, pending: s.pending, declined: s.declined }) : t('assign.empty'));
+  // "5 confirmați · 1 așteaptă · 1 nu poate", plus "· 3 netrimise" while some were not sent
+  const summaryText = (s) => (s && s.total ? t('assign.summary', { accepted: s.accepted, pending: s.pending, declined: s.declined }) + (s.unsent ? ` · ${t('assign.summaryUnsent', { unsent: s.unsent })}` : '') : t('assign.empty'));
 
   function statusPill(row) {
     const status = window.PAGE.assignStatus(row); // 'unsent' until the schedule was sent to them

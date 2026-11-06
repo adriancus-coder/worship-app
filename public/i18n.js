@@ -590,6 +590,7 @@
         tabProjector: 'Proiector',
         tabBridge: 'Traducere',
         summary: '{accepted} confirmați · {pending} așteaptă · {declined} nu poate',
+        summaryUnsent: '{unsent} netrimise',
         empty: 'Nimeni programat încă.',
         status: {
           unsent: 'netrimisă',
@@ -2873,6 +2874,7 @@
         tabProjector: 'Projector',
         tabBridge: 'Translation',
         summary: '{accepted} confirmed · {pending} waiting · {declined} cannot',
+        summaryUnsent: '{unsent} not sent yet',
         empty: 'Nobody scheduled yet.',
         status: {
           unsent: 'not sent yet',

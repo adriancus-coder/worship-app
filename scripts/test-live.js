@@ -1796,7 +1796,7 @@ async function main() {
       assert.strictEqual((await api('PUT', `/api/events/${ev2.id}/assignments`, cookie, { assignments: [] })).status, 403, 'assign: owner and leader only');
     }
     const put = await api('PUT', `/api/events/${ev2.id}/assignments`, leader, { assignments: [{ userId: memberId, positionId: voce }, { userId: operatorId, positionId: chitara }] });
-    assert.deepStrictEqual([put.status, put.body.assignments.length, put.body.summary, put.body.canAssign, Array.isArray(put.body.people)], [200, 2, { accepted: 0, pending: 2, declined: 0, total: 2 }, true, true]);
+    assert.deepStrictEqual([put.status, put.body.assignments.length, put.body.summary, put.body.canAssign, Array.isArray(put.body.people)], [200, 2, { accepted: 0, pending: 0, unsent: 2, declined: 0, total: 2 }, true, true]);
     assert.strictEqual((await api('PUT', `/api/events/${ev2.id}/assignments`, leader, { assignments: [{ userId: 999, positionId: voce }] })).status, 400);
     // reading: everyone of the admin; a member sees no notes of others and no picker
     const asOp = await api('GET', `/api/events/${ev2.id}/assignments`, operator);

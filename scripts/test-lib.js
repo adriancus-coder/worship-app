@@ -3582,7 +3582,7 @@ test('assignments (migration 030): replace keeps answers, answers are the person
   assert.deepStrictEqual(A.replace(1, 1, [{ userId: 2, positionId: voce }, { userId: 2, positionId: chitara }], 1), { ok: true, added: 1, removed: 1 });
   rows = A.list(1, 1);
   assert.deepStrictEqual(rows.map((r) => [r.userName, r.positionName, r.status]), [['Bob', 'Voce', 'declined'], ['Bob', 'Chitară', 'pending']]);
-  assert.deepStrictEqual(A.summary(rows), { accepted: 0, pending: 1, declined: 1, total: 2 });
+  assert.deepStrictEqual(A.summary(rows), { accepted: 0, pending: 0, unsent: 1, declined: 1, total: 2 }, 'a pending row the schedule never reached counts as unsent');
   assert.deepStrictEqual(A.forUser(1, 2, 1).map((r) => [r.positionName, r.status]), [['Voce', 'declined'], ['Chitară', 'pending']]);
   assert.deepStrictEqual(A.assignedUserIds(1, 1), [2]);
   A.markSent(1, rows.map((r) => r.id), 5);
