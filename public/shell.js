@@ -287,6 +287,11 @@
     onclick: async () => {
       logout.disabled = true;
       try {
+        // this phone's push subscription leaves the account: a signed-out phone gets no notices
+        if ('serviceWorker' in navigator && 'PushManager' in window) {
+          const sub = await navigator.serviceWorker.getRegistration('/').then((reg) => (reg ? reg.pushManager.getSubscription() : null)).catch(() => null);
+          if (sub) await fetch('/api/push/subscriptions', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ endpoint: sub.endpoint }) }).catch(() => {});
+        }
         await fetch('/api/auth/logout', { method: 'POST' });
       } finally {
         window.location.replace('/login');
