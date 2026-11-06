@@ -720,6 +720,13 @@ main.wide.event-page { max-width: 1200px; }
 .item-sub { font-size: 0.8125rem; color: var(--text-muted); overflow-wrap: break-word; max-width: 100%; }
 .item-tools { display: flex; gap: 4px; flex: none; }
 .item-tools .icon-button { min-width: 40px; width: 44px; }
+/* The grip (public/drag-list.js): a drag on it moves the row, never the page. */
+.item-grip { touch-action: none; cursor: grab; font-size: 1.375rem; }
+.item-grip:disabled { cursor: default; }
+.setlist.is-reordering > li { transition: transform 120ms ease; }
+.setlist-item.is-dragging { position: relative; z-index: 2; border-color: var(--accent-fill); box-shadow: 0 6px 18px var(--shadow); transition: none; }
+.setlist-item.is-dragging .item-grip { cursor: grabbing; }
+body.is-dragging-list { user-select: none; -webkit-user-select: none; }
 
 .type-badge {
   flex: none;
@@ -2657,7 +2664,7 @@ body.list-page .setlist-pane { flex: 1 1 auto; display: flex; flex-direction: co
   /* Phones: the details open inside the list; the empty "select an item" hint takes no room. */
   body.list-page .detail-pane:has(.item-detail.is-empty) { display: none; }
   body.list-page .setlist-scroll { --pane-min: 120px; }
-  body.list-page #reorder-hint { display: none; } /* a keyboard hint (Alt + arrows): no room for it on phones */
+  body.list-page #reorder-hint { display: none; } /* no room for it on phones: the press hint says "Trage ≡" there */
 }
 body.list-page .setlist-pane > * { flex: 0 0 auto; }
 body.list-page .setlist-pane > .setlist-scroll { flex: 1 1 0; height: 0; gap: 12px; }

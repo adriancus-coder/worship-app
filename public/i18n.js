@@ -1473,7 +1473,7 @@
       },
       press: {
         hintLive: 'Apasă scurt pentru a merge acolo · Ține apăsat pentru a aranja',
-        hintEditor: 'Apasă scurt pentru a selecta · Ține apăsat pentru a aranja',
+        hintEditor: 'Apasă scurt pentru a selecta · Ține apăsat pentru a aranja · Trage ≡ ca să muți',
         hintClose: 'Am înțeles, ascunde sfatul',
       },
       operator: {
@@ -1813,10 +1813,9 @@
         untitled: 'Fără titlu',
         songDeleted: 'cântare ștearsă',
         songDeletedHint: 'Cântarea a fost ștearsă din bibliotecă. Elementul rămâne în program doar cu titlul.',
-        moveUp: 'Mută „{title}” mai sus',
-        moveDown: 'Mută „{title}” mai jos',
+        grip: 'Mută „{title}”: trage în sus sau în jos, sau săgeți sus/jos',
         remove: 'Scoate „{title}” din program',
-        reorderHint: 'Alt + săgeată sus/jos mută elementul selectat.',
+        reorderHint: 'Trage ≡ în sus sau în jos ca să schimbi ordinea.',
         selectHint: 'Alege un element din program ca să vezi detaliile.',
         openSong: 'Deschide cântarea',
         songKey: 'Ton {key}',
@@ -3757,7 +3756,7 @@
       },
       press: {
         hintLive: 'Tap to go there · Press and hold to arrange',
-        hintEditor: 'Tap to select · Press and hold to arrange',
+        hintEditor: 'Tap to select · Press and hold to arrange · Drag ≡ to move',
         hintClose: 'Got it, hide the tip',
       },
       operator: {
@@ -4097,10 +4096,9 @@
         untitled: 'Untitled',
         songDeleted: 'deleted song',
         songDeletedHint: 'This song was deleted from the library. The item stays in the running order with its title only.',
-        moveUp: 'Move “{title}” up',
-        moveDown: 'Move “{title}” down',
+        grip: 'Move “{title}”: drag up or down, or arrow keys',
         remove: 'Remove “{title}” from the running order',
-        reorderHint: 'Alt + arrow up/down moves the selected item.',
+        reorderHint: 'Drag ≡ up or down to change the order.',
         selectHint: 'Pick an item in the running order to see its details.',
         openSong: 'Open the song',
         songKey: 'Key {key}',

@@ -285,6 +285,25 @@
     }, el('span', { 'aria-hidden': 'true', text: symbol }));
   }
 
+  // The grip (≡): drag it up or down to move the item (public/drag-list.js); with the
+  // keyboard, the arrows move it one place.
+  function gripButton(index, title, count) {
+    const grip = el('button', {
+      type: 'button',
+      class: 'secondary icon-button item-grip',
+      'data-action': 'grip',
+      'data-index': index,
+      'aria-label': t('setlist.grip', { title }),
+      disabled: count < 2,
+      onkeydown: (event) => {
+        if (event.key === 'ArrowUp') { event.preventDefault(); move(index, index - 1, 'grip'); }
+        else if (event.key === 'ArrowDown') { event.preventDefault(); move(index, index + 1, 'grip'); }
+      },
+    }, el('span', { 'aria-hidden': 'true', text: '≡' }));
+    window.DRAG_LIST.bind(grip, { list: itemsList, index: () => index, onDrop: (from, to) => move(from, to, null) });
+    return grip;
+  }
+
   function renderItems() {
     const count = state.items.length;
     $('setlist-empty').hidden = count > 0;
@@ -312,8 +331,7 @@
       });
       const tools = state.editing
         ? el('span', { class: 'item-tools' },
-          toolButton('up', i, '↑', t('setlist.moveUp', { title }), i === 0),
-          toolButton('down', i, '↓', t('setlist.moveDown', { title }), i === count - 1),
+          gripButton(i, title, count),
           toolButton('remove', i, '✕', t('setlist.remove', { title }), false))
         : (schoolMode() && item.who === SCHOOL_WHO && item.id
           ? el('span', { class: 'item-tools' }, toolButton('school-remove', i, '✕', t('setlist.schoolRemove', { title }), false))
@@ -534,9 +552,7 @@
 
   function onTool(action, index) {
     if (action === 'school-remove') { removeSchoolSong(state.items[index]); return; }
-    if (action === 'up') move(index, index - 1, 'up');
-    else if (action === 'down') move(index, index + 1, 'down');
-    else if (action === 'remove') {
+    if (action === 'remove') {
       state.items.splice(index, 1);
       if (state.selected === index) state.selected = -1;
       else if (state.selected > index) state.selected -= 1;
