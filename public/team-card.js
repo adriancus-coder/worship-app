@@ -218,6 +218,7 @@
       const active = d.positions.filter((p) => p.active || d.assignments.some((r) => r.positionId === p.id));
       const pending = d.assignments.filter((r) => r.status === 'pending' && !r.notifiedAt).length;
       const unavailableHere = (row) => { const p = d.people.find((x) => x.id === row.userId); return p && p.unavailable ? p.unavailable : null; };
+      const meIds = new Set((d.me || []).map((r) => r.id)); // the editor's own positions: the answer here too
       container.replaceChildren(el('div', { class: 'team-edit' },
         attendSection(true),
         el('div', { class: 'team-card-head' },
@@ -229,10 +230,11 @@
           el('h3', { text: window.PAGE.positionLabel(position) }),
           el('ul', { class: 'team-group-list' }, ...d.assignments.filter((r) => r.positionId === position.id).map((row) => {
             const busy = unavailableHere(row);
-            return el('li', { class: `assign-row assign-row-${row.status}${busy ? ' unavailable' : ''}` },
+            return el('li', { class: `assign-row assign-row-${row.status}${busy ? ' unavailable' : ''}${meIds.has(row.id) ? ' mine' : ''}` },
               el('span', { class: 'assign-name', text: row.userName }),
               statusPill(row),
-              row.note ? el('span', { class: 'assign-note-text', text: row.note }) : null,
+              row.note && !meIds.has(row.id) ? el('span', { class: 'assign-note-text', text: row.note }) : null,
+              meIds.has(row.id) ? answerBox(row, respond) : null,
               busy ? el('span', { class: 'assign-warning', text: t('assign.unavailableWarning', { reason: busy.note || t('assign.unavailable') }) }) : null,
               row.status === 'declined' ? el('span', { class: 'assign-warning', text: t('assign.declinedHint') }) : null,
               // "Trimite" / "Retrimite" for this person only, while the answer is pending

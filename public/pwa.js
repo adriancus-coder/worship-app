@@ -54,6 +54,17 @@
 
   if (window.location.pathname === '/login') clearPrivate();
 
+  // A tap on a push notification while this page is open: the service worker says where to
+  // go (lib/service-worker.js notificationclick; it navigates itself where the browser lets it).
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.addEventListener('message', (event) => {
+      const data = event.data || {};
+      if (data.type !== 'OPEN' || typeof data.url !== 'string') return;
+      const target = new URL(data.url, window.location.origin);
+      if (target.origin === window.location.origin && target.href !== window.location.href) window.location.assign(target.href);
+    });
+  }
+
   // --- updates --------------------------------------------------------------------
 
   const SCREEN_IDLE_MS = 60 * 1000;

@@ -68,6 +68,21 @@ module.exports = {
     check(/confirmed/.test(await m.locator('#team-card .assign-row.mine .assign-pill').textContent()), 'member: "I’m in" -> confirmed');
     const am = await layoutAudit(m, '#team-card');
     check(!am.overflow && !am.small.length, 'team card 1024: targets >= 44 px', am);
+    // the leader, assigned too: "Vin" / "Nu pot" on their own row in the editor as well
+    const leaderRows = (await app.api(app.cookies.leader, 'GET', `/api/events/${E}/assignments`)).body.assignments;
+    const positionsAll = (await app.api(app.cookies.owner, 'GET', '/api/positions')).body.positions;
+    const leaderUser = (await app.api(app.cookies.owner, 'GET', '/api/team')).body.users.find((u) => u.email === 'lider@x.ro');
+    await app.api(app.cookies.leader, 'PUT', `/api/events/${E}/assignments`, { assignments: [...leaderRows.map((r) => ({ userId: r.userId, positionId: r.positionId })), { userId: leaderUser.id, positionId: positionsAll[0].id }] });
+    const le = await signIn('leader', { width: 375, lang: 'ro' });
+    await le.goto(`${app.url}/events/${E}/edit`);
+    await le.waitForSelector('#tab-team:not([hidden])');
+    await le.click('#tab-team');
+    await le.waitForSelector('#team-edit .assign-row.mine .assign-answer');
+    await le.locator('#team-edit .assign-row.mine button[data-answer="accepted"]').click();
+    await le.waitForFunction(() => /Răspunsul/.test(document.querySelector('#team-edit .assign-message').textContent));
+    check(/confirmat/.test(await le.locator('#team-edit .assign-row.mine .assign-pill').textContent()), 'the leader answers "Vin" on their own row in the editor');
+    await le.context().close();
+    await app.api(app.cookies.leader, 'PUT', `/api/events/${E}/assignments`, { assignments: leaderRows.map((r) => ({ userId: r.userId, positionId: r.positionId })) }); // the team as before
     // the presenter declines with a note from the home card + event page
     const pr = await signIn('presenter', { width: 375, lang: 'ro' });
     await pr.goto(`${app.url}/events/${E}`);
