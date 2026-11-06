@@ -85,6 +85,13 @@ module.exports = {
     await m.goto(`${app.url}/events/${E}/follow`);
     await m.waitForSelector('#follow:not([hidden])');
     await m.waitForSelector('#propose-song');
+    // the picker's results scroll in their own pane on this page too (it lacked list-pane.js:
+    // the pane had no height and no scroll on phones)
+    await m.click('#propose-song');
+    await m.waitForSelector('dialog.proposal-dialog[open] .song-list li');
+    const pane = await m.evaluate(() => { const p = document.querySelector('dialog.proposal-dialog .ss-results'); return { listPane: p.classList.contains('list-pane'), height: p.clientHeight, overflow: getComputedStyle(p).overflowY }; });
+    check(pane.listPane && pane.height > 100 && pane.overflow === 'auto', 'follow page: the picker results are a scrolling pane with room', pane);
+    await m.keyboard.press('Escape');
     await propose(m, 'Șase rânduri', 'Acum');
     await op.waitForSelector('#info-toast.proposal-toast:not([hidden])', { timeout: 6000 });
     check(/Membru propune: Șase rânduri/.test(await op.textContent('#info-toast')) && await op.locator('#info-toast button[data-proposal-action]').count() === 3, 'console: the toast "Membru propune: Șase rânduri" with three actions');
