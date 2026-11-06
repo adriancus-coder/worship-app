@@ -26,6 +26,12 @@ module.exports = {
     await p.click('#plan-events');
     await p.waitForSelector('#plan-dialog[open] .plan-day');
     check(await p.isDisabled('#plan-create') && /Nicio zi/.test(await p.textContent('#plan-count')), 'opens on this month, nothing chosen, "Creează" off');
+    // "Anulează" closes the dialog; opened again for the rest
+    await p.click('#plan-cancel');
+    await p.waitForSelector('#plan-dialog[open]', { state: 'detached' }).catch(() => null);
+    check(!(await p.locator('#plan-dialog[open]').count()), '"Anulează" closes the dialog');
+    await p.click('#plan-events');
+    await p.waitForSelector('#plan-dialog[open] .plan-day');
     // the same fields as "+ Eveniment nou": the time from a list (the usual time preset), the
     // starting programme with its theme, the note
     const defaults = (await app.api(app.cookies.owner, 'GET', '/api/events/quick-defaults')).body;

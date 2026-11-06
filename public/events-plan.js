@@ -119,6 +119,7 @@
     button.addEventListener('click', () => { state.programme = button.dataset.programme; renderProgramme(); });
   }
   $('plan-form').addEventListener('submit', create);
+  $('plan-cancel').addEventListener('click', () => $('plan-dialog').close());
   $('plan-events').addEventListener('click', open);
   document.addEventListener('i18n:change', () => { if ($('plan-dialog').open) render(); });
 
