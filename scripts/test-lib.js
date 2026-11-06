@@ -3807,10 +3807,16 @@ testAsync('notifications (migration 033): rows in the person\'s language + push 
   // assigned: one per person, in their language; a push only for the subscribed one
   const rows = N.assignments.list(1, 1);
   const out = await N.onAssigned(1, { id: 1, name: 'Duminică', eventDate: '2026-10-04', startTime: '10:00' }, rows.filter((r) => r.status === 'pending'), 'Lider');
-  assert.deepStrictEqual(out, { sent: 1, withPush: 1, withoutPush: 0, userIds: [3] });
-  const maria = N.list(1, 3);
+  assert.deepStrictEqual({ ...out, positions: [...out.positions] }, { sent: 1, withPush: 1, withoutPush: 0, userIds: [3], positions: [[3, ['Chitară']]] });
+  let maria = N.list(1, 3);
   assert.deepStrictEqual([maria.length, maria[0].kind, maria[0].title, maria[0].url, maria[0].readAt], [1, 'assigned', 'You are scheduled: Chitară', '/events/1', null], 'English for Maria');
   assert.deepStrictEqual([pushed.length, pushed[0].u, pushed[0].tag, pushed[0].title, typeof pushed[0].id], [1, 3, 'assigned-1', 'You are scheduled: Chitară', 'number']);
+  // a second position sent later: the same notice, rewritten with every position (one per person and event)
+  const voce = mem.prepare("INSERT INTO positions (admin_id, name, sort) VALUES (1, 'Voce', 1)").run().lastInsertRowid;
+  const second = mem.prepare("INSERT INTO event_assignments (event_id, admin_id, user_id, position_id, status, created_at) VALUES (1, 1, 3, ?, 'pending', 1)").run(voce).lastInsertRowid;
+  const again = await N.onAssigned(1, { id: 1, name: 'Duminică', eventDate: '2026-10-04', startTime: '10:00' }, N.assignments.list(1, 1).filter((r) => r.id === second), 'Lider');
+  maria = N.list(1, 3);
+  assert.deepStrictEqual([again.sent, [...again.positions], maria.length, maria[0].title, pushed.length, pushed[1].title, pushed[1].id === maria[0].id], [1, [[3, ['Chitară', 'Voce']]], 1, 'You are scheduled: Chitară, Voce', 2, 'You are scheduled: Chitară, Voce', true], 'one notice listing both positions; the push repeats with the same id');
   // declined: the owner and the leaders, not the one who declined (the leader here)
   await N.onDeclined(1, { id: 1, name: 'Duminică', eventDate: '2026-10-04' }, rows.find((r) => r.userId === 2));
   assert.deepStrictEqual([N.list(1, 1).length, N.list(1, 2).length, N.list(1, 3).length], [1, 0, 1]);

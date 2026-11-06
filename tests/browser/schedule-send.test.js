@@ -70,6 +70,16 @@ module.exports = {
     await wait(200);
     check(lines('push-outbox.jsonl').length === 1 && lines('outbox.jsonl').length === 2 && lines('outbox.jsonl')[1].to === 'prez@x.ro', 're-sending reaches only the new row (one more email, no new push)');
     check((await app.api(app.cookies.member, 'GET', '/api/notifications')).body.notifications.filter((x) => x.kind === 'assigned' && x.eventId === E2).length === 1, 'the member was not told twice');
+    // the member gets a second position: still ONE notification, now naming both positions
+    await pick('Voce', 'Membru');
+    await l.waitForFunction(() => !document.getElementById('send-schedule').disabled);
+    await l.click('#send-schedule');
+    await l.waitForFunction(() => /Trimis la 1/.test(document.querySelector('#team-panel .assign-message').textContent));
+    await wait(300);
+    const memberRows = (await app.api(app.cookies.member, 'GET', '/api/notifications')).body.notifications.filter((x) => x.kind === 'assigned' && x.eventId === E2);
+    const lastPush = JSON.parse(P.decrypt(Buffer.from(lines('push-outbox.jsonl').slice(-1)[0].body, 'base64'), client.getPrivateKey(), auth));
+    const both = (text) => /Chitară/.test(text) && /Voce/.test(text);
+    check(memberRows.length === 1 && both(memberRows[0].title) && lines('push-outbox.jsonl').length === 2 && both(lastPush.title), 'a second position: the one notification now names both (in the positions\' order), the push repeats with both', { title: memberRows[0] && memberRows[0].title, push: lastPush.title });
     // one person: "Retrimite" under the name reaches only them
     const row = l.locator('#team-panel .assign-row', { hasText: 'Operator' }).first();
     check((await row.locator('.assign-send-one').textContent()).trim() === 'Retrimite', 'a sent, pending person: "Retrimite" under the name');
@@ -77,6 +87,6 @@ module.exports = {
     await l.waitForFunction(() => /Trimis la 1/.test(document.querySelector('#team-panel .assign-message').textContent));
     await wait(200);
     const mails2 = lines('outbox.jsonl');
-    check(mails2.length === 3 && mails2[2].to === 'op@x.ro' && lines('push-outbox.jsonl').length === 1, 'only the operator got it again (one more email, no push)', mails2.map((m) => m.to));
+    check(mails2.length === 3 && mails2[2].to === 'op@x.ro' && lines('push-outbox.jsonl').length === 2, 'only the operator got it again (one more email, no new push)', mails2.map((m) => m.to));
   },
 };

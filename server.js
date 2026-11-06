@@ -173,7 +173,7 @@ const eventMail = (req, event, extra) => (user, lang, baseUrl) => ({ appName: co
 const answerLinks = createAnswerLinks(db);
 assignmentHooks.onSent = async ({ req, event, rows }) => {
   const out = await notifications.onAssigned(req.adminId, event, rows, req.user.name);
-  const vars = eventMail(req, event, (user) => ({ positions: rows.filter((r) => r.userId === user.id).map((r) => r.positionName).join(', ') }));
+  const vars = eventMail(req, event, (user) => ({ positions: (out.positions.get(user.id) || rows.filter((r) => r.userId === user.id).map((r) => r.positionName)).join(', ') })); // every position the person holds
   const emailed = out.withoutPush ? await teamMail.withoutPush(req, out.userIds, 'schedule', (user, lang, baseUrl) => email.templates.schedule(lang, vars(user, lang, baseUrl))) : 0;
   return { sent: out.sent, withoutPush: out.withoutPush, emailed };
 };
