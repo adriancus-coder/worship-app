@@ -2853,7 +2853,7 @@ dialog.song-pick-dialog .song-pick > .ss-results { flex: 1 1 0; height: 0; --pan
 dialog.big-lyrics { position: fixed; inset: 0; width: 100vw; height: 100dvh; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; border-radius: 0; color: var(--text); background: var(--background); }
 dialog.big-lyrics[open] { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto auto auto; overflow: hidden; }
 dialog.big-lyrics::backdrop { background: var(--background); }
-.big-top { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 6px 10px 2px; opacity: 1; } /* never fades: the way out stays visible */
+.big-top { display: flex; align-items: center; gap: 8px; min-width: 0; padding: calc(6px + env(safe-area-inset-top, 0px)) max(10px, env(safe-area-inset-right, 0px)) 2px max(10px, env(safe-area-inset-left, 0px)); opacity: 1; } /* never fades: the way out stays visible; installed on iOS the dialog covers the screen, so it keeps clear of the status bar and the notch itself */
 .big-top .big-tool { min-height: var(--touch); padding: 4px 8px; font-size: 0.875rem; }
 .big-label { flex: 1 1 auto; min-width: 0; margin: 0; font-weight: 700; color: var(--accent-text); text-transform: uppercase; letter-spacing: 0.04em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* "Toată cântarea" inside the view: the sections readable and scrolling, the one on screen marked, each a tap target */
