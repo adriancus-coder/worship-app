@@ -64,6 +64,16 @@ module.exports = {
       await p.click('dialog.big-lyrics .big-tools button:nth-child(3)');
       await wait(200);
       check((await big(p)).font > before, `${tag} A+ enlarges`);
+      if (width === 375) {
+        // zoomed text wraps to the width and runs down (the body scrolls); nothing is cut
+        await p.click('dialog.big-lyrics .big-tools button:nth-child(1)'); // "Doar text"
+        for (let i = 0; i < 6; i++) { if (await p.evaluate(() => document.querySelector('dialog.big-lyrics .big-tools button:nth-child(3)').disabled)) break; await p.click('dialog.big-lyrics .big-tools button:nth-child(3)'); }
+        await wait(300);
+        const zoom = await p.evaluate(() => { const body = document.querySelector('dialog.big-lyrics .big-body'); const lines = [...document.querySelectorAll('dialog.big-lyrics .big-line')]; return { lines: lines.length, wide: lines.filter((l) => l.getBoundingClientRect().right > body.getBoundingClientRect().right + 1).length, wrapped: lines.filter((l) => l.classList.contains('fit-wrapped')).length, scrolls: document.querySelector('dialog.big-lyrics').classList.contains('scrolls'), font: parseFloat(getComputedStyle(document.querySelector('dialog.big-lyrics .big-text')).fontSize) };});
+        check(zoom.lines > 0 && zoom.wide === 0 && zoom.wrapped > 0, `${tag} A+ at the maximum: the lines wrap to the width (the body scrolls when they run past it), none cut`, zoom);
+        await p.click('dialog.big-lyrics .big-tools button:nth-child(1)');
+        await p.evaluate(() => { try { localStorage.removeItem('wa_big_scale'); } catch (e) {} });
+      }
       // ✕ returns at the same position
       await p.click('dialog.big-lyrics .big-close');
       await wait(200);

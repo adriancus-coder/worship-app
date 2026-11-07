@@ -266,7 +266,13 @@
       let hi = Math.max(lo, height * MAX_FONT);
       if (box.querySelector('.big-line') && window.LYRICS_FIT) {
         const plan = window.LYRICS_FIT.fitBox(box, { lineSelector: '.big-line', maxW: width, maxH: height, minSize: lo, maxSize: hi, lineHeight: 1.25 });
-        box.style.fontSize = `${Math.max(8, plan.size * state.scale)}px`;
+        if (state.scale !== 1) {
+          // A− / A+: the fitted size scaled; at that size the lines wrap to the width (balanced
+          // rows, as the fit does) and the text runs down the body, which scrolls — never cut
+          // at the right edge
+          const size = Math.max(8, plan.size * state.scale);
+          window.LYRICS_FIT.fitBox(box, { lineSelector: '.big-line', maxW: width, maxH: Infinity, minSize: size, maxSize: size, minPct: 100, lineHeight: 1.25 });
+        }
         dialog.classList.toggle('scrolls', box.scrollHeight > height + 1);
         return;
       }
