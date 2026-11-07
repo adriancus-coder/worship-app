@@ -63,7 +63,7 @@
   // every second while the view is open.
   // onClose(): after the view closed (the leader goes back to the event page); fullPage() with
   // showFullPage() -> true adds a small "Pagina completă" tool (the leader's way to the page).
-  function create({ api, eventId, position, commands, connection, drivesProjector = () => false, extraStatus = () => '', member = null, standalone = false, loadSong: pageLoadSong = null, onClose = null, fullPage = null, compactPage = null, showFullPage = () => false }) {
+  function create({ api, eventId, position, commands, connection, drivesProjector = () => false, extraStatus = () => '', member = null, standalone = false, loadSong: pageLoadSong = null, onClose = null, fullPage = null, compactPage = null, showFullPage = () => false, audio = null }) {
     const { el } = window.PAGE;
     const { t } = window.I18N;
     const state = { snap: null, items: [], scale: Number(stored(SCALE_KEY, '1')) || 1, textOnly: stored(TEXT_ONLY_KEY, '0') === '1', songs: new Map(), setlistKey: null, renderId: 0,
@@ -109,6 +109,9 @@
       parts.full = fullPage ? el('button', { type: 'button', class: 'secondary big-tool big-full', 'data-icon': 'more', hidden: true, onclick: () => fullPage() }) : null;
       // "Listă": the page's compact view (the leader's list with keys and ticks)
       parts.list = compactPage ? el('button', { type: 'button', class: 'secondary big-tool big-list', 'data-icon': 'list', hidden: true, onclick: () => compactPage() }) : null;
+      // "▶ Negativ": the page's own player for the song on the projector (audio(): the
+      // <audio> with a file, or null), played and paused from here
+      parts.audio = audio ? el('button', { type: 'button', class: 'secondary big-tool big-audio', 'data-icon': 'play', hidden: true, onclick: () => { const player = audio(); if (!player) return; if (player.paused) player.play().catch(() => {}); else player.pause(); } }, el('span', { class: 'big-audio-text' })) : null;
       parts.close = el('button', { type: 'button', class: 'secondary big-tool big-close', 'data-icon': 'close', onclick: close });
       // "✕ Ieși" first in the bottom bar too: a way out on every device, no hidden gesture.
       parts.exit = el('button', { type: 'button', class: 'secondary big-exit', 'data-icon': 'close', onclick: close });
@@ -118,7 +121,7 @@
       parts.nextButton = el('button', { type: 'button', class: member ? 'secondary' : null, onclick: () => commands.next() });
       parts.nav = el('div', { class: `big-nav${member ? ' big-nav-member' : ''}`, role: 'group', 'aria-label': t(member ? 'follow.navLabel' : 'live.navLabel') }, parts.exit, parts.prev, parts.end, parts.backLive, parts.nextButton);
       dialog = el('dialog', { class: `big-lyrics${member ? ' big-lyrics-member' : ''}`, 'aria-label': t('big.title') },
-        el('div', { class: 'big-top' }, parts.label, el('span', { class: 'big-tools' }, parts.textOnly, parts.smaller, parts.larger, parts.whole, parts.list, parts.full, parts.close)),
+        el('div', { class: 'big-top' }, parts.label, el('span', { class: 'big-tools' }, parts.textOnly, parts.smaller, parts.larger, parts.audio, parts.whole, parts.list, parts.full, parts.close)),
         parts.body,
         parts.next,
         standalone ? null : parts.status,
@@ -320,6 +323,25 @@
       return { value, conn: t(`live.connection.${value}`), text: bits.join(' · ') };
     }
 
+    // The "Negativ" tool follows the page's player: shown while the song on the projector
+    // has a file, ▶ or ⏸ by its state.
+    let watched = null;
+    function renderAudioTool() {
+      if (!parts.audio) return;
+      const player = audio();
+      parts.audio.hidden = !player;
+      if (watched !== player) {
+        if (watched) for (const type of ['play', 'pause', 'ended']) watched.removeEventListener(type, renderAudioTool);
+        watched = player;
+        if (player) for (const type of ['play', 'pause', 'ended']) player.addEventListener(type, renderAudioTool);
+      }
+      if (!player) return;
+      const playing = !player.paused;
+      parts.audio.dataset.icon = playing ? 'pause' : 'play';
+      parts.audio.querySelector('.big-audio-text').textContent = t('big.audio');
+      parts.audio.setAttribute('aria-label', t(playing ? 'big.audioPause' : 'big.audioPlay'));
+    }
+
     async function render() {
       if (!isOpen() || (!state.snap && !standalone)) return;
       const renderId = ++state.renderId;
@@ -343,6 +365,7 @@
       }
       parts.whole.textContent = t('big.whole');
       parts.whole.setAttribute('aria-label', t('big.wholeLabel'));
+      renderAudioTool();
       parts.whole.setAttribute('aria-pressed', String(state.whole));
       parts.smaller.setAttribute('aria-label', t('big.smaller'));
       parts.larger.setAttribute('aria-label', t('big.larger'));

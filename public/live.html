@@ -46,6 +46,13 @@
         <p><a class="emergency-link" href="/help/emergency" target="_blank" rel="noopener" data-i18n="live.emergency.help"></a></p>
       </div>
 
+      <!-- "Negativ": the backing track of the song on the projector, played on this device
+           (public/song-audio.js); above the grid so the compact view keeps it too. -->
+      <div id="live-audio" class="op-audio live-audio" hidden>
+        <span class="ro-label" id="live-audio-label" data-i18n="operator.audioLabel"></span>
+        <audio id="live-audio-player" controls preload="none" aria-labelledby="live-audio-label"></audio>
+        <div id="live-audio-youtube"></div>
+      </div>
       <div class="live-grid">
         <section class="live-current" aria-labelledby="current-heading">
           <h2 id="current-heading" class="sr-only" data-i18n="live.currentHeading"></h2>
@@ -159,6 +166,7 @@
   <script src="/live-clock.js"></script>
   <script src="/big-lyrics.js"></script>
   <script src="/programme-big.js"></script>
+  <script src="/song-audio.js"></script>
   <script src="/proposals-ui.js"></script>
   <script src="/bridge-panel.js"></script>
   <script src="/live.js"></script>

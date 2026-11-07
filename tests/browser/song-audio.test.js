@@ -116,6 +116,12 @@ module.exports = {
     await o.waitForSelector('#song-audio-player', { state: 'detached' });
     check((await app.api(owner, 'GET', `/api/songs/${songs.SIX}`)).body.song.audio === null, '"Șterge negativul" (confirmed): gone');
 
+    // --- the leader's live page: the same player, above the Program, in the compact view too
+    const ld = await signIn('leader', { width: 375, lang: 'ro' });
+    await ld.goto(`${app.url}/events/${E}/live`);
+    await ld.waitForSelector('#setlist .live-item');
+    check(await ld.evaluate(() => document.getElementById('live-audio').hidden), 'the live page before the start: no player');
+
     // --- the operator console: the player for the song on the projector, ♪ in the list -----
     check((await app.command({ type: 'event.start' })).ok && (await app.command({ type: 'worship.goto', itemId: app.seed.items[0], step: 0 })).ok, 'the event is live, on the first song');
     const op = await signIn('operator', { width: 1024, lang: 'ro' });
@@ -124,13 +130,35 @@ module.exports = {
     await op.waitForFunction(() => !document.getElementById('op-audio').hidden, null, { timeout: 8000 });
     const console1 = await op.evaluate(() => ({ src: document.getElementById('op-audio-player').getAttribute('src'), tags: [...document.querySelectorAll('#op-list .tag-audio')].length, label: document.getElementById('op-audio-label').textContent }));
     check(/\/api\/media\/\d+\/file/.test(console1.src) && console1.tags === 2 && /Negativ/.test(console1.label), 'the operator: the player for the first song (on the projector), ♪ on the two songs with a track', console1);
+    await ld.waitForFunction(() => !document.getElementById('live-audio').hidden, null, { timeout: 8000 });
+    const live1 = await ld.evaluate(() => ({ src: document.getElementById('live-audio-player').getAttribute('src'), label: document.getElementById('live-audio-label').textContent, aboveGrid: document.getElementById('live-audio').nextElementSibling.classList.contains('live-grid') }));
+    check(/\/api\/media\/\d+\/file/.test(live1.src) && /Negativ/.test(live1.label) && live1.aboveGrid, 'the leader, live: the player for the first song, above the Program', live1);
+    // the big view took over on the start (the leader's phone): "▶ Negativ" in its top bar
+    await ld.waitForSelector('dialog.big-lyrics[open]');
+    await ld.waitForFunction(() => !document.querySelector('.big-audio').hidden, null, { timeout: 8000 });
+    const tool = await ld.evaluate(() => { const b = document.querySelector('.big-audio'); return { icon: b.dataset.icon, label: b.getAttribute('aria-label'), textShown: getComputedStyle(b.querySelector('.big-audio-text')).display !== 'none', paused: document.getElementById('live-audio-player').paused }; });
+    check(tool.icon === 'play' && /Pornește negativul/.test(tool.label) && !tool.textShown && tool.paused, 'big lyrics on the phone: the ▶ tool (icon only), the player paused', tool);
+    await ld.click('.big-audio');
+    await ld.waitForFunction(() => document.querySelector('.big-audio').dataset.icon === 'pause', null, { timeout: 5000 });
+    check(await ld.evaluate(() => !document.getElementById('live-audio-player').paused && /Oprește/.test(document.querySelector('.big-audio').getAttribute('aria-label'))), '▶ plays the page\'s player: the tool turns to ⏸');
+    await ld.click('.big-audio');
+    await ld.waitForFunction(() => document.querySelector('.big-audio').dataset.icon === 'play', null, { timeout: 5000 });
+    check(await ld.evaluate(() => document.getElementById('live-audio-player').paused), '⏸ pauses it');
+    // "Listă" in the big view: the compact page, with the player
+    await ld.click('dialog.big-lyrics[open] .big-list');
+    await ld.waitForFunction(() => document.body.classList.contains('live-compact'));
+    check(await ld.evaluate(() => getComputedStyle(document.getElementById('live-audio')).display !== 'none'), 'the compact view keeps the player');
     check((await app.command({ type: 'worship.goto', itemId: app.seed.items[1], step: 0 })).ok, 'the team moves to the verse');
     await op.waitForFunction(() => document.getElementById('op-audio').hidden, null, { timeout: 8000 });
     check(await op.evaluate(() => !document.getElementById('op-audio-player').getAttribute('src')), 'the next item (a verse): no player');
+    await ld.waitForFunction(() => document.getElementById('live-audio').hidden, null, { timeout: 8000 });
+    check(true, 'the live page: no player on the verse either');
     check((await app.command({ type: 'worship.goto', itemId: app.seed.items[4], step: 0 })).ok, 'the team moves to the third song (a YouTube link)');
     await op.waitForSelector('#op-audio-youtube iframe', { timeout: 8000 });
     const opFrame = await op.evaluate(() => ({ src: document.querySelector('#op-audio-youtube iframe').getAttribute('src'), player: document.getElementById('op-audio-player').hidden, tags: document.querySelectorAll('#op-list .tag-audio').length }));
     check(/embed\/dQw4w9WgXcQ/.test(opFrame.src) && opFrame.player && opFrame.tags === 2, 'the operator: the YouTube player for the linked song, the audio player hidden, ♪ on both songs', opFrame);
+    await ld.waitForSelector('#live-audio-youtube iframe', { timeout: 8000 });
+    check(/embed\/dQw4w9WgXcQ/.test(await ld.evaluate(() => document.querySelector('#live-audio-youtube iframe').getAttribute('src'))), 'the leader: the YouTube player for the linked song');
     await app.command({ type: 'event.end' });
   },
 };

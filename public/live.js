@@ -293,11 +293,30 @@
     return parts;
   }
 
+  // The backing track of the song on the projector (like the operator console): the player
+  // keeps playing across snapshots, its source changes only with the song; nothing while
+  // the event is not live.
+  function renderAudio(item) {
+    const song = item && item.type === 'song' && item.song ? item.song : null;
+    const audioId = song && song.audioMediaId ? `file:${song.audioMediaId}` : song && song.audioUrl ? `url:${song.audioUrl}` : null;
+    if (audioId !== state.audioId) {
+      state.audioId = audioId;
+      const player = $('live-audio-player');
+      player.pause();
+      player.hidden = !(audioId && audioId.startsWith('file:'));
+      if (player.hidden) player.removeAttribute('src'); else player.src = `/api/media/${song.audioMediaId}/file`;
+      const link = audioId && audioId.startsWith('url:') ? (song.audioUrl.match(/[?&]v=([A-Za-z0-9_-]{11})/) || [])[1] : null;
+      $('live-audio-youtube').replaceChildren(...(link ? [window.SONG_AUDIO.youtubeFrame(link, 'live-audio-frame', t('song.audioYoutube'))] : []));
+    }
+    $('live-audio').hidden = !audioId;
+  }
+
   async function renderCurrent() {
     const snap = state.snap;
     const box = $('current');
     const { pos, item } = current();
     const status = snap.status;
+    renderAudio(status === 'live' ? item : null);
     $('prev-button').hidden = status !== 'live';
     $('next-button').hidden = status !== 'live';
     $('end-item-button').hidden = status !== 'live';
@@ -431,6 +450,8 @@
     api, eventId,
     position: () => (state.snap && state.snap.status === 'live' ? viewPos() : null),
     commands: { prev: () => move('prev'), next: () => move('next'), end: endItem, toggleBlack: () => toggleSource('black'), goTo: (pos) => move('goto', pos) },
+    // "▶ Negativ" in the big view: the page's player, while the song on the projector has a file
+    audio: () => (state.audioId && state.audioId.startsWith('file:') ? $('live-audio-player') : null),
     drivesProjector: followsProjector, // the status line then says where the team is
     connection: () => (state.client ? state.client.connection : 'connecting'),
     extraStatus: () => modes.statusText(), // the handover request / answer

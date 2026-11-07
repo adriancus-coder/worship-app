@@ -559,6 +559,7 @@ dialog .message:empty { display: none; }
 .op-audio .audio-youtube { max-width: 360px; }
 .op-audio { margin: 0 0 10px; }
 .op-audio[hidden] { display: none; }
+.live-audio { margin: 0 0 12px; }
 
 /* the Sunday school's "+ Cântare de la școala duminicală" under the programme (viewing) */
 .school-add { margin: 12px 0 0; }
@@ -2874,8 +2875,9 @@ dialog.big-lyrics.whole .big-body { align-items: flex-start; overflow-y: auto; }
 .big-tools { display: flex; gap: 6px; flex: none; }
 .big-tool { min-width: var(--touch); min-height: var(--touch); padding: 6px 10px; font-weight: 700; white-space: nowrap; }
 .big-tool[aria-pressed] { font-size: 0.875rem; }
-/* phones: no room in the top bar for "Toată cântarea"; a tap on the text does it there */
-@media (max-width: 599px) { .big-whole { display: none; } }
+/* phones: no room in the top bar for "Toată cântarea"; a tap on the text does it there; the
+   "Negativ" tool keeps its icon only */
+@media (max-width: 599px) { .big-whole { display: none; } .big-audio .big-audio-text { display: none; } }
 dialog.big-lyrics:not(.whole) .big-text { cursor: pointer; }
 .big-body { display: flex; align-items: center; justify-content: center; min-width: 0; min-height: 0; padding: 8px 16px; overflow: hidden; touch-action: pan-y; }
 dialog.big-lyrics.scrolls .big-body { align-items: flex-start; overflow-y: auto; }
