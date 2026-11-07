@@ -780,25 +780,34 @@ body.is-dragging-list { user-select: none; -webkit-user-select: none; }
 .detail-pane .item-detail.is-empty { padding: 0; }
 .detail-pane .detail-empty:empty { display: none; }
 
+/* The save pill (public/event.js renderSaveBar): floats above the bottom bar only while there is
+   something to save (or an error, or "Salvat." for a moment). */
 .save-bar {
-  position: sticky;
-  bottom: var(--shell-bottom, 0px);
-  z-index: 5;
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--shell-bottom, env(safe-area-inset-bottom, 0px)) + 12px);
+  z-index: 30;
   display: flex;
   align-items: center;
   gap: 12px;
-  margin: 16px -16px 0;
-  padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
-  background: var(--background);
-  border-top: 1px solid var(--border);
+  width: min(560px, calc(100vw - 24px));
+  margin: 0;
+  padding: 8px 8px 8px 16px;
+  transform: translateX(-50%);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 24px var(--overlay);
 }
-
-.save-bar.dirty { border-top-color: var(--accent-fill); }
+.save-bar[hidden] { display: none; }
+.save-bar.dirty { border-color: var(--accent-fill); }
 .save-state { flex: 1; margin: 0; font-size: 0.875rem; color: var(--text-muted); }
 .save-bar.dirty .save-state { color: var(--text); }
 .save-state.error { color: var(--error); }
 .save-bar button { flex: none; min-width: 120px; }
-.save-bar .delete-link { min-width: 0; margin-left: 0; white-space: nowrap; } /* "Șterge evenimentul" lives in the bar, on the left */
+/* while the pill shows, the panes keep room under it for their last row */
+body.save-bar-shown .setlist-scroll, body.save-bar-shown .event-tab-panel, body.save-bar-shown .team-panel { padding-bottom: 72px; }
+.event-tools .delete-link { margin-left: 0; }
 
 .wide-dialog { width: min(560px, calc(100vw - 32px)); }
 .pick-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; max-height: 50vh; overflow-y: auto; }
@@ -823,7 +832,6 @@ body.is-dragging-list { user-select: none; -webkit-user-select: none; }
 @media (min-width: 900px) {
   .editor-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); align-items: start; gap: 24px; }
   .detail-pane { position: sticky; top: 16px; margin-top: 56px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); max-height: calc(100vh - 32px); overflow-y: auto; }
-  .save-bar { margin-left: 0; margin-right: 0; border-radius: var(--radius) var(--radius) 0 0; }
 }
 
 .video-link { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; line-height: 24px; }
@@ -2673,7 +2681,6 @@ body.list-page .setlist-pane { flex: 1 1 auto; display: flex; flex-direction: co
 body.list-page .setlist-pane > * { flex: 0 0 auto; }
 body.list-page .setlist-pane > .setlist-scroll { flex: 1 1 0; height: 0; gap: 12px; }
 body.list-page .setlist-pane h2 { margin: 8px 0; }
-body.list-page .save-bar { position: static; margin-top: 8px; }
 /* The other tabs (Echipa, Propuneri, Proiector, Traducere) scroll in their own pane too, so
    the save bar stays at the bottom of the screen on every tab. */
 body.list-page #event > .team-panel:not([hidden]), body.list-page #event > .event-tab-panel:not([hidden]) { flex: 1 1 0; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--scrollbar-thumb) transparent; }
@@ -3066,15 +3073,9 @@ dialog.whats-new[open] { display: flex; }
   /* the tab bar already says "Program": no second heading above the pane */
   body.list-page .editor-tabs:not([hidden]) ~ .editor-grid .setlist-pane > h2 { display: none; }
   body.list-page .setlist-pane > h2 { margin: 4px 0; }
-  body.list-page .save-bar { gap: 8px; margin-top: 4px; padding: 6px 12px calc(6px + env(safe-area-inset-bottom)); }
+  body.list-page .save-bar { gap: 8px; }
   body.list-page .save-state { font-size: 0.8125rem; line-height: 1.25; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
   body.list-page .save-bar button { min-width: 0; }
-  /* no room for "Modificări nesalvate" next to "Șterge evenimentul" on a phone: the filled
-     "Salvează" and the accent line say it; the words stay for screen readers. An error shows. */
-  body.list-page .save-state:not(.error) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-  body.list-page .save-bar .delete-link { flex: 1 1 auto; }
-  body.list-page .save-bar .delete-link:has(+ .save-state.error) { flex: 0 1 auto; min-width: var(--touch); overflow: hidden; }
-  body.list-page .save-state.error { flex: 1 1 6rem; }
   body.list-page .item-detail { padding: 10px; }
 }
 

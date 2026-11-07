@@ -258,17 +258,29 @@
     return d.toISOString().slice(0, 10);
   }
 
+  // The save pill: shown while there are unsaved changes, while saving, on an error, and
+  // for a moment with "Salvat."; hidden otherwise, so the Program has the whole screen.
+  let savedTimer = null;
   function renderSaveBar() {
     const bar = $('save-bar');
-    bar.hidden = !state.editing;
-    if (!state.editing) return;
-    const dirty = isDirty();
+    const deleteButton = $('delete-button');
+    if (deleteButton.hidden !== !state.editing) {
+      deleteButton.hidden = !state.editing;
+      renderToolsMenu();
+    }
+    const dirty = state.editing && isDirty();
+    const shown = state.editing && (dirty || state.saving || Boolean(state.lastSaveError) || state.justSaved);
+    bar.hidden = !shown;
+    document.body.classList.toggle('save-bar-shown', shown);
+    if (!shown) return;
     bar.classList.toggle('dirty', dirty);
     saveButton.disabled = !dirty || state.saving;
     saveButton.textContent = state.saving ? t('setlist.saving') : t('setlist.save');
     saveState.className = `save-state${state.lastSaveError ? ' error' : ''}`;
     saveState.textContent = state.lastSaveError
       || (dirty ? t('setlist.unsaved') : (state.justSaved ? t('setlist.saved') : ''));
+    clearTimeout(savedTimer);
+    if (state.justSaved && !dirty && !state.saving && !state.lastSaveError) savedTimer = setTimeout(() => { state.justSaved = false; renderSaveBar(); }, 2500);
   }
 
   // --- setlist ------------------------------------------------------------------

@@ -91,7 +91,8 @@ module.exports = {
       const options = await p.evaluate(() => [...document.querySelectorAll('#q-copy option')].map((o) => o.textContent));
       check(options.some((o) => /Trecut/.test(o)), `${tag} "Copie a evenimentului": the past events`, options);
       await p.selectOption('#q-copy', String(past.id));
-      await p.waitForFunction(() => document.querySelectorAll('#items li').length === 2, null, { timeout: 5000 });
+      // (the fresh event already has 2 items: wait for the copy itself, not for a count)
+      await p.waitForFunction(() => /Trecut/.test(document.getElementById('quick-message').textContent), null, { timeout: 5000 });
       const copied = await items(id);
       check(copied.length === 2 && copied.map((it) => it.type).join(',') === 'song,announcement' && copied.every((it) => !pastItems.includes(it.id)) && /Trecut/.test(await p.textContent('#quick-message')), `${tag} the copy has the past event's items with new ids`, copied.map((it) => it.id));
       check((await items(past.id)).length === 2, `${tag} the past event keeps its own items`);
