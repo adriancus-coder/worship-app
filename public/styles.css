@@ -992,8 +992,10 @@ body.live-compact .live-grid { display: block; }
 body.live-compact .live-setlist { width: 100%; max-width: 720px; }
 body.live-compact .live-item { padding: 12px; }
 body.live-compact .live-item .item-title { font-size: 1.125rem; }
-body.live-compact .live-item .item-key { font-size: 1rem; font-weight: 700; color: var(--text); }
-.live-item .item-key-none, body.live-compact .live-item .item-key-none { font-weight: 500; color: var(--text-muted); }
+/* the key in the Program: a filled pill, read at a glance (the compact view is the leader's key list) */
+.live-item .item-key { align-self: flex-start; margin-top: 2px; padding: 2px 10px; font-size: 0.9375rem; font-weight: 700; color: var(--on-accent); background: var(--accent-fill); border-radius: 999px; }
+body.live-compact .live-item .item-key { font-size: 1.0625rem; padding: 3px 12px; }
+.live-item .item-key-none, body.live-compact .live-item .item-key-none { font-weight: 500; color: var(--text-muted); background: transparent; border: 1px dashed var(--border); }
 body.live-compact .live-item .type-badge, body.live-compact .live-item .op-markers { display: none; }
 body.live-compact .live-item.current { box-shadow: inset 0 0 0 1px var(--accent-fill); }
 body.live-compact .item-arrange, body.live-compact .press-hint { display: none; } /* the long press still arranges */
