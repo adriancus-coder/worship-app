@@ -259,7 +259,9 @@
           el('span', { class: `type-badge type-${item.type}`, text: t(`setlist.types.${item.type}`) }),
           isCurrent ? el('span', { class: 'op-markers' }, el('span', { class: 'live-badge', text: t('live.liveBadge') })) : null),
         el('span', { class: 'item-title', text: itemTitle(item) }),
+        // the key; a song without one says so (the compact view is the leader's key list)
         item.type === 'song' && item.displayKey ? el('span', { class: 'item-sub item-key', text: t('options.songKeyShort', { key: window.NOTATION.chord(item.displayKey) }) }) : null,
+        item.type === 'song' && item.songId && !item.displayKey ? el('span', { class: 'item-sub item-key item-key-none', text: t('library.noKeyTag') }) : null,
         item.who ? el('span', { class: 'item-sub', text: item.who }) : null));
       // Short tap: the team goes there (before the start: the song opens under the row);
       // long press (or "Aranjează"): the arrange sheet.

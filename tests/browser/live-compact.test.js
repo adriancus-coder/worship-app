@@ -13,6 +13,10 @@ module.exports = {
   async run({ app, signIn, check }) {
     const E = app.seed.eventId;
     const items = app.seed.items;
+    // a song without a key at the end of the Program: the list says "fără ton" for it
+    const noKeyId = (await app.api(app.cookies.owner, 'POST', '/api/songs', { title: 'Cântare fără ton', sections: [{ type: 'verse', content: 'Un rând' }] })).body.song.id;
+    const current = (await app.api(app.cookies.owner, 'GET', `/api/events/${E}`)).body.items;
+    await app.api(app.cookies.owner, 'PUT', `/api/events/${E}/items`, { items: [...current, { type: 'song', songId: noKeyId }] });
     await app.command({ type: 'event.start' });
     // a fake wake lock, counted
     const WAKE = `Object.defineProperty(navigator, 'wakeLock', { value: { request: () => { window.__wake = (window.__wake || 0) + 1; return Promise.resolve({ released: false, release: () => Promise.resolve() }); } } });`;
@@ -36,12 +40,14 @@ module.exports = {
       info: getComputedStyle(document.querySelector('.live-info')).display,
       list: document.querySelectorAll('#setlist .live-item').length,
       keys: [...document.querySelectorAll('#setlist .item-key')].map((x) => x.textContent),
+      noKey: [...document.querySelectorAll('#setlist .live-item')].map((li) => (li.querySelector('.item-key-none') ? li.querySelector('.item-key-none').textContent : null)),
       pressed: document.querySelector('#live-view [aria-pressed="true"]').dataset.view,
       stored: localStorage.getItem('wa_live_compact'),
       wake: window.__wake || 0,
     }));
     check(compact.current === 'none' && compact.info === 'none' && compact.list >= 5 && compact.keys.length >= 3 && compact.pressed === 'compact' && compact.stored === '1' && compact.wake >= 1,
       'compact: only the Program with the keys; the choice kept; the screen kept on', compact);
+    check(compact.noKey[compact.noKey.length - 1] === 'fără ton' && compact.noKey.filter(Boolean).length === 1, 'the song without a key says "fără ton", the others not', compact.noKey);
     const a = await layoutAudit(p, '#live');
     check(!a.overflow && !a.small.length, 'the compact view 375: no overflow, targets >= 44 px', a);
 
