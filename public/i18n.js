@@ -2244,7 +2244,7 @@
         presenter: 'prezentator',
         leader: 'lider worship',
         operator: 'operator',
-        member: 'membru',
+        member: 'membru worship',
       },
       bridge: {
         heading: 'Traducere (Sanctuary Voice)',
@@ -4530,7 +4530,7 @@
         presenter: 'presenter',
         leader: 'worship leader',
         operator: 'operator',
-        member: 'member',
+        member: 'worship team member',
       },
       bridge: {
         heading: 'Translation (Sanctuary Voice)',
