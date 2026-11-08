@@ -74,6 +74,17 @@ module.exports = {
     await p.focus('#setlist li:nth-child(2) .live-item-grip');
     await p.keyboard.press('ArrowUp'); // back, so the ticks below read as before
     await wait(600);
+    // compact, live: a tap on a song opens its preview under the row; a tap on a section sends the team there
+    await p.click('#setlist li:nth-child(3) .live-item .item-title');
+    await p.waitForSelector('#setlist li:nth-child(3) .now-song .song-section');
+    check((await app.state()).worship.itemId === items[0], 'a tap on the row opens the preview, the team has not moved', (await app.state()).worship);
+    await p.click('#setlist li:nth-child(3) .now-song .song-section >> nth=0');
+    await p.waitForFunction(() => !document.querySelector('#setlist .now-song'));
+    await wait(300);
+    check((await app.state()).worship.itemId === items[2] && (await app.state()).worship.step === 0, 'a tap on its first section: the team goes there, the preview closes', (await app.state()).worship);
+    await app.command({ type: 'worship.goto', itemId: items[0], step: 0 });
+    await wait(300);
+
     // the key from the Program: a tap on a key badge opens the popover under its row; a pick
     // saves the transposition for the event; a song without a key gets its library key
     await p.click('#setlist li:nth-child(1) .item-key');

@@ -37,6 +37,7 @@
     state.compact = Boolean(value);
     try { localStorage.setItem(COMPACT_KEY, state.compact ? '1' : '0'); } catch { /* this page only */ }
     renderView();
+    if (state.snap && state.event) renderSetlist(); // the rows' tap differs (compact: the song opens)
   }
   function renderView() {
     document.body.classList.toggle('live-compact', state.compact);
@@ -232,6 +233,17 @@
     api, eventId: () => eventId,
     items: () => state.items.filter((it) => it.type === 'song' && it.songId),
     onItemChange: (itemId) => { if (state.expanded !== itemId) { state.expanded = itemId; renderSetlist(); } },
+    // live: a tap on a section of the opened song sends the team there (the compact view's
+    // preview); before the start the big view opens at that section, as on the home card
+    onSection: (it, sectionId) => {
+      if (!state.snap || state.snap.status !== 'live') return false;
+      const steps = it.arrangementResolved || [];
+      const step = steps.findIndex((s) => s.sectionId === sectionId);
+      move('goto', { itemId: it.id, step: step < 0 ? 0 : step });
+      state.expanded = null;
+      renderSetlist();
+      return true;
+    },
   });
   function toggleSong(item) {
     state.expanded = state.expanded === item.id ? null : item.id;
@@ -313,7 +325,9 @@
     $('setlist').replaceChildren(...state.items.map((item, i) => {
       const isCurrent = live && pos.itemId === item.id;
       const canArrange = live && arrangeable(item);
-      const readable = !live && item.type === 'song' && Boolean(item.songId);
+      // a song opens under its row before the start and, in the compact view, live too (a
+      // tap on a section then sends the team there)
+      const readable = (!live || state.compact) && item.type === 'song' && Boolean(item.songId);
       const open = readable && state.expanded === item.id;
       const goThere = () => move('goto', { itemId: item.id, step: 0 });
       const title = itemTitle(item);

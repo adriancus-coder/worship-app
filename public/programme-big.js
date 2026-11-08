@@ -11,6 +11,8 @@
 //     eventId()          -> the programme's event id (the home card's event can change)
 //     items()            -> the programme's song items, in order ({ id, songId, title, ... })
 //     onItemChange(id)   -> the big view moved into another song (the page opens that row)
+//     onSection(it, sectionId) -> optional: a tap on a section; true when the page handled it
+//                           (the live page while live: the team goes there), else the big view
 //   songs.box(it)        -> element: the song under its row (loading / error / the sections;
 //                           a tap on a section opens the big view there)
 //   songs.sections(it, { hint })  -> the same sections alone, for a page's own box
@@ -23,7 +25,7 @@
 (function () {
   const TEXT_ONLY_KEY = 'wa_text_only'; // the same choice as the song page
 
-  function create({ api, eventId, items, onItemChange = () => {} }) {
+  function create({ api, eventId, items, onItemChange = () => {}, onSection = null }) {
     const { el } = window.PAGE;
     const { t } = window.I18N;
     const cache = new Map(); // item id -> promise of the song
@@ -68,7 +70,9 @@
           const section = event.target.closest('.song-section');
           if (!section) return;
           const index = [...section.parentNode.children].filter((n) => n.classList.contains('song-section')).indexOf(section);
-          open(it, s.sections[order[index]].id);
+          const sectionId = s.sections[order[index]].id;
+          if (onSection && onSection(it, sectionId)) return;
+          open(it, sectionId);
         } }, ...window.SONG_RENDER.sectionsView(order.map((i) => s.sections[i]), { textOnly: textOnly(), headingLevel: 3, labels: order.map((i) => labels[i]) })),
       ].filter(Boolean);
     }
