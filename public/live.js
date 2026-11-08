@@ -348,7 +348,9 @@
       // of the row keeps its tap
       const tapRow = readable ? () => toggleSong(item) : goThere;
       window.PRESS.bind(main, { tap: (event) => (event && event.target && event.target.closest && event.target.closest('.item-key') && canPickKey(item) ? pickKey(item) : tapRow()), hold: canArrange ? () => arrange(item, goThere) : null });
-      return el('li', { class: `${canArrange ? 'has-arrange' : ''}${open ? ' is-open' : ''}${state.pickedKey === item.id ? ' is-picked' : ''}` || null }, tick, main, canArrange ? arrangeButton(item, () => arrange(item, goThere)) : null, reorderable() ? gripButton(item, i) : null,
+      // the row box keeps the tick and the grip centred on the row itself, whatever opens under it
+      return el('li', { class: `${canArrange ? 'has-arrange' : ''}${open ? ' is-open' : ''}${state.pickedKey === item.id ? ' is-picked' : ''}` || null },
+        el('div', { class: 'live-row' }, tick, main, canArrange ? arrangeButton(item, () => arrange(item, goThere)) : null, reorderable() ? gripButton(item, i) : null),
         state.pickedKey === item.id ? keyPopover(item) : null,
         open ? programme.box(item) : null);
     }));

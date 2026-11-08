@@ -74,7 +74,7 @@ module.exports = {
     check(await scr() === 'BLACK', 'offline: "■ Sfârșit" -> black (logo or not), the position stays');
     await lp.click('#next-button');
     check(await until('Primul'), 'offline: next after it -> the next song, content back');
-    await lp.click('#setlist > li:nth-child(4) > .live-item');
+    await lp.click('#setlist > li:nth-child(4) .live-item');
     check(await until('Agapă|serviciu'), 'offline: a Program tap moves the projector');
 
     // 2. back, nobody else moved: this page's position goes to the server

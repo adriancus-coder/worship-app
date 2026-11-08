@@ -46,8 +46,8 @@ module.exports = {
     };
     await moveTo('start', () => lp.click('#start-button'), 'Ne ridici');
     await moveTo('next', () => lp.click('#next-button'), 'Sfânt');
-    await moveTo('the verse', () => lp.click('#setlist > li:nth-child(2) > .live-item'), 'Cezar');
-    await moveTo('the 6-line song', () => lp.click('#setlist > li:nth-child(3) > .live-item'), 'Primul');
+    await moveTo('the verse', () => lp.click('#setlist > li:nth-child(2) .live-item'), 'Cezar');
+    await moveTo('the 6-line song', () => lp.click('#setlist > li:nth-child(3) .live-item'), 'Primul');
     for (const [w, h] of [[1280, 720], [1920, 1080]]) {
       await sp.setViewportSize({ width: w, height: h });
       await sp.waitForTimeout(300);

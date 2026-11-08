@@ -59,7 +59,7 @@ module.exports = {
           const p = await signIn(role, { width, lang });
           await p.goto(`${app.url}/events/${E}/${sub}${role === 'leader' && sub === 'live' ? '?view=full' : ''}`); // a leader lands in the lyrics otherwise
           await p.waitForSelector(`${list} ${item}:not([disabled])`);
-          const nth = (i) => `${list} > li:nth-child(${i}) > ${item}`;
+          const nth = (i) => `${list} > li:nth-child(${i}) ${item}`; // the live row sits in its own box
           const where = () => p.evaluate((sel) => document.querySelector(sel)?.textContent, current);
           await p.click(nth(1));
           await wait(400);

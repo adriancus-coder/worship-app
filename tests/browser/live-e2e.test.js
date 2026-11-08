@@ -39,9 +39,9 @@ module.exports = {
     await move('next (section)', () => lp.click('#next-button'), 'Sfânt în G');
     await move('next (the verse)', () => lp.click('#next-button'), 'Luca 2:1-7');
     await move('prev', () => lp.click('#prev-button'), 'Sfânt în G');
-    await move('tap Program item 3', () => lp.click('#setlist > li:nth-child(3) > .live-item'), 'Șase rânduri');
+    await move('tap Program item 3', () => lp.click('#setlist > li:nth-child(3) .live-item'), 'Șase rânduri');
     await move('key →', () => lp.keyboard.press('ArrowRight'), 'Agapă');
-    await move('tap a step of song 1', async () => { await lp.click('#setlist > li:nth-child(1) > .live-item'); await lp.waitForSelector('.step >> nth=1'); await lp.click('.step >> nth=1'); }, 'Sfânt în G');
+    await move('tap a step of song 1', async () => { await lp.click('#setlist > li:nth-child(1) .live-item'); await lp.waitForSelector('.step >> nth=1'); await lp.click('.step >> nth=1'); }, 'Sfânt în G');
     check(worst < 1000, `every move reached the member within a second (worst ${worst} ms)`);
 
     const forced = await mp.evaluate((eventId) => new Promise((resolve) => {
