@@ -106,35 +106,15 @@
     await load();
   }
 
-  function keySetter(it) {
-    if (!canEditLibrary(state.me)) return el('p', { class: 'muted now-key-hint', text: t('home.keyNoKey') });
-    const base = state.keyMinor ? 'Am' : 'C';
-    const keys = [];
-    for (let n = 0; n < 12; n++) keys.push(window.CHORDS.keyAfter(base, n));
-    keys.sort((a, b) => keyIndex(a) - keyIndex(b));
-    return el('div', { class: 'now-key-row' },
-      el('span', { class: 'now-section-label', id: 'now-key-label', text: t('home.keySetLabel', { title: itemLabel(it) }) }),
-      el('div', { class: 'now-key-set' },
-        el('button', { type: 'button', class: 'now-key-minor', 'aria-pressed': String(state.keyMinor), text: t('home.keyMinor'), onclick: () => { state.keyMinor = !state.keyMinor; render(); } }),
-        el('div', { class: 'choice-group now-keys', role: 'group', 'aria-labelledby': 'now-key-label' },
-          ...keys.map((k) => el('button', { type: 'button', 'data-key': k, 'aria-pressed': 'false', disabled: state.keyBusy ? 'disabled' : null, text: window.NOTATION.chord(k), onclick: () => setSongKey(it, k) })))));
-  }
-
+  // The popover under the picked row (public/key-popover.js): the key for this event, or the
+  // library key for a song that has none.
   function keyChoice(event, it) {
-    if (!it.songKey) return keySetter(it);
-    const base = keyIndex(it.songKey);
-    const current = ((it.transpose % 12) + 12) % 12;
-    const keys = [];
-    for (let n = 0; n < 12; n++) keys.push({ n, name: window.CHORDS.keyAfter(it.songKey, n), index: (base + n) % 12 });
-    keys.sort((a, b) => a.index - b.index);
-    return el('div', { class: 'now-key-row' },
-      el('span', { class: 'now-section-label', id: 'now-key-label', text: t('home.keyLabel', { title: itemLabel(it) }) }),
-      el('div', { class: 'choice-group now-keys', role: 'group', 'aria-labelledby': 'now-key-label' },
-        ...keys.map((k) => el('button', {
-          type: 'button', 'data-key': k.name, 'aria-pressed': String(k.n === current), disabled: state.keyBusy ? 'disabled' : null,
-          text: window.NOTATION.chord(k.name),
-          onclick: () => { if (k.n !== current) chooseKey(event, it, k.n > 6 ? k.n - 12 : k.n); },
-        }))));
+    return window.KEY_POPOVER.build({
+      title: itemLabel(it), songKey: it.songKey, transpose: it.transpose, canSetKey: canEditLibrary(state.me), minor: state.keyMinor, busy: state.keyBusy,
+      onMinor: () => { state.keyMinor = !state.keyMinor; render(); },
+      onTranspose: (semitones) => chooseKey(event, it, semitones),
+      onSetKey: (key) => setSongKey(it, key),
+    });
   }
 
   // --- the song under its row, and the big view --------------------------------------------

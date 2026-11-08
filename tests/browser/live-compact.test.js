@@ -74,6 +74,29 @@ module.exports = {
     await p.focus('#setlist li:nth-child(2) .live-item-grip');
     await p.keyboard.press('ArrowUp'); // back, so the ticks below read as before
     await wait(600);
+    // the key from the Program: a tap on a key badge opens the popover under its row; a pick
+    // saves the transposition for the event; a song without a key gets its library key
+    await p.click('#setlist li:nth-child(1) .item-key');
+    await p.waitForSelector('#setlist li:nth-child(1) .now-key-row .now-keys');
+    const popover = await p.evaluate(() => ({ keys: document.querySelectorAll('#setlist li:nth-child(1) .now-keys button').length, pressed: document.querySelector('#setlist li:nth-child(1) .now-keys [aria-pressed="true"]').dataset.key, badge: document.querySelector('#setlist li:nth-child(1) .item-key').getAttribute('aria-pressed') }));
+    check(popover.keys === 12 && popover.pressed === 'G' && popover.badge === 'true', 'a tap on "Ton G" opens the 12 keys under the row, G selected', popover);
+    await p.click('#setlist li:nth-child(1) .now-keys [data-key="A"]');
+    await p.waitForFunction(() => /Ton A/.test(document.querySelector('#setlist li:nth-child(1) .item-key').textContent), null, { timeout: 5000 });
+    const transposed = (await app.api(app.cookies.owner, 'GET', `/api/events/${E}`)).body.items[0];
+    check(transposed.transpose === 2 && transposed.displayKey === 'A' && !(await p.locator('#setlist .now-key-row').count()), 'A picked: the event item is transposed +2, the popover closes', { transpose: transposed.transpose, displayKey: transposed.displayKey });
+    await p.click('#setlist li:nth-child(1) .item-key');
+    await p.waitForSelector('#setlist .now-key-row');
+    await p.click('#setlist li:nth-child(1) .now-keys [data-key="G"]'); // back
+    await p.waitForFunction(() => /Ton G/.test(document.querySelector('#setlist li:nth-child(1) .item-key').textContent), null, { timeout: 5000 });
+    const last = (await app.api(app.cookies.owner, 'GET', `/api/events/${E}`)).body.items.length;
+    await p.click(`#setlist li:nth-child(${last}) .item-key-none`); // the song without a key
+    await p.waitForSelector(`#setlist li:nth-child(${last}) .now-key-minor`);
+    await p.click(`#setlist li:nth-child(${last}) .now-key-minor`);
+    await p.waitForSelector(`#setlist li:nth-child(${last}) .now-keys [data-key="Em"]`);
+    await p.click(`#setlist li:nth-child(${last}) .now-keys [data-key="Em"]`);
+    await p.waitForFunction((n) => /Ton Em|Ton Mim/.test(document.querySelector(`#setlist li:nth-child(${n}) .item-key`).textContent), last, { timeout: 5000 });
+    check((await app.api(app.cookies.owner, 'GET', `/api/songs/${noKeyId}`)).body.song.song_key === 'Em', 'a song without a key: "minor" then Em sets the library key', null);
+
     // "Adaugă": the console's add panel on this page too (search, "În setlist"), the Program hidden meanwhile
     await p.click('#live-tab-add');
     const addTab = await p.evaluate(() => ({ list: document.getElementById('setlist').hidden, add: document.getElementById('live-add').hidden, stored: localStorage.getItem('wa_live_left'), newSong: !document.getElementById('live-new-song').disabled }));

@@ -25,7 +25,7 @@
   // lyrics, and closing them returns to the event page (public/big-lyrics.js onClose), unless
   // the leader asked for the full page.
   const view = new URLSearchParams(window.location.search).get('view');
-  const state = { event: null, items: [], loadedKey: null, loading: null, songs: new Map(), snap: null, seq: 0, client: null, queue: Promise.resolve(), cached: null,
+  const state = { event: null, items: [], loadedKey: null, loading: null, songs: new Map(), snap: null, seq: 0, client: null, queue: Promise.resolve(), cached: null, pickedKey: null, keyBusy: false, keyMinor: false,
     openLyrics: view === 'lyrics', view, leader: false, pageMode: view === 'full',
     expanded: null }; // before the start: the song opened under its row (as on the home card)
   const FOLLOW_KEY = 'wa_live_follow';
@@ -235,6 +235,45 @@
     renderSetlist();
   }
 
+  // --- the key from the Program (public/key-popover.js, as on the home card) ----------------
+  // A song with a key: the key for this event (the 'events' right; saved like the arrange
+  // sheet's transposition). Without one: the library key (the library right).
+  const canPickKey = (item) => Boolean(item.type === 'song' && item.songId && state.me && (item.song && item.song.key ? window.PAGE.canEditEvents(state.me) : window.PAGE.canEdit(state.me)));
+  function pickKey(item) {
+    state.pickedKey = state.pickedKey === item.id ? null : item.id;
+    renderSetlist();
+  }
+  async function keyDone(res) {
+    state.keyBusy = false;
+    if (res && res.error) { showMessage(res.error, true); renderSetlist(); return; }
+    showMessage('');
+    state.pickedKey = null;
+    state.loadedKey = null;
+    state.loading = null; // a library key change leaves the setlist key as it was: reload anyway
+    state.songs.clear();
+    if (state.snap) syncSetlist(state.snap).then(render).catch(() => {});
+  }
+  function keyPopover(item) {
+    return window.KEY_POPOVER.build({
+      title: itemTitle(item), songKey: item.song && item.song.key, transpose: item.transpose || 0, canSetKey: Boolean(state.me && window.PAGE.canEdit(state.me)),
+      minor: state.keyMinor, busy: state.keyBusy, arrow: 'left',
+      onMinor: () => { state.keyMinor = !state.keyMinor; renderSetlist(); },
+      onTranspose: async (semitones) => {
+        if (state.keyBusy) return;
+        state.keyBusy = true;
+        renderSetlist();
+        keyDone(await window.ARRANGE_SHEET.saveToEvent(eventId, item.id, { transpose: semitones }));
+      },
+      onSetKey: async (key) => {
+        if (state.keyBusy) return;
+        state.keyBusy = true;
+        renderSetlist();
+        const res = await api(`/api/songs/${item.songId}`, { method: 'PUT', body: { song_key: key } }).catch(() => null);
+        keyDone(res && res.ok ? {} : { error: (res && res.body && res.body.error) || t('common.networkError') });
+      },
+    });
+  }
+
   // --- the Program in another order (the compact view's grips; the 'events' right) --------
   // The shared items' ids in the new order go to the server (positions follow the items);
   // the list shows the new order at once, the snapshot's setlistKey confirms it.
@@ -300,13 +339,18 @@
           isCurrent ? el('span', { class: 'op-markers' }, el('span', { class: 'live-badge', text: t('live.liveBadge') })) : null),
         el('span', { class: 'item-title', text: itemTitle(item) }),
         // the key; a song without one says so (the compact view is the leader's key list)
-        item.type === 'song' && item.displayKey ? el('span', { class: 'item-sub item-key', text: t('options.songKeyShort', { key: window.NOTATION.chord(item.displayKey) }) }) : null,
-        item.type === 'song' && item.songId && !item.displayKey ? el('span', { class: 'item-sub item-key item-key-none', text: t('library.noKeyTag') }) : null,
+        item.type === 'song' && item.displayKey ? el('span', { class: `item-sub item-key${canPickKey(item) ? ' is-pickable' : ''}`, 'aria-pressed': canPickKey(item) ? String(state.pickedKey === item.id) : null, text: t('options.songKeyShort', { key: window.NOTATION.chord(item.displayKey) }) }) : null,
+        item.type === 'song' && item.songId && !item.displayKey ? el('span', { class: `item-sub item-key item-key-none${canPickKey(item) ? ' is-pickable' : ''}`, 'aria-pressed': canPickKey(item) ? String(state.pickedKey === item.id) : null, text: t('library.noKeyTag') }) : null,
         item.who ? el('span', { class: 'item-sub', text: item.who }) : null));
       // Short tap: the team goes there (before the start: the song opens under the row);
       // long press (or "Aranjează"): the arrange sheet.
-      window.PRESS.bind(main, { tap: readable ? () => toggleSong(item) : goThere, hold: canArrange ? () => arrange(item, goThere) : null });
-      return el('li', { class: `${canArrange ? 'has-arrange' : ''}${open ? ' is-open' : ''}` || null }, tick, main, canArrange ? arrangeButton(item, () => arrange(item, goThere)) : null, reorderable() ? gripButton(item, i) : null, open ? programme.box(item) : null);
+      // a tap on the key badge opens the key popover under the row (the editor roles); the rest
+      // of the row keeps its tap
+      const tapRow = readable ? () => toggleSong(item) : goThere;
+      window.PRESS.bind(main, { tap: (event) => (event && event.target && event.target.closest && event.target.closest('.item-key') && canPickKey(item) ? pickKey(item) : tapRow()), hold: canArrange ? () => arrange(item, goThere) : null });
+      return el('li', { class: `${canArrange ? 'has-arrange' : ''}${open ? ' is-open' : ''}${state.pickedKey === item.id ? ' is-picked' : ''}` || null }, tick, main, canArrange ? arrangeButton(item, () => arrange(item, goThere)) : null, reorderable() ? gripButton(item, i) : null,
+        state.pickedKey === item.id ? keyPopover(item) : null,
+        open ? programme.box(item) : null);
     }));
     if (!state.items.length) $('setlist').replaceChildren(el('li', { class: 'muted', text: t('setlist.empty') }));
     showPressHint();
