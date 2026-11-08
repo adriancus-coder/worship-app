@@ -271,9 +271,9 @@
           clearTimeout(timer);
           return;
         }
-        if (notice.type !== 'itemAdded') return;
+        if (notice.type !== 'itemAdded' && notice.type !== 'itemRemoved') return;
         box.classList.remove('proposal-toast');
-        const key = notice.target === 'projector' ? 'live.modes.itemAddedProjector' : 'live.modes.itemAdded';
+        const key = notice.type === 'itemRemoved' ? 'live.modes.itemRemovedProjector' : (notice.target === 'projector' ? 'live.modes.itemAddedProjector' : 'live.modes.itemAdded');
         box.textContent = t(key, { name: notice.by || t('live.modes.someone'), title: notice.title || '' });
         box.hidden = false;
         clearTimeout(timer);

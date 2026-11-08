@@ -1497,6 +1497,7 @@
         setlistHeading: 'Program',
         tags: {
           projectorOnly: 'DOAR PROIECTOR',
+          removeLabel: 'Scoate de pe proiector: {title}',
           audio: '♪ NEGATIV',
         },
         audioLabel: 'Negativ (se aude pe acest dispozitiv)',
@@ -1622,6 +1623,7 @@
           projectorOnlyNote: 'Proiectorul arată un element doar pentru proiector.',
           splitKeysHint: 'Proiectorul nu e al tău: B, L și K nu fac nimic aici.',
           itemAdded: '{name} a adăugat în setlist: {title}',
+          itemRemovedProjector: '{name} a scos de pe proiector: {title}',
           itemAddedProjector: '{name} a adăugat pe proiector: {title}',
           someone: 'Cineva',
           handoverSent: 'Cerere trimisă… {s} s',
@@ -3793,6 +3795,7 @@
         setlistHeading: 'Setlist',
         tags: {
           projectorOnly: 'PROJECTOR ONLY',
+          removeLabel: 'Take off the projector: {title}',
           audio: '♪ BACKING TRACK',
         },
         audioLabel: 'Backing track (plays on this device)',
@@ -3918,6 +3921,7 @@
           projectorOnlyNote: 'The projector shows a projector-only item.',
           splitKeysHint: 'The projector is not yours: B, L and K do nothing here.',
           itemAdded: '{name} added to the setlist: {title}',
+          itemRemovedProjector: '{name} took off the projector: {title}',
           itemAddedProjector: '{name} added to the projector: {title}',
           someone: 'Someone',
           handoverSent: 'Request sent… {s} s',

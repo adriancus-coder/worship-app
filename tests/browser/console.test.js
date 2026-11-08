@@ -86,6 +86,8 @@ module.exports = {
     await p.waitForFunction(() => /proiector/.test(document.getElementById('op-message').textContent + (document.querySelector('#add-songs .row-state') || {}).textContent), null, { timeout: 4000 }).catch(() => {});
     await wait(400);
     check(await p.locator('.op-item.projector-only').count() === 1, '"Doar pe proiector": a projector-only item in the console list');
+    const place = await p.evaluate(() => { const lis = [...document.querySelectorAll('#op-list > li')]; return { last: lis[lis.length - 1].querySelector('.op-item.projector-only') !== null, remove: Boolean(lis[lis.length - 1].querySelector('.item-remove')) }; });
+    check(place.last && place.remove, 'the projector-only item sits last, after the team\'s Program, with a ✕', place);
     const team = (await app.api(app.cookies.member, 'GET', `/api/events/${E}`)).body.items.length;
     check(team === 6, 'the team does not see it (the 5 seeded + the one appended before the start)', team);
     await p.fill('#add-q', 'sfant');
@@ -93,6 +95,11 @@ module.exports = {
     await p.click('#add-songs li >> nth=0 >> button:has-text("În setlist")');
     await wait(600);
     check((await app.api(app.cookies.member, 'GET', `/api/events/${E}`)).body.items.length === 7, '"În setlist": the team sees it at once');
+    // the projector-only item added by mistake: ✕ takes it out (on the Program tab)
+    await p.click('#op-tab-program');
+    await p.click('#op-list .has-remove .item-remove');
+    await p.waitForFunction(() => document.querySelectorAll('#op-list .op-item.projector-only').length === 0, null, { timeout: 5000 });
+    check((await app.api(app.cookies.member, 'GET', `/api/events/${E}`)).body.items.length === 7, '✕ on it: gone from the console, the team\'s Program untouched');
     for (const [w, h] of [[1440, 900], [1024, 768], [375, 800]]) {
       await p.setViewportSize({ width: w, height: h });
       await wait(300);

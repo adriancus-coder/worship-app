@@ -1129,7 +1129,7 @@ async function main() {
     const opSnap = opStates.find((st) => st.version === version) || await next(op.socket, 'live:state', (st) => st.version === version);
     assert.strictEqual(opSnap.requests, undefined, 'no requests any more');
     const added = opSnap.items.find((it) => it.scope === 'projector');
-    assert.deepStrictEqual([opSnap.items.map((it) => it.id).indexOf(added.id), added.title], [1, 'Mare ești'], 'right after the current item');
+    assert.deepStrictEqual([opSnap.items.map((it) => it.id).indexOf(added.id), added.title], [opSnap.items.length - 1, 'Mare ești'], 'at the end of the list: after the team\'s Program');
     const memberEvent = (await api('GET', `/api/events/${ev.id}`, member)).body;
     assert.ok(!memberEvent.items.some((it) => it.id === added.id));
     assert.strictEqual((await api('GET', `/api/events/${ev.id}/items/${added.id}/song`, member)).status, 404);
@@ -1147,6 +1147,16 @@ async function main() {
     assert.deepStrictEqual(after.slice(0, 2), ['Sfânt', 'Ioan 3:16'], 'after the current main item');
     await new Promise((r) => setTimeout(r, 100));
     assert.deepStrictEqual(notices.leader[1] && [notices.leader[1].title, notices.leader[1].target], ['Ioan 3:16', 'setlist']);
+    // a projector-only item added by mistake goes again (operator.removeItem): only such items, event roles only
+    const sharedId = (await api('GET', `/api/events/${ev.id}`, member)).body.items[1].id;
+    assert.strictEqual((await emit(op.socket, 'live:command', { eventId: ev.id, type: 'operator.removeItem', itemId: sharedId })).code, 'badItem', 'a shared item is the editor\'s');
+    assert.strictEqual((await emit(mem.socket, 'live:command', { eventId: ev.id, type: 'operator.removeItem', itemId: added.id })).code, 'forbidden');
+    reply = await emit(op.socket, 'live:command', { eventId: ev.id, type: 'operator.removeItem', itemId: added.id });
+    assert.strictEqual(reply.ok, true, JSON.stringify(reply));
+    version = reply.version;
+    assert.strictEqual((await api('GET', `/api/events/${ev.id}/items/${added.id}/song`, leader)).status, 404, 'gone');
+    await new Promise((r) => setTimeout(r, 100));
+    assert.deepStrictEqual(notices.leader.at(-1) && [notices.leader.at(-1).type, notices.leader.at(-1).title], ['itemRemoved', 'Mare ești'], 'the others are told');
     // the approval commands are gone; members add nothing
     assert.strictEqual((await send(lead.socket, { type: 'request.accept', itemId: added.id, position: 'end' })).code, 'badCommand');
     assert.strictEqual((await add(mem.socket, 'setlist', { type: 'verse', reference: 'x' })).code, 'forbidden');

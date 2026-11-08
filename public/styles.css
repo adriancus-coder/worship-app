@@ -2780,6 +2780,11 @@ body.live-compact .live-row:has(> .live-item-grip) > .live-item { padding-right:
 /* before the start: the song opened under its row (the home card's box) */
 .live-list > li.is-open > .now-song { margin: 4px 0 8px; }
 .has-arrange .live-row > .live-item, .has-arrange > .op-item { min-height: 60px; padding-right: 92px; }
+/* the console's ✕ on a projector-only item, at the row's right; "Aranjează" moves left of it */
+.item-remove { position: absolute; top: 6px; right: 6px; bottom: 6px; width: var(--touch); min-width: 0; padding: 0; font-size: 1.125rem; }
+.has-remove > .op-item { padding-right: 56px; min-height: 56px; }
+.has-remove.has-arrange > .op-item { padding-right: 148px; }
+.has-remove.has-arrange > .item-arrange { right: 56px; }
 .item-arrange { position: absolute; top: 6px; right: 6px; bottom: 6px; width: 80px; min-width: 0; flex-direction: column; gap: 2px; padding: 2px 4px; font-size: 0.75rem; line-height: 1.1; white-space: nowrap; }
 /* Messages closed with × (public/dismiss.js): the element and its button side by side; the
    wrapper follows the element's own visibility (hidden attribute, the key hints' media rules). */

@@ -185,10 +185,16 @@
       // Short tap: go there (projector, or the main position together); long press (or
       // "Aranjează"): the arrange sheet.
       window.PRESS.bind(main, { tap: goThere, hold: canArrange ? () => arrange(item, goThere) : null });
-      return el('li', { class: canArrange ? 'has-arrange' : null }, main, canArrange ? el('button', {
+      // a projector-only item added by mistake: ✕ takes it out again (operator.removeItem)
+      const canRemove = enabled && item.scope === 'projector';
+      return el('li', { class: `${canArrange ? 'has-arrange' : ''}${canRemove ? ' has-remove' : ''}`.trim() || null }, main, canArrange ? el('button', {
         type: 'button', class: 'secondary item-arrange', 'data-icon': 'edit',
         'aria-label': t('arrange.buttonLabel', { title: itemTitle(item) }), onclick: () => arrange(item, goThere),
-      }, el('span', { text: t('arrange.button') })) : null);
+      }, el('span', { text: t('arrange.button') })) : null,
+      canRemove ? el('button', {
+        type: 'button', class: 'secondary icon-button item-remove', 'aria-label': t('operator.tags.removeLabel', { title: itemTitle(item) }),
+        onclick: () => send('operator.removeItem', { itemId: item.id }),
+      }, el('span', { 'aria-hidden': 'true', text: '✕' })) : null);
     }));
     if (!list.length) $('op-list').replaceChildren(el('li', { class: 'muted', text: t('setlist.empty') }));
     if (enabled && !$('press-hint-live') && list.some(arrangeable)) {
