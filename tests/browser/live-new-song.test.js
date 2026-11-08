@@ -17,6 +17,7 @@ module.exports = {
     check((await app.command({ type: 'event.start' })).ok, 'the event is live');
     const p = await signIn('operator', { width: 1440 });
     await p.goto(`${app.url}/events/${E}/operator`);
+    await p.click('#op-tab-add'); // the add panel is a tab of the left column
     await p.waitForSelector('#console:not([hidden])');
     const memberItems = async () => (await app.api(app.cookies.member, 'GET', `/api/events/${E}`)).body.items;
     const sheetOpen = () => p.evaluate(() => { const d = document.querySelector('dialog.new-song-sheet'); return Boolean(d && d.open); });
@@ -120,6 +121,7 @@ module.exports = {
     // English
     const en = await signIn('operator', { width: 1024, lang: 'en' });
     await en.goto(`${app.url}/events/${E}/operator`);
+    await en.click('#op-tab-add');
     await en.waitForSelector('#console:not([hidden])');
     await en.click('#op-new-song');
     await en.waitForSelector('dialog.new-song-sheet[open]');

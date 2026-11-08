@@ -379,8 +379,21 @@
   const keyPanel = window.CLOCK_PANEL.create($('key-panel'), { t, el, kind: 'key', prefix: 'key', onChange: (patch) => send('key.set', patch) });
   // "Acorduri" on the projector (chords.set: the lyrics with their chords above the words; key C).
   const chordsToggle = window.CHORDS_TOGGLE.create($('chords-panel'), { t, el, onChange: (show) => send('chords.set', { show }) });
-  // "Propuneri (n)" under the add panel (public/proposals-ui.js).
-  window.PROPOSALS_UI.roles($('proposals'), { eventId, live: () => Boolean(state.snap && state.snap.status === 'live'), position: 'afterCurrent' });
+  // The left column: "Program" | "Adaugă" (the add panel with the search and the proposals),
+  // one at a time so the Program has the whole column; the choice is kept on the device.
+  const LEFT_KEY = 'wa_op_left';
+  const leftTabs = [$('op-tab-program'), $('op-tab-add')];
+  const leftTabsControl = window.PAGE.setupTabs(leftTabs, (index) => {
+    $('op-list').hidden = index !== 0;
+    $('op-add').hidden = index !== 1;
+    document.querySelector('.op-setlist').classList.toggle('shows-add', index === 1);
+    try { localStorage.setItem(LEFT_KEY, index === 1 ? 'add' : 'program'); } catch (err) { /* this page only */ }
+  });
+  let storedLeft = null;
+  try { storedLeft = localStorage.getItem(LEFT_KEY); } catch (err) { /* default */ }
+  leftTabsControl.select(storedLeft === 'add' ? 1 : 0, false);
+  // "Propuneri (n)" under the add panel (public/proposals-ui.js); the open ones count on the tab.
+  window.PROPOSALS_UI.roles($('proposals'), { eventId, live: () => Boolean(state.snap && state.snap.status === 'live'), position: 'afterCurrent', onCount: (n) => { $('op-add-count').textContent = n ? String(n) : ''; } });
   // The bridge to Sanctuary Voice (stage 8): connect a code, the two switches, revoke,
   // and the "Traducere · <limbă>" projector sources. Additive; hidden features until connected.
   const bridgePanel = window.BRIDGE_PANEL.create($('bridge-panel'), { api, eventId, sendCommand: send, sourcesContainer: $('op-translation-sources') });

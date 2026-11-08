@@ -67,6 +67,12 @@ module.exports = {
     await app.takeProjector('owner'); // the console moves the one position again
     await p.waitForFunction(() => document.getElementById('mode-banner').dataset.mode === 'together');
 
+    // The left column: "Program" fills it; "Adaugă" shows the add panel instead, remembered
+    const left = await p.evaluate(() => ({ add: document.getElementById('op-add').hidden, list: document.getElementById('op-list').hidden, tabs: [...document.querySelectorAll('.op-left-tabs [role="tab"]')].map((b) => b.getAttribute('aria-selected')) }));
+    check(left.add && !left.list && left.tabs.join() === 'true,false', 'the left column: the Program alone, the add panel behind its tab', left);
+    await p.click('#op-tab-add');
+    const added = await p.evaluate(() => ({ add: document.getElementById('op-add').hidden, list: document.getElementById('op-list').hidden, stored: localStorage.getItem('wa_op_left') }));
+    check(!added.add && added.list && added.stored === 'add', '"Adaugă": the add panel alone, the Program hidden, the choice stored', added);
     // Additions from the library search
     await p.fill('#add-q', 'mare');
     await p.waitForSelector('#add-songs li');

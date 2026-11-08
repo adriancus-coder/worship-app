@@ -32,6 +32,7 @@ module.exports = {
     const closed = await o.evaluate(() => ({ banner: document.querySelector('.dismissable[data-dismiss-id="op-banner"]').hidden, keys: document.querySelector('.dismissable[data-dismiss-id="op-keys-hint"]').hidden, stored: JSON.parse(localStorage.getItem('wa_dismissed')) }));
     check(closed.banner && closed.keys && closed.stored.sort().join() === 'op-banner,op-keys-hint', 'closed: hidden and remembered on the device', closed);
     await o.reload();
+    await o.click('#op-tab-add'); // the add hint lives in the "Adaugă" tab
     await o.waitForSelector('.dismissable[data-dismiss-id="op-add-hint"] > .dismiss');
     const again = await o.evaluate(() => ({ banner: document.querySelector('.dismissable[data-dismiss-id="op-banner"]').hidden, add: document.querySelector('.dismissable[data-dismiss-id="op-add-hint"]').hidden }));
     check(again.banner && !again.add, 'after a reload: still closed; the others still shown', again);

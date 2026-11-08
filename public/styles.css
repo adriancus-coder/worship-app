@@ -1689,7 +1689,12 @@ button.op-item:disabled { opacity: 1; cursor: default; }
 .marker.worship { color: var(--worship); border: 1px dashed var(--worship); }
 .op-tag { padding: 1px 6px; font-size: 0.6875rem; font-weight: 800; letter-spacing: 0.05em; border-radius: 4px; border: 1px solid currentColor; }
 .tag-projectorOnly { color: var(--text-muted); }
-.op-add { margin-top: 18px; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+.op-add { margin-top: 0; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+.op-add[hidden] { display: none; }
+/* the column's tabs: "Program" | "Adaugă (n)", equal halves */
+.op-left-tabs { margin: 0 0 8px; }
+.op-left-tabs [role="tab"] { flex: 1 1 0; min-height: var(--touch); }
+.op-setlist.shows-add > #press-hint-live { display: none; } /* the Program's hint goes with it */
 .op-add h3 { margin: 0 0 8px; font-size: 1rem; }
 .op-add-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 8px; }
 .op-add-head h3 { margin: 0; }
@@ -2709,7 +2714,8 @@ dialog.song-pick-dialog .song-pick > .ss-results { flex: 1 1 0; height: 0; --pan
   .op-setlist { position: sticky; top: 8px; display: flex; flex-direction: column; max-height: calc(100dvh - 16px - var(--shell-bottom, 0px)); }
   .op-setlist > * { flex: 0 0 auto; }
   .op-setlist > .op-list.list-pane { flex: 1 1 auto; max-height: none; min-height: 140px; }
-  .op-setlist .op-search .ss-results { max-height: 32dvh; }
+  .op-setlist > .op-add:not([hidden]) { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+  .op-setlist .op-search .ss-results { max-height: 40dvh; }
   .live-setlist { position: sticky; top: 8px; display: flex; flex-direction: column; max-height: calc(100dvh - 16px - var(--shell-bottom, 0px)); }
   .live-setlist > * { flex: 0 0 auto; }
   .live-setlist > .live-list.list-pane { flex: 1 1 auto; max-height: none; min-height: 140px; }
