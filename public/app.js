@@ -172,15 +172,18 @@
             ? el('button', { type: 'button', class: `key-badge now-item-key${it.key ? '' : ' is-unset'}`, 'aria-pressed': String(Boolean(picked && picked.id === it.id)), 'aria-label': t('home.pickSong', { title: itemLabel(it) }), onclick: () => pickItem(it) }, keyText)
             : el('span', { class: `key-badge now-item-key${it.key ? '' : ' is-unset'}`, text: keyText });
         const inner = [el('span', { class: `now-item-type type-badge type-${it.type}`, text: t(`setlist.types.${it.type}`) }), el('span', { class: 'now-item-title', text: itemLabel(it) })];
-        return el('li', { class: `now-item${picked && picked.id === it.id ? ' is-picked' : ''}${open ? ' is-open' : ''}` },
+        const isPicked = Boolean(picked && picked.id === it.id);
+        return el('li', { class: `now-item${isPicked ? ' is-picked' : ''}${open ? ' is-open' : ''}` },
           el('div', { class: 'now-item-row' },
             isSong
               ? el('button', { type: 'button', class: 'now-item-button', 'aria-expanded': String(open), 'aria-controls': `now-song-${it.id}`, 'aria-label': t(open ? 'home.closeSong' : 'home.openSong', { title: itemLabel(it) }), onclick: () => toggleSong(it) }, ...inner)
               : el('span', { class: 'now-item-button' }, ...inner),
             key),
+          // the key choice opens right under its row, as a popover
+          isPicked ? keyChoice(event, picked) : null,
           open ? songBox(it) : null);
       })),
-      picked ? keyChoice(event, picked) : (picker && items.some((it) => it.type === 'song' && it.songId) ? el('p', { class: 'muted now-key-hint', text: t('home.keyHint') }) : null));
+      !picked && picker && items.some((it) => it.type === 'song' && it.songId) ? el('p', { class: 'muted now-key-hint', text: t('home.keyHint') }) : null);
   }
 
   // The team: a circle with the initials per person, a dot with their answer, a legend.

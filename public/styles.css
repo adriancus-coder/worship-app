@@ -1612,10 +1612,12 @@ button.now-item-key[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--accent-fi
 .now-item-title { flex: 1 1 auto; min-width: 0; font-weight: 600; overflow-wrap: anywhere; }
 .now-item-key { flex: none; margin-left: auto; }
 .now-item-key.is-unset { color: var(--text-muted); background: var(--background); border: 1px solid var(--border); }
-.now-key-row { margin-top: 10px; }
-.now-key-row .now-section-label { margin-top: 0; }
-.now-keys.choice-group { display: flex; flex-wrap: nowrap; gap: 3px; overflow-x: auto; scrollbar-width: thin; } /* one row: wide, the 12 share it; narrow, 44 px each, scrolled sideways */
-.now-keys.choice-group > button { flex: 1 1 0; min-width: var(--touch); padding-left: 4px; padding-right: 4px; font-size: 0.9375rem; white-space: nowrap; }
+/* The key choice: a popover right under the picked row (a small arrow points at its key badge). */
+.now-key-row { position: relative; margin: 8px 0 4px; padding: 10px; background: var(--surface); border: 1px solid var(--accent-fill); border-radius: var(--radius); box-shadow: 0 6px 18px var(--shadow-soft); }
+.now-key-row::before { content: ''; position: absolute; top: -7px; right: 22px; width: 12px; height: 12px; background: var(--surface); border-left: 1px solid var(--accent-fill); border-top: 1px solid var(--accent-fill); transform: rotate(45deg); }
+.now-key-row .now-section-label { margin: 0 0 6px; }
+.now-keys.choice-group { display: flex; flex-wrap: wrap; gap: 4px; } /* the 12 keys: one row where they fit, two on a phone */
+.now-keys.choice-group > button { flex: 1 1 calc(16.66% - 4px); min-width: var(--touch); padding-left: 4px; padding-right: 4px; font-size: 0.9375rem; white-space: nowrap; }
 .now-key-hint { margin: 8px 0 0; font-size: 0.875rem; }
 .now-key-set { display: flex; align-items: flex-start; gap: 8px; }
 .now-key-set .now-keys { flex: 1 1 auto; min-width: 0; }

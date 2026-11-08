@@ -44,6 +44,8 @@ module.exports = {
     check(await o.isVisible('#now .now-key-hint') && !(await o.$('#now .now-keys')), 'owner: "Atinge gama…", the choice waits for a song');
     await o.click('#now .now-item .now-item-key >> nth=0');
     await o.waitForSelector('#now .now-keys');
+    const where = await o.evaluate(() => { const li = document.querySelector('#now .now-item.is-picked'); const row = li && li.querySelector('.now-key-row'); const badge = li && li.querySelector('.now-item-key').getBoundingClientRect(); return { inRow: Boolean(row), underBadge: row ? row.getBoundingClientRect().top >= badge.bottom : false, first: li === document.querySelector('#now .now-item'), wide: row ? row.scrollWidth <= row.clientWidth + 1 : false }; });
+    check(where.inRow && where.underBadge && where.first && where.wide, 'the key choice opens as a popover right under the picked row, nothing scrolls sideways', where);
     const keys = await o.$$eval('#now .now-keys button', (l) => ({ labels: l.map((b) => b.dataset.key), pressed: l.filter((b) => b.getAttribute('aria-pressed') === 'true').map((b) => b.dataset.key) }));
     check(keys.labels.length === 12 && keys.labels[0] === 'C' && keys.labels.includes('G') && keys.pressed.join() === 'G', 'the 12 keys from C, the song\'s own (G) selected', keys);
     await o.click('#now .now-keys [data-key="A"]');
