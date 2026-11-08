@@ -112,8 +112,8 @@ module.exports = {
     const full = await p.evaluate(() => ({ compact: document.body.classList.contains('live-compact'), current: getComputedStyle(document.querySelector('.live-current')).display, stored: localStorage.getItem('wa_live_compact') }));
     check(!full.compact && full.current !== 'none' && full.stored === '0', '"Complet": the full page again, remembered', full);
 
-    // --- desktop: the switch on the full page, the tick rendered ----------------------------
-    const o = await signIn('owner', { width: 1024, lang: 'ro' });
+    // --- desktop (the leader: the switch is theirs): the switch on the full page, the tick rendered
+    const o = await signIn('leader', { width: 1024, lang: 'ro' });
     await o.goto(`${app.url}/events/${E}/live?view=full`);
     await o.waitForSelector('#live-view [data-view="compact"]');
     await o.click('#live-view [data-view="compact"]');

@@ -52,12 +52,7 @@ module.exports = {
     check((await s()).worship.step === 1, 'together: → moves the one main position');
     await p.keyboard.press('b');
     await wait(300);
-    check((await s()).projector.source === 'black', 'B: black');
-    await p.keyboard.press('b');
-    await p.keyboard.press('l');
-    await wait(300);
-    check((await s()).projector.source === 'logo', 'B again, then L: logo');
-    await p.keyboard.press('l');
+    check((await s()).projector.source === 'content', 'B without the projector: nothing changes (the sources are the holder\'s)');
     // the operator asks for it back; the owner accepts
     await p.click('#projector-action');
     await own.waitForSelector('.handover-toast:not([hidden])', { timeout: 3000 });

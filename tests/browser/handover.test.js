@@ -30,7 +30,7 @@ module.exports = {
     await op.waitForFunction(() => document.getElementById('mode-banner').dataset.mode === 'split');
     await lp.waitForFunction(() => /Operator/.test(document.getElementById('holder-text').textContent));
     check(await holder() === 'operator' && /Operator \(Operator\)/.test(await lp.textContent('#holder-text')), 'the operator takes the projector (the owner is away): "Proiectorul: Operator (Operator)" on the leader page');
-    check(/la Operator.*consolă/.test(await lp.textContent('#mode-controls .mode-hint')) && (await lp.textContent('#projector-action')).trim() === 'Cere controlul proiectorului', 'leader: the hint says the operator moves it from the console; the action is "Cere controlul proiectorului"');
+    check(/la Operator.*doar echipa/.test(await lp.textContent('#mode-controls .mode-hint')) && (await lp.textContent('#projector-action')).trim() === 'Cere controlul proiectorului', 'leader: the hint says the operator moves it from the console; the action is "Cere controlul proiectorului"');
     check(/Proiectorul e al tău/.test(await op.textContent('#mode-title')) && (await op.textContent('#projector-action')).trim() === 'Predă controlul proiectorului', 'console: "Proiectorul e al tău", the action is "Predă controlul proiectorului"');
     // the request
     await lp.click('#projector-action');
@@ -165,7 +165,7 @@ module.exports = {
     await opEn.waitForSelector('#console:not([hidden])');
     await app.takeProjector('operator');
     await en.waitForFunction(() => /Operator/.test(document.getElementById('holder-text').textContent));
-    check(/with Operator.*console/.test(await en.textContent('#mode-controls .mode-hint')) && (await en.textContent('#projector-action')).trim() === 'Ask for control of the projector', 'EN: the explanation and the action');
+    check(/with Operator.*team only/.test(await en.textContent('#mode-controls .mode-hint')) && (await en.textContent('#projector-action')).trim() === 'Ask for control of the projector', 'EN: the explanation and the action');
     await en.click('#projector-action');
     await en.waitForSelector('#mode-controls .handover-line:not([hidden])');
     await opEn.waitForSelector('.handover-toast:not([hidden])');

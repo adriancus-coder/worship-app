@@ -30,16 +30,16 @@ module.exports = {
       const pressed = () => p.$eval('#live-follow [aria-pressed=true]', (b) => b.dataset.follow);
       check(await pressed() === 'team' && /Sfânt în G/.test(await title()), `${tag} split: "Urmăresc" shows, the team by default`);
       const labels = await p.$$eval('#live-follow button', (bs) => bs.map((b) => b.textContent));
-      check(lang === 'ro' ? /^Echipa \(Lider/.test(labels[0]) && labels[1] === 'Operatorul (Operator)' : /^The team \(Leader/.test(labels[0]) && labels[1] === 'The operator (Operator)', `${tag} the labels`, labels);
+      check(lang === 'ro' ? /^Echipa \(Lider/.test(labels[0]) && labels[1] === 'Proiectorul (Operator)' : /^The team \(Leader/.test(labels[0]) && labels[1] === 'The projector (Operator)', `${tag} the labels`, labels);
       await p.click('#live-follow [data-follow=projector]');
       await p.waitForFunction(() => /Șase rânduri/.test(document.querySelector('.current-title').textContent));
       check(/(Echipa e la|The team is at) Sfânt în G/.test(await p.textContent('#cross-text')) && /(Adu echipa aici|Bring the team here)/.test(await p.textContent('#cross-jump')), `${tag} following the operator: the projector's song; the card says where the team is`, await p.textContent('#cross-text'));
       const a = await layoutAudit(p, '.live-info');
       check(!a.overflow && !a.small.length, `${tag} no overflow, targets >= 44 px`, a);
-      await p.click('#next-button');
-      await wait(400);
+      // following someone else's projector is a read-only view: the nav is disabled, nothing moves
+      check(await p.$eval('#next-button', (b) => b.disabled) && await p.$eval('#prev-button', (b) => b.disabled), `${tag} following the operator's projector: "Înainte" / "Înapoi" are disabled (not the holder)`);
       let now = await at();
-      check(same(now.projector, [items[3], 0]) && same(now.team, [items[0], 1]), `${tag} "Înainte" moves the projector, the team stays`, now);
+      check(same(now.projector, [items[2], 0]) && same(now.team, [items[0], 1]), `${tag} nothing moved`, now);
       // kept on this device
       await p.reload();
       await p.waitForSelector('#live-follow-row:not([hidden])');
@@ -52,7 +52,7 @@ module.exports = {
       await p.keyboard.press('ArrowLeft');
       await wait(400);
       now = await at();
-      check(same(now.projector, [items[2], 0]) && same(now.team, [items[0], 1]), `${tag} ← in the big lyrics moves the projector`, now);
+      check(same(now.projector, [items[2], 0]) && same(now.team, [items[0], 1]), `${tag} ← in the big lyrics: nothing moves (the projector is the operator's)`, now);
       await p.keyboard.press('Escape');
       await wait(200);
       // "Adu echipa aici"
@@ -60,10 +60,10 @@ module.exports = {
       await wait(400);
       now = await at();
       check(same(now.team, [items[2], 0]), `${tag} "Adu echipa aici": the team goes to the projector`, now);
-      // together: no choice, the one position
-      await app.takeProjector('owner');
+      // the leader takes the projector: nothing to follow but their own moves, no "Urmăresc"
+      await app.takeProjector(role);
       await p.waitForSelector('#live-follow-row', { state: 'hidden' });
-      check(!(await p.evaluate(() => document.body.classList.contains('split-mode'))), `${tag} together: no "Urmăresc"`);
+      check(!(await p.evaluate(() => document.body.classList.contains('split-mode'))), `${tag} holding the projector: no "Urmăresc", the projector panel back`);
       await p.evaluate(() => localStorage.removeItem('wa_live_follow'));
       await p.context().close();
     }

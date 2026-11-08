@@ -26,9 +26,9 @@ module.exports = {
     };
     const button = (p, sel) => p.evaluate((sel) => { const b = document.querySelector(sel); return { text: b.textContent, disabled: b.disabled }; }, sel);
     const reset = async () => {
-      await app.takeProjector('owner');
-      await app.command({ type: 'projector.source', source: 'content' });
-      await app.command({ type: 'worship.goto', itemId: G, step: 0 });
+      await app.takeProjector('leader'); // the leader's page drives: holding the projector, its moves show on screen
+      await app.command({ type: 'projector.source', source: 'content' }, 'leader');
+      await app.command({ type: 'worship.goto', itemId: G, step: 0 }, 'leader');
       await wait(300);
     };
     // A screen, to see what the projector shows.
@@ -92,13 +92,13 @@ module.exports = {
           await L.keyboard.press('l');
         }
         check((await button(L, '#end-item-button')).text === END, `${tag} after the move: "■ ${END}" again`);
-        await app.command({ type: 'worship.goto', itemId: G, step: 0 });
+        await app.command({ type: 'worship.goto', itemId: G, step: 0 }, 'leader'); // the holder: the screen too
         await wait(300);
         await L.keyboard.press('e');
         await L.click('#prev-button');
         const s3 = await state();
         check(s3.team === 'G.1' && /Sfânt/.test(await screen()), `${tag} key E, then prev -> the ended song's last step (G.1), content back`, s3);
-        await app.command({ type: 'worship.goto', itemId: T3, step: 1 });
+        await app.command({ type: 'worship.goto', itemId: T3, step: 1 }, 'leader');
         await wait(300);
         check(!(await button(L, '#end-item-button')).disabled, `${tag} the last item: "${END}" enabled too`);
         await L.click('#end-item-button');

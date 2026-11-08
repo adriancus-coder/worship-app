@@ -594,8 +594,9 @@
     // leader / presenter sees it only once the projector was handed to them.
     document.body.classList.toggle('projector-away', !(holdsIt() || (state.me && window.PAGE.can(state.me, 'screens'))));
     $('split-keys-hint').hidden = !(split && !holdsIt());
-    $('cross').hidden = !split;
-    renderFollow(split);
+    // someone else holds the projector: where it is ("Sari acolo") and whom this page follows
+    $('cross').hidden = !(split && !holdsIt());
+    renderFollow(split && !holdsIt());
     if (split && followsProjector()) {
       // following the operator: where the team is, with "Adu echipa aici"
       const label = positionLabel(snap.worship) || '—';
@@ -876,7 +877,9 @@
     }
     showMessage('');
     if (samePosition(worship, snap.worship) && Boolean(worship.ended) === Boolean(snap.worship.ended) && source === snap.projector.source) return { ok: true, local: true };
-    state.snap = { ...snap, worship, projector: { ...snap.projector, source } };
+    // holding the projector: the move is what the church sees too (as the server does)
+    const projector = holdsIt() ? { ...snap.projector, itemId: worship.itemId, step: worship.step, ended: worship.ended, source } : { ...snap.projector, source };
+    state.snap = { ...snap, worship, projector };
     emergency.dirty = true;
     render();
     renderProjector();
@@ -952,9 +955,9 @@
     } else if (event.key === 'l' || event.key === 'L') {
       toggleSource('logo'); // logo <-> content
     } else if (event.key === 'k' || event.key === 'K') {
-      if (!isSplit()) clockPanel.toggle(); // the corner clock on / off
+      if (!isSplit() || holdsIt()) clockPanel.toggle(); // the corner clock on / off
     } else if (event.key === 'g' || event.key === 'G') {
-      if (!isSplit()) keyPanel.toggle(); // "Gama pe proiector" on / off
+      if (!isSplit() || holdsIt()) keyPanel.toggle(); // "Gama pe proiector" on / off
     } else if (event.key === 'c' || event.key === 'C') {
       if (!isSplit()) chordsToggle.toggle(); // "Acorduri" on the projector on / off
     }

@@ -13,7 +13,7 @@ module.exports = {
   async run({ app, signIn, check }) {
     const { eventId: E, items } = app.seed;
     check((await app.command({ type: 'event.start' })).ok, 'the event is live');
-    const pos = async () => { const s = await app.state(); return [s.worship.itemId, s.worship.step, s.mode]; };
+    const pos = async () => { const s = await app.state(); return [s.worship.itemId, s.worship.step, s.mode, s.projector.itemId, s.projector.step]; };
     for (const [lang, width, answer] of [['ro', 375, 'restart'], ['en', 1024, 'keep']]) {
       const tag = `[${lang} ${width}]`;
       await app.takeProjector('owner');
@@ -28,7 +28,7 @@ module.exports = {
       await p.waitForFunction(() => document.body.classList.contains('split-mode'));
       await p.click('#projector-action'); // the operator is away: taken at once
       await p.waitForSelector('.handover-choice:not([hidden])');
-      check(JSON.stringify(await pos()) === JSON.stringify([items[2], 0, 'together']), `${tag} the projection continues where the projector was (no jump)`, await pos());
+      check(JSON.stringify(await pos()) === JSON.stringify([items[0], 1, 'split', items[2], 0]), `${tag} the projection stays where the projector was (no jump), the team where it was`, await pos());
       const text = await p.evaluate(() => ({
         ask: document.querySelector('.handover-choice p').textContent,
         keep: document.getElementById('handover-keep').textContent,
@@ -43,7 +43,7 @@ module.exports = {
       await p.click(answer === 'keep' ? '#handover-keep' : '#handover-restart');
       await p.waitForSelector('.handover-choice', { state: 'hidden' });
       await wait(300);
-      const want = answer === 'keep' ? [items[2], 0, 'together'] : [items[0], 1, 'together'];
+      const want = answer === 'keep' ? [items[0], 1, 'split', items[2], 0] : [items[0], 1, 'split', items[0], 1];
       check(JSON.stringify(await pos()) === JSON.stringify(want), `${tag} "${answer === 'keep' ? 'Continui de aici' : 'Încep de unde eram'}": ${answer === 'keep' ? 'stays' : 'back to the leader\'s place'}`, await pos());
       await p.context().close();
     }

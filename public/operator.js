@@ -115,10 +115,11 @@
 
   // --- rendering --------------------------------------------------------------------
 
-  // "Proiectorul e al tău" (an operator holds it: split) / "Proiectorul e la <name>" (together).
+  // "Proiectorul e al tău" (this console holds it) / "Proiectorul e la <name>" (someone else
+  // does) / "Nimeni nu ține proiectorul"; data-mode: split / together / nobody / notLive.
   function renderBanner() {
-    const mode = !live() ? 'notLive' : state.snap.mode;
     const holder = live() && state.snap.holder;
+    const mode = !live() ? 'notLive' : (holdsIt() ? 'split' : (holder ? 'together' : 'nobody'));
     const name = holder ? `${holder.name || t('live.modes.someone')} (${window.PAGE.roleName(holder.role)})` : t('live.modes.nobody');
     $('mode-banner').dataset.mode = mode;
     $('mode-title').textContent = t(`operator.banner.${mode}`, { name });

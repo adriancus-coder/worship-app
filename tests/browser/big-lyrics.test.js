@@ -37,9 +37,12 @@ module.exports = {
       ['ro', 1180, 'operator', 'operator', '.op-step'], ['en', 1440, 'leader', 'live', '.step'],
     ]) {
       const tag = `[${lang} ${width} ${role}]`;
-      await app.takeProjector('owner');
-      await app.command({ type: 'projector.source', source: 'content' });
-      await app.command({ type: 'worship.goto', itemId: G, step: 0 });
+      // the page's user holds the projector: a live page moves the team along, the console the projector alone
+      await app.takeProjector(role);
+      const at = async () => { const s = await app.state(); const w = role === 'leader' ? s.worship : s.projector; return `${w.itemId === G ? 'G' : 'other'}.${w.step}${w.ended ? ' ended' : ''}`; };
+      const go = (itemId, step) => app.command({ type: role === 'leader' ? 'worship.goto' : 'projector.goto', itemId, step }, role);
+      await app.command({ type: 'projector.source', source: 'content' }, role);
+      await go(G, 0);
       await wait(300);
       const p = await signIn(role, { width, lang });
       await p.evaluate(() => { try { localStorage.removeItem('wa_big_scale'); localStorage.setItem('wa_text_only', '0'); } catch (e) {} });
@@ -60,7 +63,7 @@ module.exports = {
       // next moves the live position: projector and phone follow
       await p.click('dialog.big-lyrics .big-nav > button:last-child');
       await wait(400);
-      check(await at() === 'G.1' && /Sfânt/.test(await screen()) && /Sfânt/.test(await phone()), `${tag} "Următoarea" -> G.1 on the projector and the phone`);
+      check(await at() === 'G.1' && /Sfânt/.test(await screen()) && (role !== 'leader' || /Sfânt/.test(await phone())), `${tag} "Următoarea" -> G.1 on the projector${role === 'leader' ? ' and the phone' : ' (the console moves the projector alone)'}`);
       b = await big(p);
       check(/Refren|Chorus/i.test(b.label), `${tag} the view moved to the chorus`, b.label);
       // key ← back, then Space forward
@@ -88,7 +91,7 @@ module.exports = {
       check((await big(p)).chords === 0, `${tag} "Doar text" hides the chords`);
       await p.click('dialog.big-lyrics .big-tools button:nth-child(1)');
       // another device moves: the view follows
-      await app.command({ type: 'worship.goto', itemId: VERSE, step: 0 });
+      await app.command({ type: role === 'leader' ? 'worship.goto' : 'projector.goto', itemId: VERSE, step: 0 }, role);
       const followed = await p.waitForFunction(() => /Luca 2:1-7/.test(document.querySelector('dialog.big-lyrics .big-label').textContent), null, { timeout: 3000 }).then(() => true, () => false);
       check(followed && /Cezar/.test((await big(p)).text), `${tag} another device's move updates the view (the verse)`);
       // swipe (touch widths): right = prev, left = next
@@ -108,14 +111,14 @@ module.exports = {
         check((await app.state()).worship.itemId === VERSE, `${tag} swipe left -> next (the verse)`);
       }
       // "■ Sfârșit" from the view: the projector goes black, the position stays
-      await app.command({ type: 'worship.goto', itemId: G, step: 1 });
+      await go(G, 1);
       await wait(300);
       await p.keyboard.press('e');
       await wait(400);
       check(await at() === 'G.1 ended' && await screen() === 'BLACK', `${tag} E in the view: black, the position stays`);
       b = await big(p);
       check(/Terminat|Ended/.test(b.text) && /Luca 2:1-7/.test(b.text) && /Luca 2:1-7/.test(b.next), `${tag} the view says "✓ Terminat" and prepares the next item (the verse)`, b);
-      check(/Conectat|Connected/.test(b.status) && /Proiectorul: Ana|The projector: Ana/.test(b.status), `${tag} the status line: connection · who holds the projector`, b.status);
+      check(/Conectat|Connected/.test(b.status) && (role === 'leader' ? /Proiectorul: Lider|The projector: Lider/ : /Proiectorul: Operator|The projector: Operator/).test(b.status), `${tag} the status line: connection · who holds the projector`, b.status);
       await p.keyboard.press('Escape');
       await wait(200);
       check(!(await big(p)), `${tag} Escape closes`);

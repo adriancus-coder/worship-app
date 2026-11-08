@@ -55,6 +55,7 @@ module.exports = {
           ['leader', 'leader', 'live', '#setlist', '.live-item', '#setlist .live-item.current .item-title'],
           ['console', 'operator', 'operator', '#op-list', '.op-item', '#op-list .op-item.on-projector .item-title'],
         ]) {
+          await app.takeProjector(role); // the page's user holds the projector: its taps move what the church sees
           const p = await signIn(role, { width, lang });
           await p.goto(`${app.url}/events/${E}/${sub}${role === 'leader' && sub === 'live' ? '?view=full' : ''}`); // a leader lands in the lyrics otherwise
           await p.waitForSelector(`${list} ${item}:not([disabled])`);

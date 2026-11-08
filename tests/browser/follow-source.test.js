@@ -60,13 +60,13 @@ module.exports = {
       await m.context().close();
     }
 
-    // together (the leader takes the projector): one position, no choice
+    // the leader holds the projector: it still has its own position, so the choice stays
     await app.takeProjector('leader');
     const m2 = await signIn('member', { width: 390 });
     await m2.goto(`${app.url}/events/${E}/follow`);
     await m2.waitForSelector('#follow:not([hidden])');
     await wait(400);
-    check(await m2.isHidden('#follow-source-row'), 'together: no choice (one position)');
+    check(!(await m2.isHidden('#follow-source-row')), 'the leader holds it: the choice (team or projector) stays');
     await m2.context().close();
   },
 };
