@@ -66,11 +66,24 @@
           <p class="hint key-hint" data-i18n="live.keyHint" data-dismiss="live-keys-hint"></p>
         </section>
 
+        <!-- The column: "Program" | "Adaugă" (the console's add panel: a new song, the search,
+             the proposals), one at a time; the choice is kept on the device. -->
         <section class="live-setlist" aria-labelledby="setlist-heading">
-          <div class="setlist-head">
-            <h2 id="setlist-heading" data-i18n="live.setlistHeading"></h2>
+          <h2 id="setlist-heading" class="sr-only" data-i18n="operator.leftLabel"></h2>
+          <div class="tabs op-left-tabs" role="tablist" data-i18n-aria-label="operator.leftLabel">
+            <button type="button" role="tab" id="live-tab-program" aria-controls="setlist" aria-selected="true" data-i18n="live.setlistHeading"></button>
+            <button type="button" role="tab" id="live-tab-add" aria-controls="live-add" aria-selected="false" tabindex="-1"><span data-i18n="operator.addTab"></span> <span class="tab-count" id="live-add-count"></span></button>
           </div>
-          <ol id="setlist" class="live-list" data-list-pane="live.setlistHeading"></ol>
+          <ol id="setlist" class="live-list" role="tabpanel" aria-labelledby="live-tab-program" data-list-pane="live.setlistHeading"></ol>
+          <section class="op-add" id="live-add" role="tabpanel" aria-labelledby="live-tab-add" hidden>
+            <div class="op-add-head">
+              <h3 id="live-add-heading" data-i18n="operator.addHeading"></h3>
+              <button type="button" class="secondary" id="live-new-song" data-icon="plus" data-i18n="operator.newSong"></button>
+            </div>
+            <p class="hint" data-i18n="operator.addHint" data-dismiss="op-add-hint"></p>
+            <div id="add-search" class="song-pick op-search"></div>
+            <div id="proposals"></div>
+          </section>
         </section>
 
         <aside class="live-info" aria-labelledby="info-heading">
@@ -114,7 +127,6 @@
             <p class="hint"><a class="emergency-link" href="/help/emergency" target="_blank" rel="noopener" data-i18n="live.emergency.prepare"></a></p>
           </section>
           <div id="bridge-panel" class="bridge-panel"></div>
-          <div id="proposals"></div>
           <h2 id="info-heading" data-i18n="live.infoHeading"></h2>
           <div id="info"></div>
         </aside>
@@ -163,11 +175,14 @@
   <script src="/song-editor.js"></script>
   <script src="/live-lyrics-edit.js"></script>
   <script src="/press.js"></script>
+  <script src="/drag-list.js"></script>
   <script src="/live-clock.js"></script>
   <script src="/big-lyrics.js"></script>
   <script src="/programme-big.js"></script>
   <script src="/song-audio.js"></script>
   <script src="/proposals-ui.js"></script>
+  <script src="/song-search.js"></script>
+  <script src="/live-new-song.js"></script>
   <script src="/bridge-panel.js"></script>
   <script src="/live.js"></script>
 </body>

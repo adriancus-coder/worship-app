@@ -2379,6 +2379,7 @@ testAsync('platform deletion: refused while active, the exact name, pending -> c
     db.prepare("INSERT INTO song_proposals (admin_id, event_id, song_id, proposed_by, created_at) VALUES (?, ?, ?, ?, 0)").run(a, eventId, songId, userId);
     db.prepare("INSERT INTO song_themes (song_id, admin_id, position, name, name_norm) VALUES (?, ?, 0, 'Paști', 'pasti')").run(songId, a);
     db.prepare('INSERT INTO live_shown (event_id, admin_id, item_id, step) VALUES (?, ?, 1, 0)').run(eventId, a);
+    db.prepare('INSERT INTO live_marks (event_id, admin_id, item_id, done) VALUES (?, ?, 1, 1)').run(eventId, a);
     db.prepare("INSERT INTO bridge_connections (event_id, admin_id, sv_base_url, sv_event_id, bridge_token, token_fingerprint, created_at, updated_at) VALUES (?, ?, 'https://dev.sanctuaryvoice.com', 'ev', 'tok', 'fp', 0, 0)").run(eventId, a);
     db.prepare("INSERT INTO bridge_pairings (admin_id, sv_base_url, pairing_token, token_fingerprint, sv_org_id, paired_at) VALUES (?, 'https://dev.sanctuaryvoice.com', 'pt', 'fp', 'org', 0)").run(a);
     db.prepare("INSERT INTO custom_roles (admin_id, name, base, perms, created_at) VALUES (?, 'Sunet', 'member', 'live', 0)").run(a);

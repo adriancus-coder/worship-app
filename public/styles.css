@@ -992,7 +992,18 @@ main.live-page { max-width: 1400px; }
 .live-view-row { display: flex; align-items: center; gap: 8px; }
 .live-view-row .field-label { font-size: 0.875rem; font-weight: 500; color: var(--text-muted); }
 /* the tick on a sung item (the projector showed more than 70 % of its screens) */
-.item-done { flex: none; align-self: flex-start; margin-top: 2px; display: inline-flex; align-items: center; justify-content: center; min-width: 28px; min-height: 28px; border-radius: 50%; font-weight: 800; color: var(--on-accent); background: var(--success); }
+/* The tick before each row: empty until the song is sung (the projector's 70 % rule), a tap
+   sets or clears it by hand (item.mark). */
+.item-done-toggle { flex: none; align-self: center; display: inline-flex; align-items: center; justify-content: center; width: var(--touch); height: var(--touch); padding: 0; font-size: 1.125rem; font-weight: 800; line-height: 1; color: var(--text-muted); background: var(--background); border: 2px solid var(--border); border-radius: 50%; }
+.item-done-toggle:hover { border-color: var(--text-muted); }
+.item-done-toggle.item-done { color: var(--on-accent); background: var(--success); border-color: var(--success); }
+.item-done-toggle:disabled { opacity: 0.6; cursor: default; }
+/* the grip (public/drag-list.js): the compact view only, where the row has no "Aranjează" */
+.live-item-grip { flex: none; align-self: center; width: var(--touch); min-width: var(--touch); min-height: var(--touch); font-size: 1.375rem; touch-action: none; cursor: grab; }
+body:not(.live-compact) .live-item-grip { display: none; }
+.live-list.is-reordering > li { transition: transform 120ms ease; }
+.live-list > li.is-dragging { position: relative; z-index: 2; transition: none; }
+.live-list > li.is-dragging > .live-item { border-color: var(--accent-fill); box-shadow: 0 6px 18px var(--shadow); }
 /* The compact view: only the Program, large rows with the key and the tick; the current
    song, the info panel, the projector panel and the hints go. */
 body.live-compact .live-current, body.live-compact .live-info, body.live-compact #mode-controls, body.live-compact .key-hint, body.live-compact .live-meta #presence { display: none; }
@@ -1694,7 +1705,7 @@ button.op-item:disabled { opacity: 1; cursor: default; }
 /* the column's tabs: "Program" | "Adaugă (n)", equal halves */
 .op-left-tabs { margin: 0 0 8px; }
 .op-left-tabs [role="tab"] { flex: 1 1 0; min-height: var(--touch); }
-.op-setlist.shows-add > #press-hint-live { display: none; } /* the Program's hint goes with it */
+.op-setlist.shows-add > #press-hint-live, .live-setlist.shows-add > #press-hint-live { display: none; } /* the Program's hint goes with it */
 .op-add h3 { margin: 0 0 8px; font-size: 1rem; }
 .op-add-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 8px; }
 .op-add-head h3 { margin: 0; }
@@ -2719,6 +2730,8 @@ dialog.song-pick-dialog .song-pick > .ss-results { flex: 1 1 0; height: 0; --pan
   .live-setlist { position: sticky; top: 8px; display: flex; flex-direction: column; max-height: calc(100dvh - 16px - var(--shell-bottom, 0px)); }
   .live-setlist > * { flex: 0 0 auto; }
   .live-setlist > .live-list.list-pane { flex: 1 1 auto; max-height: none; min-height: 140px; }
+  .live-setlist > .op-add:not([hidden]) { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+  .live-setlist .op-search .ss-results { max-height: 40dvh; }
 }
 
 /* Event page header (sticky: the page is a list page). The actions and "⋯" share a row. */
@@ -2749,6 +2762,9 @@ dialog.song-pick-dialog .song-pick > .ss-results { flex: 1 1 0; height: 0; --pan
   .press-target.held { animation: none; }
 }
 .live-list > li, .op-list > li { position: relative; }
+.live-list > li { display: flex; flex-wrap: wrap; align-items: stretch; gap: 6px; }
+.live-list > li > .live-item { flex: 1 1 0; min-width: 0; }
+.live-list > li > .now-song { flex: 1 1 100%; }
 /* before the start: the song opened under its row (the home card's box) */
 .live-list > li.is-open > .now-song { margin: 4px 0 8px; }
 .has-arrange > .live-item, .has-arrange > .op-item { min-height: 60px; padding-right: 92px; }

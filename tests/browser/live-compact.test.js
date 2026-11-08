@@ -5,7 +5,7 @@
 // has shown more than 70 % of its screens (snapshot.shown, lib/live.js); the choice is kept on
 // the device; the screen stays on while the event is live (navigator.wakeLock). 375 and 1024.
 
-const { layoutAudit } = require('./harness');
+const { layoutAudit, wait } = require('./harness');
 
 module.exports = {
   name: 'live-compact',
@@ -50,6 +50,43 @@ module.exports = {
     check(compact.noKey[compact.noKey.length - 1] === 'fără ton' && compact.noKey.filter(Boolean).length === 1, 'the song without a key says "fără ton", the others not', compact.noKey);
     const a = await layoutAudit(p, '#live');
     check(!a.overflow && !a.small.length, 'the compact view 375: no overflow, targets >= 44 px', a);
+    // the tick by hand: a tap on the second item's circle ticks it, another clears it
+    await p.click('#setlist li:nth-child(2) .item-done-toggle');
+    await p.waitForSelector('#setlist li:nth-child(2) .item-done-toggle.item-done', { timeout: 5000 });
+    let marks = await shown();
+    check(marks[items[1]].done && marks[items[1]].marked === true && (await p.getAttribute('#setlist li:nth-child(2) .item-done-toggle', 'aria-pressed')) === 'true', 'a tap ticks the song by hand (shared with everyone)', marks[items[1]]);
+    await p.click('#setlist li:nth-child(2) .item-done-toggle');
+    await p.waitForFunction(() => !document.querySelector('#setlist li:nth-child(2) .item-done-toggle').classList.contains('item-done'), null, { timeout: 5000 });
+    marks = await shown();
+    check(!marks[items[1]].done && marks[items[1]].marked === false, 'another tap clears it', marks[items[1]]);
+    // the grip (the leader has the events right): shown in the compact view; ArrowDown on the
+    // first grip moves the first item under the second, on the server too
+    const grips = await p.evaluate(() => ({ count: document.querySelectorAll('#setlist .live-item-grip').length, visible: getComputedStyle(document.querySelector('#setlist .live-item-grip')).display !== 'none' }));
+    check(grips.count >= 5 && grips.visible, 'compact: a grip on every row', grips);
+    const titlesBefore = await p.$$eval('#setlist .item-title', (l) => l.map((x) => x.textContent));
+    await p.focus('#setlist li:nth-child(1) .live-item-grip');
+    await p.keyboard.press('ArrowDown');
+    await p.waitForFunction((first) => { const l = document.querySelectorAll('#setlist .item-title'); return l[1] && l[1].textContent === first; }, titlesBefore[0]);
+    await p.waitForFunction((n) => (window.__orderCalls || 0) >= 0 && document.querySelectorAll('#setlist .live-item').length === n, titlesBefore.length);
+    await wait(600);
+    const serverOrder = (await app.api(app.cookies.owner, 'GET', `/api/events/${E}`)).body.items.map((it) => it.id);
+    check(serverOrder[0] === items[1] && serverOrder[1] === items[0] && serverOrder.slice(2, 5).join() === items.slice(2, 5).join(), 'ArrowDown on the first grip: the first two swapped on the server, the rest in place', { serverOrder, items });
+    await p.focus('#setlist li:nth-child(2) .live-item-grip');
+    await p.keyboard.press('ArrowUp'); // back, so the ticks below read as before
+    await wait(600);
+    // "Adaugă": the console's add panel on this page too (search, "În setlist"), the Program hidden meanwhile
+    await p.click('#live-tab-add');
+    const addTab = await p.evaluate(() => ({ list: document.getElementById('setlist').hidden, add: document.getElementById('live-add').hidden, stored: localStorage.getItem('wa_live_left'), newSong: !document.getElementById('live-new-song').disabled }));
+    check(addTab.list && !addTab.add && addTab.stored === 'add' && addTab.newSong, '"Adaugă" on the live page: the add panel alone, remembered, "+ Cântare nouă" enabled while live', addTab);
+    const extraSong = (await app.api(app.cookies.owner, 'POST', '/api/songs', { title: 'Adăugată din live', sections: [{ type: 'verse', content: 'Un rând' }] })).body.song.id;
+    await p.fill('#add-q', 'Adăugată din live');
+    await p.waitForSelector('#add-songs li');
+    await p.click('#add-songs li >> nth=0 >> button:has-text("În setlist")');
+    await wait(800);
+    const afterAdd = (await app.api(app.cookies.owner, 'GET', `/api/events/${E}`)).body.items;
+    check(afterAdd.some((it) => it.songId === extraSong), '"În setlist" from the live page adds the song to the Program', afterAdd.map((it) => it.songId));
+    await p.click('#live-tab-program');
+    await p.waitForFunction(() => !document.getElementById('setlist').hidden);
 
     // the projector shows the first song fully: the tick appears; the second song only half: none
     const steps = (await shown())[items[0]].total;
@@ -65,7 +102,7 @@ module.exports = {
     check(sixTotal >= 2 ? !sh[six].done : true, 'one screen of a longer song: not done yet', { sixTotal, shown: sh[six] });
     check(ticks[0] === true && (sixTotal < 2 || ticks[2] === false), 'the list: a tick on the first song only', ticks);
     const label = await p.$eval('#setlist .item-done', (x) => x.getAttribute('aria-label'));
-    check(/70/.test(label), 'the tick says what it means', label);
+    check(/Scoate bifa/.test(label), 'the tick says what a tap does (clears it)', label);
 
     // opened again (the page itself, not the lyrics): still compact; "Complet" brings the page back
     await p.goto(`${app.url}/events/${E}/live?view=full`);

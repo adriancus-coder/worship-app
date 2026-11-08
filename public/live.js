@@ -182,6 +182,7 @@
     const ev = state.event;
     const snap = state.snap;
     setTitle('live.pageTitle', { name: ev.name });
+    $('live-new-song').disabled = snap.status !== 'live';
     $('event-name').textContent = ev.name;
     const status = snap.status;
     $('event-status').className = `pill pill-${status}`;
@@ -231,6 +232,34 @@
     renderSetlist();
   }
 
+  // --- the Program in another order (the compact view's grips; the 'events' right) --------
+  // The shared items' ids in the new order go to the server (positions follow the items);
+  // the list shows the new order at once, the snapshot's setlistKey confirms it.
+  const reorderable = () => Boolean(state.me && window.PAGE.canEditEvents(state.me));
+  function reorder(from, to) {
+    if (to < 0 || to >= state.items.length || from === to) return;
+    const [item] = state.items.splice(from, 1);
+    state.items.splice(to, 0, item);
+    renderSetlist();
+    const grip = $('setlist').querySelector(`.live-item-grip[data-index="${to}"]`);
+    if (grip && document.activeElement && document.activeElement.classList.contains('live-item-grip')) grip.focus();
+    api(`/api/events/${eventId}/items/order`, { method: 'POST', body: { ids: state.items.map((it) => it.id) } })
+      .then((res) => { if (!res.ok) { showMessage(res.body.error || t('common.networkError'), true); state.loadedKey = null; if (state.snap) syncSetlist(state.snap).then(render).catch(() => {}); } })
+      .catch(() => showMessage(t('common.networkError'), true));
+  }
+  function gripButton(item, index) {
+    const grip = el('button', {
+      type: 'button', class: 'secondary icon-button live-item-grip', 'data-index': index,
+      'aria-label': t('live.gripLabel', { title: itemTitle(item) }), disabled: state.items.length < 2,
+      onkeydown: (event) => {
+        if (event.key === 'ArrowUp') { event.preventDefault(); reorder(index, index - 1); }
+        else if (event.key === 'ArrowDown') { event.preventDefault(); reorder(index, index + 1); }
+      },
+    }, el('span', { 'aria-hidden': 'true', text: '≡' }));
+    if (window.DRAG_LIST) window.DRAG_LIST.bind(grip, { list: $('setlist'), index: () => index, onDrop: reorder });
+    return grip;
+  }
+
   function renderSetlist() {
     const { pos } = current();
     const live = state.snap.status === 'live';
@@ -241,6 +270,16 @@
       const readable = !live && item.type === 'song' && Boolean(item.songId);
       const open = readable && state.expanded === item.id;
       const goThere = () => move('goto', { itemId: item.id, step: 0 });
+      const title = itemTitle(item);
+      const done = sung(item);
+      // the tick, by hand too: a tap marks the song as sung / not sung (item.mark); the
+      // projector's 70 % rule fills it on its own otherwise
+      const tick = el('button', {
+        type: 'button', class: `item-done-toggle${done ? ' item-done' : ''}`, 'aria-pressed': String(done),
+        'aria-label': t(done ? 'live.markUnsung' : 'live.markSung', { title }),
+        disabled: state.snap.status === 'finished',
+        onclick: () => send('item.mark', { itemId: item.id, done: !done }),
+      }); // the check mark comes with aria-pressed (the selection styles)
       const main = el('button', {
         type: 'button',
         class: `live-item${isCurrent ? ' current' : ''}`,
@@ -251,8 +290,6 @@
         disabled: !live && !readable,
       },
       el('span', { class: 'item-number', text: String(i + 1) }),
-      // the tick: the projector has shown more than 70 % of this item's screens
-      sung(item) ? el('span', { class: 'item-done', role: 'img', 'aria-label': t('live.sungLabel') }, el('span', { 'aria-hidden': 'true', text: '✓' })) : null,
       // Top row: the type and, at the top right, the status badge; the title below.
       el('span', { class: 'item-text' },
         el('span', { class: 'op-item-top' },
@@ -266,7 +303,7 @@
       // Short tap: the team goes there (before the start: the song opens under the row);
       // long press (or "Aranjează"): the arrange sheet.
       window.PRESS.bind(main, { tap: readable ? () => toggleSong(item) : goThere, hold: canArrange ? () => arrange(item, goThere) : null });
-      return el('li', { class: `${canArrange ? 'has-arrange' : ''}${open ? ' is-open' : ''}` || null }, main, canArrange ? arrangeButton(item, () => arrange(item, goThere)) : null, open ? programme.box(item) : null);
+      return el('li', { class: `${canArrange ? 'has-arrange' : ''}${open ? ' is-open' : ''}` || null }, tick, main, canArrange ? arrangeButton(item, () => arrange(item, goThere)) : null, reorderable() ? gripButton(item, i) : null, open ? programme.box(item) : null);
     }));
     if (!state.items.length) $('setlist').replaceChildren(el('li', { class: 'muted', text: t('setlist.empty') }));
     showPressHint();
@@ -675,8 +712,46 @@
       if (state.snap) syncSetlist(state.snap).then(render).catch(() => {});
     },
   });
-  // "Propuneri (n)" in the aside (public/proposals-ui.js): the same decisions as the toast.
-  window.PROPOSALS_UI.roles($('proposals'), { eventId, live: () => Boolean(state.snap && state.snap.status === 'live'), position: 'afterCurrent' });
+  // The column: "Program" | "Adaugă", one at a time (the Program gets the whole column); the
+  // choice is kept on the device.
+  const LEFT_KEY = 'wa_live_left';
+  const leftTabs = [$('live-tab-program'), $('live-tab-add')];
+  const leftTabsControl = window.PAGE.setupTabs(leftTabs, (index) => {
+    $('setlist').hidden = index !== 0;
+    $('live-add').hidden = index !== 1;
+    document.querySelector('.live-setlist').classList.toggle('shows-add', index === 1);
+    try { localStorage.setItem(LEFT_KEY, index === 1 ? 'add' : 'program'); } catch (err) { /* this page only */ }
+  });
+  let storedLeft = null;
+  try { storedLeft = localStorage.getItem(LEFT_KEY); } catch (err) { /* default */ }
+  leftTabsControl.select(storedLeft === 'add' ? 1 : 0, false);
+  // "Propuneri (n)" in the add panel (public/proposals-ui.js): the same decisions as the toast;
+  // the open ones count on the tab.
+  window.PROPOSALS_UI.roles($('proposals'), { eventId, live: () => Boolean(state.snap && state.snap.status === 'live'), position: 'afterCurrent', onCount: (n) => { $('live-add-count').textContent = n ? String(n) : ''; } });
+  // The add panel, as on the console: library results "Doar pe proiector" / "În setlist",
+  // resursecrestine.ro results imported the same way, "+ Cântare nouă" in a sheet.
+  const isLive = () => Boolean(state.snap && state.snap.status === 'live');
+  async function addSong(target, songId) {
+    const reply = await send('operator.addItem', { target, item: { type: 'song', songId } });
+    if (!reply || !reply.ok) return { error: errorText(reply) };
+    return { done: t(target === 'setlist' ? 'operator.addedSetlist' : 'operator.addedProjector') };
+  }
+  const newSong = window.LIVE_NEW_SONG.create({ api, t, el, eventId, add: addSong });
+  $('live-new-song').addEventListener('click', () => newSong.open());
+  const addSearch = window.SONG_SEARCH.create($('add-search'), {
+    mode: 'pick', prefix: 'add-', headingLevel: 4, emptyQuery: 'none', limit: 8,
+    disabled: () => !isLive(),
+    createAction: (query) => newSong.open({ title: query }),
+    localActions: (song) => [
+      { label: t('operator.addProjector'), icon: 'projector', ariaLabel: `${t('operator.addProjector')}: ${song.title}`, run: () => addSong('projector', song.id) },
+      { label: t('operator.addSetlist'), icon: 'plus', primary: true, ariaLabel: `${t('operator.addSetlist')}: ${song.title}`, run: () => addSong('setlist', song.id) },
+    ],
+    onlineActions: (item) => [
+      { label: t('operator.importProjector'), icon: 'projector', ariaLabel: `${t('operator.importProjector')}: ${item.title}`, run: (songId) => addSong('projector', songId) },
+      { label: t('operator.importSetlist'), icon: 'import', ariaLabel: `${t('operator.importSetlist')}: ${item.title}`, run: (songId) => addSong('setlist', songId) },
+    ],
+  });
+  addSearch.setOnline(true); // the event roles may import
   let bridgePanel = null; // created above once the rights are known (the 'screens' right)
 
   // A song proposal while live: the toast's actions decide it through the API (routes/proposals.js).

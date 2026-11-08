@@ -360,6 +360,18 @@ function createEventsRouter({ db, auth, logger, live }) {
     respond(req, res, found.event.id);
   });
 
+  // The Program in a new order from the live page (the compact view's grips): the shared
+  // item ids, every one once. Live positions follow the items (live.setlistChanged).
+  router.post('/api/events/:id/items/order', canEdit, (req, res) => {
+    const found = load(req, res);
+    if (!found) return;
+    const ids = Array.isArray((req.body || {}).ids) ? req.body.ids.map(Number) : null;
+    const before = live.setlistBefore(req.adminId, found.event.id);
+    if (!ids || !events.reorderItems(req.adminId, found.event.id, ids)) return res.status(400).json({ error: req.t('errors.invalidItems') });
+    live.setlistChanged(req.adminId, found.event.id, before);
+    respond(req, res, found.event.id);
+  });
+
   router.put('/api/events/:id/items', canEdit, (req, res) => {
     const found = load(req, res);
     if (!found) return;

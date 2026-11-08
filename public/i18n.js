@@ -56,6 +56,7 @@
       },
       errors: {
         badRequest: 'Cerere invalidă.',
+        invalidItems: 'Ordinea programului nu se potrivește cu elementele lui. Reîncarcă pagina.',
         internal: 'Eroare internă.',
         emailDisabled: 'Emailul nu este configurat pe acest server.',
         emailRateLimited: 'Prea multe emailuri în ultima oră. Încearcă mai târziu.',
@@ -1593,6 +1594,9 @@
         viewFull: 'Complet',
         viewCompact: 'Compact',
         sungLabel: 'Cântată: proiectorul a arătat peste 70 % din ea',
+        markSung: 'Bifează „{title}” ca deja cântată',
+        markUnsung: 'Scoate bifa de la „{title}”',
+        gripLabel: 'Mută „{title}”: trage în sus sau în jos, sau săgeți sus/jos',
         modes: {
           label: 'Proiectorul:',
           nobody: 'nimeni încă',
@@ -2344,6 +2348,7 @@
       },
       errors: {
         badRequest: 'Invalid request.',
+        invalidItems: 'The order does not match the running order’s items. Reload the page.',
         internal: 'Internal error.',
         emailDisabled: 'Email is not set up on this server.',
         emailRateLimited: 'Too many emails in the last hour. Try again later.',
@@ -3881,6 +3886,9 @@
         viewFull: 'Full',
         viewCompact: 'Compact',
         sungLabel: 'Sung: the projector showed more than 70 % of it',
+        markSung: 'Tick “{title}” as already sung',
+        markUnsung: 'Remove the tick from “{title}”',
+        gripLabel: 'Move “{title}”: drag up or down, or arrow keys',
         modes: {
           label: 'The projector:',
           nobody: 'nobody yet',

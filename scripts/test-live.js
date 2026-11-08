@@ -380,6 +380,18 @@ async function main() {
     assert.deepStrictEqual([s.shown[i1].total, s.shown[i1].shown, s.shown[i1].done], [6, 6, true], 'the first song: every screen shown, done');
     assert.deepStrictEqual([s.shown[i2].shown, s.shown[i3].shown], [1, 2]);
     assert.strictEqual(s.shown[i3].done, s.shown[i3].total && 2 / s.shown[i3].total > 0.7, 'done follows the 70 % rule');
+    // a tick by hand (migration 064, item.mark): over the rule, and back to it with null
+    await send(lead.socket, { type: 'item.mark', itemId: i2, done: true });
+    s = await memberAt(version);
+    assert.deepStrictEqual([s.shown[i2].done, s.shown[i2].marked, s.shown[i1].marked], [true, true, null], 'marked by hand: done, marked; the others automatic');
+    await send(lead.socket, { type: 'item.mark', itemId: i1, done: false });
+    s = await memberAt(version);
+    assert.deepStrictEqual([s.shown[i1].done, s.shown[i1].marked], [false, false], 'a sung song unticked by hand');
+    await send(lead.socket, { type: 'item.mark', itemId: i1, done: null });
+    s = await memberAt(version);
+    assert.deepStrictEqual([s.shown[i1].done, s.shown[i1].marked], [true, null], 'null: the automatic tick again');
+    assert.strictEqual((await send(lead.socket, { type: 'item.mark', itemId: 999, done: true })).code, 'badPosition');
+    assert.strictEqual((await send(lead.socket, { type: 'item.mark', itemId: i2, done: 'yes' })).code, 'badCommand');
     const atEnd = version;
     const reply = await send(lead.socket, { type: 'worship.next' });
     assert.deepStrictEqual([reply.ok, reply.version], [true, atEnd], 'next at the end changes nothing');
