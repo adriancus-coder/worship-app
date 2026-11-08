@@ -18,6 +18,7 @@ module.exports = {
     await p.goto(`${app.url}/events/${E}/operator`);
     await p.waitForSelector('#console:not([hidden])');
     check(await p.$eval('#mode-banner', (b) => b.dataset.mode) === 'notLive', 'before the start: "Evenimentul nu este live"');
+    check((await p.locator('#op-list .item-done-toggle').count()) >= 5 && (await p.locator('#op-list .item-done-toggle[disabled]').count()) >= 5, 'the ticks in the console list, disabled before the start');
     // before the start: "În setlist" adds at the end of the Program; no "Doar pe proiector" yet
     await p.click('#op-tab-add');
     await p.fill('#add-q', 'mare');
@@ -31,6 +32,13 @@ module.exports = {
     await p.click('#op-tab-program');
     await p.click('#start-button');
     await p.waitForFunction(() => document.getElementById('mode-banner').dataset.mode === 'split');
+    // the tick by hand from the console: a tap ticks the second item for everyone, another clears it
+    await p.click('#op-list li:nth-child(2) .item-done-toggle');
+    await p.waitForSelector('#op-list li:nth-child(2) .item-done-toggle.item-done', { timeout: 5000 });
+    check((await app.state()).shown[app.seed.items[1]].marked === true, 'console: a tap on the circle ticks the item by hand (shared)', (await app.state()).shown[app.seed.items[1]]);
+    await p.click('#op-list li:nth-child(2) .item-done-toggle');
+    await p.waitForFunction(() => !document.querySelector('#op-list li:nth-child(2) .item-done-toggle').classList.contains('item-done'), null, { timeout: 5000 });
+    check((await app.state()).shown[app.seed.items[1]].marked === false, 'another tap clears it', (await app.state()).shown[app.seed.items[1]]);
     check(/Proiectorul e al tău/.test(await p.textContent('#mode-title')), 'started from the console: the operator holds the projector, banner "Proiectorul e al tău"');
     const s = () => app.state();
     check((await s()).holder.role === 'operator', 'the state names the operator as the holder');

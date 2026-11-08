@@ -185,9 +185,20 @@
       // Short tap: go there (projector, or the main position together); long press (or
       // "Aranjează"): the arrange sheet.
       window.PRESS.bind(main, { tap: goThere, hold: canArrange ? () => arrange(item, goThere) : null });
+      // the tick, as on the live page: the projector's 70 % rule fills it, a tap sets or clears
+      // it by hand (item.mark); it carries the number until ticked. Projector-only items (not
+      // in the team's Program) keep a plain number.
+      const done = Boolean(state.snap.shown && state.snap.shown[item.id] && state.snap.shown[item.id].done);
+      const tick = item.scope === 'projector'
+        ? el('span', { class: 'item-done-toggle is-static', 'aria-hidden': 'true' }, el('span', { class: 'item-done-number', text: String(i + 1) }))
+        : el('button', {
+          type: 'button', class: `item-done-toggle${done ? ' item-done' : ''}`, 'aria-pressed': String(done),
+          'aria-label': t(done ? 'live.markUnsung' : 'live.markSung', { title: itemTitle(item) }), disabled: !enabled,
+          onclick: () => send('item.mark', { itemId: item.id, done: !done }),
+        }, el('span', { class: 'item-done-number', 'aria-hidden': 'true', text: done ? '' : String(i + 1) }));
       // a projector-only item added by mistake: ✕ takes it out again (operator.removeItem)
       const canRemove = enabled && item.scope === 'projector';
-      return el('li', { class: `${canArrange ? 'has-arrange' : ''}${canRemove ? ' has-remove' : ''}`.trim() || null }, main, canArrange ? el('button', {
+      return el('li', { class: `${canArrange ? 'has-arrange' : ''}${canRemove ? ' has-remove' : ''}`.trim() || null }, tick, main, canArrange ? el('button', {
         type: 'button', class: 'secondary item-arrange', 'data-icon': 'edit',
         'aria-label': t('arrange.buttonLabel', { title: itemTitle(item) }), onclick: () => arrange(item, goThere),
       }, el('span', { text: t('arrange.button') })) : null,

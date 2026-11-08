@@ -2774,7 +2774,9 @@ dialog.song-pick-dialog .song-pick > .ss-results { flex: 1 1 0; height: 0; --pan
 /* the tick sits where the item's number was (it carries the number until ticked); the grip
    over the row's right edge (the compact view): the row keeps its width */
 .live-row { position: relative; } /* the tick and the grip sit over the row's edges */
-.live-row > .live-item { padding-left: 52px; }
+.live-row > .live-item, .op-list > li > .op-item { padding-left: 52px; }
+.op-list .op-item .item-number { display: none; } /* the tick carries the number */
+.item-done-toggle.is-static { border-style: dashed; color: var(--text-muted); }
 .live-list .live-item .item-number { display: none; }
 body.live-compact .live-row:has(> .live-item-grip) > .live-item { padding-right: 52px; }
 /* before the start: the song opened under its row (the home card's box) */
