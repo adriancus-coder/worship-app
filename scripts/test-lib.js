@@ -1171,82 +1171,84 @@ test('live permissions: the event roles alike in both modes (start / end: owner 
   assert.strictEqual(permission(undefined, 'video.ended', 'together'), null, 'the server itself');
 });
 
-test('live store: together and split; switching keeps positions; team mode', () => {
+test('live store: whoever holds the projector controls it; the others move the team only; team mode', () => {
   const { mem, live, eventId, items } = liveFixture();
   const [song, v1, v2] = items.map((it) => it.id);
-  const cmd = (c, role = 'leader') => live.command(1, eventId, c, undefined, role);
-  const code = (c, role) => { try { cmd(c, role); return 'ok'; } catch (err) { return err.code; } };
+  const LEAD = { userId: 5 };
+  const OP = { userId: 7 };
+  const OWNER = { userId: 1 };
+  const cmd = (c, role = 'leader', ctx = LEAD) => live.command(1, eventId, c, undefined, role, ctx);
+  const code = (c, role, ctx) => { try { cmd(c, role, ctx); return 'ok'; } catch (err) { return err.code; } };
   const snap = () => live.snapshot(1, eventId);
   const pos = (p) => [p.itemId, p.step];
-  assert.strictEqual(code({ type: 'projector.request' }, 'operator'), 'notLive');
-  assert.strictEqual(code({ type: 'event.start' }, 'leader'), 'forbidden', 'starting is the owner\'s / operator\'s');
-  cmd({ type: 'event.start' }, 'owner'); // the owner starts (no operator connected): the starter holds the projector
-  cmd({ type: 'projector.request' }, 'leader'); // nobody connected: the leader takes it at once
-  assert.deepStrictEqual([snap().mode, snap().teamMode, snap().projector.follows, snap().holder.role], ['together', 'follow', 'worship', 'leader']);
-  // together: leader and operator move the same main position; projector commands refused
-  cmd({ type: 'worship.next' }, 'leader');
-  cmd({ type: 'worship.next' }, 'operator');
-  assert.deepStrictEqual(pos(snap().worship), [song, 2]);
-  cmd({ type: 'worship.prev' }, 'operator');
-  assert.deepStrictEqual(pos(snap().worship), [song, 1]);
-  for (const role of ['leader', 'operator', 'owner']) assert.strictEqual(code({ type: 'projector.next' }, role), 'notSplitMode');
-  assert.strictEqual(code({ type: 'projector.source', source: 'content' }, 'operator'), 'ok');
-  // the operator takes the projector (the holder is not connected: at once): split, and the
-  // projector starts at the main position; then the two move on their own
-  cmd({ type: 'projector.request' }, 'operator');
-  assert.deepStrictEqual([snap().mode, snap().projector.follows, ...pos(snap().projector)], ['split', 'operator', song, 1]);
-  cmd({ type: 'projector.next' }, 'operator');
-  cmd({ type: 'projector.next' }, 'leader');
-  assert.deepStrictEqual([pos(snap().projector), pos(snap().worship)], [[v1, 0], [song, 1]]);
-  cmd({ type: 'worship.prev' }, 'operator');
-  assert.deepStrictEqual([pos(snap().projector), pos(snap().worship)], [[v1, 0], [song, 0]], 'the main position alone');
-  cmd({ type: 'projector.goto', itemId: v2, step: 0 }, 'leader');
-  assert.strictEqual(code({ type: 'projector.goto', itemId: v2, step: 3 }, 'operator'), 'badPosition');
-  assert.strictEqual(code({ type: 'projector.next' }, 'member'), 'forbidden');
+  assert.strictEqual(code({ type: 'projector.request' }, 'operator', OP), 'notLive');
+  assert.strictEqual(code({ type: 'event.start' }, 'leader', LEAD), 'forbidden', 'starting is the owner\'s / operator\'s');
+  cmd({ type: 'event.start' }, 'owner', OWNER); // the owner starts (no operator connected): the starter holds the projector
+  assert.deepStrictEqual([snap().mode, snap().teamMode, snap().projector.follows, snap().holder.role], ['split', 'follow', 'operator', 'owner'], 'a holder: the projector has its own position');
+  // the holder's moves are what the church sees, and carry the team; the others move the team only
+  cmd({ type: 'worship.next' }, 'owner', OWNER);
+  assert.deepStrictEqual([pos(snap().worship), pos(snap().projector)], [[song, 1], [song, 1]], 'the holder: both');
+  cmd({ type: 'worship.next' }, 'leader', LEAD);
+  assert.deepStrictEqual([pos(snap().worship), pos(snap().projector)], [[song, 2], [song, 1]], 'the leader: the team only, the projector stays');
+  cmd({ type: 'worship.next' }, 'owner', OWNER);
+  assert.deepStrictEqual([pos(snap().worship), pos(snap().projector)], [[song, 2], [song, 2]], 'the holder moves from the projector; the team comes along');
+  // the projector\'s own commands and sources: the holder\'s alone
+  assert.strictEqual(code({ type: 'projector.next' }, 'leader', LEAD), 'notHolder');
+  assert.strictEqual(code({ type: 'projector.next' }, 'operator', OP), 'notHolder');
+  assert.strictEqual(code({ type: 'projector.source', source: 'logo' }, 'operator', OP), 'notHolder');
+  assert.strictEqual(code({ type: 'projector.source', source: 'content' }, 'owner', OWNER), 'ok');
+  // the operator takes the projector (the holder is not connected: at once): the projector keeps its place; the two move on their own
+  cmd({ type: 'projector.request' }, 'operator', OP);
+  assert.deepStrictEqual([snap().mode, snap().projector.follows, snap().holder.role, ...pos(snap().projector)], ['split', 'operator', 'operator', song, 2]);
+  cmd({ type: 'projector.next' }, 'operator', OP);
+  assert.strictEqual(code({ type: 'projector.next' }, 'leader', LEAD), 'notHolder');
+  assert.deepStrictEqual([pos(snap().projector), pos(snap().worship)], [[v1, 0], [song, 2]]);
+  cmd({ type: 'worship.prev' }, 'leader', LEAD);
+  assert.deepStrictEqual([pos(snap().projector), pos(snap().worship)], [[v1, 0], [song, 1]], 'the main position alone');
+  cmd({ type: 'projector.goto', itemId: v2, step: 0 }, 'operator', OP);
+  assert.strictEqual(code({ type: 'projector.goto', itemId: v2, step: 3 }, 'operator', OP), 'badPosition');
+  assert.strictEqual(code({ type: 'projector.next' }, 'member', { userId: 9 }), 'forbidden');
   // "Sari acolo": the projector jumps to the team, or the team to the projector
-  cmd({ type: 'projector.syncToWorship' }, 'operator');
-  assert.deepStrictEqual(pos(snap().projector), [song, 0]);
+  cmd({ type: 'projector.syncToWorship' }, 'operator', OP);
+  assert.deepStrictEqual(pos(snap().projector), [song, 1]);
   const v = snap().version;
-  cmd({ type: 'projector.syncToWorship' }, 'operator');
+  cmd({ type: 'projector.syncToWorship' }, 'operator', OP);
   assert.strictEqual(snap().version, v, 'already there: no-op');
-  cmd({ type: 'projector.goto', itemId: v1, step: 0 }, 'operator');
-  cmd({ type: 'worship.goto', itemId: v1, step: 0 }, 'leader');
+  cmd({ type: 'projector.goto', itemId: v1, step: 0 }, 'operator', OP);
+  cmd({ type: 'worship.goto', itemId: v1, step: 0 }, 'leader', LEAD);
   assert.deepStrictEqual(pos(snap().worship), [v1, 0]);
-  // the frame shows the projector position in split, the main one together
+  // the frame shows the projector position
   const { projectorFrame } = require('../lib/projector');
   const events = require('../lib/events').createEventStore(mem);
-  cmd({ type: 'worship.goto', itemId: song, step: 0 });
-  cmd({ type: 'projector.goto', itemId: v1, step: 0 }, 'operator');
+  cmd({ type: 'worship.goto', itemId: song, step: 0 }, 'leader', LEAD);
+  cmd({ type: 'projector.goto', itemId: v1, step: 0 }, 'operator', OP);
   assert.strictEqual(projectorFrame(snap(), events.get(1, eventId), new Map()).reference, 'Ps 1');
-  // the leader takes it back: together, and the one position continues from where the
-  // projector was (the screen does not jump); the leader's own place comes back with the
-  // event, for "Începe de unde erai"
-  const back = cmd({ type: 'projector.request' }, 'leader');
-  assert.deepStrictEqual([snap().mode, ...pos(snap().worship)], ['together', v1, 0]);
+  // the leader takes it back (the operator is not connected: at once): the projection stays where
+  // it was (the screen does not jump); the leader is told their own place, for "Încep de unde eram"
+  const back = cmd({ type: 'projector.request' }, 'leader', LEAD);
+  assert.deepStrictEqual([snap().mode, snap().holder.role, ...pos(snap().worship), ...pos(snap().projector)], ['split', 'leader', song, 0, v1, 0]);
   assert.strictEqual(projectorFrame(snap(), events.get(1, eventId), new Map()).reference, 'Ps 1', 'the screen stays on Ps 1');
   assert.deepStrictEqual([back.handoverEvent.type, back.handoverEvent.previous, back.handoverEvent.continued], ['taken', { itemId: song, step: 0 }, { itemId: v1, step: 0 }]);
-  cmd({ type: 'worship.goto', itemId: song, step: 0 }, 'leader'); // "Începe de unde erai"
-  assert.deepStrictEqual(pos(snap().worship), [song, 0]);
+  cmd({ type: 'worship.goto', itemId: song, step: 0 }, 'leader', LEAD); // "Încep de unde eram": the holder takes the projector there
+  assert.deepStrictEqual([pos(snap().worship), pos(snap().projector)], [[song, 0], [song, 0]]);
   assert.strictEqual(projectorFrame(snap(), events.get(1, eventId), new Map()).kind, 'title', 'the song item (no song map here)');
-  assert.strictEqual(code({ type: 'projector.next' }, 'operator'), 'notSplitMode');
+  assert.strictEqual(code({ type: 'projector.next' }, 'operator', OP), 'notHolder');
   // team mode: any event role; same mode = no-op
   assert.strictEqual(code({ type: 'team.mode', mode: 'loose' }), 'badCommand');
-  assert.strictEqual(code({ type: 'team.mode', mode: 'free' }, 'member'), 'forbidden');
-  cmd({ type: 'team.mode', mode: 'free' }, 'operator');
+  assert.strictEqual(code({ type: 'team.mode', mode: 'free' }, 'member', { userId: 9 }), 'forbidden');
+  cmd({ type: 'team.mode', mode: 'free' }, 'operator', OP);
   assert.strictEqual(snap().teamMode, 'free');
   const w = snap().version;
-  cmd({ type: 'team.mode', mode: 'free' }, 'leader');
+  cmd({ type: 'team.mode', mode: 'free' }, 'leader', LEAD);
   assert.strictEqual(snap().version, w);
-  // a restart (new store, same database) keeps modes and positions
-  cmd({ type: 'projector.request' }, 'operator');
-  cmd({ type: 'projector.goto', itemId: v2, step: 0 }, 'operator');
+  // a restart (new store, same database) keeps the holder, modes and positions
+  cmd({ type: 'projector.request' }, 'operator', OP);
+  cmd({ type: 'projector.goto', itemId: v2, step: 0 }, 'operator', OP);
   const again = require('../lib/live').createLiveStore(mem).snapshot(1, eventId);
   assert.deepStrictEqual([again.mode, again.teamMode, again.worship, again.projector], ['split', 'free', snap().worship, snap().projector]);
-  // a new start begins together, following
-  cmd({ type: 'event.end' }, 'operator');
+  cmd({ type: 'event.end' }, 'operator', OP);
   mem.close();
 });
-
 test('live store: "Pe ce ecrane" (migration 040): null = every screen; chosen ids distinct and sorted, existing screens of this admin only; persisted; reset at a new start', () => {
   const { mem, live, eventId } = liveFixture();
   mem.prepare("INSERT INTO admins (id, name, created_at) VALUES (2, 'B', 0)").run();
@@ -1347,7 +1349,7 @@ test('live store: "Retrage din live" (event.withdraw): back to planned, not fini
   cmd({ type: 'event.start' }, 'operator', { userId: 7, online: [{ userId: 7, role: 'operator' }] });
   cmd({ type: 'clock.set', show: false });
   cmd({ type: 'worship.next' });
-  cmd({ type: 'projector.source', source: 'logo' });
+  cmd({ type: 'projector.source', source: 'logo' }, 'operator', { userId: 7 }); // the holder's
   assert.strictEqual(code({ type: 'event.withdraw' }, 'member'), 'forbidden');
   assert.strictEqual(code({ type: 'event.withdraw' }, 'presenter'), 'forbidden', 'withdrawing is the owner\'s / operator\'s too');
   cmd({ type: 'event.withdraw' }, 'operator');
@@ -1387,7 +1389,7 @@ test('live store: both positions clamp on their own after a setlist change; pers
 test('live store: additions go where the sender chooses, no approval; a notice for the others', () => {
   const { mem, evs, live, eventId } = liveFixture();
   const [song, v1] = evs.get(1, eventId).items.map((it) => it.id);
-  const cmd = (c, role = 'operator') => live.command(1, eventId, c, undefined, role);
+  const cmd = (c, role = 'operator', ctx = {}) => live.command(1, eventId, c, undefined, role, ctx);
   const code = (c, role) => { try { cmd(c, role); return 'ok'; } catch (err) { return err.code; } };
   const shared = () => evs.get(1, eventId).items.map((it) => it.title || it.reference);
   const all = () => evs.get(1, eventId, { scope: 'all' }).items.map((it) => `${it.title || it.reference}${it.scope === 'projector' ? '*' : ''}`);
@@ -1407,17 +1409,18 @@ test('live store: additions go where the sender chooses, no approval; a notice f
   assert.deepStrictEqual(shared(), ['Sfânt', 'Ps 1', 'Sfânt', 'Ps 2']);
   assert.notStrictEqual(live.snapshot(1, eventId).setlistKey, key, 'team phones reload');
   assert.strictEqual(evs.get(1, eventId).event.itemCount, 4);
-  // split, projector on the song: a projector-only item lands after the projector's item
-  cmd({ type: 'projector.request' }, 'operator');
-  cmd({ type: 'projector.goto', itemId: song, step: 0 });
+  // the operator (user 7) holds the projector, on the song: a projector-only item lands after the projector's item
+  const OP = { userId: 7 };
+  cmd({ type: 'projector.request' }, 'operator', OP);
+  cmd({ type: 'projector.goto', itemId: song, step: 0 }, 'operator', OP);
   cmd({ type: 'operator.addItem', target: 'projector', item: { type: 'announcement', title: 'Agapă', body: 'Sala mică' } }, 'leader');
   assert.deepStrictEqual(all(), ['Sfânt', 'Agapă*', 'Ioan 3:16*', 'Ps 1', 'Sfânt', 'Ps 2']);
-  // projector navigation walks all items, the main position only the shared ones
-  cmd({ type: 'projector.goto', itemId: song, step: 2 });
-  cmd({ type: 'projector.next' });
+  // projector navigation walks all items, the main position (a non-holder's move) only the shared ones
+  cmd({ type: 'projector.goto', itemId: song, step: 2 }, 'operator', OP);
+  cmd({ type: 'projector.next' }, 'operator', OP);
   assert.strictEqual(evs.get(1, eventId, { scope: 'all' }).items.find((it) => it.id === live.snapshot(1, eventId).projector.itemId).title, 'Agapă');
-  cmd({ type: 'worship.goto', itemId: song, step: 2 });
-  cmd({ type: 'worship.next' });
+  cmd({ type: 'worship.goto', itemId: song, step: 2 }, 'leader', { userId: 5 });
+  cmd({ type: 'worship.next' }, 'leader', { userId: 5 });
   assert.strictEqual(live.snapshot(1, eventId).worship.itemId, v1, 'the main position skips projector-only items');
   // bad input, permissions
   assert.strictEqual(code({ type: 'operator.addItem', item: { type: 'verse', reference: 'x' } }), 'badCommand', 'a target is required');
@@ -2208,11 +2211,11 @@ test('projector holder (migration 041): the start gives it to a connected operat
   cmd({ type: 'event.end' }, 'owner');
   mem.prepare("UPDATE events SET status = 'planned' WHERE id = ?").run(eventId); // a second start
   live.command(1, eventId, { type: 'event.start' }, undefined, 'owner', { now: T, userId: 1, online: [LEAD, OWNER] });
-  assert.deepStrictEqual([who(), snap().mode], [[1, 'owner'], 'together'], 'no operator connected: the starter holds');
+  assert.deepStrictEqual([who(), snap().mode], [[1, 'owner'], 'split'], 'no operator connected: the starter holds');
   // the leader asks; the owner (connected) accepts: the leader holds, together
   cmd({ type: 'projector.request' }, 'leader', { userId: 5, online: [LEAD, OWNER] });
   cmd({ type: 'handover.accept' }, 'owner', { userId: 1, online: [LEAD, OWNER] });
-  assert.deepStrictEqual([who(), snap().mode], [[5, 'leader'], 'together'], 'handed to the leader');
+  assert.deepStrictEqual([who(), snap().mode], [[5, 'leader'], 'split'], 'handed to the leader');
   // mine already: nothing
   const v0 = snap().version;
   assert.strictEqual(cmd({ type: 'projector.request' }, 'leader', { userId: 5, online: [LEAD, OP] }).changed, false);
@@ -2220,7 +2223,7 @@ test('projector holder (migration 041): the start gives it to a connected operat
   // the operator asks while the leader is connected: a pending request (versioned), aimed at the holder
   let r = cmd({ type: 'projector.request' }, 'operator', { userId: 7, online: [LEAD, OP] });
   assert.deepStrictEqual([r.changed, r.handoverEvent], [true, { type: 'requested', byUserId: 7, toUserId: 5, expiresAt: T + HANDOVER_TTL_MS }]);
-  assert.deepStrictEqual([who(), snap().mode], [[5, 'leader'], 'together'], 'nothing changes yet');
+  assert.deepStrictEqual([who(), snap().mode], [[5, 'leader'], 'split'], 'nothing changes yet');
   assert.deepStrictEqual(snap().handover, { requestedBy: 7, requestedAt: T, expiresAt: T + HANDOVER_TTL_MS }, 'pending in the snapshot');
   const v = snap().version;
   r = cmd({ type: 'projector.request' }, 'operator', { userId: 7, online: [LEAD, OP] });
@@ -2242,7 +2245,7 @@ test('projector holder (migration 041): the start gives it to a connected operat
   cmd({ type: 'projector.request' }, 'owner', { userId: 1, online: [OWNER, OP] });
   assert.ok(snap().handover, 'pending');
   r = cmd({ type: 'handover.accept' }, 'operator', { userId: 7, online: [OP] });
-  assert.deepStrictEqual([r.handoverEvent.type, r.handoverEvent.toRole, who(), snap().mode], ['accepted', 'owner', [1, 'owner'], 'together']);
+  assert.deepStrictEqual([r.handoverEvent.type, r.handoverEvent.toRole, who(), snap().mode], ['accepted', 'owner', [1, 'owner'], 'split']);
   // timeout: after 60 s the request is gone (silently); accepting then says so
   cmd({ type: 'projector.request' }, 'operator', { userId: 7, online: [OWNER, OP] });
   assert.ok(snap().handover, 'pending');
@@ -2254,7 +2257,7 @@ test('projector holder (migration 041): the start gives it to a connected operat
   r = cmd({ type: 'projector.request' }, 'operator', { userId: 7, online: [OP, LEAD] });
   assert.deepStrictEqual([r.handoverEvent, who(), snap().mode], [{ type: 'taken', byUserId: 7, byRole: 'operator', from: 1 }, [7, 'operator'], 'split'], 'the owner is away: taken');
   r = cmd({ type: 'projector.request' }, 'leader', { userId: 5, online: [LEAD] });
-  assert.deepStrictEqual([r.handoverEvent.type, who(), snap().mode], ['taken', [5, 'leader'], 'together'], 'the operator is away: taken, together again');
+  assert.deepStrictEqual([r.handoverEvent.type, who(), snap().mode], ['taken', [5, 'leader'], 'split'], 'the operator is away: taken, still with a holder');
   // an owner may always answer (not their own request); an owner connected keeps a request pending even with the holder away
   cmd({ type: 'projector.request' }, 'operator', { userId: 7, online: [OP] });
   assert.deepStrictEqual(who(), [7, 'operator']);

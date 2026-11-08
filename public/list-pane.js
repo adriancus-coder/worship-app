@@ -53,5 +53,27 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => attachAll());
   else attachAll();
 
-  window.LIST_PANE = { attach, attachAll, update };
+  // Sticky columns (data-sticky-fit: the live page's and the console's Program column, from
+  // 1024 px) end at the bottom of the viewport wherever they start: their max-height follows
+  // their top edge, so the list's last row is reachable without scrolling the page.
+  const wide = window.matchMedia('(min-width: 1024px)');
+  let fitting = 0;
+  function fitSticky() {
+    fitting = 0;
+    for (const node of document.querySelectorAll('[data-sticky-fit]')) {
+      if (!wide.matches) { node.style.maxHeight = ''; continue; }
+      const top = node.getBoundingClientRect().top;
+      node.style.maxHeight = `${Math.max(240, window.innerHeight - Math.max(0, top) - 12)}px`;
+    }
+  }
+  const scheduleFit = () => { if (!fitting) fitting = requestAnimationFrame(fitSticky); };
+  if (document.querySelector('[data-sticky-fit]')) {
+    window.addEventListener('scroll', scheduleFit, { passive: true });
+    window.addEventListener('resize', scheduleFit);
+    wide.addEventListener('change', scheduleFit);
+    if (window.ResizeObserver) new ResizeObserver(scheduleFit).observe(document.body);
+    scheduleFit();
+  }
+
+  window.LIST_PANE = { attach, attachAll, update, fitSticky };
 })();

@@ -134,7 +134,9 @@
     return steps && steps[pos.step] && item.type === 'song' ? `${itemTitle(item)} · ${steps[pos.step].label}` : itemTitle(item);
   }
 
-  // Following the operator (split only, never in emergency mode): the projector's position.
+  // This page holds the projector: its moves are what the church sees (the team follows).
+  const holdsIt = () => Boolean(state.me && state.snap && state.snap.holder && state.snap.holder.userId === state.me.user.id);
+  // Following the projector (split only, never in emergency mode): the projector's position.
   const followsProjector = () => isSplit() && state.follow === 'projector' && !emergency.active;
   const viewPos = () => {
     const snap = state.snap;
@@ -378,11 +380,13 @@
 
     const index = state.items.indexOf(item);
     renderEndItem(item);
-    $('prev-button').disabled = index === 0 && pos.step === 0 && !pos.ended;
+    // following the projector without holding it: a read-only view of what the church sees
+    const readOnly = followsProjector() && !holdsIt();
+    $('prev-button').disabled = (index === 0 && pos.step === 0 && !pos.ended) || readOnly;
     // After "Sfârșit" the next move is the next item's first step.
     const following = state.items[index + 1];
     const after = pos.ended ? (following ? { itemId: following.id, step: 0 } : null) : nextPosition(state.items, pos);
-    $('next-button').disabled = !after;
+    $('next-button').disabled = !after || readOnly;
     $('next-button').textContent = after ? t('live.next', { label: window.LIVE.nextText(state.items, pos).label }) : t('live.nextEnd');
 
     const head = el('header', { class: 'current-head' },
@@ -583,12 +587,13 @@
     // background, clock, video, screens); only "Proiectorul e la … · Sari acolo" and the
     // switches stay, and the step grid takes the width. B / L / K do nothing here then.
     const split = live && snap.mode === 'split';
-    document.body.classList.toggle('split-mode', split);
+    // Someone else holds the projector: the panel goes (preview, sources, background, clock,
+    // video, screens); only "Proiectorul e la … · Sari acolo" and the switches stay.
+    document.body.classList.toggle('split-mode', split && !holdsIt());
     // The projector panel is for whoever holds the projector (and the 'screens' right): a
     // leader / presenter sees it only once the projector was handed to them.
-    const holdsIt = Boolean(state.me && snap && snap.holder && snap.holder.userId === state.me.user.id);
-    document.body.classList.toggle('projector-away', !(holdsIt || (state.me && window.PAGE.can(state.me, 'screens'))));
-    $('split-keys-hint').hidden = !split;
+    document.body.classList.toggle('projector-away', !(holdsIt() || (state.me && window.PAGE.can(state.me, 'screens'))));
+    $('split-keys-hint').hidden = !(split && !holdsIt());
     $('cross').hidden = !split;
     renderFollow(split);
     if (split && followsProjector()) {
@@ -645,7 +650,7 @@
   const isSplit = () => Boolean(state.snap) && state.snap.status === 'live' && state.snap.mode === 'split';
 
   function toggleSource(source) {
-    if (isSplit()) return; // the operator owns the projector
+    if (isSplit() && !holdsIt()) return; // someone else holds the projector
     const currentSource = state.snap && state.snap.projector.source;
     send('projector.source', { source: currentSource === source ? 'content' : source });
   }
@@ -697,6 +702,11 @@
     state.me = me; // the lyrics sheet: "Salvează în bibliotecă" needs the library right
     state.leader = Boolean(me && me.user.role === 'leader');
     if (state.leader && state.view !== 'full') state.openLyrics = true;
+    // "Vedere: Complet | Compact" is the leader's (the phone in hand while singing); the
+    // others always get the full page
+    const viewRow = document.querySelector('.live-view-row');
+    if (viewRow) viewRow.hidden = !state.leader;
+    if (!state.leader && state.compact) setCompact(false);
   });
 
   // The projector's holder and the handover flow; the info toast for additions from the console.

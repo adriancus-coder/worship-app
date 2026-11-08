@@ -26,6 +26,9 @@
   const items = () => (state.snap && state.snap.items) || [];
   const live = () => Boolean(state.snap) && state.snap.status === 'live';
   const split = () => live() && state.snap.mode === 'split';
+  // This console holds the projector: its moves are the projector's; otherwise (someone else
+  // holds it) they reach the team only, and the sources are theirs.
+  const holdsIt = () => split() && Boolean(state.me && state.snap.holder && state.snap.holder.userId === state.me.user.id);
 
   // Where the projector is: its own position when separate, else the main one.
   function projectorPos() {
@@ -39,16 +42,16 @@
   // otherwise. A projector-only item can only be shown on its own: choosing it asks for the
   // projector first (shown at once when nobody connected holds it; else the request is sent).
   async function goto(item, step) {
-    if (split()) return send('projector.goto', { itemId: item.id, step });
+    if (holdsIt()) return send('projector.goto', { itemId: item.id, step });
     if (item.scope === 'projector') {
       const reply = await send('projector.request');
       return reply.ok && !reply.handover ? send('projector.goto', { itemId: item.id, step }) : reply;
     }
     return send('worship.goto', { itemId: item.id, step });
   }
-  const move = (dir) => send(split() ? `projector.${dir}` : `worship.${dir}`);
-  // End of the item: the projector's list when separate, else the one main position.
-  const endItem = () => send('worship.endItem', split() ? { target: 'projector' } : undefined);
+  const move = (dir) => send(holdsIt() ? `projector.${dir}` : `worship.${dir}`);
+  // End of the item: the projector's when this console holds it, else the team's.
+  const endItem = () => send('worship.endItem', holdsIt() ? { target: 'projector' } : undefined);
 
   function itemTitle(item) {
     if (!item) return '';
@@ -293,12 +296,12 @@
     // until the next move.
     window.LIVE.renderEndButton($('op-end-item'), { ended: Boolean(pos.ended), hasItem: enabled && Boolean(item) });
     const synced = live() && pos.itemId === worship.itemId && pos.step === worship.step;
-    $('op-sync').hidden = !split();
-    $('op-sync').disabled = !split() || synced;
+    $('op-sync').hidden = !holdsIt();
+    $('op-sync').disabled = !holdsIt() || synced;
   }
 
   function renderSources() {
-    const enabled = live();
+    const enabled = live() && (!state.snap.holder || holdsIt()); // someone else holds it: theirs
     const source = live() ? state.snap.projector.source : 'content';
     const video = live() ? state.snap.video : null;
     for (const button of document.querySelectorAll('[data-source]')) {
