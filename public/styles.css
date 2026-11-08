@@ -1011,11 +1011,14 @@ body:not(.live-compact) .live-item-grip { display: none; }
 body.live-compact .live-current, body.live-compact .live-info, body.live-compact #mode-controls, body.live-compact .key-hint, body.live-compact .live-meta #presence { display: none; }
 body.live-compact .live-grid { display: block; }
 body.live-compact .live-setlist { width: 100%; max-width: 720px; }
-body.live-compact .live-item { padding: 12px 12px 12px 52px; }
-body.live-compact .live-item .item-title { font-size: 1.125rem; }
+body.live-compact .live-item { min-height: var(--touch); padding: 6px 10px 6px 50px; }
+body.live-compact .live-item .item-text { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 2px 8px; }
+body.live-compact .live-item .item-title { flex: 0 1 auto; font-size: 1rem; line-height: 1.25; }
+body.live-compact .live-item .item-sub { font-size: 0.8125rem; }
+body.live-compact .live-list { gap: 4px; }
 /* the key in the Program: a filled pill, read at a glance (the compact view is the leader's key list) */
 .live-item .item-key { align-self: flex-start; margin-top: 2px; padding: 2px 10px; font-size: 0.9375rem; font-weight: 700; color: var(--on-accent); background: var(--accent-fill); border-radius: 999px; }
-body.live-compact .live-item .item-key { font-size: 1.0625rem; padding: 3px 12px; }
+body.live-compact .live-item .item-key { margin-top: 0; padding: 1px 9px; font-size: 0.875rem; }
 .live-item .item-key-none, body.live-compact .live-item .item-key-none { font-weight: 500; color: var(--text-muted); background: transparent; border: 1px dashed var(--border); }
 .live-item .item-key.is-pickable { cursor: pointer; min-height: 28px; }
 .live-item .item-key.is-pickable[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--accent-fill); }

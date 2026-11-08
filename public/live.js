@@ -143,9 +143,11 @@
     if (!snap) return null;
     return followsProjector() ? { itemId: snap.projector.itemId, step: snap.projector.step, ended: Boolean(snap.projector.ended) } : snap.worship;
   };
-  // The commands of the followed position.
-  const move = (dir, extra) => send(followsProjector() ? `projector.${dir}` : `worship.${dir}`, extra);
-  const endItem = () => send('worship.endItem', followsProjector() ? { target: 'projector' } : undefined);
+  // The commands of the followed position. Following someone else's projector is a view only:
+  // a move from here (a row, a key, the big view) does nothing.
+  const readOnly = () => followsProjector() && !holdsIt();
+  const move = (dir, extra) => (readOnly() ? Promise.resolve({ ok: true }) : send(followsProjector() ? `projector.${dir}` : `worship.${dir}`, extra));
+  const endItem = () => (readOnly() ? Promise.resolve({ ok: true }) : send('worship.endItem', followsProjector() ? { target: 'projector' } : undefined));
 
   function current() {
     const snap = state.snap;
@@ -427,12 +429,11 @@
     const index = state.items.indexOf(item);
     renderEndItem(item);
     // following the projector without holding it: a read-only view of what the church sees
-    const readOnly = followsProjector() && !holdsIt();
-    $('prev-button').disabled = (index === 0 && pos.step === 0 && !pos.ended) || readOnly;
+    $('prev-button').disabled = (index === 0 && pos.step === 0 && !pos.ended) || readOnly();
     // After "Sfârșit" the next move is the next item's first step.
     const following = state.items[index + 1];
     const after = pos.ended ? (following ? { itemId: following.id, step: 0 } : null) : nextPosition(state.items, pos);
-    $('next-button').disabled = !after || readOnly;
+    $('next-button').disabled = !after || readOnly();
     $('next-button').textContent = after ? t('live.next', { label: window.LIVE.nextText(state.items, pos).label }) : t('live.nextEnd');
 
     const head = el('header', { class: 'current-head' },
