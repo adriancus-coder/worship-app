@@ -2751,6 +2751,8 @@ testAsync('resurse lookupSongThemes: by the import link, else by the title; not 
       return ok(JSON.stringify({ Results: /gloria/i.test(q) ? [{ id: '77', title: 'Gloria in excelsis', title_slug: 'gloria', slug: 'cantece' }, { id: '78', title: 'Gloria', title_slug: 'gloria-2', slug: 'cantece' }] : [] }), 'application/json');
     }
     if (/^\/cantece\/\d+\/cantare$/.test(u.pathname)) return ok(page);
+    const xml = u.pathname.match(/^\/cantece\/opensong\/(\d+)$/);
+    if (xml) return ok(`<?xml version="1.0" encoding="UTF-8"?><song><title>Gloria</title><author></author><key></key><presentation>V1</presentation><lyrics>[V1]\n ${xml[1] === '78' ? 'Gloria in excelsis Deo\n Pace pe pământ' : 'Cu totul alte cuvinte\n Pe alt rând'}\n</lyrics></song>`, 'application/xml');
     return new Response('', { status: 404 });
   };
   const byLink = await R.lookupSongThemes({ title: 'Orice', sourceUrl: 'https://www.resursecrestine.ro/cantece/503/orice' }, { fetchImpl });
@@ -2760,6 +2762,15 @@ testAsync('resurse lookupSongThemes: by the import link, else by the title; not 
   assert.deepStrictEqual([byTitle.found.id, byTitle.found.title, byTitle.themes], ['78', 'Gloria', ['Paști', 'Botez']], 'the exact title, not the first result');
   assert.deepStrictEqual(await R.lookupSongThemes({ title: 'Nimic', sourceUrl: null }, { fetchImpl }), { found: null, themes: [] });
   assert.deepStrictEqual(await R.lookupSongThemes({ title: 'Gloria', sourceUrl: 'https://www.resursecrestine.ro/acorduri/9001/x' }, { fetchImpl }).then((r) => r.found.id), '78', 'a sheet link: by title');
+  // the title of our songbook is not the site's: the song is found by its text (the hit with
+  // another text is passed over); another title and another text: not found
+  const OURS = [{ type: 'verse', content: 'Gloria in excelsis Deo,\nPace pe pământ!' }];
+  const byText = await R.lookupSongThemes({ title: 'Gloria (caiet)', sourceUrl: null, sections: OURS }, { fetchImpl });
+  assert.deepStrictEqual([byText.found.id, byText.found.title, byText.themes], ['78', 'Gloria', ['Paști', 'Botez']], 'another title, the same text: found by the text');
+  assert.deepStrictEqual(await R.lookupSongThemes({ title: 'Gloria (caiet)', sourceUrl: null, sections: [{ type: 'verse', content: 'Nimic din ce e pe site\nNici asta' }] }, { fetchImpl }), { found: null, themes: [] }, 'another title and another text: not found');
+  const exact = await R.lookupSongThemes({ title: 'Gloria', sourceUrl: null, sections: [{ type: 'verse', content: 'Nimic din ce e pe site' }] }, { fetchImpl });
+  assert.strictEqual(exact.found.id, '78', 'the same title with another text: still taken (the site has it under this title)');
+  assert.deepStrictEqual(R.songCandidates([{ kind: 'song', id: '1', title: 'B' }, { kind: 'sheet', id: 'a2', title: 'A' }, { kind: 'song', id: '3', title: 'A' }, { kind: 'song', id: '4', title: 'C' }, { kind: 'song', id: '5', title: 'D' }], 'a').map((c) => [c.id, c.exactTitle]), [['3', true], ['1', false], ['4', false]], 'the candidates: the same title first, then the others, three in all, no sheets');
 });
 
 test('songs store: the collection (migration 060): main by default, school on request, listed apart, exported', () => {
@@ -3143,12 +3154,14 @@ testAsync('resurse sync: the songs without chords or themes looked up by title; 
   const mem = new Database(':memory:');
   mem.pragma('foreign_keys = ON');
   runMigrations(mem);
-  mem.prepare("INSERT INTO admins (id, name, created_at) VALUES (1, 'A', 0), (2, 'B', 0), (3, 'C', 0)").run();
+  mem.prepare("INSERT INTO admins (id, name, created_at) VALUES (1, 'A', 0), (2, 'B', 0), (3, 'C', 0), (4, 'D', 0)").run();
   mem.prepare("INSERT INTO users (id, admin_id, email, name, password_hash, role, created_at) VALUES (1, 1, 'a@x.ro', 'A', 'x', 'owner', 0)").run();
   const store = createSongStore(mem);
   const t = (k) => k;
   const make = (adminId, body) => store.create(adminId, 1, validateSong(body, t).value);
   const PLAIN = [{ type: 'verse', content: '1. Când totul pare că-i pierdut,\nAl meu Păstor îmi va fi scut.' }, { type: 'chorus', content: 'Viața mea e-n mâna Sa\nȘi cu credință voi cânta' }];
+  const f = make(4, { title: 'Fără acorduri (caietul nostru)', themes: ['Laudă'], sections: PLAIN }); // the songbook's title, the site's text: found by the text
+  const g = make(4, { title: 'Alte acorduri', sections: [{ type: 'verse', content: 'Cu totul alte cuvinte aici\nȘi încă un rând' }] }); // the search returns 503, another title AND text: not found
   const a = make(1, { title: 'Fără acorduri', sections: PLAIN }); // the site's 503: sheet 9001 fits, themes Închinare, Paști, key D
   const b = make(1, { title: 'Altceva', sections: [{ type: 'verse', content: 'x' }] }); // no song with this title
   const c = make(1, { title: 'Gata', song_key: 'G', themes: ['Laudă'], sections: [{ type: 'verse', content: '[G]x' }] }); // chords and themes: looked at too, no song with this title
@@ -3175,6 +3188,9 @@ testAsync('resurse sync: the songs without chords or themes looked up by title; 
   assert.deepStrictEqual([store.get(3, e).song_key, store.get(3, e).themes, store.get(3, e).sections[0].content], ['E', ['Laudă', 'paști', 'Închinare'], '[E]Când totul pare că-i pierdut,\n[A]Al meu Păstor îmi va fi scut.']);
   sync.start(3, 'main', t);
   assert.deepStrictEqual((await done(3)).report.map((r) => [r.id, r.status]), [[e, 'skipped']], 'run again: nothing new for it');
+  sync.start(4, 'main', t);
+  assert.deepStrictEqual((await done(4)).report.map((r) => [r.id, r.status, r.themes, r.key, r.url]), [[g, 'notFound', [], null, null], [f, 'chords', ['Închinare', 'Paști'], 'D', 'https://www.resursecrestine.ro/cantece/503/fara-acorduri']], 'another title: the song found by its text gets chords and the themes it lacks; another title and text: not found');
+  assert.deepStrictEqual(store.get(4, f).themes, ['Laudă', 'Închinare', 'Paști']);
   mem.close();
 });
 

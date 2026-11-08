@@ -108,7 +108,7 @@ function createResurseRouter({ db, auth, logger, live, sync }) {
     const song = id ? songs.get(req.adminId, id) : null;
     if (!song) return res.status(404).json({ error: req.t('errors.songNotFound') });
     try {
-      res.json(await resurse.lookupSongThemes({ title: song.title, sourceUrl: song.source_url }));
+      res.json(await resurse.lookupSongThemes({ title: song.title, sourceUrl: song.source_url, sections: song.sections }));
     } catch (err) {
       fail(req, res, err);
     }
