@@ -31,7 +31,7 @@ module.exports = {
         label: document.querySelector('#pick-theme-field .sort-label').textContent, options: [...document.querySelectorAll('#pick-filter-theme option')].map((o) => o.textContent), value: document.getElementById('pick-filter-theme').value,
         below: document.getElementById('pick-theme-field').getBoundingClientRect().top >= document.getElementById('pick-q').getBoundingClientRect().bottom,
       }));
-      check(/^(Tema|Theme)$/.test(field.label) && field.options.join('|') === `${lang === 'ro' ? 'Toate temele' : 'All themes'}|Crăciun (1)|Paști (3)` && field.value === '' && field.below, `${tag} the theme filter under the search field: all themes, Crăciun (1), Paști (3)`, field);
+      check(/^(Tema|Theme)$/.test(field.label) && field.options.join('|') === (lang === 'ro' ? 'Toate temele|Fără temă (3)|Crăciun (1)|Paști (3)' : 'All themes|No theme (3)|Crăciun (1)|Paști (3)') && field.value === '' && field.below, `${tag} the theme filter under the search field: all themes, no theme (3), Crăciun (1), Paști (3)`, field);
       await p.waitForFunction(() => document.querySelectorAll('#pick-songs li').length >= 7);
       await p.selectOption('#pick-filter-theme', 'Paști');
       await p.waitForFunction(() => document.querySelectorAll('#pick-songs li').length === 3);

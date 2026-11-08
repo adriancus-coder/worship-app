@@ -120,17 +120,23 @@
     }
     // the theme filter (the library's tools row; the picker's, under the search field): the
     // select, filled from GET /api/songs/themes, hidden while the library has no themes
+    // "Fără temă (n)" is the select's second option: the songs with no theme at all, to find
+    // the ones still to tag (NO_THEME is its value, never a theme's name)
     const themeSelect = $('filter-theme');
+    const NO_THEME = '__none__';
     let themeWanted = '';
-    const theme = () => (themeSelect ? themeSelect.value : '');
+    const noTheme = () => Boolean(themeSelect && themeSelect.value === NO_THEME);
+    const theme = () => (themeSelect && themeSelect.value !== NO_THEME ? themeSelect.value : '');
     async function loadThemes() {
       if (!themeSelect) return;
       const res = await api('/api/songs/themes').catch(() => null);
       const themes = res && res.ok ? res.body.themes : [];
+      const without = res && res.ok ? res.body.without || 0 : 0;
       themeSelect.replaceChildren(el('option', { value: '', text: t('library.allThemes') }),
+        el('option', { value: NO_THEME, text: t('library.noTheme', { n: without }) }),
         ...themes.map((x) => el('option', { value: x.name, text: `${x.name} (${x.count})` })));
-      const match = themeWanted ? themes.find((x) => x.name.localeCompare(themeWanted, 'ro', { sensitivity: 'base' }) === 0) : null;
-      themeSelect.value = match ? match.name : '';
+      const match = themeWanted && themeWanted !== NO_THEME ? themes.find((x) => x.name.localeCompare(themeWanted, 'ro', { sensitivity: 'base' }) === 0) : null;
+      themeSelect.value = themeWanted === NO_THEME ? NO_THEME : (match ? match.name : '');
       $('theme-field').hidden = !themes.length;
     }
     const status = $('status');
@@ -201,7 +207,7 @@
       if (!window.THEMES_UI || !me || !window.PAGE.canEditSong(me, song)) return null;
       return el('button', {
         type: 'button', class: 'secondary song-themes-quick', 'data-icon': 'edit', 'aria-label': t('library.themesFor', { title: song.title }), title: t('library.themesButton'),
-        onclick: () => window.THEMES_UI.open(song, { onSaved: (saved) => { song.themes = saved.themes; renderLocal(); loadThemes(); } }),
+        onclick: () => window.THEMES_UI.open(song, { onSaved: (saved) => { song.themes = saved.themes; if (noTheme()) load(); else renderLocal(); loadThemes(); } }),
       }, el('span', { class: 'song-themes-quick-text', text: t('library.themesButton') }));
     }
 
@@ -268,6 +274,7 @@
       if (local.songs.length) setStatus('');
       else if (local.lastQuery) setStatus(t('library.noResults', { q: local.lastQuery }));
       else if (noKey()) setStatus(t('library.noKeyNone'));
+      else if (noTheme()) setStatus(t('library.noThemeNone'));
       else if (theme()) setStatus(t('library.themeNone', { theme: theme() }));
       else if (collection() === 'school') setStatus(t('library.emptySchool'));
       else if (mode === 'pick') setStatus(options.emptyQuery === 'none' ? '' : t('library.emptyMember'));
@@ -283,10 +290,11 @@
         if (sort.value !== 'az') qs.set('sort', sort.value);
         if (noKey()) qs.set('noKey', '1');
         if (theme()) qs.set('theme', theme());
+        if (noTheme()) qs.set('noTheme', '1');
         if (collection() === 'school') qs.set('collection', 'school');
         const search = qs.toString();
         window.history.replaceState(null, '', search ? `?${search}` : window.location.pathname);
-      } else if (!query && !theme() && options.emptyQuery === 'none') {
+      } else if (!query && !theme() && !noTheme() && options.emptyQuery === 'none') {
         local.songs = [];
         local.lastQuery = '';
         renderLocal();
@@ -297,6 +305,7 @@
         if (options.withHistory) qs.withHistory = '1';
         if (noKey()) qs.noKey = '1';
         if (theme()) qs.theme = theme();
+        if (noTheme()) qs.noTheme = '1';
         if (collection() !== 'main') qs.collection = collection();
         const { ok, body } = await api(`/api/songs?${new URLSearchParams(qs)}`);
         if (id !== local.request) return; // a newer search is on its way
@@ -740,11 +749,13 @@
         collectionListeners.push(cb);
         cb(collectionValue);
       },
-      // library mode: the theme to filter by (from the URL); the list is loaded first
+      // library mode: the theme to filter by (from the URL), or NO_THEME for "Fără temă"; the
+      // list is loaded first
       setTheme(value) {
         themeWanted = value || '';
         return loadThemes();
       },
+      NO_THEME,
       setMe(value) {
         me = value;
         renderLocal();

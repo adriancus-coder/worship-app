@@ -19,7 +19,7 @@
   $('q').value = params.get('q') || '';
   if (['az', 'za', 'recent'].includes(params.get('sort'))) $('sort').value = params.get('sort');
   if (params.get('noKey') === '1') $('filter-no-key').setAttribute('aria-pressed', 'true'); // "Fără ton"
-  search.setTheme(params.get('theme') || ''); // ?theme=Paști (from a song page's chip)
+  search.setTheme(params.get('noTheme') === '1' ? search.NO_THEME : (params.get('theme') || '')); // ?theme=Paști (from a song page's chip); ?noTheme=1: "Fără temă"
   search.setCollection(params.get('collection') === 'school' ? 'school' : 'main'); // ?collection=school: the Sunday school's library
 
   // --- "⋯" menu (import / export) ----------------------------------------------------

@@ -111,6 +111,25 @@ module.exports = {
     await p.selectOption('#filter-theme', '');
     await p.waitForFunction(() => document.querySelectorAll('#songs li').length > 3);
     check(!/theme=/.test(p.url()), '"Toate temele": the filter gone');
+    // "Fără temă (n)": the songs still to tag; a theme set from the row takes the song out
+    const untagged = (await app.api(owner, 'GET', '/api/songs?noTheme=1')).body.songs.length;
+    const option = await p.$eval('#filter-theme option:nth-child(2)', (o) => ({ value: o.value, text: o.textContent }));
+    check(option.value === '__none__' && option.text === `Fără temă (${untagged})`, 'the second option: "Fără temă" with how many songs have none', { option, untagged });
+    await p.selectOption('#filter-theme', '__none__');
+    await p.waitForFunction((n) => document.querySelectorAll('#songs li').length === n, untagged);
+    check(/noTheme=1/.test(p.url()) && (await p.$$eval('#songs li .song-themes-quick', (b) => b.length)) === untagged, 'filtered: only the songs with no theme, the filter in the URL', p.url());
+    await p.click('#songs li .song-themes-quick >> nth=0');
+    await p.waitForSelector('#themes-dialog[open] .theme-pick');
+    await p.click('#themes-dialog .theme-pick[data-theme="Nuntă"]'); // a theme no other step counts on
+    await p.click('#themes-save');
+    await p.waitForFunction((n) => document.querySelectorAll('#songs li').length === n - 1, untagged);
+    await p.waitForFunction((n) => document.querySelector('#filter-theme option:nth-child(2)').textContent === `Fără temă (${n - 1})`, untagged);
+    check(true, 'a theme set from the row: the song leaves the list, the count follows');
+    await p.reload();
+    await p.waitForFunction((n) => document.querySelectorAll('#songs li').length === n - 1 && document.getElementById('filter-theme').value === '__none__', untagged);
+    check(true, 'reloaded with ?noTheme=1: the filter kept');
+    await p.selectOption('#filter-theme', '');
+    await p.waitForFunction(() => !/noTheme/.test(location.search));
 
     // --- the resurse import brings the page's "Tematica" ---------------------------------
     const preview = (await app.api(owner, 'POST', '/api/resurse/preview', { id: '503' })).body;

@@ -62,11 +62,11 @@ function createSongsRouter({ db, auth, config, logger, live, storage }) {
     const q = typeof req.query.q === 'string' ? req.query.q.slice(0, LIMITS.queryMax) : '';
     const sort = SORT_MODES.includes(req.query.sort) ? req.query.sort : 'az';
     // ?noKey=1: only the songs without a key (the library's "Fără ton" filter); ?theme=<name>:
-    // only the songs with that theme.
+    // only the songs with that theme; ?noTheme=1: only the songs with no theme at all.
     const theme = typeof req.query.theme === 'string' ? req.query.theme.slice(0, LIMITS.themeMax) : '';
     // ?collection=main (default) | school | all: which library (migration 060)
     const collection = ['school', 'all'].includes(req.query.collection) ? req.query.collection : 'main';
-    const list = songs.list(req.adminId, { q, sort, noKey: req.query.noKey === '1', theme, collection });
+    const list = songs.list(req.adminId, { q, sort, noKey: req.query.noKey === '1', theme, noTheme: req.query.noTheme === '1', collection });
     // ?withHistory=1 adds lastSung (the last date it was sung: lib/events.js lastSungMap).
     if (req.query.withHistory === '1') {
       const day = today(req);
@@ -157,7 +157,7 @@ function createSongsRouter({ db, auth, config, logger, live, storage }) {
   // The library's themes ("tematică"), with how many songs carry each: the library filter,
   // the editor's suggestions, the ideas panel. Registered before /api/songs/:id.
   router.get('/api/songs/themes', (req, res) => {
-    res.json({ themes: songs.themes(req.adminId), index: THEME_INDEX });
+    res.json({ themes: songs.themes(req.adminId), without: songs.withoutThemes(req.adminId), index: THEME_INDEX });
   });
 
   // The themes of one song (the song page's "Tematică · Setează"): { themes: [names] }.

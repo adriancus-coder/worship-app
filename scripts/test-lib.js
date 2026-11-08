@@ -2705,6 +2705,7 @@ test('songs store: themes are saved with the song, listed per row, filtered and 
   assert.deepStrictEqual(store.list(1, { q: '', sort: 'az' }).map((s) => [s.title, s.themes]), [['A', ['Paști', 'Închinare']], ['B', ['pasti']], ['C', []]]);
   assert.deepStrictEqual(store.list(1, { q: '', sort: 'az', theme: 'PAȘTI' }).map((s) => s.title), ['A', 'B'], 'the filter by normalized name');
   assert.deepStrictEqual(store.list(1, { q: '', sort: 'az', theme: 'botez' }), []);
+  assert.deepStrictEqual([store.list(1, { q: '', sort: 'az', noTheme: true }).map((s) => s.title), store.withoutThemes(1), store.withoutThemes(2)], [['C'], 1, 0], '"Fără temă": the songs with no theme, counted');
   // update replaces the themes
   store.update(1, a, validateSong({ title: 'A', sections: [{ type: 'verse', content: 'x' }], themes: ['Botez'] }, t).value);
   assert.deepStrictEqual(store.get(1, a).themes, ['Botez']);
