@@ -202,6 +202,16 @@
       </form>
     </dialog>
 
+    <!-- "Pornește live" while another event is live: end it first? (public/event.js startLive) -->
+    <dialog id="switch-dialog" aria-labelledby="switch-heading">
+      <h2 id="switch-heading"></h2>
+      <p id="switch-text"></p>
+      <p id="switch-message" class="message error" role="alert"></p>
+      <div class="form-actions">
+        <button type="button" class="danger" id="switch-yes" data-icon="play" data-i18n="home.switchYes"></button>
+        <button type="button" class="secondary" id="switch-cancel" data-i18n="live.endCancel"></button>
+      </div>
+    </dialog>
     <dialog id="delete-dialog" aria-labelledby="delete-text">
       <form method="dialog">
         <p id="delete-text"></p>

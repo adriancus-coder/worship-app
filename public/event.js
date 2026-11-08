@@ -234,7 +234,10 @@
         // Before the start, by role (the same order as the home card): the owner starts first
         // (today / tomorrow), the others prepare first. Only the 'screens' right starts (the
         // operator, the owner); the leader and the presenter just enter their live page.
-        const live = !entry ? null : { key: soon && can(state.me, 'screens') ? 'home.startLive' : 'live.link', icon: 'play', href: livePage };
+        // "Pornește live" starts the event from here and opens the live page: one step (the
+        // live page has nothing to set before the start)
+        const starts = soon && can(state.me, 'screens');
+        const live = !entry ? null : { key: starts ? 'home.startLive' : 'live.link', icon: 'play', href: livePage, run: starts ? () => startLive(livePage) : null, id: starts ? 'event-start' : null };
         if (role === 'owner') actions.push(...(soon ? [live, edit] : [edit, live]));
         else actions.push(edit, live);
       }
@@ -243,14 +246,52 @@
     // In the editor "Salvează" (the save bar) is the primary action, unless the moment says
     // live: then the row keeps its "Intră / Pornește live".
     const primary = !state.editing || ['home.enterLive', 'home.startLive'].includes(list[0] && list[0].key);
+    // a link to the page (the href stays: open in a new tab, the keyboard); "Pornește live"
+    // runs its action instead of following it
     $('event-actions').replaceChildren(...list.map((a, i) => el('a', {
       class: i === 0 && primary ? 'button primary-action' : 'button secondary',
       href: a.href,
+      id: a.id || null,
       'data-icon': a.icon,
       text: t(a.key),
+      onclick: a.run ? (event) => { if (event.button === 0 && !event.metaKey && !event.ctrlKey) { event.preventDefault(); a.run(); } } : null,
     })));
     $('event-actions').hidden = !list.length;
   }
+
+  // --- "▶ Pornește live" from this page (like the home card, public/app.js) ----------------
+  // POST /api/events/:id/start, then the live page; another event live -> a confirmation
+  // that ends it first.
+  let startTarget = null;
+  async function startLive(livePage, endOther = false) {
+    const button = $('event-start');
+    if (button) button.disabled = true;
+    $('action-message').textContent = '';
+    try {
+      const res = await api(`/api/events/${state.event.id}/start`, { method: 'POST', body: endOther ? { endOther: true } : {} });
+      if (res.ok) {
+        state.saved = JSON.stringify(payload(state.items)); // leaving: nothing to warn about
+        window.location.assign(livePage);
+        return;
+      }
+      if (res.body.code === 'anotherLive' && !endOther) {
+        startTarget = livePage;
+        const name = (res.body.live && res.body.live.name) || '';
+        $('switch-heading').textContent = t('home.switchHeading', { name });
+        $('switch-text').textContent = t('home.switchText', { name, next: state.event.name });
+        $('switch-message').textContent = '';
+        $('switch-dialog').showModal();
+        return;
+      }
+      ($('switch-dialog').open ? $('switch-message') : $('action-message')).textContent = res.body.error || t('common.networkError');
+    } catch (err) {
+      $('action-message').textContent = t('common.networkError');
+    } finally {
+      if ($('event-start')) $('event-start').disabled = false;
+    }
+  }
+  $('switch-yes').addEventListener('click', () => { $('switch-dialog').close(); startLive(startTarget, true); });
+  $('switch-cancel').addEventListener('click', () => $('switch-dialog').close());
 
   function dayAfter(date) {
     const d = new Date(`${date}T12:00:00Z`);
