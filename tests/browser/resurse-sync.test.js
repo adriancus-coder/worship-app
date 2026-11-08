@@ -33,7 +33,7 @@ module.exports = {
       await p.waitForSelector('#sync-review:not([hidden])');
       await p.waitForFunction(() => !document.getElementById('sync-review-start').disabled);
       const intro = await p.evaluate(() => ({ status: document.getElementById('sync-review-status').textContent, start: document.getElementById('sync-review-start').textContent, hidden: document.getElementById('library-results').hidden }));
-      check(/(fără acorduri sau fără teme|without chords or themes)/.test(intro.status) && /\d+/.test(intro.start) && intro.hidden, `${tag} the review: how many songs lack chords or themes, "Pornește (n)", the list hidden`, intro);
+      check(/(toate cele \d+ cântări|all \d+ songs)/.test(intro.status) && /fără acorduri|without chords/.test(intro.status) && /\d+/.test(intro.start) && intro.hidden, `${tag} the review: all the songs, how many lack chords / themes, "Pornește (n)", the list hidden`, intro);
       await p.click('#sync-review-start');
       await p.waitForFunction(() => /(Gata|Done)/.test(document.getElementById('sync-progress-text').textContent) && !document.getElementById('sync-review-start').hidden, null, { timeout: 20000 });
       const rows = await p.$$eval('#sync-review-list .sync-row', (l) => l.map((r) => `${r.querySelector('.key-review-title').textContent}:${r.dataset.status}`));

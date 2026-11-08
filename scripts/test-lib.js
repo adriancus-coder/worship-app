@@ -3151,28 +3151,30 @@ testAsync('resurse sync: the songs without chords or themes looked up by title; 
   const PLAIN = [{ type: 'verse', content: '1. Când totul pare că-i pierdut,\nAl meu Păstor îmi va fi scut.' }, { type: 'chorus', content: 'Viața mea e-n mâna Sa\nȘi cu credință voi cânta' }];
   const a = make(1, { title: 'Fără acorduri', sections: PLAIN }); // the site's 503: sheet 9001 fits, themes Închinare, Paști, key D
   const b = make(1, { title: 'Altceva', sections: [{ type: 'verse', content: 'x' }] }); // no song with this title
-  const c = make(1, { title: 'Gata', song_key: 'G', themes: ['Laudă'], sections: [{ type: 'verse', content: '[G]x' }] }); // chords and themes: not looked at
+  const c = make(1, { title: 'Gata', song_key: 'G', themes: ['Laudă'], sections: [{ type: 'verse', content: '[G]x' }] }); // chords and themes: looked at too, no song with this title
   const d = make(2, { title: 'Fără acorduri', sections: [{ type: 'verse', content: 'Cu totul alte cuvinte aici\nȘi încă un rând' }] }); // the title, another text
-  const e = make(3, { title: 'Fără acorduri', song_key: 'E', sections: [{ type: 'verse', content: '[E]Când totul pare că-i pierdut,\n[A]Al meu Păstor îmi va fi scut.' }, { type: 'chorus', content: 'Viața mea e-n mâna Sa\nȘi cu credință voi cânta' }] }); // chords of its own: themes only, the key kept
+  const e = make(3, { title: 'Fără acorduri', song_key: 'E', themes: ['Laudă', 'paști'], sections: [{ type: 'verse', content: '[E]Când totul pare că-i pierdut,\n[A]Al meu Păstor îmi va fi scut.' }, { type: 'chorus', content: 'Viața mea e-n mâna Sa\nȘi cu credință voi cânta' }] }); // chords and a theme of its own: the site's other theme comes, the key kept
   const changed = [];
   const live = { songBefore: (adminId, id) => [[adminId, id]], songChanged: (adminId, before) => changed.push(...before) };
   const sync = createResurseSync({ db: mem, logger: { info() {}, warn() {}, error() {} }, live, resurse, delayMs: 0 });
-  assert.deepStrictEqual(sync.plan(1, 'main'), { total: 2, withoutChords: 2, withoutThemes: 2 }, 'the plan: the songs lacking chords or themes');
+  assert.deepStrictEqual(sync.plan(1, 'main'), { total: 3, withoutChords: 2, withoutThemes: 2 }, 'the plan: every song, with how many lack chords / themes');
   const done = (adminId) => new Promise((resolve) => { const tick = () => { const j = sync.status(adminId); if (j && !j.running) resolve(j); else setTimeout(tick, 10); }; tick(); });
   sync.start(1, 'main', t);
   assert.throws(() => sync.start(1, 'main', t), /running/, 'one job per admin');
   const job = await done(1);
-  assert.deepStrictEqual(job.report.map((r) => [r.id, r.status, r.themes, r.key]), [[b, 'notFound', [], null], [a, 'chords', ['Închinare', 'Paști'], 'D']], 'by title: Altceva not found; Fără acorduri got chords, themes and the key');
+  assert.deepStrictEqual(job.report.map((r) => [r.id, r.status, r.themes, r.key]), [[b, 'notFound', [], null], [a, 'chords', ['Închinare', 'Paști'], 'D'], [c, 'notFound', [], null]], 'by title: Altceva and Gata not found; Fără acorduri got chords, themes and the key');
   const after = store.get(1, a);
   assert.deepStrictEqual([after.song_key, after.themes, after.sections.map((x) => x.content), after.source_url], ['D', ['Închinare', 'Paști'], ['1. [D]Când totul pare[A] că-i pierdut,\n[Bm]Al meu Păstor î[G]mi va fi scut.', '[G]Viața mea e[D]-n mâna Sa\n[A]Și cu credință voi cânta'], 'https://www.resursecrestine.ro/cantece/503'], 'the chords over its own lines (the "1." kept, the chords past it), the source link');
   assert.deepStrictEqual(changed, [[1, a]], 'the live pages told once, for the song that changed');
-  assert.strictEqual(store.get(1, c).sections[0].content, '[G]x', 'a song with chords and themes untouched');
+  assert.deepStrictEqual([store.get(1, c).sections[0].content, store.get(1, c).themes], ['[G]x', ['Laudă']], 'a song the site has not: untouched');
   sync.start(2, 'main', t);
   assert.deepStrictEqual((await done(2)).report.map((r) => [r.id, r.status, Math.round(r.score * 100)]), [[d, 'different', 0]], 'the same title with another text: reported, not touched');
   assert.strictEqual(store.get(2, d).themes.length, 0);
   sync.start(3, 'main', t);
-  assert.deepStrictEqual((await done(3)).report.map((r) => [r.id, r.status, r.themes, r.key]), [[e, 'themes', ['Închinare', 'Paști'], null]], 'chords of its own: only the themes come; the key stays');
-  assert.deepStrictEqual([store.get(3, e).song_key, store.get(3, e).sections[0].content], ['E', '[E]Când totul pare că-i pierdut,\n[A]Al meu Păstor îmi va fi scut.']);
+  assert.deepStrictEqual((await done(3)).report.map((r) => [r.id, r.status, r.themes, r.key]), [[e, 'themes', ['Închinare'], null]], 'chords and a theme of its own: only the theme it lacks comes (Paști is there, whatever the case); the key stays');
+  assert.deepStrictEqual([store.get(3, e).song_key, store.get(3, e).themes, store.get(3, e).sections[0].content], ['E', ['Laudă', 'paști', 'Închinare'], '[E]Când totul pare că-i pierdut,\n[A]Al meu Păstor îmi va fi scut.']);
+  sync.start(3, 'main', t);
+  assert.deepStrictEqual((await done(3)).report.map((r) => [r.id, r.status]), [[e, 'skipped']], 'run again: nothing new for it');
   mem.close();
 });
 
