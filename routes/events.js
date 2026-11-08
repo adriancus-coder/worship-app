@@ -360,6 +360,21 @@ function createEventsRouter({ db, auth, logger, live }) {
     respond(req, res, found.event.id);
   });
 
+  // A song at the end of the Program (the live page's / the console's "În setlist" before the
+  // start, when the live engine's addItem has nothing to add after): { songId }.
+  router.post('/api/events/:id/items/append', requirePerm('events', 'live'), (req, res) => {
+    const found = load(req, res);
+    if (!found) return;
+    if (found.event.status === 'finished') return res.status(409).json({ code: 'eventFinished', error: req.t('errors.schoolEventClosed') });
+    const songId = Number((req.body || {}).songId);
+    const song = Number.isInteger(songId) && songId > 0 ? events.findSong(req.adminId, songId) : null;
+    if (!song) return res.status(400).json({ error: req.t('errors.badRequest') });
+    const before = live.setlistBefore(req.adminId, found.event.id);
+    events.appendSongs(req.adminId, found.event.id, [song]);
+    live.setlistChanged(req.adminId, found.event.id, before);
+    respond(req, res, found.event.id, 201);
+  });
+
   // The Program in a new order from the live page (the compact view's grips): the shared
   // item ids, every one once. Live positions follow the items (live.setlistChanged).
   router.post('/api/events/:id/items/order', canEdit, (req, res) => {

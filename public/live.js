@@ -182,7 +182,8 @@
     const ev = state.event;
     const snap = state.snap;
     setTitle('live.pageTitle', { name: ev.name });
-    $('live-new-song').disabled = snap.status !== 'live';
+    $('live-new-song').disabled = snap.status === 'finished';
+    addSearch.render(); // its actions follow the status
     $('event-name').textContent = ev.name;
     const status = snap.status;
     $('event-status').className = `pill pill-${status}`;
@@ -279,7 +280,7 @@
         'aria-label': t(done ? 'live.markUnsung' : 'live.markSung', { title }),
         disabled: state.snap.status === 'finished',
         onclick: () => send('item.mark', { itemId: item.id, done: !done }),
-      }); // the check mark comes with aria-pressed (the selection styles)
+      }, el('span', { class: 'item-done-number', 'aria-hidden': 'true', text: done ? '' : String(i + 1) })); // ticked: the check mark comes with aria-pressed
       const main = el('button', {
         type: 'button',
         class: `live-item${isCurrent ? ' current' : ''}`,
@@ -731,7 +732,16 @@
   // The add panel, as on the console: library results "Doar pe proiector" / "În setlist",
   // resursecrestine.ro results imported the same way, "+ Cântare nouă" in a sheet.
   const isLive = () => Boolean(state.snap && state.snap.status === 'live');
+  // Live: the engine adds right after the current item. Before the start, "În setlist" puts
+  // the song at the end of the Program (POST items/append); "Doar pe proiector" is live only.
   async function addSong(target, songId) {
+    if (!isLive() && target === 'setlist') {
+      const res = await api(`/api/events/${eventId}/items/append`, { method: 'POST', body: { songId } }).catch(() => null);
+      if (!res || !res.ok) return { error: (res && res.body && res.body.error) || t('common.networkError') };
+      state.loadedKey = null;
+      if (state.snap) syncSetlist(state.snap).then(render).catch(() => {});
+      return { done: t('operator.addedSetlist') };
+    }
     const reply = await send('operator.addItem', { target, item: { type: 'song', songId } });
     if (!reply || !reply.ok) return { error: errorText(reply) };
     return { done: t(target === 'setlist' ? 'operator.addedSetlist' : 'operator.addedProjector') };
@@ -740,16 +750,16 @@
   $('live-new-song').addEventListener('click', () => newSong.open());
   const addSearch = window.SONG_SEARCH.create($('add-search'), {
     mode: 'pick', prefix: 'add-', headingLevel: 4, emptyQuery: 'none', limit: 8,
-    disabled: () => !isLive(),
+    disabled: () => Boolean(state.snap && state.snap.status === 'finished'),
     createAction: (query) => newSong.open({ title: query }),
     localActions: (song) => [
-      { label: t('operator.addProjector'), icon: 'projector', ariaLabel: `${t('operator.addProjector')}: ${song.title}`, run: () => addSong('projector', song.id) },
+      isLive() ? { label: t('operator.addProjector'), icon: 'projector', ariaLabel: `${t('operator.addProjector')}: ${song.title}`, run: () => addSong('projector', song.id) } : null,
       { label: t('operator.addSetlist'), icon: 'plus', primary: true, ariaLabel: `${t('operator.addSetlist')}: ${song.title}`, run: () => addSong('setlist', song.id) },
-    ],
+    ].filter(Boolean),
     onlineActions: (item) => [
-      { label: t('operator.importProjector'), icon: 'projector', ariaLabel: `${t('operator.importProjector')}: ${item.title}`, run: (songId) => addSong('projector', songId) },
+      isLive() ? { label: t('operator.importProjector'), icon: 'projector', ariaLabel: `${t('operator.importProjector')}: ${item.title}`, run: (songId) => addSong('projector', songId) } : null,
       { label: t('operator.importSetlist'), icon: 'import', ariaLabel: `${t('operator.importSetlist')}: ${item.title}`, run: (songId) => addSong('setlist', songId) },
-    ],
+    ].filter(Boolean),
   });
   addSearch.setOnline(true); // the event roles may import
   let bridgePanel = null; // created above once the rights are known (the 'screens' right)

@@ -325,7 +325,7 @@
     clockPanel.update({ clock: state.snap.clock, enabled: live() || planned });
     keyPanel.update({ clock: state.snap.songKey, enabled: live() || planned });
     chordsToggle.update({ show: Boolean(state.snap.chords && state.snap.chords.show), enabled: live() || planned });
-    $('op-new-song').disabled = !live();
+    $('op-new-song').disabled = state.snap.status === 'finished';
     addSearch.render(); // its actions follow live()
     videoPanel.setSetlist(items());
     videoPanel.update(state.snap);
@@ -482,7 +482,14 @@
   // setlist"; resursecrestine.ro results: "Previzualizare", "Importă · Doar pe proiector",
   // "Importă · În setlist". Searching and importing run in the background: the spinner and
   // any error stay in this panel, the live controls never wait for them.
+  // Live: the engine adds right after the current item. Before the start, "În setlist" puts
+  // the song at the end of the Program (POST items/append); "Doar pe proiector" is live only.
   async function addSong(target, songId) {
+    if (!live() && target === 'setlist') {
+      const res = await api(`/api/events/${eventId}/items/append`, { method: 'POST', body: { songId } }).catch(() => null);
+      if (!res || !res.ok) return { error: (res && res.body && res.body.error) || t('common.networkError') };
+      return { done: t('operator.addedSetlist') };
+    }
     const reply = await send('operator.addItem', { target, item: { type: 'song', songId } });
     if (!reply || !reply.ok) return { error: errorText(reply) };
     return { done: t(target === 'setlist' ? 'operator.addedSetlist' : 'operator.addedProjector') };
@@ -496,16 +503,16 @@
     headingLevel: 4,
     emptyQuery: 'none',
     limit: RESULTS_MAX,
-    disabled: () => !live(),
+    disabled: () => Boolean(state.snap && state.snap.status === 'finished'),
     createAction: (query) => newSong.open({ title: query }),
     localActions: (song) => [
-      { label: t('operator.addProjector'), icon: 'projector', ariaLabel: `${t('operator.addProjector')}: ${song.title}`, run: () => addSong('projector', song.id) },
+      live() ? { label: t('operator.addProjector'), icon: 'projector', ariaLabel: `${t('operator.addProjector')}: ${song.title}`, run: () => addSong('projector', song.id) } : null,
       { label: t('operator.addSetlist'), icon: 'plus', primary: true, ariaLabel: `${t('operator.addSetlist')}: ${song.title}`, run: () => addSong('setlist', song.id) },
-    ],
+    ].filter(Boolean),
     onlineActions: (item) => [
-      { label: t('operator.importProjector'), icon: 'projector', ariaLabel: `${t('operator.importProjector')}: ${item.title}`, run: (songId) => addSong('projector', songId) },
+      live() ? { label: t('operator.importProjector'), icon: 'projector', ariaLabel: `${t('operator.importProjector')}: ${item.title}`, run: (songId) => addSong('projector', songId) } : null,
       { label: t('operator.importSetlist'), icon: 'import', ariaLabel: `${t('operator.importSetlist')}: ${item.title}`, run: (songId) => addSong('setlist', songId) },
-    ],
+    ].filter(Boolean),
   });
   addSearch.setOnline(true); // the console is for the event roles, who may import
 

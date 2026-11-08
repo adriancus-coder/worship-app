@@ -18,6 +18,17 @@ module.exports = {
     await p.goto(`${app.url}/events/${E}/operator`);
     await p.waitForSelector('#console:not([hidden])');
     check(await p.$eval('#mode-banner', (b) => b.dataset.mode) === 'notLive', 'before the start: "Evenimentul nu este live"');
+    // before the start: "În setlist" adds at the end of the Program; no "Doar pe proiector" yet
+    await p.click('#op-tab-add');
+    await p.fill('#add-q', 'mare');
+    await p.waitForSelector('#add-songs li');
+    const beforeStart = await p.evaluate(() => ({ projector: document.querySelectorAll('#add-songs li button[aria-label^="Doar pe proiector"]').length, setlist: document.querySelectorAll('#add-songs li button[aria-label^="În setlist"]').length }));
+    const countBefore = (await app.api(app.cookies.owner, 'GET', `/api/events/${E}`)).body.items.length;
+    await p.click('#add-songs li >> nth=0 >> button:has-text("În setlist")');
+    await p.waitForFunction(() => /Adăugat/.test(document.getElementById('add-search').textContent), null, { timeout: 5000 }); // the panel's message
+    const itemsAfter = (await app.api(app.cookies.owner, 'GET', `/api/events/${E}`)).body.items;
+    check(beforeStart.projector === 0 && beforeStart.setlist >= 1 && itemsAfter.length === countBefore + 1 && /Mare ești Tu/.test(itemsAfter[itemsAfter.length - 1].title || itemsAfter[itemsAfter.length - 1].song.title), 'before the start: only "În setlist", which puts the song at the end of the Program', { beforeStart, countBefore, after: itemsAfter.length });
+    await p.click('#op-tab-program');
     await p.click('#start-button');
     await p.waitForFunction(() => document.getElementById('mode-banner').dataset.mode === 'split');
     check(/Proiectorul e al tău/.test(await p.textContent('#mode-title')), 'started from the console: the operator holds the projector, banner "Proiectorul e al tău"');
@@ -81,12 +92,12 @@ module.exports = {
     await wait(400);
     check(await p.locator('.op-item.projector-only').count() === 1, '"Doar pe proiector": a projector-only item in the console list');
     const team = (await app.api(app.cookies.member, 'GET', `/api/events/${E}`)).body.items.length;
-    check(team === 5, 'the team does not see it', team);
+    check(team === 6, 'the team does not see it (the 5 seeded + the one appended before the start)', team);
     await p.fill('#add-q', 'sfant');
     await p.waitForSelector('#add-songs li');
     await p.click('#add-songs li >> nth=0 >> button:has-text("În setlist")');
     await wait(600);
-    check((await app.api(app.cookies.member, 'GET', `/api/events/${E}`)).body.items.length === 6, '"În setlist": the team sees it at once');
+    check((await app.api(app.cookies.member, 'GET', `/api/events/${E}`)).body.items.length === 7, '"În setlist": the team sees it at once');
     for (const [w, h] of [[1440, 900], [1024, 768], [375, 800]]) {
       await p.setViewportSize({ width: w, height: h });
       await wait(300);

@@ -994,12 +994,14 @@ main.live-page { max-width: 1400px; }
 /* the tick on a sung item (the projector showed more than 70 % of its screens) */
 /* The tick before each row: empty until the song is sung (the projector's 70 % rule), a tap
    sets or clears it by hand (item.mark). */
-.item-done-toggle { flex: none; align-self: center; display: inline-flex; align-items: center; justify-content: center; width: var(--touch); height: var(--touch); padding: 0; font-size: 1.125rem; font-weight: 800; line-height: 1; color: var(--text-muted); background: var(--background); border: 2px solid var(--border); border-radius: 50%; }
+.item-done-toggle { position: absolute; left: 4px; top: 50%; transform: translateY(-50%); display: inline-flex; align-items: center; justify-content: center; width: var(--touch); height: var(--touch); padding: 0; font-size: 1rem; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; color: var(--text-muted); background: var(--background); border: 2px solid var(--border); border-radius: 50%; }
+.item-done-toggle::before { margin: 0; }
+.item-done-toggle.item-done { font-size: 1.125rem; font-weight: 800; }
 .item-done-toggle:hover { border-color: var(--text-muted); }
 .item-done-toggle.item-done { color: var(--on-accent); background: var(--success); border-color: var(--success); }
 .item-done-toggle:disabled { opacity: 0.6; cursor: default; }
 /* the grip (public/drag-list.js): the compact view only, where the row has no "Aranjează" */
-.live-item-grip { flex: none; align-self: center; width: var(--touch); min-width: var(--touch); min-height: var(--touch); font-size: 1.375rem; touch-action: none; cursor: grab; }
+.live-item-grip { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: var(--touch); min-width: var(--touch); min-height: var(--touch); padding: 0; font-size: 1.375rem; touch-action: none; cursor: grab; }
 body:not(.live-compact) .live-item-grip { display: none; }
 .live-list.is-reordering > li { transition: transform 120ms ease; }
 .live-list > li.is-dragging { position: relative; z-index: 2; transition: none; }
@@ -1009,7 +1011,7 @@ body:not(.live-compact) .live-item-grip { display: none; }
 body.live-compact .live-current, body.live-compact .live-info, body.live-compact #mode-controls, body.live-compact .key-hint, body.live-compact .live-meta #presence { display: none; }
 body.live-compact .live-grid { display: block; }
 body.live-compact .live-setlist { width: 100%; max-width: 720px; }
-body.live-compact .live-item { padding: 12px; }
+body.live-compact .live-item { padding: 12px 12px 12px 52px; }
 body.live-compact .live-item .item-title { font-size: 1.125rem; }
 /* the key in the Program: a filled pill, read at a glance (the compact view is the leader's key list) */
 .live-item .item-key { align-self: flex-start; margin-top: 2px; padding: 2px 10px; font-size: 0.9375rem; font-weight: 700; color: var(--on-accent); background: var(--accent-fill); border-radius: 999px; }
@@ -2762,9 +2764,11 @@ dialog.song-pick-dialog .song-pick > .ss-results { flex: 1 1 0; height: 0; --pan
   .press-target.held { animation: none; }
 }
 .live-list > li, .op-list > li { position: relative; }
-.live-list > li { display: flex; flex-wrap: wrap; align-items: stretch; gap: 6px; }
-.live-list > li > .live-item { flex: 1 1 0; min-width: 0; }
-.live-list > li > .now-song { flex: 1 1 100%; }
+/* the tick sits where the item's number was (it carries the number until ticked); the grip
+   over the row's right edge (the compact view): the row keeps its width */
+.live-list > li > .live-item { padding-left: 52px; }
+.live-list .live-item .item-number { display: none; }
+body.live-compact .live-list > li:has(> .live-item-grip) > .live-item { padding-right: 52px; }
 /* before the start: the song opened under its row (the home card's box) */
 .live-list > li.is-open > .now-song { margin: 4px 0 8px; }
 .has-arrange > .live-item, .has-arrange > .op-item { min-height: 60px; padding-right: 92px; }
