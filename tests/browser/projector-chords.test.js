@@ -45,6 +45,7 @@ module.exports = {
     check(JSON.stringify(o.chords) === '["G","D","Em","C"]' && /Ne ridici din/.test(o.text) && /noaptea grea/.test(o.text), '"Acorduri": the chords above the words on the screen (G D / Em C)', o);
     check(o.fits, 'the chorded lyrics stay inside the safe margins and the box', o);
     await sp.screenshot({ path: process.env.WA_SHOT || '/dev/null' }).catch(() => {});
+    await op.waitForFunction(() => document.querySelector('#chords-panel .chords-toggle').getAttribute('aria-pressed') === 'true', null, { timeout: 3000 }).catch(() => {}); // the console's snapshot may land a moment after the screen's
     check((await op.getAttribute('#chords-panel .chords-toggle', 'aria-pressed')) === 'true', 'the toggle shows on');
     await app.command({ type: 'worship.goto', itemId: items[1], step: 0 });
     await sp.waitForFunction(() => /Cezar/.test(document.querySelector('#output .projector-stage').innerText), null, { timeout: 5000 });
