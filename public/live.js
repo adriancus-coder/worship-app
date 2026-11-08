@@ -370,7 +370,7 @@
       return el('li', { class: `${canArrange ? 'has-arrange' : ''}${open ? ' is-open' : ''}${state.pickedKey === item.id ? ' is-picked' : ''}` || null },
         el('div', { class: 'live-row' }, tick, main, canArrange ? arrangeButton(item, () => arrange(item, goThere)) : null, reorderable() ? gripButton(item, i) : null),
         state.pickedKey === item.id ? keyPopover(item) : null,
-        open ? programme.box(item) : null);
+        open ? programme.box(item, { hint: live ? t('live.previewHintLive') : true }) : null);
     }));
     if (!state.items.length) $('setlist').replaceChildren(el('li', { class: 'muted', text: t('setlist.empty') }));
     showPressHint();

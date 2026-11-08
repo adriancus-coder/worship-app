@@ -13,8 +13,9 @@
 //     onItemChange(id)   -> the big view moved into another song (the page opens that row)
 //     onSection(it, sectionId) -> optional: a tap on a section; true when the page handled it
 //                           (the live page while live: the team goes there), else the big view
-//   songs.box(it)        -> element: the song under its row (loading / error / the sections;
-//                           a tap on a section opens the big view there)
+//   songs.box(it, { hint })  -> element: the song under its row (loading / error / the sections;
+//                           a tap on a section opens the big view there); hint: true (the
+//                           default line), false, or a text of the page's own
 //   songs.sections(it, { hint })  -> the same sections alone, for a page's own box
 //   songs.load(it)       -> promise of the song (cached); songs.song(it) -> the settled one
 //   songs.open(it, sectionId)     -> the big view at that section of that song
@@ -65,7 +66,7 @@
       const labels = window.SECTIONS.sectionLabels(s.sections, t);
       const order = orderOf(s);
       return [
-        hint ? el('p', { class: 'hint now-song-hint', text: t('home.sectionHint') }) : null,
+        hint ? el('p', { class: 'hint now-song-hint', text: typeof hint === 'string' ? hint : t('home.sectionHint') }) : null,
         el('div', { class: 'now-song-sections', onclick: (event) => {
           const section = event.target.closest('.song-section');
           if (!section) return;
@@ -76,8 +77,8 @@
         } }, ...window.SONG_RENDER.sectionsView(order.map((i) => s.sections[i]), { textOnly: textOnly(), headingLevel: 3, labels: order.map((i) => labels[i]) })),
       ].filter(Boolean);
     }
-    function box(it) {
-      const node = el('div', { class: 'now-song', id: `now-song-${it.id}` }, ...sections(it));
+    function box(it, opts = {}) {
+      const node = el('div', { class: 'now-song', id: `now-song-${it.id}` }, ...sections(it, opts));
       if (song(it) === undefined) load(it);
       return node;
     }
