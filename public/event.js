@@ -225,11 +225,13 @@
       if (ev.status === 'live') actions.push(follow);
     } else {
       const edit = state.editing || !canEdit(state.me) ? null : { key: 'setlist.edit', icon: 'edit', href: keepFrom(`/events/${ev.id}/edit`) };
+      // the leader's compact Program (the live page's compact view), straight from here
+      const compact = role === 'leader' ? { key: 'live.compactPage', icon: 'list', href: keepFrom(`/events/${ev.id}/live?view=compact`) } : null;
       const soon = state.today && [state.today, dayAfter(state.today)].includes(ev.eventDate);
       if (ev.status === 'live') {
         actions.push(entry ? { key: entry.key, icon: 'play', href: livePage } : follow, edit);
         // The leader lands in the big lyrics; the full live page stays a secondary way in.
-        if (role === 'leader') actions.push({ key: 'live.fullPage', icon: 'follow', href: keepFrom(`/events/${ev.id}/live?view=full`) });
+        if (role === 'leader') actions.push(compact, { key: 'live.fullPage', icon: 'follow', href: keepFrom(`/events/${ev.id}/live?view=full`) });
       } else {
         // Before the start, by role (the same order as the home card): the owner starts first
         // (today / tomorrow), the others prepare first. Only the 'screens' right starts (the
@@ -239,7 +241,7 @@
         const starts = soon && can(state.me, 'screens');
         const live = !entry ? null : { key: starts ? 'home.startLive' : 'live.link', icon: 'play', href: livePage, run: starts ? () => startLive(livePage) : null, id: starts ? 'event-start' : null };
         if (role === 'owner') actions.push(...(soon ? [live, edit] : [edit, live]));
-        else actions.push(edit, live);
+        else actions.push(edit, live, compact);
       }
     }
     const list = actions.filter(Boolean);

@@ -26,7 +26,7 @@
   // the leader asked for the full page.
   const view = new URLSearchParams(window.location.search).get('view');
   const state = { event: null, items: [], loadedKey: null, loading: null, songs: new Map(), snap: null, seq: 0, client: null, queue: Promise.resolve(), cached: null, pickedKey: null, keyBusy: false, keyMinor: false,
-    openLyrics: view === 'lyrics', view, leader: false, pageMode: view === 'full',
+    openLyrics: view === 'lyrics', view, leader: false, pageMode: view === 'full' || view === 'compact',
     expanded: null }; // before the start: the song opened under its row (as on the home card)
   const FOLLOW_KEY = 'wa_live_follow';
   // The compact view (only the Program with keys and ticks), remembered on the device.
@@ -45,6 +45,8 @@
     }
   }
   for (const button of document.querySelectorAll('#live-view [data-view]')) button.addEventListener('click', () => setCompact(button.dataset.view === 'compact'));
+  if (view === 'compact') setCompact(true); // the event page's "Program compact"
+
   renderView();
 
   // --- the screen stays on while the event is live (the leader's phone) ---------------------
@@ -749,7 +751,7 @@
     if (me) modes.setMe(me.user); // the handover flow depends on who this page is
     state.me = me; // the lyrics sheet: "Salvează în bibliotecă" needs the library right
     state.leader = Boolean(me && me.user.role === 'leader');
-    if (state.leader && state.view !== 'full') state.openLyrics = true;
+    if (state.leader && !['full', 'compact'].includes(state.view)) state.openLyrics = true;
     // "Vedere: Complet | Compact" is the leader's (the phone in hand while singing); the
     // others always get the full page
     const viewRow = document.querySelector('.live-view-row');

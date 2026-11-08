@@ -3102,7 +3102,8 @@ dialog.whats-new[open] { display: flex; }
   body.list-page .event-actions-row { margin: 4px 0 6px; }
   body.list-page .event-actions > .button { flex-direction: row; gap: 0.4em; min-height: var(--touch); padding: 6px 8px; font-size: 0.9375rem; line-height: 1.2; }
   body.list-page .event-actions > .primary-action { flex-grow: 1.6; } /* "Pornește live" on one line next to "Repetiție" */
-  body.list-page .event-actions > .button { font-size: 0.875rem; white-space: nowrap; }
+  body.list-page .event-actions { flex-wrap: wrap; } /* three or four actions: a second row, whole labels */
+  body.list-page .event-actions > .button { flex: 1 1 auto; font-size: 0.875rem; white-space: nowrap; }
   /* the selected row already shows the badge and the title: no second head under it */
   body.list-page .setlist-item .item-detail > .detail-head { display: none; }
   body.list-page .editor-tabs { margin-bottom: 6px; }

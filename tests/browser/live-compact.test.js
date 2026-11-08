@@ -144,6 +144,15 @@ module.exports = {
     const b = await layoutAudit(o, '#live');
     check(!b.overflow && !b.small.length && (await o.locator('#setlist .item-done').count()) >= 1, 'the compact view 1024: no overflow, the tick shown', b);
 
+    // the event page's "Program compact" (the leader): the compact view at once, no big lyrics
+    await p.goto(`${app.url}/events/${E}`);
+    await p.waitForSelector('#event-actions a[href*="view=compact"]');
+    await p.click('#event-actions a[href*="view=compact"]');
+    await p.waitForSelector('#setlist .live-item');
+    await wait(500);
+    const direct = await p.evaluate(() => ({ compact: document.body.classList.contains('live-compact'), big: Boolean(document.querySelector('dialog.big-lyrics[open]')), actions: [...document.querySelectorAll('#event-actions a')].length }));
+    check(direct.compact && !direct.big, '"Program compact" from the event page: the compact view, no big lyrics over it', direct);
+
     // after the end the ticks stay (the history of the service); a finished event never restarts
     await app.command({ type: 'event.end' });
     sh = await shown();
