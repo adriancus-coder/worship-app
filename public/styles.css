@@ -1715,7 +1715,7 @@ button.op-item:disabled { opacity: 1; cursor: default; }
 .marker { padding: 1px 8px; font-size: 0.6875rem; font-weight: 800; letter-spacing: 0.06em; border-radius: 999px; white-space: nowrap; }
 .marker.projector { color: var(--on-accent); background: var(--accent-fill); }
 .marker.worship { color: var(--worship); border: 1px dashed var(--worship); }
-.op-tag { padding: 1px 6px; font-size: 0.6875rem; font-weight: 800; letter-spacing: 0.05em; border-radius: 4px; border: 1px solid currentColor; }
+.op-tag { padding: 1px 6px; font-size: 0.625rem; font-weight: 800; letter-spacing: 0.04em; border-radius: 4px; border: 1px solid currentColor; white-space: nowrap; }
 .tag-projectorOnly { color: var(--text-muted); }
 .op-add { margin-top: 0; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
 .op-add[hidden] { display: none; }
@@ -2810,14 +2810,18 @@ dialog.song-pick-dialog .song-pick > .ss-results { flex: 1 1 0; height: 0; --pan
 body.live-compact .live-row:has(> .live-item-grip) > .live-item { padding-right: 52px; }
 /* before the start: the song opened under its row (the home card's box) */
 .live-list > li.is-open > .now-song { margin: 4px 0 8px; }
-.has-arrange .live-row > .live-item, .has-arrange > .op-item { min-height: 60px; padding-right: 92px; }
-.item-remove.is-asking { padding: 0 10px; color: var(--error); border-color: var(--error); font-weight: 700; } /* "Scoate?": the second tap removes */
-/* the console's ✕ on a projector-only item, at the row's right; "Aranjează" moves left of it */
-.item-remove { position: absolute; top: 6px; right: 6px; bottom: 6px; width: var(--touch); min-width: 0; padding: 0; font-size: 1.125rem; }
-.has-remove > .op-item { padding-right: 56px; min-height: 56px; }
-.has-remove.has-arrange > .op-item { padding-right: 148px; }
+/* The row's tools (the live page's "Aranjează"; the console's "Aranjează" + ✕): small squares
+   at the row's right, centred on the row, icon only (the name on hover / for screen readers),
+   so a narrow column keeps room for the title. */
+.has-arrange .live-row > .live-item, .has-arrange > .op-item { min-height: 56px; padding-right: 58px; }
+.item-arrange, .item-remove { position: absolute; top: 50%; right: 6px; transform: translateY(-50%); width: var(--touch); height: var(--touch); min-width: 0; min-height: 0; padding: 0; border-radius: 10px; }
+.item-arrange > span { display: none; } /* icon only */
+.item-arrange::before { width: 1.35em; height: 1.35em; }
+.item-remove { font-size: 1.125rem; }
+.item-remove.is-asking { width: auto; padding: 0 8px; font-size: 0.8125rem; color: var(--error); border-color: var(--error); font-weight: 700; } /* "Scoate?": the second tap removes */
+.has-remove > .op-item { padding-right: 58px; min-height: 56px; }
+.has-remove.has-arrange > .op-item { padding-right: 108px; }
 .has-remove.has-arrange > .item-arrange { right: 56px; }
-.item-arrange { position: absolute; top: 6px; right: 6px; bottom: 6px; width: 80px; min-width: 0; flex-direction: column; gap: 2px; padding: 2px 4px; font-size: 0.75rem; line-height: 1.1; white-space: nowrap; }
 /* Messages closed with × (public/dismiss.js): the element and its button side by side; the
    wrapper follows the element's own visibility (hidden attribute, the key hints' media rules). */
 .dismissable { display: flex; align-items: flex-start; gap: 4px; min-width: 0; }

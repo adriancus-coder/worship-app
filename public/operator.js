@@ -175,13 +175,13 @@
       el('span', { class: 'item-text' },
         el('span', { class: 'op-item-top' },
           el('span', { class: `type-badge type-${item.type}`, text: t(`setlist.types.${item.type}`) }),
+          tag ? el('span', { class: `op-tag tag-${tag}`, text: t(`operator.tags.${tag}`) }) : null,
+          item.type === 'song' && item.song && (item.song.audioMediaId || item.song.audioUrl) ? el('span', { class: 'op-tag tag-audio', text: t('operator.tags.audio') }) : null,
           el('span', { class: 'op-markers' },
             onProjector ? el('span', { class: 'marker projector', text: t('operator.onProjector') }) : null,
             item.id === worship.itemId ? el('span', { class: 'marker worship', text: t('operator.worship') }) : null)),
         el('span', { class: 'item-title', text: itemTitle(item) }),
-        item.who && item.title ? el('span', { class: 'item-sub', text: item.who }) : null, // "Cine" (the Sunday school's songs say so)
-        tag ? el('span', { class: `op-tag tag-${tag}`, text: t(`operator.tags.${tag}`) }) : null,
-        item.type === 'song' && item.song && (item.song.audioMediaId || item.song.audioUrl) ? el('span', { class: 'op-tag tag-audio', text: t('operator.tags.audio') }) : null));
+        item.who && item.title ? el('span', { class: 'item-sub', text: item.who }) : null)); // "Cine cântă" / the Sunday school's mark
       // Short tap: go there (projector, or the main position together); long press (or
       // "Aranjează"): the arrange sheet.
       window.PRESS.bind(main, { tap: goThere, hold: canArrange ? () => arrange(item, goThere) : null });
@@ -202,7 +202,7 @@
       const canRemove = state.snap.status !== 'finished';
       const asking = state.removing === item.id;
       return el('li', { class: `${canArrange ? 'has-arrange' : ''}${canRemove ? ' has-remove' : ''}`.trim() || null }, tick, main, canArrange ? el('button', {
-        type: 'button', class: 'secondary item-arrange', 'data-icon': 'edit',
+        type: 'button', class: 'secondary item-arrange', 'data-icon': 'edit', title: t('arrange.button'),
         'aria-label': t('arrange.buttonLabel', { title: itemTitle(item) }), onclick: () => arrange(item, goThere),
       }, el('span', { text: t('arrange.button') })) : null,
       canRemove ? el('button', {
