@@ -19,7 +19,8 @@ module.exports = {
     await p.waitForSelector('#console:not([hidden])');
     check(await p.$eval('#mode-banner', (b) => b.dataset.mode) === 'notLive', 'before the start: "Evenimentul nu este live"');
     check((await p.locator('#op-list .item-done-toggle').count()) >= 5 && (await p.locator('#op-list .item-done-toggle[disabled]').count()) >= 5, 'the ticks in the console list, disabled before the start');
-    // before the start: "În setlist" adds at the end of the Program; no "Doar pe proiector" yet
+    // before the start: both "În setlist" (at the end of the Program, the team sees it) and
+    // "Doar pe proiector" (after the Program, projector only, the team never sees it)
     await p.click('#op-tab-add');
     await p.fill('#add-q', 'mare');
     await p.waitForSelector('#add-songs li');
@@ -28,7 +29,18 @@ module.exports = {
     await p.click('#add-songs li >> nth=0 >> button:has-text("În setlist")');
     await p.waitForFunction(() => /Adăugat/.test(document.getElementById('add-search').textContent), null, { timeout: 5000 }); // the panel's message
     const itemsAfter = (await app.api(app.cookies.owner, 'GET', `/api/events/${E}`)).body.items;
-    check(beforeStart.projector === 0 && beforeStart.setlist >= 1 && itemsAfter.length === countBefore + 1 && /Mare ești Tu/.test(itemsAfter[itemsAfter.length - 1].title || itemsAfter[itemsAfter.length - 1].song.title), 'before the start: only "În setlist", which puts the song at the end of the Program', { beforeStart, countBefore, after: itemsAfter.length });
+    check(beforeStart.projector >= 1 && beforeStart.setlist >= 1 && itemsAfter.length === countBefore + 1 && /Mare ești Tu/.test(itemsAfter[itemsAfter.length - 1].title || itemsAfter[itemsAfter.length - 1].song.title), 'before the start: both options; "În setlist" puts the song at the end of the Program', { beforeStart, countBefore, after: itemsAfter.length });
+    await p.click('#add-songs li >> nth=0 >> button:has-text("Doar pe proiector")');
+    await p.waitForFunction(() => /echipa nu o vede/.test(document.getElementById('add-search').textContent), null, { timeout: 5000 });
+    const teamSees = (await app.api(app.cookies.member, 'GET', `/api/events/${E}`)).body.items.length;
+    await p.click('#op-tab-program');
+    await p.waitForFunction((n) => document.querySelectorAll('#op-list li').length === n, countBefore + 2, { timeout: 5000 });
+    const consoleRows = await p.evaluate(() => [...document.querySelectorAll('#op-list li')].map((li) => ({ projectorOnly: Boolean(li.querySelector('.op-item.projector-only')), remove: li.classList.contains('has-remove') })));
+    check(teamSees === countBefore + 1 && consoleRows.length === countBefore + 2 && consoleRows[consoleRows.length - 1].projectorOnly && consoleRows[consoleRows.length - 1].remove && consoleRows.filter((r) => r.projectorOnly).length === 1, 'before the start: "Doar pe proiector" adds a projector-only song after the Program; the team does not see it; ✕ on it in the console', { teamSees, consoleRows });
+    await p.click('#op-list .has-remove .item-remove'); // ✕ before the start: the REST route
+    await p.waitForFunction((n) => document.querySelectorAll('#op-list li').length === n, countBefore + 1, { timeout: 5000 });
+    check(true, '✕ before the start takes the projector-only song out again');
+    await p.click('#op-tab-add');
     await p.click('#op-tab-program');
     await p.click('#start-button');
     await p.waitForFunction(() => document.getElementById('mode-banner').dataset.mode === 'split');

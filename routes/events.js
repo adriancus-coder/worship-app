@@ -360,6 +360,20 @@ function createEventsRouter({ db, auth, logger, live }) {
     respond(req, res, found.event.id);
   });
 
+  // A projector-only item taken out again before the start (the console's ✕; live: the
+  // operator.removeItem command). Only such items: the team's Program is the editor's.
+  router.delete('/api/events/:id/items/:itemId/projector', requirePerm('events', 'live'), (req, res) => {
+    const found = load(req, res);
+    if (!found) return;
+    if (found.event.status === 'finished') return res.status(409).json({ code: 'eventFinished', error: req.t('errors.schoolEventClosed') });
+    const itemId = /^\d{1,15}$/.test(req.params.itemId) ? Number(req.params.itemId) : null;
+    const before = live.setlistBefore(req.adminId, found.event.id);
+    if (!itemId || !events.removeOperatorItem(req.adminId, found.event.id, itemId)) return res.status(404).json({ error: req.t('errors.itemNotFound') });
+    live.setlistChanged(req.adminId, found.event.id, before);
+    logger.info(`Event #${found.event.id}: projector-only item #${itemId} removed by user #${req.user.id} (admin #${req.adminId})`);
+    respond(req, res, found.event.id);
+  });
+
   // A song at the end of the Program (the live page's / the console's "În setlist" before the
   // start, when the live engine's addItem has nothing to add after): { songId }.
   router.post('/api/events/:id/items/append', requirePerm('events', 'live'), (req, res) => {
@@ -369,9 +383,14 @@ function createEventsRouter({ db, auth, logger, live }) {
     const songId = Number((req.body || {}).songId);
     const song = Number.isInteger(songId) && songId > 0 ? events.findSong(req.adminId, songId) : null;
     if (!song) return res.status(400).json({ error: req.t('errors.badRequest') });
+    // scope 'projector': only on the projector (the console's / live page's "Doar pe
+    // proiector" before the start), at the end, after the team's Program; else shared
+    const scope = (req.body || {}).scope === 'projector' ? 'projector' : 'shared';
     const before = live.setlistBefore(req.adminId, found.event.id);
-    events.appendSongs(req.adminId, found.event.id, [song]);
+    if (scope === 'projector') events.addOperatorItem(req.adminId, found.event.id, { type: 'song', songId: song.id, title: song.title, body: null, reference: null, url: null, durationMin: null }, null, 'projector');
+    else events.appendSongs(req.adminId, found.event.id, [song]);
     live.setlistChanged(req.adminId, found.event.id, before);
+    logger.info(`Event #${found.event.id}: song #${song.id} appended (${scope}) by user #${req.user.id} (admin #${req.adminId})`);
     respond(req, res, found.event.id, 201);
   });
 

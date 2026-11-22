@@ -196,15 +196,16 @@
           'aria-label': t(done ? 'live.markUnsung' : 'live.markSung', { title: itemTitle(item) }), disabled: !enabled,
           onclick: () => send('item.mark', { itemId: item.id, done: !done }),
         }, el('span', { class: 'item-done-number', 'aria-hidden': 'true', text: done ? '' : String(i + 1) }));
-      // a projector-only item added by mistake: ✕ takes it out again (operator.removeItem)
-      const canRemove = enabled && item.scope === 'projector';
+      // a projector-only item added by mistake: ✕ takes it out again (live: operator.removeItem;
+      // before the start: DELETE items/:id/projector), unless the event is over
+      const canRemove = item.scope === 'projector' && state.snap.status !== 'finished';
       return el('li', { class: `${canArrange ? 'has-arrange' : ''}${canRemove ? ' has-remove' : ''}`.trim() || null }, tick, main, canArrange ? el('button', {
         type: 'button', class: 'secondary item-arrange', 'data-icon': 'edit',
         'aria-label': t('arrange.buttonLabel', { title: itemTitle(item) }), onclick: () => arrange(item, goThere),
       }, el('span', { text: t('arrange.button') })) : null,
       canRemove ? el('button', {
         type: 'button', class: 'secondary icon-button item-remove', 'aria-label': t('operator.tags.removeLabel', { title: itemTitle(item) }),
-        onclick: () => send('operator.removeItem', { itemId: item.id }),
+        onclick: () => (live() ? send('operator.removeItem', { itemId: item.id }) : api(`/api/events/${eventId}/items/${item.id}/projector`, { method: 'DELETE' }).catch(() => null)),
       }, el('span', { 'aria-hidden': 'true', text: '✕' })) : null);
     }));
     if (!list.length) $('op-list').replaceChildren(el('li', { class: 'muted', text: t('setlist.empty') }));
@@ -504,12 +505,13 @@
   // "Importă · În setlist". Searching and importing run in the background: the spinner and
   // any error stay in this panel, the live controls never wait for them.
   // Live: the engine adds right after the current item. Before the start, "În setlist" puts
-  // the song at the end of the Program (POST items/append); "Doar pe proiector" is live only.
+  // Before the start both go through POST items/append, at the end: "În setlist" after the
+  // team's Program, "Doar pe proiector" as a projector-only item after it; live: the command.
   async function addSong(target, songId) {
-    if (!live() && target === 'setlist') {
-      const res = await api(`/api/events/${eventId}/items/append`, { method: 'POST', body: { songId } }).catch(() => null);
+    if (!live()) {
+      const res = await api(`/api/events/${eventId}/items/append`, { method: 'POST', body: { songId, scope: target === 'projector' ? 'projector' : 'shared' } }).catch(() => null);
       if (!res || !res.ok) return { error: (res && res.body && res.body.error) || t('common.networkError') };
-      return { done: t('operator.addedSetlist') };
+      return { done: t(target === 'projector' ? 'operator.addedProjectorEnd' : 'operator.addedSetlistEnd') };
     }
     const reply = await send('operator.addItem', { target, item: { type: 'song', songId } });
     if (!reply || !reply.ok) return { error: errorText(reply) };
@@ -527,13 +529,14 @@
     disabled: () => Boolean(state.snap && state.snap.status === 'finished'),
     createAction: (query) => newSong.open({ title: query }),
     localActions: (song) => [
-      live() ? { label: t('operator.addProjector'), icon: 'projector', ariaLabel: `${t('operator.addProjector')}: ${song.title}`, run: () => addSong('projector', song.id) } : null,
+      // both at any moment: for the team (the Program) or the projector only
+      { label: t('operator.addProjector'), icon: 'projector', ariaLabel: `${t('operator.addProjector')}: ${song.title}`, run: () => addSong('projector', song.id) },
       { label: t('operator.addSetlist'), icon: 'plus', primary: true, ariaLabel: `${t('operator.addSetlist')}: ${song.title}`, run: () => addSong('setlist', song.id) },
-    ].filter(Boolean),
+    ],
     onlineActions: (item) => [
-      live() ? { label: t('operator.importProjector'), icon: 'projector', ariaLabel: `${t('operator.importProjector')}: ${item.title}`, run: (songId) => addSong('projector', songId) } : null,
+      { label: t('operator.importProjector'), icon: 'projector', ariaLabel: `${t('operator.importProjector')}: ${item.title}`, run: (songId) => addSong('projector', songId) },
       { label: t('operator.importSetlist'), icon: 'import', ariaLabel: `${t('operator.importSetlist')}: ${item.title}`, run: (songId) => addSong('setlist', songId) },
-    ].filter(Boolean),
+    ],
   });
   addSearch.setOnline(true); // the console is for the event roles, who may import
 
