@@ -174,6 +174,11 @@
     $('add-submit-email').hidden = !state.emailEnabled;
     $('add-email-hint').hidden = !state.emailEnabled;
     $('add-submit').className = state.emailEnabled ? 'secondary' : '';
+    const active = state.positions.filter((p) => p.active);
+    $('add-positions').replaceChildren(...active.map((p) => el('label', { class: 'checkbox' },
+      el('input', { type: 'checkbox', name: 'add-position', value: String(p.id) }),
+      el('span', { text: window.PAGE.positionLabel(p) }))));
+    $('add-positions-choice').hidden = !active.length;
     $('add-dialog').showModal();
     $('add-name').focus();
   });
@@ -182,10 +187,11 @@
     event.preventDefault();
     const byEmail = state.emailEnabled && event.submitter && event.submitter.id === 'add-submit-email';
     const role = new FormData($('add-form')).get('add-role');
+    const positionIds = [...document.querySelectorAll('#add-positions input:checked')].map((box) => Number(box.value));
     $('add-submit').disabled = true;
     $('add-submit-email').disabled = true;
     try {
-      const res = await api('/api/team', { method: 'POST', body: { name: $('add-name').value, email: $('add-email').value, role } });
+      const res = await api('/api/team', { method: 'POST', body: { name: $('add-name').value, email: $('add-email').value, role, positionIds } });
       if (!res.ok) return say('add-message', res.body.error || t('common.networkError'), 'error');
       await load();
       if (rolesEditor) rolesEditor.reload();

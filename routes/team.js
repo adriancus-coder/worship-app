@@ -142,6 +142,9 @@ function createTeamRouter({ db, auth, config, logger, live, email, invites }) {
     if (email.error) return res.status(400).json({ error: email.error });
     const role = roleChoice(req, body.role);
     if (role.error) return res.status(400).json({ error: role.error });
+    // the usual positions (optional), set with the account
+    const positionIds = body.positionIds === undefined ? [] : body.positionIds;
+    if (!Array.isArray(positionIds) || !positionIds.every((id) => Number.isInteger(id))) return res.status(400).json({ error: req.t('errors.badRequest') });
     if (team.isEmailTaken(email.value)) return res.status(409).json({ error: req.t('errors.teamEmailTaken') });
     const password = temporaryPassword();
     const hash = await hashPassword(password);
@@ -152,9 +155,10 @@ function createTeamRouter({ db, auth, config, logger, live, email, invites }) {
       if (err && err.code === 'SQLITE_CONSTRAINT_UNIQUE') return res.status(409).json({ error: req.t('errors.teamEmailTaken') });
       throw err;
     }
-    audit(req, `created (${role.value.role}${role.value.customRoleId ? ` / custom role #${role.value.customRoleId}` : ''})`, id);
+    if (positionIds.length) positions.setForUser(req.adminId, id, positionIds);
+    audit(req, `created (${role.value.role}${role.value.customRoleId ? ` / custom role #${role.value.customRoleId}` : ''}${positionIds.length ? `, ${positionIds.length} position(s)` : ''})`, id);
     // The temporary password is returned this once; only its hash is stored.
-    res.status(201).json({ user: team.get(req.adminId, id), temporaryPassword: password });
+    res.status(201).json({ user: { ...team.get(req.adminId, id), positionIds: positions.ofUserIds(req.adminId, id) }, temporaryPassword: password });
   }));
 
   router.patch('/api/team/:id', (req, res) => {

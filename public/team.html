@@ -68,6 +68,12 @@
           <label class="role-option"><input type="radio" name="add-role" value="member" checked><span><strong><span class="role-emoji" aria-hidden="true">🎵</span> <span data-i18n="team.roles.member"></span></strong><span class="hint" data-i18n="team.roleHelp.member"></span></span></label>
           <div id="add-custom-roles" class="role-custom-options"></div>
         </fieldset>
+        <!-- the usual positions (the profile), as in "Editează" -->
+        <fieldset class="positions-choice" id="add-positions-choice">
+          <legend data-i18n="team.positionsLabel"></legend>
+          <p class="hint" data-i18n="team.positionsAddHint"></p>
+          <div id="add-positions" class="checkbox-list"></div>
+        </fieldset>
         <p id="add-message" class="message error" role="alert"></p>
         <p id="add-email-hint" class="hint" hidden data-i18n="team.sendInviteHint"></p>
         <div class="form-actions">

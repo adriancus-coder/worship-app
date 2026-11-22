@@ -17,7 +17,18 @@ module.exports = {
       check(mails === 0, `${tag} team rows: no "Retrimite invitația" / "Trimite link de resetare"`, mails);
       await p.click('#add-person');
       await p.waitForSelector('#add-dialog[open]');
+      check((await p.locator('#add-positions input').count()) >= 5 && !(await p.isHidden('#add-positions-choice')), `${tag} + Adaugă persoană: the team positions to tick, as in Editează`);
+      await p.waitForSelector('#add-dialog[open]');
       check(await p.isHidden('#add-submit-email') && await p.isHidden('#add-email-hint') && (await p.getAttribute('#add-submit', 'class')) === '', `${tag} + Adaugă persoană: only "Creează contul", primary`);
+      // created with a position ticked: the account has it in the profile at once
+      await p.fill('#add-name', `Nou ${lang}`);
+      await p.fill('#add-email', `nou-${lang}@x.ro`);
+      await p.click('#add-positions label:first-child input');
+      await p.click('#add-submit');
+      await p.waitForSelector('#result-dialog[open]');
+      const created = (await app.api(app.cookies.owner, 'GET', '/api/team')).body.users.find((u) => u.name === `Nou ${lang}`);
+      const firstPosition = (await app.api(app.cookies.owner, 'GET', '/api/positions')).body.positions[0].id;
+      check(created && created.positionIds.join() === String(firstPosition), `${tag} created with a position ticked: the account has it`, created && created.positionIds);
       await p.keyboard.press('Escape');
       await p.goto(`${app.url}/settings`);
       await p.waitForFunction(() => /\S/.test((document.getElementById('email-status') || {}).textContent || ''));
