@@ -2034,7 +2034,17 @@ button.op-step:disabled { opacity: 1; cursor: default; }
 .team-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 6px !important; font-size: 0.875rem; }
 .team-actions { display: flex; flex-wrap: wrap; gap: 8px; flex: 1 1 100%; }
 /* Echipa: the owner's tabs and panels; the directory rows */
-.team-tabs { margin-bottom: 12px; }
+.team-tabs { margin-bottom: 8px; }
+/* the four tabs on one row on a phone: Persoane · Poziții · Roluri · Absențe (the check
+   mark and the bold of the selected one included), less side padding */
+@media (max-width: 479px) { .team-tabs > button { padding-left: 8px; padding-right: 8px; font-size: 0.9375rem; } }
+.team-page .page-head { margin-bottom: 8px; }
+.team-page #page-message:empty { display: none; } /* no blank line between the tabs and the list */
+/* The "i" next to a page title (public/info-tip.js): round, the explanation in a dialog */
+.page-title { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.info-button { flex: none; width: var(--touch); min-width: var(--touch); height: var(--touch); min-height: var(--touch); padding: 0; justify-content: center; border-radius: 50%; }
+.info-button::before { width: 1.5em; height: 1.5em; }
+.info-dialog p { margin: 0 0 16px; line-height: 1.5; }
 /* Media: "Din link" under the background upload; the "sursă: host" caption */
 .bg-url-form { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
 .bg-url-heading { margin: 0 0 4px; font-size: 1rem; }
@@ -2241,6 +2251,7 @@ button, .button { gap: 0.5em; }
 [data-icon="link"] { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1'/%3E%3C/svg%3E"); }
 [data-icon="key"] { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 10a4 4 0 1 0-3.5 4L9 16v2H7v2H4v-3l6-6'/%3E%3C/svg%3E"); }
 [data-icon="undo"] { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 14l-5-5 5-5M4 9h10a6 6 0 0 1 0 12h-3'/%3E%3C/svg%3E"); }
+[data-icon="info"] { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 11v5M12 8h.01'/%3E%3C/svg%3E"); }
 [data-icon="close"] { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 6l12 12M18 6L6 18'/%3E%3C/svg%3E"); }
 [data-icon="expand"] { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 4h6v6M20 4l-7 7M10 20H4v-6M4 20l7-7'/%3E%3C/svg%3E"); }
 [data-icon="next"] { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 6l6 6-6 6'/%3E%3C/svg%3E"); }

@@ -10,12 +10,12 @@
 <body data-shell="team" class="list-page">
   <main class="wide team-page">
     <div class="page-head">
-      <h1 data-i18n="team.heading"></h1>
+      <!-- the "i" (public/info-tip.js, team.js): what this page / the open tab is about -->
+      <div class="page-title" id="team-title"><h1 data-i18n="team.heading"></h1></div>
       <button type="button" id="add-person" data-icon="person-plus" data-i18n="team.add" hidden></button>
       <a class="button secondary" id="my-profile" href="/profile" data-icon="edit" data-i18n="team.myProfile" hidden></a>
     </div>
-    <p class="muted" id="team-intro" data-i18n="team.intro"></p>
-    <!-- The owner: Persoane · Poziții · Indisponibilități -->
+    <!-- The owner: Persoane · Poziții · Roluri · Absențe -->
     <div class="tabs team-tabs" id="team-tabs" role="tablist" data-i18n-aria-label="team.tabsLabel" hidden>
       <button type="button" role="tab" id="tab-people" aria-controls="people-panel" aria-selected="true" data-tab="people" data-i18n="team.tabs.people"></button>
       <button type="button" role="tab" id="tab-positions" aria-controls="positions-panel" aria-selected="false" tabindex="-1" data-tab="positions" data-i18n="team.tabs.positions"></button>
@@ -30,7 +30,6 @@
       <ul id="directory" class="team-list directory-list" hidden></ul>
     </div>
     <div id="positions-panel" role="tabpanel" class="team-panel" data-list-pane="team.tabs.positions" hidden>
-      <p class="hint" data-i18n="positions.intro"></p>
       <div id="positions-editor"></div>
     </div>
     <div id="roles-panel" role="tabpanel" class="team-panel" data-list-pane="team.tabs.roles" hidden>
@@ -152,6 +151,7 @@
   <script src="/positions-editor.js"></script>
   <script src="/roles-editor.js"></script>
   <script src="/unavailability.js"></script>
+  <script src="/info-tip.js"></script>
   <script src="/team.js"></script>
 </body>
 </html>

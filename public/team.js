@@ -379,6 +379,15 @@
 
   const TABS = ['people', 'positions', 'roles', 'unavail'];
   const tabButtons = [...document.querySelectorAll('#team-tabs [role="tab"]')];
+  const INFO_KEYS = { people: 'team.intro', positions: 'positions.intro', roles: 'customRoles.intro', unavail: 'team.unavailIntro' };
+  const currentTab = () => (tabButtons.find((b) => b.getAttribute('aria-selected') === 'true') || {}).dataset?.tab || 'people';
+  // the "i" next to the title: the explanation of the open tab (the directory for the others)
+  let ownerPage = false;
+  $('team-title').append(window.INFO_TIP.button({
+    id: 'team-info',
+    label: () => t('info.about', { what: ownerPage ? tabButtons.find((b) => b.dataset.tab === currentTab()).textContent : t('team.heading') }),
+    text: () => t(ownerPage ? INFO_KEYS[currentTab()] : 'team.directoryIntro'),
+  }));
   function showTab(name) {
     for (const tab of TABS) $(`${tab}-panel`).hidden = tab !== name;
     const url = new URL(window.location.href);
@@ -434,16 +443,15 @@
     $('team-tabs').hidden = !owner;
     $('directory').hidden = owner;
     $('team').hidden = !owner;
+    ownerPage = owner;
     if (!owner) {
-      $('team-intro').dataset.i18n = 'team.directoryIntro';
-      $('team-intro').textContent = t('team.directoryIntro');
       document.addEventListener('i18n:change', renderDirectory);
       await loadDirectory();
       return;
     }
     window.POSITIONS_EDITOR.mount($('positions-editor'));
     // a role changed or deleted: the people's roles may have changed too (reload the list)
-    rolesEditor = window.ROLES_EDITOR.mount($('roles-editor'), { onChange: (roles) => { state.roles = roles; renderRoleOptions(); load(); } });
+    rolesEditor = window.ROLES_EDITOR.mount($('roles-editor'), { intro: false, onChange: (roles) => { state.roles = roles; renderRoleOptions(); load(); } });
     await load();
     const asked = new URLSearchParams(window.location.search).get('tab');
     if (TABS.includes(asked) && asked !== 'people') {

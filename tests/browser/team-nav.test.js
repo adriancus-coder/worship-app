@@ -49,8 +49,21 @@ module.exports = {
         emails: document.querySelectorAll('#team .team-email').length,
       }));
       check(head.current === 'team' && head.tabs.length === 4 && head.add && head.emails > 0, `${tag} owner: Echipa marked in the nav, tabs ${head.tabs.join(' · ')}, accounts with emails`, head);
+      // the "i" next to the title: the explanation of the open tab in a dialog; no paragraph under the title
+      const tabsRow = await o.evaluate(() => { const tabs = [...document.querySelectorAll('#team-tabs [role="tab"]')].map((b) => b.getBoundingClientRect().top); return { oneRow: Math.max(...tabs) - Math.min(...tabs) < 2, intro: Boolean(document.getElementById('team-intro')), listTop: document.querySelector('#team .team-row').getBoundingClientRect().top }; });
+      check(tabsRow.oneRow && !tabsRow.intro && tabsRow.listTop < (width < 600 ? 260 : 220), `${tag} owner: the four tabs on one row, no intro paragraph, the list starts high (top ${Math.round(tabsRow.listTop)} px)`, tabsRow);
+      await o.click('#team-info');
+      await o.waitForSelector('#info-dialog[open]');
+      check(/(parolă temporară|temporary password)/.test(await o.textContent('#info-dialog-text')), `${tag} owner: the "i" opens the Persoane explanation`, await o.textContent('#info-dialog-text'));
+      await o.click('#info-dialog-close');
+      await o.waitForSelector('#info-dialog:not([open])', { state: 'attached' });
       await o.click('#tab-positions');
       await o.waitForSelector('#positions-panel:not([hidden]) .position-row');
+      await o.click('#team-info');
+      await o.waitForSelector('#info-dialog[open]');
+      check(/(Pozițiile pe care|The positions your)/.test(await o.textContent('#info-dialog-text')) && !(await o.locator('#positions-panel > p.hint').count()), `${tag} owner: on Poziții the "i" explains the positions; no hint paragraph in the panel`, await o.textContent('#info-dialog-text'));
+      await o.click('#info-dialog-close');
+      await o.waitForSelector('#info-dialog:not([open])', { state: 'attached' });
       await o.fill('.positions-add input', 'Vioară');
       await o.click('.positions-add button');
       await o.waitForSelector('.position-row:has-text("Vioară")');

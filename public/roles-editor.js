@@ -24,7 +24,8 @@
   const peopleText = (n) => (n === 0 ? t('customRoles.peopleZero') : n === 1 ? t('customRoles.peopleOne') : t('customRoles.people', { n }));
   const label = (role) => (role.emoji ? `${role.emoji} ${role.name}` : role.name);
 
-  function mount(root, { onChange } = {}) {
+  // options.intro false: the page shows the explanation itself (the team page's "i")
+  function mount(root, { onChange, intro: withIntro = true } = {}) {
     // editing: a custom role (or null for a new one); builtin: the built-in role being edited
     const state = { roles: [], builtins: [], editing: null, builtin: null, confirming: false };
     const builtIn = el('ul', { class: 'roles-list roles-builtin' });
@@ -77,7 +78,7 @@
       confirmBox);
     const dialog = el('dialog', { id: 'role-dialog', 'aria-labelledby': 'role-heading' }, form);
 
-    root.replaceChildren(intro, builtInHeading, builtIn, mineHeading, mine, empty, el('div', { class: 'roles-actions' }, addButton), message, dialog);
+    root.replaceChildren(...(withIntro ? [intro] : []), builtInHeading, builtIn, mineHeading, mine, empty, el('div', { class: 'roles-actions' }, addButton), message, dialog);
 
     function say(text, kind) {
       message.className = `message${kind ? ` ${kind}` : ''}`;

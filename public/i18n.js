@@ -11,6 +11,10 @@
       common: {
         networkError: 'Serverul nu răspunde. Încearcă din nou.',
       },
+      info: {
+        about: 'Despre: {what}',
+        ok: 'Am înțeles',
+      },
       setup: {
         pageTitle: 'Configurare inițială — {appName}',
         heading: 'Configurare inițială',
@@ -285,8 +289,9 @@
         intro: 'Conturile oamenilor din echipă. Fiecare intră cu emailul lui și o parolă temporară, pe care o schimbă la prima intrare.',
         directoryIntro: 'Cine e în echipă, cu rolul și pozițiile fiecăruia. Pozițiile și perioadele tale indisponibile le schimbi din „Profilul meu”.',
         myProfile: 'Profilul meu',
-        tabsLabel: 'Persoane, poziții sau indisponibilități',
-        tabs: { people: 'Persoane', positions: 'Poziții', roles: 'Roluri', unavailability: 'Indisponibilități' },
+        tabsLabel: 'Persoane, poziții, roluri sau absențe',
+        tabs: { people: 'Persoane', positions: 'Poziții', roles: 'Roluri', unavailability: 'Absențe' },
+        unavailIntro: 'Perioadele în care oamenii din echipă nu pot sluji (concediu, plecat din oraș), așa cum le-au notat ei în profil. Liderul le vede când programează echipa. Mai jos îți notezi și tu perioadele.',
         unavailAllHeading: 'Perioadele indisponibile ale echipei',
         unavailMineHeading: 'Perioadele mele',
         noUnavailability: 'Nimeni nu a notat o perioadă indisponibilă.',
@@ -2311,6 +2316,10 @@
       common: {
         networkError: 'The server is not responding. Please try again.',
       },
+      info: {
+        about: 'About: {what}',
+        ok: 'Got it',
+      },
       setup: {
         pageTitle: 'First-time setup — {appName}',
         heading: 'First-time setup',
@@ -2585,8 +2594,9 @@
         intro: 'The accounts of your team. Everyone signs in with their email and a temporary password, which they change the first time.',
         directoryIntro: 'Who is in the team, with everyone’s role and positions. Your own positions and unavailable periods are changed in “My profile”.',
         myProfile: 'My profile',
-        tabsLabel: 'People, positions or unavailability',
-        tabs: { people: 'People', positions: 'Positions', roles: 'Roles', unavailability: 'Unavailability' },
+        tabsLabel: 'People, positions, roles or absences',
+        tabs: { people: 'People', positions: 'Positions', roles: 'Roles', unavailability: 'Absences' },
+        unavailIntro: 'The periods when people of the team cannot serve (holiday, out of town), as they noted them in their profile. The leader sees them when scheduling the team. Below you note your own periods too.',
         unavailAllHeading: 'The team’s unavailable periods',
         unavailMineHeading: 'My periods',
         noUnavailability: 'Nobody has noted an unavailable period.',
