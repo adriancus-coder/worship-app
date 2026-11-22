@@ -457,6 +457,7 @@
       return;
     }
     window.POSITIONS_EDITOR.mount($('positions-editor'));
+    document.addEventListener('positions:people', () => load()); // the people's chips follow
     // a role changed or deleted: the people's roles may have changed too (reload the list)
     rolesEditor = window.ROLES_EDITOR.mount($('roles-editor'), { intro: false, onChange: (roles) => { state.roles = roles; renderRoleOptions(); load(); } });
     await load();

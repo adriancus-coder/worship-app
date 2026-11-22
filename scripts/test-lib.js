@@ -3655,6 +3655,11 @@ test('attendance (migration 049): the invitation reaches every active person onc
   assert.deepStrictEqual(A.list(1, 1).map((r) => [r.userName, r.positionId, r.status]), [['Ana', voce, 'pending'], ['Bob', voce, 'accepted']], 'the leader\'s row stays');
   assert.deepStrictEqual(A.followAttendance(1, 1, 2, 'accepted', P.ofUserIds(1, 2)), { placed: [], removed: 0 }, 'no usual positions: nothing');
   assert.deepStrictEqual(A.followAttendance(1, 1, 1, 'accepted', [999]), { placed: [], removed: 0 }, 'a position of another admin: ignored');
+  // the people of a position, set from the position's side: the same rows as the profile
+  assert.deepStrictEqual(P.members(1).map((u) => u.name), ['Ana', 'Bob'], 'the active people to pick from (Cezar inactive, Dan another admin)');
+  assert.strictEqual(P.setPeople(1, voce, [2, 3, 4, 2]), true);
+  assert.deepStrictEqual([P.peopleByPosition(1).get(voce).map((u) => u.name), P.ofUserIds(1, 1), P.ofUserIds(1, 2)], [['Bob'], [chitara], [voce]], 'Voce: Bob only (Ana off it, the inactive and the foreign user ignored); the profiles follow');
+  assert.strictEqual(P.setPeople(2, voce, [4]), false, 'another admin\'s position: refused');
   mem.close();
 });
 

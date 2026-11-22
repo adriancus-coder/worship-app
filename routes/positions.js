@@ -20,11 +20,27 @@ function createPositionsRouter({ db, auth, logger }) {
 
   const idOf = (req) => (/^\d{1,15}$/.test(req.params.id) ? Number(req.params.id) : null);
 
-  // people: position id -> the names of the people who have it in their profile (the team
-  // directory shows everyone's positions anyway)
+  // people: position id -> [{ id, name }] who have it in their profile (the team directory
+  // shows everyone's positions anyway); members: everyone active, for the schedulers' picker.
+  const withPeople = (req, extra = {}) => ({
+    positions: positions.list(req.adminId), canManage: can(req.user, 'schedule'),
+    people: Object.fromEntries([...positions.peopleByPosition(req.adminId)]),
+    ...(can(req.user, 'schedule') ? { members: positions.members(req.adminId) } : {}),
+    ...extra,
+  });
   router.get('/api/positions', (req, res) => {
-    const people = Object.fromEntries([...positions.peopleByPosition(req.adminId)].map(([id, list]) => [id, list.map((u) => u.name)]));
-    res.json({ positions: positions.list(req.adminId), canManage: can(req.user, 'schedule'), people });
+    res.json(withPeople(req));
+  });
+
+  // "Persoane" on a position: who has it, set from the position's side: { userIds }. The same
+  // rows as the profile's positions, so the team page, the pickers and "Vin" follow at once.
+  router.put('/api/positions/:id/people', canManage, (req, res) => {
+    const id = idOf(req);
+    const ids = (req.body || {}).userIds;
+    if (!Array.isArray(ids) || !ids.every((x) => Number.isInteger(x))) return res.status(400).json({ error: req.t('errors.badRequest') });
+    if (!id || !positions.setPeople(req.adminId, id, ids)) return res.status(404).json({ error: req.t('errors.notFound') });
+    logger.info(`Position #${id}: people set (${ids.length}) by user #${req.user.id} (admin #${req.adminId})`);
+    res.json(withPeople(req));
   });
 
   router.post('/api/positions', canManage, (req, res) => {
@@ -35,7 +51,7 @@ function createPositionsRouter({ db, auth, logger }) {
     const created = positions.create(req.adminId, name.value, emoji.value);
     if (!created) return res.status(400).json({ error: req.t('errors.positionsTooMany') });
     logger.info(`Position "${created.name}" added by user #${req.user.id} (admin #${req.adminId})`);
-    res.status(201).json({ position: created, positions: positions.list(req.adminId) });
+    res.status(201).json(withPeople(req, { position: created }));
   });
 
   // The whole order: { ids: [...] } (every position of the admin, once).
@@ -44,7 +60,7 @@ function createPositionsRouter({ db, auth, logger }) {
     if (!Array.isArray(ids) || !ids.every((id) => Number.isInteger(id)) || !positions.reorder(req.adminId, ids)) {
       return res.status(400).json({ error: req.t('errors.badRequest') });
     }
-    res.json({ positions: positions.list(req.adminId) });
+    res.json(withPeople(req));
   });
 
   // Rename, change the emoji ('' / null clears it) and / or (de)activate: { name?, emoji?, active? }.
@@ -66,7 +82,7 @@ function createPositionsRouter({ db, auth, logger }) {
     if (!Object.keys(patch).length) return res.status(400).json({ error: req.t('errors.badRequest') });
     const updated = id && positions.update(req.adminId, id, patch);
     if (!updated) return res.status(404).json({ error: req.t('errors.notFound') });
-    res.json({ position: updated, positions: positions.list(req.adminId) });
+    res.json(withPeople(req, { position: updated }));
   });
 
   return router;

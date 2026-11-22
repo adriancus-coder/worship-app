@@ -23,6 +23,15 @@ module.exports = {
     await l.waitForSelector('#positions-panel:not([hidden]) .position-row');
     const who = await l.evaluate(() => [...document.querySelectorAll('.position-row')].slice(0, 2).map((r) => r.querySelector('.position-people').textContent));
     check(who[0].includes(member.name) && who[1] === 'nimeni în profil', 'every position says who has it in the profile (Voce: the member; Chitară: nobody)', who);
+    // "Persoane" on Chitară: the member ticked -> under Chitară, in the Persoane tab's chips and in the profile
+    await l.click('.position-row:has-text("Chitară") .position-people-button');
+    await l.waitForSelector('#position-people-dialog[open]');
+    check(/Cine e pe „Chitară”/.test(await l.textContent('#position-people-heading')) && (await l.locator('#position-people-list input').count()) >= 3, 'the dialog: "Cine e pe Chitară", everyone active to tick');
+    await l.click(`#position-people-list input[value="${member.id}"]`);
+    await l.click('#position-people-save');
+    await l.waitForFunction((name) => document.querySelector('.position-row:nth-child(2) .position-people').textContent.includes(name), member.name);
+    const profile = (await app.api(app.cookies.member, 'GET', '/api/me/profile')).body.profile;
+    check(profile.positionIds.includes((await app.api(app.cookies.owner, 'GET', '/api/positions')).body.positions[1].id), 'saved from the position: the member\'s profile has Chitară too', profile.positionIds);
     await app.api(app.cookies.owner, 'PUT', `/api/team/${member.id}/positions`, { positionIds: [] }); // the profile step below picks them
     check(/\/team$/.test(new URL(l.url()).pathname) && (await names(l)).join(',') === 'Voce,Chitară,Pian/Clape,Bas,Tobe,Operator,Prezentator', 'seeded positions on Echipa -> Poziții (/positions redirects there)');
     await l.fill('.positions-add input', 'Vioară');
