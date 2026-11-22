@@ -13,7 +13,7 @@ const PRESENCE_DEBOUNCE_MS = 1000;
 const SESSION_SWEEP_MS = 30 * 1000;
 
 const COMMANDS = ['event.start', 'event.end', 'event.withdraw', 'worship.next', 'worship.prev', 'worship.goto', 'worship.endItem',
-  'projector.request', 'projector.handover', 'team.mode', 'background.set',
+  'projector.request', 'projector.handover', 'projector.take', 'team.mode', 'background.set',
   'projector.next', 'projector.prev', 'projector.goto', 'projector.syncToWorship', 'projector.source', 'projector.screens',
   'video.prepare', 'video.play', 'video.pause', 'video.restart', 'video.stop', 'video.volume',
   'clock.set', 'key.set', 'chords.set', 'handover.accept', 'handover.refuse', 'handover.cancel', 'operator.addItem', 'operator.removeItem', 'item.mark'];

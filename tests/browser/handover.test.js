@@ -142,9 +142,27 @@ module.exports = {
     await op.click('#projector-action');
     await op.waitForFunction(() => document.getElementById('mode-banner').dataset.mode === 'split', null, { timeout: 3000 });
     check(await holder() === 'operator', 'the owner gone: the operator takes it at once');
+    // the emergency: the operator hands it to the leader, asks it back and nobody answers:
+    // "Preia de urgență (5)" counts down next to "Cerere trimisă", then takes it; the leader
+    // is told; the leader's own request line never has the button
+    await op.click('#projector-action');
+    await op.waitForSelector('.handover-pick:not([hidden])');
+    await op.click('.handover-pick button:has-text("Lider")');
+    await op.waitForFunction(() => document.getElementById('mode-banner').dataset.mode === 'together', null, { timeout: 3000 });
+    await op.click('#projector-action');
+    await op.waitForSelector('#handover-take:not([hidden])');
+    const early = await op.evaluate(() => { const b = document.getElementById('handover-take'); return { text: b.textContent, disabled: b.disabled, line: document.querySelector('#mode-controls .handover-line p').textContent }; });
+    check(/Preia de urgență \([1-5]\)/.test(early.text) && early.disabled && /Cerere trimisă/.test(early.line), 'the operator asks: "Preia de urgență (5)" counting down, not yet pressable', early);
+    await op.waitForFunction(() => !document.getElementById('handover-take').disabled, null, { timeout: 7000 });
+    check((await op.textContent('#handover-take')) === 'Preia de urgență' && await holder() === 'leader', 'after 5 s without an answer: "Preia de urgență" is live, the leader still holds it');
+    await op.click('#handover-take');
+    await op.waitForFunction(() => document.getElementById('mode-banner').dataset.mode === 'split', null, { timeout: 3000 });
+    await lp.waitForFunction(() => /de urgență/.test(document.querySelector('#mode-controls .handover-line').textContent), null, { timeout: 3000 });
+    check(await holder() === 'operator' && /Operator a preluat proiectorul de urgență/.test(await lp.textContent('#mode-controls .handover-line')) && /Ai preluat proiectorul de urgență/.test(await op.textContent('#mode-controls .handover-line')) && await lp.isHidden('.handover-toast'), 'taken: the operator holds it, "Operator a preluat proiectorul de urgență" on the leader\'s page, the console told too', await lp.textContent('#mode-controls .handover-line'));
     // expiry: after 60 s the request is gone on both sides, silently, the operator keeps it
     await lp.click('#projector-action');
     await op.waitForSelector('.handover-toast:not([hidden])');
+    check(await lp.isHidden('#handover-take'), 'the leader\'s request line: no "Preia de urgență" (not an operator)');
     const expired = await lp.waitForFunction(() => document.querySelector('#mode-controls .handover-line').hidden, null, { timeout: 65000 }).then(() => true, () => false);
     const toastGone = await op.waitForFunction(() => document.querySelector('.handover-toast').hidden, null, { timeout: 3000 }).then(() => true, () => false);
     check(expired && toastGone && await holder() === 'operator' && (await app.state()).handover === null, 'expiry after 60 s: silent, the operator keeps it', { expired, toastGone });

@@ -50,9 +50,23 @@
     const pick = el('div', { class: 'handover-pick', role: 'group', 'aria-labelledby': 'projector-action', hidden: true });
     const hint = el('p', { class: 'hint mode-hint', 'data-dismiss': 'mode-hint' });
     // The requester's line: "Cerere trimisă… 58 s" + Anulează, or the answer / the notice.
+    // An operator (the screens right) or an owner also gets "Preia de urgență": counting down
+    // 5…1 after the request, then live (projector.take): the holder got stuck or is gone.
     const lineText = el('p');
     const cancel = el('button', { type: 'button', class: 'secondary', onclick: () => send('handover.cancel') });
-    const line = el('div', { class: 'handover-line', role: 'status', 'aria-live': 'polite', hidden: true }, lineText, cancel);
+    const take = el('button', { type: 'button', class: 'secondary danger-text', id: 'handover-take', 'data-icon': 'projector', hidden: true, onclick: () => send('projector.take') });
+    const line = el('div', { class: 'handover-line', role: 'status', 'aria-live': 'polite', hidden: true }, lineText, cancel, take);
+    const EMERGENCY_MS = 5000; // lib/live.js
+    const canTake = () => Boolean(me && (me.role === 'owner' || me.perms.includes('screens')));
+    const takeSecondsLeft = () => Math.max(0, Math.ceil((pending().requestedAt + EMERGENCY_MS - Date.now()) / 1000));
+    function renderTake() {
+      const p = pending();
+      take.hidden = !(p && mine() && canTake());
+      if (take.hidden) return;
+      const left = takeSecondsLeft();
+      take.disabled = left > 0;
+      take.textContent = left > 0 ? t('live.modes.takeIn', { n: left }) : t('live.modes.take');
+    }
     // The receiver's choice: continue where the projection is, or start from their own place.
     const choiceText = el('p');
     const keep = el('button', { type: 'button', 'data-icon': 'check', id: 'handover-keep', onclick: () => { choice = null; render(); } });
@@ -110,6 +124,7 @@
       const p = pending();
       if (hand.answer && hand.answer.until <= Date.now()) hand.answer = null;
       if (p && mine()) lineText.textContent = t('live.modes.handoverSent', { s: secondsLeft() });
+      renderTake();
       if (p || hand.answer) hand.timer = setTimeout(() => { tick(); if (!pending()) render(); }, 1000);
       if (!p && !hand.answer) render();
     }
@@ -180,6 +195,7 @@
       line.classList.toggle('refused', Boolean(answer && answer.type === 'refused'));
       cancel.hidden = !(p && mine());
       cancel.textContent = t('live.modes.handoverCancel');
+      renderTake();
       if (p && mine()) lineText.textContent = t('live.modes.handoverSent', { s: secondsLeft() });
       else if (answer) lineText.textContent = answerText(answer);
       // the holder's badge and toast
@@ -198,7 +214,7 @@
 
     return {
       setMe(user) {
-        me = user ? { id: user.id, role: user.role } : null;
+        me = user ? { id: user.id, role: user.role, perms: user.perms || [] } : null;
         if (snap) render();
       },
       update(next) {
@@ -232,8 +248,9 @@
           else if (!actor) notice('nowHolds', event.to);
           else hand.answer = null;
         } else if (event.type === 'taken') {
-          if (actor) notice('taken', null);
-          else notice('takenBy', event.by);
+          // emergency: the request went unanswered and an operator / the owner took it anyway
+          if (actor) notice(event.emergency ? 'takenEmergency' : 'taken', null);
+          else notice(event.emergency ? 'takenByEmergency' : 'takenBy', event.by);
         } else if (event.type === 'cancelled') hand.answer = null;
         if (choice) hand.answer = null; // the choice says it all
         render();

@@ -1012,6 +1012,22 @@ async function main() {
     await settle();
     assert.deepStrictEqual([events.leader.at(-1).type, events.leader.at(-1).byUserId, events.operator.at(-1).type, events.operator.at(-1).by], ['taken', ids.leader, 'taken', 'Lider']);
     assert.strictEqual((await emit(ownerSocket, 'live:join', { eventId: ev.id })).ok, true);
+    // the emergency: the leader holds it and is in the room; the operator asks, nobody
+    // answers; projector.take is refused for 5 s (tooEarly), then takes it; the leader cannot
+    // (not an operator); the holder is told it was an emergency
+    reply = await opSend({ type: 'projector.request' });
+    assert.strictEqual(reply.handover, 'requested');
+    assert.strictEqual((await opSend({ type: 'projector.take' })).code, 'tooEarly', 'within 5 s: too early');
+    assert.strictEqual((await send(lead.socket, { type: 'projector.take' })).code, 'forbidden', 'a leader: never (operators and owners only)');
+    await new Promise((r) => setTimeout(r, 5100));
+    reply = await opSend({ type: 'projector.take' });
+    assert.strictEqual(reply.ok, true, JSON.stringify(reply));
+    snap = await memberAt(version);
+    assert.deepStrictEqual([holderOf(snap), snap.mode, snap.handover], [['operator', 'Operator'], 'split', null], 'taken in the emergency');
+    await settle();
+    assert.deepStrictEqual([events.leader.at(-1).type, events.leader.at(-1).emergency, events.leader.at(-1).by, events.operator.at(-1).type, events.operator.at(-1).emergency], ['taken', true, 'Operator', 'taken', true], 'both told: an emergency take');
+    assert.strictEqual((await opSend({ type: 'projector.take' })).code, undefined, 'the holder: noop');
+    await takeProjector(lead.socket, op.socket); // back to the leader, as the next step expects
     for (const s of [lead.socket, op.socket, mem.socket, ownerSocket]) s.off('live:handover');
     op.socket.close();
   });
