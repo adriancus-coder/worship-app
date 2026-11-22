@@ -20,8 +20,11 @@ function createPositionsRouter({ db, auth, logger }) {
 
   const idOf = (req) => (/^\d{1,15}$/.test(req.params.id) ? Number(req.params.id) : null);
 
+  // people: position id -> the names of the people who have it in their profile (the team
+  // directory shows everyone's positions anyway)
   router.get('/api/positions', (req, res) => {
-    res.json({ positions: positions.list(req.adminId), canManage: can(req.user, 'schedule') });
+    const people = Object.fromEntries([...positions.peopleByPosition(req.adminId)].map(([id, list]) => [id, list.map((u) => u.name)]));
+    res.json({ positions: positions.list(req.adminId), canManage: can(req.user, 'schedule'), people });
   });
 
   router.post('/api/positions', canManage, (req, res) => {

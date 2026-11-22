@@ -14,8 +14,16 @@ module.exports = {
     const names = (p) => p.evaluate(() => [...document.querySelectorAll('.position-row .position-name')].map((n) => n.textContent));
     // the owner manages on Echipa -> Poziții (RO 375); /positions lands there
     const l = await signIn('owner', { width: 375, lang: 'ro' });
+    // the member has Voce in the profile: the Voce row names them, the others "nimeni în profil"
+    const users = (await app.api(app.cookies.owner, 'GET', '/api/team')).body.users;
+    const member = users.find((u) => u.role === 'member');
+    const voceId = (await app.api(app.cookies.owner, 'GET', '/api/positions')).body.positions[0].id;
+    await app.api(app.cookies.owner, 'PUT', `/api/team/${member.id}/positions`, { positionIds: [voceId] });
     await l.goto(`${app.url}/positions`);
     await l.waitForSelector('#positions-panel:not([hidden]) .position-row');
+    const who = await l.evaluate(() => [...document.querySelectorAll('.position-row')].slice(0, 2).map((r) => r.querySelector('.position-people').textContent));
+    check(who[0].includes(member.name) && who[1] === 'nimeni în profil', 'every position says who has it in the profile (Voce: the member; Chitară: nobody)', who);
+    await app.api(app.cookies.owner, 'PUT', `/api/team/${member.id}/positions`, { positionIds: [] }); // the profile step below picks them
     check(/\/team$/.test(new URL(l.url()).pathname) && (await names(l)).join(',') === 'Voce,Chitară,Pian/Clape,Bas,Tobe,Operator,Prezentator', 'seeded positions on Echipa -> Poziții (/positions redirects there)');
     await l.fill('.positions-add input', 'Vioară');
     await l.click('.positions-add button');

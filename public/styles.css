@@ -2020,7 +2020,11 @@ button.op-step:disabled { opacity: 1; cursor: default; }
 /* "Poziții în echipă" (public/positions-editor.js) */
 .positions-list { list-style: none; margin: 0 0 12px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .position-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 6px 10px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+.position-text { flex: 1 1 140px; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.position-text .position-name { flex: none; }
 .position-name { flex: 1 1 140px; font-weight: 600; }
+.position-people { font-size: 0.875rem; color: var(--text); overflow-wrap: anywhere; } /* who has it in the profile */
+.position-people.muted { color: var(--text-muted); }
 .position-name.inactive { color: var(--text-muted); text-decoration: line-through; }
 .position-rename { flex: 1 1 140px; min-height: var(--touch); }
 .position-emoji { flex: none; width: 1.6em; font-size: 1.15rem; text-align: center; }

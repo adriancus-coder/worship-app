@@ -10,7 +10,7 @@
   const { t } = window.I18N;
 
   function mount(root) {
-    const state = { positions: [], canManage: false, editing: null };
+    const state = { positions: [], canManage: false, editing: null, people: {} }; // people: position id -> names
     const list = el('ol', { class: 'positions-list' });
     const message = el('p', { class: 'message', role: 'status', 'aria-live': 'polite' });
     const input = el('input', { type: 'text', maxlength: '40', autocomplete: 'off', 'aria-label': t('positions.newLabel') });
@@ -43,7 +43,11 @@
         ? el('input', { type: 'text', class: 'position-emoji-input', value: p.emoji || '', maxlength: '16', autocomplete: 'off', inputmode: 'text', 'aria-label': t('positions.emojiLabel', { name: p.name }) })
         : el('span', { class: 'position-emoji', 'aria-hidden': 'true', text: p.emoji || '' });
       const tools = el('span', { class: 'position-tools' });
-      if (!state.canManage) return el('li', { class: 'position-row' }, emoji, name, p.active ? null : el('span', { class: 'pill status-pill status-inactive', text: t('positions.inactive') }));
+      // who has this position in their profile: "Ana, Bob" / "nimeni în profil"
+      const names = state.people[p.id] || [];
+      const people = el('span', { class: `position-people${names.length ? '' : ' muted'}`, text: names.length ? names.join(', ') : t('positions.nobody') });
+      const text = el('span', { class: 'position-text' }, name, editing ? null : people);
+      if (!state.canManage) return el('li', { class: 'position-row' }, emoji, text, p.active ? null : el('span', { class: 'pill status-pill status-inactive', text: t('positions.inactive') }));
       if (editing) {
         const save = async () => {
           const value = name.value.trim();
@@ -69,7 +73,7 @@
             ? el('button', { type: 'button', class: 'secondary danger-text', 'data-icon': 'close', text: t('positions.deactivate'), 'aria-label': t('positions.deactivateLabel', { name: p.name }), onclick: () => change(`/api/positions/${p.id}`, 'PUT', { active: false }) })
             : el('button', { type: 'button', class: 'secondary', 'data-icon': 'restart', text: t('positions.reactivate'), 'aria-label': t('positions.reactivateLabel', { name: p.name }), onclick: () => change(`/api/positions/${p.id}`, 'PUT', { active: true }) }));
       }
-      return el('li', { class: `position-row${p.active ? '' : ' inactive'}`, 'data-position': String(p.id) }, emoji, name,
+      return el('li', { class: `position-row${p.active ? '' : ' inactive'}`, 'data-position': String(p.id) }, emoji, text,
         p.active ? null : el('span', { class: 'pill status-pill status-inactive', text: t('positions.inactive') }), tools);
     }
 
@@ -103,6 +107,7 @@
       if (!res.ok) return say(res.body.error || t('common.networkError'), 'error');
       state.positions = res.body.positions;
       state.canManage = res.body.canManage;
+      state.people = res.body.people || {};
       render();
     }
 

@@ -914,6 +914,7 @@
         reactivate: 'Reactivează',
         reactivateLabel: 'Reactivează „{name}”',
         inactive: 'dezactivată',
+        nobody: 'nimeni în profil',
       },
       dismiss: {
         close: 'Închide mesajul (nu îl mai arăta pe acest dispozitiv)',
@@ -3219,6 +3220,7 @@
         reactivate: 'Reactivate',
         reactivateLabel: 'Reactivate “{name}”',
         inactive: 'inactive',
+        nobody: 'nobody in the profile',
       },
       dismiss: {
         close: 'Close this message (stop showing it on this device)',
