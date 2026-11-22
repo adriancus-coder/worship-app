@@ -111,6 +111,12 @@
           </details>
           <p id="setlist-empty" class="muted pane-state" hidden data-i18n="setlist.empty"></p>
           <ol id="items" class="setlist"></ol>
+          <!-- The console's "Doar pe proiector" songs (the event roles): apart, read-only, ✕ -->
+          <section class="projector-items" id="projector-items" aria-labelledby="projector-items-heading" hidden>
+            <h3 id="projector-items-heading" data-i18n="setlist.projectorOnlyHeading"></h3>
+            <p class="hint" data-i18n="setlist.projectorOnlyHint"></p>
+            <ol id="projector-list" class="setlist"></ol>
+          </section>
           <!-- The Sunday school (the 'school' right, viewing): adds its songs to the programme,
                marked "Școala duminicală" for the operator and the team -->
           <div class="school-add" id="school-add" hidden>

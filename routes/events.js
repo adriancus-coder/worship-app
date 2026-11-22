@@ -41,13 +41,13 @@ function createEventsRouter({ db, auth, logger, live }) {
   // Loads the event for this request or sends 404.
   function load(req, res) {
     const id = eventId(req);
-    const found = id && events.get(req.adminId, id, { teamOnly: !isEditor(req), t: req.t });
+    const found = id && events.get(req.adminId, id, { teamOnly: !isEditor(req), t: req.t, withProjector: isEditor(req) });
     if (!found) notFound(req, res);
     return found || null;
   }
 
   function respond(req, res, id, status = 200) {
-    res.status(status).json({ ...events.get(req.adminId, id, { t: req.t }), today: today(req) });
+    res.status(status).json({ ...events.get(req.adminId, id, { t: req.t, withProjector: isEditor(req) }), today: today(req) });
   }
 
   router.use('/api/events', auth.requireUser, (req, res, next) => {

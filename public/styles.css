@@ -697,6 +697,14 @@ main.wide.event-page { max-width: 1200px; }
 .setlist { list-style: none; margin: 0 0 12px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .setlist-item { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
 .setlist-item.selected { border-color: var(--accent-fill); }
+/* the event page's "Doar pe proiector" section: the console's songs, apart from the Program */
+.projector-items { margin: 12px 0 0; }
+.projector-items h3 { margin: 0 0 2px; font-size: 1rem; }
+.projector-items .hint { margin: 0 0 8px; }
+.projector-items .setlist-item { border-style: dashed; }
+.projector-items .item-main { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; cursor: default; }
+.projector-items .item-head { display: flex; flex-wrap: wrap; gap: 6px; }
+.projector-pill { font-size: 0.6875rem; font-weight: 800; letter-spacing: 0.04em; border-color: var(--border); color: var(--text-muted); }
 .item-row { display: flex; align-items: center; gap: 4px; padding: 4px; }
 
 .item-main {

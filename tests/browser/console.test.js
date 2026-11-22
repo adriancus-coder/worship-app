@@ -37,6 +37,23 @@ module.exports = {
     await p.waitForFunction((n) => document.querySelectorAll('#op-list li').length === n, countBefore + 2, { timeout: 5000 });
     const consoleRows = await p.evaluate(() => [...document.querySelectorAll('#op-list li')].map((li) => ({ projectorOnly: Boolean(li.querySelector('.op-item.projector-only')), remove: li.classList.contains('has-remove') })));
     check(teamSees === countBefore + 1 && consoleRows.length === countBefore + 2 && consoleRows[consoleRows.length - 1].projectorOnly && consoleRows[consoleRows.length - 1].remove && consoleRows.filter((r) => r.projectorOnly).length === 1, 'before the start: "Doar pe proiector" adds a projector-only song after the Program; the team does not see it; ✕ on it in the console', { teamSees, consoleRows });
+    const evPage = (await app.api(app.cookies.owner, 'GET', `/api/events/${E}`)).body;
+    check(Array.isArray(evPage.projectorItems) && evPage.projectorItems.length === 1 && evPage.projectorItems[0].scope === 'projector' && !(await app.api(app.cookies.member, 'GET', `/api/events/${E}`)).body.projectorItems, 'GET event: projectorItems for the event roles, not for the team');
+    const o = await signIn('owner', { width: 1024, lang: 'ro' });
+    await o.goto(`${app.url}/events/${E}`);
+    await o.waitForSelector('#projector-items:not([hidden]) .setlist-item');
+    check(/Mare ești Tu/.test(await o.textContent('#projector-list')) && /DOAR PROIECTOR/.test(await o.textContent('#projector-list')), 'the event page: "Doar pe proiector" under the Program, the song marked');
+    await o.click('#projector-list [data-action="projector-remove"]');
+    await o.waitForFunction(() => document.getElementById('projector-items').hidden, null, { timeout: 5000 });
+    check(/scoasă de pe proiector/.test(await o.textContent('#action-message')), 'its ✕ on the event page takes it out; the section goes');
+    await o.context().close();
+    await p.waitForFunction((n) => document.querySelectorAll('#op-list li').length === n, countBefore + 1, { timeout: 5000 });
+    // the same once more, taken out with the console's ✕ this time
+    await p.click('#op-tab-add');
+    await p.click('#add-songs li >> nth=0 >> button:has-text("Doar pe proiector")');
+    await p.waitForFunction(() => /echipa nu o vede/.test(document.getElementById('add-search').textContent), null, { timeout: 5000 });
+    await p.click('#op-tab-program');
+    await p.waitForSelector('#op-list .has-remove .item-remove');
     await p.click('#op-list .has-remove .item-remove'); // ✕ before the start: the REST route
     await p.waitForFunction((n) => document.querySelectorAll('#op-list li').length === n, countBefore + 1, { timeout: 5000 });
     check(true, '✕ before the start takes the projector-only song out again');

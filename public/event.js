@@ -418,10 +418,40 @@
     else if (detail.parentElement !== detailHome) detailHome.append(detail);
   }
 
+  // The console's projector-only songs, under the Program: the team never sees them; ✕
+  // takes one out (DELETE items/:id/projector) while the event is not over.
+  function renderProjectorItems() {
+    const list = state.projectorItems || [];
+    $('projector-items').hidden = !list.length;
+    if (!list.length) return;
+    const canRemove = state.event && state.event.status !== 'finished' && (can(state.me, 'events') || can(state.me, 'live'));
+    $('projector-list').replaceChildren(...list.map((item) => {
+      const title = item.title || (item.song && item.song.title) || item.reference || t('setlist.untitled');
+      return el('li', { class: 'setlist-item projector-only', 'data-item': String(item.id) }, el('div', { class: 'item-row' },
+        el('span', { class: 'item-main' },
+          el('span', { class: 'item-head' },
+            el('span', { class: `type-badge type-${item.type}`, text: t(`setlist.types.${item.type}`) }),
+            el('span', { class: 'pill projector-pill', text: t('operator.tags.projectorOnly') })),
+          el('span', { class: 'item-title', text: title }),
+          item.displayKey ? el('span', { class: 'item-sub', text: t('options.songKeyShort', { key: window.NOTATION.chord(item.displayKey) }) }) : null),
+        canRemove ? el('span', { class: 'item-tools' }, el('button', {
+          type: 'button', class: 'secondary icon-button', 'data-action': 'projector-remove', 'aria-label': t('setlist.projectorRemove', { title }),
+          onclick: async () => {
+            const res = await api(`/api/events/${state.event.id}/items/${item.id}/projector`, { method: 'DELETE' }).catch(() => null);
+            if (!res || !res.ok) { showAction((res && res.body && res.body.error) || t('common.networkError')); return; }
+            state.projectorItems = res.body.projectorItems || [];
+            renderProjectorItems();
+            showAction(t('setlist.projectorRemoved', { title }));
+          },
+        }, el('span', { 'aria-hidden': 'true', text: '✕' }))) : null));
+    }));
+  }
+
   function renderAll() {
     renderHeader();
     renderQuickDetails();
     renderItems();
+    renderProjectorItems();
     renderDetail();
     renderSaveBar();
     renderTeam();
@@ -1208,6 +1238,7 @@
     state.event = body.event;
     state.today = body.today;
     state.items = body.items.map(fromServer);
+    state.projectorItems = body.projectorItems || []; // the console's "Doar pe proiector" (event roles)
     state.saved = JSON.stringify(payload(state.items));
     if (!keepSelection || state.selected >= state.items.length) state.selected = -1;
     renderAll();
