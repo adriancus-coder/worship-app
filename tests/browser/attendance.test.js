@@ -13,7 +13,13 @@ module.exports = {
   timeout: 240000,
   async run({ app, signIn, check }) {
     const E = app.seed.eventId; // today's event: the home card's top event
-    const active = (await app.api(app.cookies.owner, 'GET', '/api/team')).body.users.filter((u) => u.active).length;
+    const users = (await app.api(app.cookies.owner, 'GET', '/api/team')).body.users;
+    const active = users.filter((u) => u.active).length;
+    // the member's usual position (the profile): Chitară -> "Vin" puts them on it by itself
+    const positions = (await app.api(app.cookies.owner, 'GET', '/api/positions')).body.positions;
+    const chitara = positions.find((p) => /Chitar/.test(p.name)) || positions[1];
+    const memberId = users.find((u) => u.role === 'member').id;
+    await app.api(app.cookies.owner, 'PUT', `/api/team/${memberId}/positions`, { positionIds: [chitara.id] });
     // the chosen option: the accent fill (the token), the check mark, bold
     const chosen = (page, sel) => page.$eval(sel, (b) => {
       const probe = document.createElement('span');
@@ -59,6 +65,20 @@ module.exports = {
     await m.click('#team-card .attend-me [data-answer="accepted"]');
     await m.waitForSelector('#team-card .attend-me [data-answer="accepted"][aria-pressed="true"]');
     check(/1 coming/.test(await m.textContent('#attend-summary')) && /Coming · 1/.test(await m.textContent('#team-card .attend-list')), 'event page: changed to Yes; the summary and the list follow');
+    // "Yes" put the member on Chitară by itself, confirmed; "Maybe" takes them off again; "Yes" again puts them back
+    await m.waitForFunction(() => /Guitar|Chitar/.test(document.querySelector('#team-card').textContent));
+    const auto = (await app.api(app.cookies.owner, 'GET', `/api/events/${E}/assignments`)).body.assignments.filter((r) => r.userId === memberId);
+    check(auto.length === 1 && auto[0].positionId === chitara.id && auto[0].status === 'accepted', '"Yes": on the usual position (Chitară) by themselves, confirmed', auto);
+    await m.click('#team-card .attend-me [data-answer="maybe"]');
+    await m.waitForSelector('#team-card .attend-me [data-answer="maybe"][aria-pressed="true"]');
+    await m.waitForFunction(() => !/Guitar|Chitar/.test(document.querySelector('#team-card').textContent));
+    check(!(await app.api(app.cookies.owner, 'GET', `/api/events/${E}/assignments`)).body.assignments.some((r) => r.userId === memberId), '"Maybe": off the self-placed position again');
+    await m.click('#team-card .attend-me [data-answer="accepted"]');
+    await m.waitForSelector('#team-card .attend-me [data-answer="accepted"][aria-pressed="true"]');
+    await m.waitForFunction(() => /Guitar|Chitar/.test(document.querySelector('#team-card').textContent));
+    const leaderNote = (await app.api(app.cookies.leader, 'GET', '/api/notifications')).body;
+    const told = (leaderNote.items || leaderNote.notifications || []).find((n) => n.kind === 'attendance');
+    check(told && /Chitar/.test(`${told.title} ${told.body}`), 'the leader is told "Membru: Vin · pe Chitară"', told);
     const b = await layoutAudit(m, '#team-card');
     check(!b.overflow && !b.small.length, 'team card 1024: no overflow, targets >= 44 px', b);
     await m.context().close();

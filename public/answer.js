@@ -45,6 +45,10 @@
     const now = info.answer && info.answer.status !== 'pending' ? info.answer.status : null;
     $('message').className = `message${state.saved ? ' success' : ''}`;
     $('message').textContent = state.saved ? t('answerPage.saved', { answer: t(`attend.answers.${now}`) }) : (now ? t('answerPage.current', { answer: t(`attend.answers.${now}`) }) : '');
+    // the positions "Vin" put the person on (or the leader did): "Ești trecut pe: Voce"
+    const positions = (info.positions || []).map((p) => (p.emoji ? `${p.emoji} ${p.name}` : p.name)); // (no page.js here)
+    $('positions').textContent = now === 'accepted' && positions.length ? t('attend.placedMe', { positions: positions.join(', ') }) : '';
+    $('positions').hidden = !$('positions').textContent;
   }
 
   function problem(text) {

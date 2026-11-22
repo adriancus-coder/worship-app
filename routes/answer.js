@@ -3,6 +3,8 @@
 const express = require('express');
 const { createAnswerLinks } = require('../lib/answer-links');
 const { createAttendanceStore, ANSWERS, MAX_NOTE } = require('../lib/attendance');
+const { createAssignmentStore } = require('../lib/assignments');
+const { createPositionStore } = require('../lib/positions');
 const { createEventStore } = require('../lib/events');
 
 // The answer links of the invitation email (lib/answer-links.js), no session needed:
@@ -14,6 +16,8 @@ function createAnswerRouter({ db, logger, notifications }) {
   const router = express.Router();
   const links = createAnswerLinks(db);
   const attendance = createAttendanceStore(db);
+  const assignments = createAssignmentStore(db);
+  const positions = createPositionStore(db);
   const events = createEventStore(db);
   const selectAdmin = db.prepare('SELECT name FROM admins WHERE id = ?').pluck();
   const selectUser = db.prepare('SELECT id, name FROM users WHERE id = ? AND admin_id = ? AND active = 1');
@@ -39,11 +43,13 @@ function createAnswerRouter({ db, logger, notifications }) {
     return { link, event: found.event, user };
   }
 
+  // positions: the ones the person is on (the self-placed ones after "Vin", the leader's too)
   const body = (req, { link, event, user }) => ({
     event: { name: event.name, eventDate: event.eventDate, startTime: event.startTime || null, notes: event.notes || null },
     church: selectAdmin.get(link.adminId) || '',
     name: user.name,
     answer: attendance.mine(link.adminId, event.id, user.id),
+    positions: assignments.forUser(link.adminId, user.id, event.id).filter((r) => r.status !== 'declined').map((r) => ({ name: r.positionName, emoji: r.positionEmoji })),
   });
 
   router.get('/api/answer/:token', (req, res) => {
@@ -61,7 +67,10 @@ function createAnswerRouter({ db, logger, notifications }) {
     attendance.answer(found.link.adminId, found.event.id, found.user.id, status, clean);
     logger.info(`Event #${found.event.id}: user #${found.user.id} attendance ${status} by email link (admin #${found.link.adminId})`);
     if (!before || before.status !== status) {
-      notifications.onAttendance(found.link.adminId, found.event, found.user, status, clean)
+      // "Vin": on their usual positions by themselves (lib/assignments.js followAttendance)
+      const followed = assignments.followAttendance(found.link.adminId, found.event.id, found.user.id, status, positions.ofUserIds(found.link.adminId, found.user.id));
+      if (followed.placed.length || followed.removed) logger.info(`Event #${found.event.id}: user #${found.user.id} self-placed +${followed.placed.length} -${followed.removed} (admin #${found.link.adminId})`);
+      notifications.onAttendance(found.link.adminId, found.event, found.user, status, clean, followed.placed.map((r) => r.positionName))
         .catch((err) => logger.error('attendance notification failed', err));
     }
     res.json(body(req, found));

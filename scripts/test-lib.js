@@ -3638,10 +3638,23 @@ test('attendance (migration 049): the invitation reaches every active person onc
   assert.strictEqual(T.answer(1, 1, 2, 'accepted', '').status, 'accepted', 'an answer can change');
   assert.deepStrictEqual(T.summary(T.list(1, 1)), { accepted: 1, maybe: 0, declined: 0, pending: 1, total: 2 });
   // positions: Bob said "Vin" -> confirmed at once; Ana (no answer) -> pending
-  const [voce] = createPositionStore(mem).list(1).map((p) => p.id);
+  const P = createPositionStore(mem);
+  const [voce, chitara] = P.list(1).map((p) => p.id);
   const A = createAssignmentStore(mem);
   A.replace(1, 1, [{ userId: 2, positionId: voce }, { userId: 1, positionId: voce }], 1);
   assert.deepStrictEqual(A.list(1, 1).map((r) => [r.userName, r.status]), [['Ana', 'pending'], ['Bob', 'accepted']]);
+  // "Vin" followed on the positions: Ana's usual positions (Voce, Chitară) -> on Chitară by
+  // herself, confirmed (Voce she is already on: the leader's row stays pending); "Nu pot"
+  // takes the self-placed row off, the leader's stays; no usual positions: nothing
+  P.setForUser(1, 1, [voce, chitara]);
+  const placed = A.followAttendance(1, 1, 1, 'accepted', P.ofUserIds(1, 1), 50);
+  assert.deepStrictEqual(placed.placed.map((r) => [r.userName, r.positionId, r.status, r.notifiedAt]), [['Ana', chitara, 'accepted', 50]], '"Vin": on the usual position she is not on yet, confirmed, counted as told');
+  assert.deepStrictEqual(A.list(1, 1).map((r) => [r.userName, r.positionId, r.status]), [['Ana', voce, 'pending'], ['Bob', voce, 'accepted'], ['Ana', chitara, 'accepted']]);
+  assert.deepStrictEqual(A.followAttendance(1, 1, 1, 'accepted', P.ofUserIds(1, 1), 51).placed, [], '"Vin" again: nothing more');
+  assert.deepStrictEqual(A.followAttendance(1, 1, 1, 'declined', P.ofUserIds(1, 1)), { placed: [], removed: 1 }, '"Nu pot": the self-placed row goes');
+  assert.deepStrictEqual(A.list(1, 1).map((r) => [r.userName, r.positionId, r.status]), [['Ana', voce, 'pending'], ['Bob', voce, 'accepted']], 'the leader\'s row stays');
+  assert.deepStrictEqual(A.followAttendance(1, 1, 2, 'accepted', P.ofUserIds(1, 2)), { placed: [], removed: 0 }, 'no usual positions: nothing');
+  assert.deepStrictEqual(A.followAttendance(1, 1, 1, 'accepted', [999]), { placed: [], removed: 0 }, 'a position of another admin: ignored');
   mem.close();
 });
 

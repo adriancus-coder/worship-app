@@ -157,8 +157,12 @@ function createAssignmentsRouter({ db, auth, logger, hooks = {} }) {
     const row = attendance.answer(req.adminId, found.event.id, req.user.id, body.status, note);
     if (!row) return res.status(400).json({ error: req.t('errors.badRequest') });
     logger.info(`Event #${found.event.id}: user #${req.user.id} attendance ${body.status} (admin #${req.adminId})`);
-    if (hooks.onAttendance && (!before || before.status !== row.status)) hooks.onAttendance({ req, event: found.event, status: row.status, note: row.note });
-    res.json(payload(req, found));
+    const changed = !before || before.status !== row.status;
+    // "Vin": on their usual positions by themselves (lib/assignments.js followAttendance)
+    const followed = changed ? assignments.followAttendance(req.adminId, found.event.id, req.user.id, row.status, positions.ofUserIds(req.adminId, req.user.id)) : { placed: [], removed: 0 };
+    if (followed.placed.length || followed.removed) logger.info(`Event #${found.event.id}: user #${req.user.id} self-placed +${followed.placed.length} -${followed.removed} (admin #${req.adminId})`);
+    if (hooks.onAttendance && changed) hooks.onAttendance({ req, event: found.event, status: row.status, note: row.note, placed: followed.placed.map((r) => r.positionName) });
+    res.json({ ...payload(req, found), placed: followed.placed.map((r) => ({ id: r.id, positionName: r.positionName, positionEmoji: r.positionEmoji })) });
   });
 
   router.get('/api/my-invitations', auth.requireUser, (req, res) => {

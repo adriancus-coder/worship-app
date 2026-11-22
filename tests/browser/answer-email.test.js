@@ -20,6 +20,11 @@ module.exports = {
   },
   async run({ app, check, browser }) {
     const E = app.seed.eventId;
+    // the member's usual position (the profile): "Vin" from the email puts them on it by itself
+    const users = (await app.api(app.cookies.owner, 'GET', '/api/team')).body.users;
+    const voce = (await app.api(app.cookies.owner, 'GET', '/api/positions')).body.positions[0];
+    const memberId = users.find((u) => u.role === 'member').id;
+    await app.api(app.cookies.owner, 'PUT', `/api/team/${memberId}/positions`, { positionIds: [voce.id] });
     const sent = await app.api(app.cookies.leader, 'POST', `/api/events/${E}/attendance/send`, {});
     check(sent.status === 200 && sent.body.invited.emailed >= 1, 'the invitation went out by email', sent.body.invited);
     const outbox = path.join(app.dataDir, 'outbox.jsonl');
@@ -51,6 +56,10 @@ module.exports = {
     await p.click('#send');
     await p.waitForFunction(() => /Vin/.test(document.getElementById('message').textContent) && /Mulțumim/.test(document.getElementById('message').textContent));
     check((await app.api(app.cookies.member, 'GET', `/api/events/${E}/assignments`)).body.attendance.me.status === 'accepted', 'changed to "Vin"');
+    // "Vin" put them on Voce by itself: the page says so, the row is confirmed and marked
+    await p.waitForFunction(() => !document.getElementById('positions').hidden);
+    const placed = (await app.api(app.cookies.member, 'GET', `/api/events/${E}/assignments`)).body.me;
+    check(new RegExp(`Ești trecut pe: .*${voce.name}`).test(await p.textContent('#positions')) && placed.length === 1 && placed[0].status === 'accepted' && placed[0].selfPlaced === true && placed[0].positionId === voce.id, '"Vin" from the email: "Ești trecut pe: Voce", the row confirmed and self-placed', { text: await p.textContent('#positions'), placed });
     // a made-up token
     await p.goto(`${app.url}/answer/${'0'.repeat(64)}?a=accepted`);
     await p.waitForSelector('#problem:not([hidden])');

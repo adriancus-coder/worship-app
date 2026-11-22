@@ -233,6 +233,8 @@
             return el('li', { class: `assign-row assign-row-${row.status}${busy ? ' unavailable' : ''}${meIds.has(row.id) ? ' mine' : ''}` },
               el('span', { class: 'assign-name', text: row.userName }),
               statusPill(row),
+              // "Vin" put them here by itself (the profile's usual positions)
+              row.selfPlaced ? el('span', { class: 'pill assign-pill assign-self', text: t('attend.selfPlaced') }) : null,
               row.note && !meIds.has(row.id) ? el('span', { class: 'assign-note-text', text: row.note }) : null,
               meIds.has(row.id) ? answerBox(row, respond) : null,
               busy ? el('span', { class: 'assign-warning', text: t('assign.unavailableWarning', { reason: busy.note || t('assign.unavailable') }) }) : null,

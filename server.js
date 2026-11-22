@@ -165,7 +165,7 @@ unavailabilityHooks.onAdded = ({ req, range }) => notifications.onUnavailable(re
 assignmentHooks.onRemoved = ({ req, event, rows }) => notifications.onRemoved(req.adminId, event, rows).catch((err) => logger.error('removed notification failed', err));
 assignmentHooks.onAccepted = ({ req, event, row }) => notifications.onAccepted(req.adminId, event, row).catch((err) => logger.error('accepted notification failed', err));
 assignmentHooks.onDeclined = ({ req, event, row }) => notifications.onDeclined(req.adminId, event, row).catch((err) => logger.error('declined notification failed', err));
-assignmentHooks.onAttendance = ({ req, event, status, note }) => notifications.onAttendance(req.adminId, event, req.user, status, note).catch((err) => logger.error('attendance notification failed', err));
+assignmentHooks.onAttendance = ({ req, event, status, note, placed }) => notifications.onAttendance(req.adminId, event, req.user, status, note, placed).catch((err) => logger.error('attendance notification failed', err));
 // "Trimite programarea" / "Trimite invitația": a notification (+ push) to each person; those
 // without push get an email with the same text and the event link when email is enabled.
 const teamMail = createTeamMail({ db, config, logger, email, push });
