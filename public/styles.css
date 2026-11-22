@@ -1002,12 +1002,16 @@ main.live-page { max-width: 1400px; }
 /* the tick on a sung item (the projector showed more than 70 % of its screens) */
 /* The tick before each row: empty until the song is sung (the projector's 70 % rule), a tap
    sets or clears it by hand (item.mark). */
-.item-done-toggle { position: absolute; left: 4px; top: 50%; transform: translateY(-50%); display: inline-flex; align-items: center; justify-content: center; width: var(--touch); height: var(--touch); padding: 0; font-size: 1rem; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; color: var(--text-muted); background: var(--background); border: 2px solid var(--border); border-radius: 50%; }
-.item-done-toggle::before { margin: 0; }
-.item-done-toggle.item-done { font-size: 1.125rem; font-weight: 800; }
-.item-done-toggle:hover { border-color: var(--text-muted); }
-.item-done-toggle.item-done { color: var(--on-accent); background: var(--success); border-color: var(--success); }
+.item-done-toggle { position: absolute; left: 0; top: 50%; transform: translateY(-50%); display: inline-flex; align-items: center; justify-content: center; width: var(--touch); height: var(--touch); padding: 0; background: none; border: 0; border-radius: 50%; }
+.item-done-toggle::before { display: none; } /* the check sits inside the small circle */
+.item-done-toggle .item-done-number { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; font-size: 0.6875rem; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; color: var(--text-muted); background: var(--background); border: 2px solid var(--border); border-radius: 50%; }
+.item-done-toggle:hover .item-done-number { border-color: var(--text-muted); }
+.item-done-toggle.item-done .item-done-number { color: var(--on-accent); background: var(--success); border-color: var(--success); }
+.item-done-toggle.item-done .item-done-number::before { content: '✓'; font-size: 0.8125rem; font-weight: 800; }
 .item-done-toggle:disabled { opacity: 0.6; cursor: default; }
+/* a projector-only item: the same tick in the accent colour, a dashed circle until ticked */
+.item-done-toggle.is-projector .item-done-number { border-style: dashed; }
+.item-done-toggle.is-projector.item-done .item-done-number { background: var(--accent-fill); border-color: var(--accent-fill); border-style: solid; color: var(--on-accent); }
 /* the grip (public/drag-list.js): the compact view only, where the row has no "Aranjează" */
 .live-item-grip { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: var(--touch); min-width: var(--touch); min-height: var(--touch); padding: 0; font-size: 1.375rem; touch-action: none; cursor: grab; }
 body:not(.live-compact) .live-item-grip { display: none; }
@@ -2807,9 +2811,8 @@ dialog.song-pick-dialog .song-pick > .ss-results { flex: 1 1 0; height: 0; --pan
 /* the tick sits where the item's number was (it carries the number until ticked); the grip
    over the row's right edge (the compact view): the row keeps its width */
 .live-row { position: relative; } /* the tick and the grip sit over the row's edges */
-.live-row > .live-item, .op-list > li > .op-item { padding-left: 52px; }
+.live-row > .live-item, .op-list > li > .op-item { padding-left: 44px; }
 .op-list .op-item .item-number { display: none; } /* the tick carries the number */
-.item-done-toggle.is-static { border-style: dashed; color: var(--text-muted); }
 .live-list .live-item .item-number { display: none; }
 body.live-compact .live-row:has(> .live-item-grip) > .live-item { padding-right: 52px; }
 /* before the start: the song opened under its row (the home card's box) */

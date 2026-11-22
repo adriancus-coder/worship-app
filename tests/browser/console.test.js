@@ -125,6 +125,15 @@ module.exports = {
     check(await p.locator('.op-item.projector-only').count() === 1, '"Doar pe proiector": a projector-only item in the console list');
     const place = await p.evaluate(() => { const lis = [...document.querySelectorAll('#op-list > li')]; return { last: lis[lis.length - 1].querySelector('.op-item.projector-only') !== null, remove: Boolean(lis[lis.length - 1].querySelector('.item-remove')) }; });
     check(place.last && place.remove, 'the projector-only item sits last, after the team\'s Program, with a ✕', place);
+    // its tick works too, in the accent colour (a small circle inside the 44 px target)
+    await p.click('#op-tab-program');
+    await p.click('#op-list > li:last-child .item-done-toggle');
+    await p.waitForSelector('#op-list > li:last-child .item-done-toggle.is-projector.item-done', { timeout: 5000 });
+    const tickBox = await p.evaluate(() => { const b = document.querySelector('#op-list > li:last-child .item-done-toggle'); const c = b.querySelector('.item-done-number').getBoundingClientRect(); const r = b.getBoundingClientRect(); return { target: Math.round(r.width), circle: Math.round(c.width), accent: getComputedStyle(b.querySelector('.item-done-number')).backgroundColor !== getComputedStyle(document.querySelector('#op-list > li:first-child .item-done-number')).backgroundColor }; });
+    check(tickBox.target >= 44 && tickBox.circle <= 28 && tickBox.accent, 'the projector-only item ticks by hand: a small circle in another colour, the target still 44 px', tickBox);
+    await p.click('#op-list > li:last-child .item-done-toggle');
+    await p.waitForFunction(() => !document.querySelector('#op-list > li:last-child .item-done-toggle').classList.contains('item-done'), null, { timeout: 5000 });
+    await p.click('#op-tab-add');
     const team = (await app.api(app.cookies.member, 'GET', `/api/events/${E}`)).body.items.length;
     check(team === 6, 'the team does not see it (the 5 seeded + the one appended before the start)', team);
     await p.fill('#add-q', 'sfant');

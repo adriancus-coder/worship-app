@@ -208,13 +208,12 @@
       // it by hand (item.mark); it carries the number until ticked. Projector-only items (not
       // in the team's Program) keep a plain number.
       const done = Boolean(state.snap.shown && state.snap.shown[item.id] && state.snap.shown[item.id].done);
-      const tick = item.scope === 'projector'
-        ? el('span', { class: 'item-done-toggle is-static', 'aria-hidden': 'true' }, el('span', { class: 'item-done-number', text: String(i + 1) }))
-        : el('button', {
-          type: 'button', class: `item-done-toggle${done ? ' item-done' : ''}`, 'aria-pressed': String(done),
-          'aria-label': t(done ? 'live.markUnsung' : 'live.markSung', { title: itemTitle(item) }), disabled: !enabled,
-          onclick: () => send('item.mark', { itemId: item.id, done: !done }),
-        }, el('span', { class: 'item-done-number', 'aria-hidden': 'true', text: done ? '' : String(i + 1) }));
+      // the tick on every row; a projector-only item's in the accent colour (not the team's)
+      const tick = el('button', {
+        type: 'button', class: `item-done-toggle${done ? ' item-done' : ''}${item.scope === 'projector' ? ' is-projector' : ''}`, 'aria-pressed': String(done),
+        'aria-label': t(done ? 'live.markUnsung' : 'live.markSung', { title: itemTitle(item) }), disabled: !enabled,
+        onclick: () => send('item.mark', { itemId: item.id, done: !done }),
+      }, el('span', { class: 'item-done-number', 'aria-hidden': 'true', text: done ? '' : String(i + 1) }));
       // ✕ on every row takes the item out (live: operator.removeItem; before the start: DELETE
       // items/:id/console), unless the event is over. A shared item (the team's Program) asks
       // once: the first tap turns the ✕ into "Scoate?", the second removes.
