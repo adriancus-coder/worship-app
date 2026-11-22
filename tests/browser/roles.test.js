@@ -16,8 +16,8 @@ module.exports = {
     await o.goto(`${app.url}/team?tab=roles`);
     await o.waitForSelector('#roles-panel:not([hidden]) .role-row.builtin');
     const builtIn = await o.$$eval('#roles-panel .role-row.builtin', (rows) => rows.map((r) => r.textContent));
-    check(builtIn.length === 5 && /Totul/.test(builtIn[0]) && /Urmărește/.test(builtIn[4]), 'the five built-in roles with their rights', builtIn);
-    check(await o.isVisible('#roles-empty'), 'no role yet: the empty line');
+    check(builtIn.length === 5 && /Totul/.test(builtIn[0]) && /Membru – Urmărește · \d+ persoan/.test(builtIn[4]), 'the five built-in roles in the one list: how each opens, its people, its rights', builtIn);
+    check((await o.locator('#roles-all .role-row').count()) === 5 && !(await o.locator('#roles-panel .team-panel-heading').count()), 'one list, no "de bază" / "create de tine" headings');
     await o.click('#role-add');
     await o.waitForSelector('#role-dialog[open]');
     await o.fill('#role-name', 'Tehnician sunet');
@@ -28,8 +28,8 @@ module.exports = {
     const d = await layoutAudit(o, '#role-dialog');
     check(!d.overflow && !d.small.length, 'the role dialog 375: no overflow, targets >= 44 px', d);
     await o.click('#role-save');
-    await o.waitForSelector('#roles-mine .role-row');
-    const row = await o.textContent('#roles-mine .role-row');
+    await o.waitForSelector('#roles-all .role-row[data-role]');
+    const row = await o.textContent('#roles-all .role-row[data-role]');
     check(/🎚️ Tehnician sunet/.test(row) && /Operator – Consola/.test(row) && /Live · Proiector/.test(row) && /nicio persoană/.test(row), 'the new role in the list: emoji, name, how it opens, rights, nobody yet', row);
     const a = await layoutAudit(o, '#roles-panel');
     check(!a.overflow && !a.small.length, 'Roluri 375: no overflow, targets >= 44 px', a);
@@ -58,12 +58,12 @@ module.exports = {
     await m.context().close();
     // deleting it: the person becomes a member
     await o.click('#tab-roles');
-    await o.click('#roles-mine .role-row button');
+    await o.click('#roles-all .role-row[data-role] button');
     await o.waitForSelector('#role-dialog[open]');
     await o.click('#role-delete');
     check(/devin Membri/.test(await o.textContent('#role-delete-text')) && /1 persoană/.test(await o.textContent('#role-delete-text')), 'delete asks first: its people become members', await o.textContent('#role-delete-text'));
     await o.click('#role-delete-yes');
-    await o.waitForSelector('#roles-empty:not([hidden])');
+    await o.waitForFunction(() => !document.querySelector('#roles-all .role-row[data-role]'));
     await o.click('#tab-people');
     await wait(200);
     check(/Membru/.test(await person.locator('.role-pill').textContent()), 'deleted: the person is a member again');
@@ -73,7 +73,8 @@ module.exports = {
     await o.click('#tab-roles');
     await o.click('[data-edit-builtin="member"]');
     await o.waitForSelector('#role-dialog[open]');
-    check(await o.isHidden('#role-base-choice') && /Membru/.test(await o.textContent('#role-builtin-note')), 'a built-in role: no "Se deschide ca" choice, a note instead');
+    const fixed = await o.evaluate(() => ({ visible: !document.getElementById('role-base-choice').hidden, checked: document.querySelector('#role-dialog input[name="role-base"]:checked').value, disabled: [...document.querySelectorAll('#role-dialog input[name="role-base"]')].every((i) => i.disabled), note: document.getElementById('role-builtin-note').textContent, del: document.getElementById('role-delete').hidden }));
+    check(fixed.visible && fixed.checked === 'member' && fixed.disabled && /chiar această pagină/.test(fixed.note) && fixed.del, 'a built-in role: the same dialog, "Se deschide ca" shown on its own page but fixed, no delete', fixed);
     await o.fill('#role-name', 'Voluntar');
     await o.fill('#role-emoji', '🙋');
     await o.check('#role-dialog input[name="role-perm"][value="guides"]');

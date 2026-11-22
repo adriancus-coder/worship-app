@@ -2094,6 +2094,10 @@ button.op-step:disabled { opacity: 1; cursor: default; }
 .role-name { font-weight: 600; }
 .role-perms { font-size: 0.875rem; color: var(--text-muted); }
 .roles-actions { margin: 0 0 8px; }
+/* a built-in role: its page shown and checked but fixed; the other pages dimmed */
+.role-choice.is-fixed .role-option { opacity: 0.45; }
+.role-choice.is-fixed .role-option:has(input:checked) { opacity: 1; }
+.role-choice.is-fixed input:checked { opacity: 1; }
 .role-name-row { display: flex; flex-wrap: wrap; gap: 8px 12px; }
 .role-name-field { flex: 1 1 200px; }
 .role-delete-confirm { margin-top: 12px; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius); }

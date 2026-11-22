@@ -390,6 +390,7 @@
   }));
   function showTab(name) {
     for (const tab of TABS) $(`${tab}-panel`).hidden = tab !== name;
+    say('page-message', '', ''); // a message of the tab left behind ("Modificările … au fost salvate") goes
     const url = new URL(window.location.href);
     if (name === 'people') url.searchParams.delete('tab'); else url.searchParams.set('tab', name);
     window.history.replaceState(null, '', url);

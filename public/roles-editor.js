@@ -1,9 +1,12 @@
 'use strict';
 
-// Echipa → Roluri (the owner): the built-in roles with their rights (read-only) and the roles
-// the owner creates (lib/roles.js): name, emoji, "Se deschide ca" (the page an event opens
-// on) and the rights, ticked one by one. Mounted with ROLES_EDITOR.mount(container,
-// { onChange(roles) }); everything through /api/roles.
+// Echipa → Roluri (the owner): ONE list of roles, the four built-in ones and the ones the
+// owner creates alike (lib/roles.js): every row shows the name and emoji, "Se deschide ca"
+// (the page an event opens on) and the rights, and the same dialog edits them. What differs
+// is inherent: a built-in role IS one of the four experiences, so its "Se deschide ca" is
+// fixed and it cannot be deleted (it goes back to its defaults instead); the owner always has
+// everything. Mounted with ROLES_EDITOR.mount(container, { onChange(roles) }); everything
+// through /api/roles.
 
 (function () {
   const { api, el, ROLE_EMOJI } = window.PAGE;
@@ -28,13 +31,9 @@
   function mount(root, { onChange, intro: withIntro = true } = {}) {
     // editing: a custom role (or null for a new one); builtin: the built-in role being edited
     const state = { roles: [], builtins: [], editing: null, builtin: null, confirming: false };
-    const builtIn = el('ul', { class: 'roles-list roles-builtin' });
-    const mine = el('ul', { class: 'roles-list', id: 'roles-mine' });
-    const empty = el('p', { class: 'muted', id: 'roles-empty', hidden: true });
+    const list = el('ul', { class: 'roles-list', id: 'roles-all' });
     const message = el('p', { class: 'message', id: 'roles-message', role: 'status', 'aria-live': 'polite' });
     const addButton = el('button', { type: 'button', id: 'role-add', 'data-icon': 'plus', onclick: () => open(null) });
-    const builtInHeading = el('h2', { class: 'team-panel-heading' });
-    const mineHeading = el('h2', { class: 'team-panel-heading' });
     const intro = el('p', { class: 'hint' });
 
     // the dialog
@@ -67,9 +66,10 @@
       el('div', { class: 'field-row role-name-row' },
         el('label', { class: 'field role-name-field' }, nameLabel, nameInput),
         el('label', { class: 'field' }, emojiLabel, emojiInput)),
-      nameHint, builtinNote,
+      nameHint,
       el('fieldset', { class: 'role-choice', id: 'role-base-choice' }, baseLegend, baseHelp,
-        ...BASES.map((base, i) => el('label', { class: 'role-option' }, baseInputs[i], el('span', null, el('strong', null, el('span', { class: 'role-emoji', 'aria-hidden': 'true', text: ROLE_EMOJI[base] }), ' ', baseTexts[i]))))),
+        ...BASES.map((base, i) => el('label', { class: 'role-option' }, baseInputs[i], el('span', null, el('strong', null, el('span', { class: 'role-emoji', 'aria-hidden': 'true', text: ROLE_EMOJI[base] }), ' ', baseTexts[i])))),
+        builtinNote),
       el('fieldset', { class: 'positions-choice' }, permsLegend,
         el('div', { class: 'checkbox-list' }, ...PERMS.map((perm, i) => el('label', { class: 'checkbox' }, permInputs[i], permTexts[i]))),
         permsNote),
@@ -78,7 +78,7 @@
       confirmBox);
     const dialog = el('dialog', { id: 'role-dialog', 'aria-labelledby': 'role-heading' }, form);
 
-    root.replaceChildren(...(withIntro ? [intro] : []), builtInHeading, builtIn, mineHeading, mine, empty, el('div', { class: 'roles-actions' }, addButton), message, dialog);
+    root.replaceChildren(...(withIntro ? [intro] : []), list, el('div', { class: 'roles-actions' }, addButton), message, dialog);
 
     function say(text, kind) {
       message.className = `message${kind ? ` ${kind}` : ''}`;
@@ -93,38 +93,32 @@
       if (!event.target.checked) permInputs[PERMS.indexOf('screens')].checked = false;
     });
 
-    function row(role) {
-      return el('li', { class: 'role-row', 'data-role': String(role.id) },
+    // One row for any role: the name (and emoji), how it opens and how many people, the
+    // rights, "Editează". A built-in role opens as itself; a changed one says "modificat".
+    function row({ attrs, cls, name, label: text, base, users, perms, customized, onEdit }) {
+      return el('li', { class: `role-row${cls ? ` ${cls}` : ''}`, ...attrs },
         el('div', { class: 'role-main' },
-          el('p', { class: 'role-name', text: label(role) }),
-          el('p', { class: 'role-meta muted', text: `${t(`customRoles.bases.${role.base}`)} · ${peopleText(role.users || 0)}` }),
-          el('p', { class: 'role-perms', text: permsText(role.perms) })),
-        el('button', { type: 'button', class: 'secondary', 'data-icon': 'edit', text: t('customRoles.edit'), 'aria-label': t('customRoles.editLabel', { name: role.name }), onclick: () => open(role) }));
+          el('p', { class: 'role-name', text }, customized ? el('span', { class: 'muted', text: ` · ${t('customRoles.customized')}` }) : null),
+          el('p', { class: 'role-meta muted', text: `${t(`customRoles.bases.${base}`)} · ${peopleText(users || 0)}` }),
+          el('p', { class: 'role-perms', text: permsText(perms) })),
+        onEdit ? el('button', { type: 'button', class: 'secondary', 'data-icon': 'edit', ...(attrs['data-builtin'] ? { 'data-edit-builtin': attrs['data-builtin'] } : {}), text: t('customRoles.edit'), 'aria-label': t('customRoles.editLabel', { name }), onclick: onEdit }) : null);
     }
 
     function render() {
       intro.textContent = t('customRoles.intro');
-      builtInHeading.textContent = t('customRoles.builtInHeading');
-      mineHeading.textContent = t('customRoles.mineHeading');
-      empty.textContent = t('customRoles.empty');
       addButton.textContent = t('customRoles.add');
-      // the owner: fixed; the four others: editable (name, emoji, rights)
-      builtIn.replaceChildren(
+      list.replaceChildren(
+        // the owner: everything, fixed
         el('li', { class: 'role-row builtin', 'data-builtin': 'owner' },
           el('div', { class: 'role-main' },
             el('p', { class: 'role-name', text: window.PAGE.roleLabel('owner') }),
             el('p', { class: 'role-perms', text: `${permsText(BUILTIN.owner)} · ${t('customRoles.ownerFixed')}` }))),
+        // the four built-in roles, then the owner's own: the same row
         ...BASES.map((role) => {
           const b = state.builtins.find((x) => x.role === role) || { role, perms: BUILTIN[role], customized: false, users: 0 };
-          return el('li', { class: 'role-row builtin', 'data-builtin': role },
-            el('div', { class: 'role-main' },
-              el('p', { class: 'role-name', text: window.PAGE.roleLabel(role) }, b.customized ? el('span', { class: 'muted', text: ` · ${t('customRoles.customized')}` }) : null),
-              el('p', { class: 'role-meta muted', text: peopleText(b.users || 0) }),
-              el('p', { class: 'role-perms', text: permsText(b.perms) })),
-            el('button', { type: 'button', class: 'secondary', 'data-icon': 'edit', 'data-edit-builtin': role, text: t('customRoles.edit'), 'aria-label': t('customRoles.editLabel', { name: window.PAGE.roleName(role) }), onclick: () => openBuiltin(b) }));
-        }));
-      mine.replaceChildren(...state.roles.map(row));
-      empty.hidden = state.roles.length > 0;
+          return row({ attrs: { 'data-builtin': role }, cls: 'builtin', name: window.PAGE.roleName(role), label: window.PAGE.roleLabel(role), base: role, users: b.users, perms: b.perms, customized: b.customized, onEdit: () => openBuiltin(b) });
+        }),
+        ...state.roles.map((role) => row({ attrs: { 'data-role': String(role.id) }, cls: '', name: role.name, label: label(role), base: role.base, users: role.users, perms: role.perms, customized: false, onEdit: () => open(role) })));
       renderDialog();
     }
 
@@ -138,10 +132,12 @@
       nameInput.required = !b;
       nameHint.hidden = !b;
       builtinNote.hidden = !b;
-      form.querySelector('#role-base-choice').hidden = Boolean(b);
+      // a built-in role IS one of the four experiences: its choice is shown, checked and fixed
+      baseInputs.forEach((input) => { input.disabled = Boolean(b); if (b) input.checked = input.value === b.role; });
+      form.querySelector('#role-base-choice').classList.toggle('is-fixed', Boolean(b));
       if (b) {
         nameHint.textContent = t('customRoles.nameDefault', { name: t(`team.roles.${b.role}`) });
-        builtinNote.textContent = t('customRoles.builtinNote', { base: t(`customRoles.bases.${b.role}`) });
+        builtinNote.textContent = t('customRoles.builtinNote');
       }
       resetButton.textContent = t('customRoles.resetDefault');
       resetButton.hidden = !b || !b.customized;
