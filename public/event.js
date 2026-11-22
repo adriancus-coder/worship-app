@@ -1487,6 +1487,20 @@
     box.hidden = !picked.count;
   }
 
+  // "Doar pe proiector" from the picker (any moment, live or not): a projector-only item after
+  // the team's Program (POST items/append, scope projector); the editor's own list is untouched
+  // (unsaved changes stay), only the "Doar pe proiector" section follows.
+  const pickedProjector = new Set();
+  async function addProjectorSong(song) {
+    const res = await api(`/api/events/${eventId}/items/append`, { method: 'POST', body: { songId: song.id, scope: 'projector' } }).catch(() => null);
+    if (!res || !res.ok) return { error: (res && res.body && res.body.error) || t('common.networkError') };
+    pickedProjector.add(song.id);
+    state.projectorItems = res.body.projectorItems || [];
+    renderProjectorItems();
+    songSearch.render();
+    return { done: t('setlist.pickProjectorDone') };
+  }
+
   function addSong(song) {
     if (schoolMode()) return addSchoolSong(song);
     state.items.push({
@@ -1510,21 +1524,39 @@
     withHistory: true,
     songHint: (song) => lastSungText(song.lastSung),
     onLoaded: (body) => { if (body.today) state.today = body.today; },
-    localActions: (song) => [{
-      label: t('setlist.pickAdd'), icon: 'plus', primary: true, done: picked.ids.has(song.id) ? t('setlist.pickAdded') : null,
-      ariaLabel: t('setlist.pickAddLabel', { title: song.title }), run: addSong,
-    }],
-    onlineActions: (item) => [{
-      label: t('setlist.pickImportAdd'), icon: 'import', doneLabel: t('setlist.pickAdded'),
-      ariaLabel: t('setlist.pickAddLabel', { title: item.title }),
-      run: async (songId) => {
-        const res = await api(`/api/songs/${songId}`);
-        if (!res.ok) return { error: res.body.error || t('common.networkError') };
-        const song = res.body.song;
-        addSong({ id: song.id, title: song.title, song_key: song.song_key, section_count: song.sections.length });
-        return { done: t('setlist.pickAdded') };
+    localActions: (song) => [
+      // "Adaugă" (the Program) primary, then "Doar pe proiector" (secondary); not for the school
+      {
+        label: t('setlist.pickAdd'), icon: 'plus', primary: true, done: picked.ids.has(song.id) ? t('setlist.pickAdded') : null,
+        ariaLabel: t('setlist.pickAddLabel', { title: song.title }), run: addSong,
       },
-    }],
+      schoolMode() ? null : {
+        label: t('setlist.pickProjector'), icon: 'projector', done: pickedProjector.has(song.id) ? t('setlist.pickProjectorDone') : null,
+        ariaLabel: t('setlist.pickProjectorLabel', { title: song.title }), run: addProjectorSong,
+      },
+    ].filter(Boolean),
+    onlineActions: (item) => [
+      {
+        label: t('setlist.pickImportAdd'), icon: 'import', doneLabel: t('setlist.pickAdded'),
+        ariaLabel: t('setlist.pickAddLabel', { title: item.title }),
+        run: async (songId) => {
+          const res = await api(`/api/songs/${songId}`);
+          if (!res.ok) return { error: res.body.error || t('common.networkError') };
+          const song = res.body.song;
+          addSong({ id: song.id, title: song.title, song_key: song.song_key, section_count: song.sections.length });
+          return { done: t('setlist.pickAdded') };
+        },
+      },
+      schoolMode() ? null : {
+        label: t('setlist.pickImportProjector'), icon: 'projector', doneLabel: t('setlist.pickProjectorDone'),
+        ariaLabel: t('setlist.pickProjectorLabel', { title: item.title }),
+        run: async (songId) => {
+          const res = await api(`/api/songs/${songId}`);
+          if (!res.ok) return { error: res.body.error || t('common.networkError') };
+          return addProjectorSong({ id: res.body.song.id, title: res.body.song.title });
+        },
+      },
+    ].filter(Boolean),
   });
   songSearch.setOnline(true); // the editor is for the event roles, who may import (the school's picker turns it off)
 
@@ -1631,6 +1663,7 @@
     } else if (button.dataset.add === 'song') {
       picked.ids.clear();
       picked.count = 0;
+      pickedProjector.clear(); // the "Pe proiector" marks start afresh with the dialog
       picked.last = -1;
       renderPickedCount();
       songSearch.reset();

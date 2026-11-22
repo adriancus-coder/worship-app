@@ -24,6 +24,17 @@ module.exports = {
       await p.waitForSelector('[data-add="song"]');
       await p.click('[data-add="song"]');
       await p.waitForSelector('#song-dialog[open]');
+      // "Doar pe proiector" beside "Adaugă": a projector-only song after the Program, the editor's list untouched
+      await p.fill('#pick-q', 'Șase');
+      await p.click('#pick-songs li:has-text("Șase rânduri") button[aria-label^="Pune"], #pick-songs li:has-text("Șase rânduri") button[aria-label^="Put"]');
+      await p.waitForFunction(() => !document.getElementById('projector-items').hidden);
+      const proj = (await app.api(app.cookies.owner, 'GET', `/api/events/${eventId}`)).body;
+      check(proj.projectorItems.length === 1 && /Șase rânduri/.test(proj.projectorItems[0].title) && (await p.locator('#items li').count()) === proj.items.length && /(Pe proiector|On the projector)/.test(await p.textContent('#pick-songs li:has-text("Șase rânduri")')), `${tag} "Doar pe proiector" from the picker: a projector-only song, the Program unchanged, the row says "Pe proiector"`, { projector: proj.projectorItems.length, items: proj.items.length });
+      await app.api(app.cookies.owner, 'DELETE', `/api/events/${eventId}/items/${proj.projectorItems[0].id}/projector`);
+      await p.click('#song-dialog-close'); // reopened: the picker starts afresh for the checks below
+      await p.waitForSelector('#song-dialog:not([open])', { state: 'attached' });
+      await p.click('[data-add="song"]');
+      await p.waitForSelector('#song-dialog[open]');
       const items = () => p.locator('#items li').count();
       const add = async (title) => {
         await p.fill('#pick-q', title);
