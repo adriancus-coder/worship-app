@@ -42,6 +42,7 @@
     renderTimeFormat(res.body.timeFormat);
     renderSongKey(res.body.songKey);
     renderChordsShow(res.body.chordsShow);
+    renderAwaitSection(res.body.awaitSection);
     renderEmail(res.body.email);
     renderPexels(res.body.pexels);
     renderAi(res.body.ai);
@@ -354,6 +355,22 @@
   function renderSongKey(value) {
     if (value) songKey = value;
     if (songKey) keyPanel.update({ clock: songKey, enabled: true });
+  }
+
+  // "Așteaptă strofa": what a new event starts with.
+  function renderAwaitSection(on) {
+    for (const button of document.querySelectorAll('[data-await-section]')) {
+      button.setAttribute('aria-pressed', String((button.dataset.awaitSection === '1') === Boolean(on)));
+    }
+  }
+  for (const button of document.querySelectorAll('[data-await-section]')) {
+    button.addEventListener('click', async () => {
+      const res = await api('/api/settings/await-section', { method: 'PUT', body: { on: button.dataset.awaitSection === '1' } });
+      const out = $('await-message');
+      out.className = `message ${res.ok ? 'success' : 'error'}`;
+      out.textContent = res.ok ? t(res.body.awaitSection ? 'settings.awaitSavedOn' : 'settings.awaitSavedOff') : res.body.error || t('common.networkError');
+      if (res.ok) renderAwaitSection(res.body.awaitSection);
+    });
   }
 
   // "Acorduri pe proiector": what a new event starts with.

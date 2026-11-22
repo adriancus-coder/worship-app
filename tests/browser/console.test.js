@@ -36,7 +36,7 @@ module.exports = {
     await p.click('#op-tab-program');
     await p.waitForFunction((n) => document.querySelectorAll('#op-list li').length === n, countBefore + 2, { timeout: 5000 });
     const consoleRows = await p.evaluate(() => [...document.querySelectorAll('#op-list li')].map((li) => ({ projectorOnly: Boolean(li.querySelector('.op-item.projector-only')), remove: li.classList.contains('has-remove') })));
-    check(teamSees === countBefore + 1 && consoleRows.length === countBefore + 2 && consoleRows[consoleRows.length - 1].projectorOnly && consoleRows[consoleRows.length - 1].remove && consoleRows.filter((r) => r.projectorOnly).length === 1, 'before the start: "Doar pe proiector" adds a projector-only song after the Program; the team does not see it; ✕ on it in the console', { teamSees, consoleRows });
+    check(teamSees === countBefore + 1 && consoleRows.length === countBefore + 2 && consoleRows[consoleRows.length - 1].projectorOnly && consoleRows.every((r) => r.remove) && consoleRows.filter((r) => r.projectorOnly).length === 1, 'before the start: "Doar pe proiector" adds a projector-only song after the Program; the team does not see it; ✕ on every row in the console', { teamSees, consoleRows });
     const evPage = (await app.api(app.cookies.owner, 'GET', `/api/events/${E}`)).body;
     check(Array.isArray(evPage.projectorItems) && evPage.projectorItems.length === 1 && evPage.projectorItems[0].scope === 'projector' && !(await app.api(app.cookies.member, 'GET', `/api/events/${E}`)).body.projectorItems, 'GET event: projectorItems for the event roles, not for the team');
     const o = await signIn('owner', { width: 1024, lang: 'ro' });
@@ -53,8 +53,8 @@ module.exports = {
     await p.click('#add-songs li >> nth=0 >> button:has-text("Doar pe proiector")');
     await p.waitForFunction(() => /echipa nu o vede/.test(document.getElementById('add-search').textContent), null, { timeout: 5000 });
     await p.click('#op-tab-program');
-    await p.waitForSelector('#op-list .has-remove .item-remove');
-    await p.click('#op-list .has-remove .item-remove'); // ✕ before the start: the REST route
+    await p.waitForSelector('#op-list li:last-child .item-remove');
+    await p.click('#op-list li:last-child .item-remove'); // ✕ on the projector-only row before the start: the REST route, no question
     await p.waitForFunction((n) => document.querySelectorAll('#op-list li').length === n, countBefore + 1, { timeout: 5000 });
     check(true, '✕ before the start takes the projector-only song out again');
     await p.click('#op-tab-add');
@@ -134,9 +134,17 @@ module.exports = {
     check((await app.api(app.cookies.member, 'GET', `/api/events/${E}`)).body.items.length === 7, '"În setlist": the team sees it at once');
     // the projector-only item added by mistake: ✕ takes it out (on the Program tab)
     await p.click('#op-tab-program');
-    await p.click('#op-list .has-remove .item-remove');
+    await p.click('#op-list li:last-child .item-remove');
     await p.waitForFunction(() => document.querySelectorAll('#op-list .op-item.projector-only').length === 0, null, { timeout: 5000 });
     check((await app.api(app.cookies.member, 'GET', `/api/events/${E}`)).body.items.length === 7, '✕ on it: gone from the console, the team\'s Program untouched');
+    // ✕ on a shared song asks once ("Scoate?"), then takes it out of the team's Program; Aranjează on every song
+    const arranges = await p.evaluate(() => [...document.querySelectorAll('#op-list li')].map((li) => Boolean(li.querySelector('.item-arrange'))));
+    check(arranges.filter(Boolean).length >= 2, 'Aranjează on every song of the list', arranges);
+    await p.click('#op-list li:last-child .item-remove');
+    check((await p.textContent('#op-list li:last-child .item-remove')).trim() === 'Scoate?' && (await app.api(app.cookies.member, 'GET', `/api/events/${E}`)).body.items.length === 7, 'a shared item: the first tap asks "Scoate?", nothing removed yet');
+    await p.click('#op-list li:last-child .item-remove');
+    await p.waitForFunction((n) => document.querySelectorAll('#op-list li').length === n, 6, { timeout: 5000 });
+    check((await app.api(app.cookies.member, 'GET', `/api/events/${E}`)).body.items.length === 6, 'the second tap takes it out of the team\'s Program');
     for (const [w, h] of [[1440, 900], [1024, 768], [375, 800]]) {
       await p.setViewportSize({ width: w, height: h });
       await wait(300);

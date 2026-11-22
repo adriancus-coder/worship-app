@@ -46,6 +46,7 @@ function createSettingsRouter({ db, auth, config, logger, screensHub, live, stor
       timeFormat: settings.timeFormat(req.adminId),
       songKey: settings.songKey(req.adminId),
       chordsShow: settings.chordsShow(req.adminId),
+      awaitSection: settings.awaitSection(req.adminId),
       safeMargin: settings.safeMargin(req.adminId),
       backgroundDefaults: backgrounds.defaults(req.adminId),
       backup: backups.lastBackup(req.adminId),
@@ -140,6 +141,14 @@ function createSettingsRouter({ db, auth, config, logger, screensHub, live, stor
     const patch = parseClockPatch(req.body);
     if (!patch) return res.status(400).json({ error: req.t('errors.keyInvalid') });
     res.json({ songKey: settings.setSongKey(req.adminId, patch) });
+  });
+
+  // "Așteaptă strofa", what a new event starts with: { on: boolean }.
+  router.put('/api/settings/await-section', (req, res) => {
+    const on = (req.body || {}).on;
+    if (typeof on !== 'boolean') return res.status(400).json({ error: req.t('errors.badRequest') });
+    settings.set(req.adminId, 'await_section', on ? '1' : '0');
+    res.json({ awaitSection: on });
   });
 
   // "Acorduri pe proiector", what a new event starts with: { show: boolean }.

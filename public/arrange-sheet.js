@@ -422,6 +422,13 @@
     const fail = (res) => ({ error: (res && res.body && res.body.error) || t('common.networkError') });
     const current = await api(`/api/events/${eventId}`).catch(() => null);
     if (!current || !current.ok) return fail(current);
+    // a projector-only song (not in the shared Program): its own route
+    const projectorOnly = (current.body.projectorItems || []).find((it) => it.id === itemId);
+    if (projectorOnly) {
+      const kept = projectorOnly.arrangementIsDefault ? null : projectorOnly.arrangement || null;
+      const res = await api(`/api/events/${eventId}/items/${itemId}/options`, { method: 'PUT', body: { transpose, arrangement: codes ? (isDefault ? null : codes.join(' ')) : kept } }).catch(() => null);
+      return res && res.ok ? { ok: true } : fail(res);
+    }
     const items = current.body.items.filter((it) => it.scope !== 'projector').map((it) => {
       const out = {
         id: it.id, type: it.type, songId: it.type === 'song' ? it.songId : null,

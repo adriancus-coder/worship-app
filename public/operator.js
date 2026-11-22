@@ -19,7 +19,7 @@
   const eventId = Number(window.location.pathname.split('/')[2]);
   const RESULTS_MAX = 8;
 
-  const state = { snap: null, event: null, client: null, queue: Promise.resolve(), screens: 0, logoUrl: null, audioId: null };
+  const state = { removing: null, removingTimer: null, snap: null, event: null, client: null, queue: Promise.resolve(), screens: 0, logoUrl: null, audioId: null };
 
   // --- helpers ----------------------------------------------------------------------
 
@@ -196,17 +196,30 @@
           'aria-label': t(done ? 'live.markUnsung' : 'live.markSung', { title: itemTitle(item) }), disabled: !enabled,
           onclick: () => send('item.mark', { itemId: item.id, done: !done }),
         }, el('span', { class: 'item-done-number', 'aria-hidden': 'true', text: done ? '' : String(i + 1) }));
-      // a projector-only item added by mistake: ✕ takes it out again (live: operator.removeItem;
-      // before the start: DELETE items/:id/projector), unless the event is over
-      const canRemove = item.scope === 'projector' && state.snap.status !== 'finished';
+      // ✕ on every row takes the item out (live: operator.removeItem; before the start: DELETE
+      // items/:id/console), unless the event is over. A shared item (the team's Program) asks
+      // once: the first tap turns the ✕ into "Scoate?", the second removes.
+      const canRemove = state.snap.status !== 'finished';
+      const asking = state.removing === item.id;
       return el('li', { class: `${canArrange ? 'has-arrange' : ''}${canRemove ? ' has-remove' : ''}`.trim() || null }, tick, main, canArrange ? el('button', {
         type: 'button', class: 'secondary item-arrange', 'data-icon': 'edit',
         'aria-label': t('arrange.buttonLabel', { title: itemTitle(item) }), onclick: () => arrange(item, goThere),
       }, el('span', { text: t('arrange.button') })) : null,
       canRemove ? el('button', {
-        type: 'button', class: 'secondary icon-button item-remove', 'aria-label': t('operator.tags.removeLabel', { title: itemTitle(item) }),
-        onclick: () => (live() ? send('operator.removeItem', { itemId: item.id }) : api(`/api/events/${eventId}/items/${item.id}/projector`, { method: 'DELETE' }).catch(() => null)),
-      }, el('span', { 'aria-hidden': 'true', text: '✕' })) : null);
+        type: 'button', class: `secondary item-remove${asking ? ' is-asking' : ' icon-button'}`, 'aria-label': t(item.scope === 'projector' ? 'operator.tags.removeLabel' : 'operator.tags.removeSetlistLabel', { title: itemTitle(item) }),
+        onclick: () => {
+          if (item.scope !== 'projector' && !asking) {
+            state.removing = item.id; // ask once
+            clearTimeout(state.removingTimer);
+            state.removingTimer = setTimeout(() => { if (state.removing === item.id) { state.removing = null; render(); } }, 5000);
+            render();
+            return;
+          }
+          state.removing = null;
+          if (live()) send('operator.removeItem', { itemId: item.id });
+          else api(`/api/events/${eventId}/items/${item.id}/console`, { method: 'DELETE' }).catch(() => null);
+        },
+      }, asking ? el('span', { text: t('operator.removeAsk') }) : el('span', { 'aria-hidden': 'true', text: '✕' })) : null);
     }));
     if (!list.length) $('op-list').replaceChildren(el('li', { class: 'muted', text: t('setlist.empty') }));
     if (enabled && !$('press-hint-live') && list.some(arrangeable)) {
@@ -218,7 +231,7 @@
   // --- arranging a song during live (public/arrange-sheet.js) ---------------------------
 
   // Shared song items (a projector-only addition is not part of the saved setlist).
-  const arrangeable = (item) => item && item.type === 'song' && item.songId && item.scope !== 'projector';
+  const arrangeable = (item) => item && item.type === 'song' && item.songId; // a projector-only song too
 
   function arrange(item, goTo = null) {
     window.ARRANGE_SHEET.openForItem(item, {
@@ -347,6 +360,7 @@
     clockPanel.update({ clock: state.snap.clock, enabled: live() || planned });
     keyPanel.update({ clock: state.snap.songKey, enabled: live() || planned });
     chordsToggle.update({ show: Boolean(state.snap.chords && state.snap.chords.show), enabled: live() || planned });
+    awaitToggle.update({ show: Boolean(state.snap.awaitSection && state.snap.awaitSection.on), enabled: live() || planned });
     $('op-new-song').disabled = state.snap.status === 'finished';
     addSearch.render(); // its actions follow live()
     videoPanel.setSetlist(items());
@@ -401,6 +415,8 @@
   const keyPanel = window.CLOCK_PANEL.create($('key-panel'), { t, el, kind: 'key', prefix: 'key', onChange: (patch) => send('key.set', patch) });
   // "Acorduri" on the projector (chords.set: the lyrics with their chords above the words; key C).
   const chordsToggle = window.CHORDS_TOGGLE.create($('chords-panel'), { t, el, onChange: (show) => send('chords.set', { show }) });
+  // "Așteaptă strofa": a new song stays off the projector until a section is picked (projector.awaitSection).
+  const awaitToggle = window.CHORDS_TOGGLE.create($('await-panel'), { t, el, kind: 'await', onChange: (on) => send('projector.awaitSection', { on }) });
   // The left column: "Program" | "Adaugă" (the add panel with the search and the proposals),
   // one at a time so the Program has the whole column; the choice is kept on the device.
   const LEFT_KEY = 'wa_op_left';
@@ -548,6 +564,7 @@
     clockPanel.render();
     keyPanel.render();
     chordsToggle.render();
+    awaitToggle.render();
     liveClock.render();
     // Section labels come from the server in the connection's language: reconnect.
     state.client.socket.disconnect().connect();

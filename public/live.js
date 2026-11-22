@@ -481,7 +481,7 @@
           'aria-label': entry.firstLine ? `${label}: ${entry.firstLine}` : label,
           title: entry.firstLine || null,
           // The current step opens the big lyrics; any other moves there.
-          onclick: () => (isCurrent && !pos.ended ? big.open() : move('goto', { itemId: item.id, step })),
+          onclick: () => (isCurrent && !pos.ended && !(holdsIt() && state.snap && state.snap.projector.waiting) ? big.open() : move('goto', { itemId: item.id, step })),
         },
         el('span', { class: 'step-head' },
           el('span', { class: 'step-code', text: entry.code }),
@@ -624,6 +624,8 @@
   const keyPanel = window.CLOCK_PANEL.create($('key-panel'), { t, el, kind: 'key', prefix: 'key', onChange: (patch) => send('key.set', patch) });
   // "Acorduri" on the projector (chords.set; key C).
   const chordsToggle = window.CHORDS_TOGGLE.create($('chords-panel'), { t, el, onChange: (show) => send('chords.set', { show }) });
+  // "Așteaptă strofa": a new song stays off the projector until a section is picked (projector.awaitSection).
+  const awaitToggle = window.CHORDS_TOGGLE.create($('await-panel'), { t, el, kind: 'await', onChange: (on) => send('projector.awaitSection', { on }) });
 
   function renderProjector() {
     const snap = state.snap;
@@ -646,6 +648,7 @@
     clockPanel.update({ clock: snap && snap.clock, enabled: (live || planned) && !emergency.active });
     keyPanel.update({ clock: snap && snap.songKey, enabled: (live || planned) && !emergency.active });
     chordsToggle.update({ show: Boolean(snap && snap.chords && snap.chords.show), enabled: (live || planned) && !emergency.active });
+    awaitToggle.update({ show: Boolean(snap && snap.awaitSection && snap.awaitSection.on), enabled: (live || planned) && !emergency.active });
     // Separate: the operator owns the projector. The whole panel goes (preview, sources,
     // background, clock, video, screens); only "Proiectorul e la … · Sari acolo" and the
     // switches stay, and the step grid takes the width. B / L / K do nothing here then.
@@ -1042,6 +1045,7 @@
     clockPanel.render();
     keyPanel.render();
     chordsToggle.render();
+    awaitToggle.render();
     liveClock.render();
     // Section labels come from the server in the page language: reload.
     const key = state.loadedKey;

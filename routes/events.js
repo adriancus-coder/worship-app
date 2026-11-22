@@ -4,7 +4,7 @@ const express = require('express');
 const { requirePerm, seesAllEvents } = require('../lib/roles');
 const { todayIn, nowTimeIn, nextServiceDate } = require('../lib/dates');
 const { createAdminSettings } = require('../lib/admin-settings');
-const { validateEventMeta, validateItems, createEventStore, SCHOOL_WHO } = require('../lib/events');
+const { validateEventMeta, validateItems, createEventStore, SCHOOL_WHO, validateSongOptions } = require('../lib/events');
 const { validateSections } = require('../lib/songs');
 const { createAssignmentStore } = require('../lib/assignments');
 const { createSuggestStore } = require('../lib/suggest');
@@ -360,17 +360,38 @@ function createEventsRouter({ db, auth, logger, live }) {
     respond(req, res, found.event.id);
   });
 
-  // A projector-only item taken out again before the start (the console's ✕; live: the
-  // operator.removeItem command). Only such items: the team's Program is the editor's.
-  router.delete('/api/events/:id/items/:itemId/projector', requirePerm('events', 'live'), (req, res) => {
+  // An item taken out from the console before the start (its ✕ on every row; live: the
+  // operator.removeItem command): a projector-only one (…/projector, the older path) or any.
+  function removeFromConsole(req, res, anyScope) {
     const found = load(req, res);
     if (!found) return;
     if (found.event.status === 'finished') return res.status(409).json({ code: 'eventFinished', error: req.t('errors.schoolEventClosed') });
     const itemId = /^\d{1,15}$/.test(req.params.itemId) ? Number(req.params.itemId) : null;
     const before = live.setlistBefore(req.adminId, found.event.id);
-    if (!itemId || !events.removeOperatorItem(req.adminId, found.event.id, itemId)) return res.status(404).json({ error: req.t('errors.itemNotFound') });
+    const gone = itemId && (anyScope ? events.removeAnyItem(req.adminId, found.event.id, itemId) : (events.removeOperatorItem(req.adminId, found.event.id, itemId) ? 'projector' : null));
+    if (!gone) return res.status(404).json({ error: req.t('errors.itemNotFound') });
     live.setlistChanged(req.adminId, found.event.id, before);
-    logger.info(`Event #${found.event.id}: projector-only item #${itemId} removed by user #${req.user.id} (admin #${req.adminId})`);
+    logger.info(`Event #${found.event.id}: item #${itemId} (${gone}) removed from the console by user #${req.user.id} (admin #${req.adminId})`);
+    respond(req, res, found.event.id);
+  }
+  router.delete('/api/events/:id/items/:itemId/projector', requirePerm('events', 'live'), (req, res) => removeFromConsole(req, res, false));
+  router.delete('/api/events/:id/items/:itemId/console', requirePerm('events', 'live'), (req, res) => removeFromConsole(req, res, true));
+
+  // A song item's live options from the console's arrange sheet, any scope (a projector-only
+  // song too): { transpose, arrangement }. Live positions follow the new arrangement.
+  router.put('/api/events/:id/items/:itemId/options', requirePerm('events', 'live'), (req, res) => {
+    const found = load(req, res);
+    if (!found) return;
+    if (found.event.status === 'finished') return res.status(409).json({ code: 'eventFinished', error: req.t('errors.schoolEventClosed') });
+    const itemId = /^\d{1,15}$/.test(req.params.itemId) ? Number(req.params.itemId) : null;
+    const item = itemId && events.get(req.adminId, found.event.id, { scope: 'all', t: req.t }).items.find((it) => it.id === itemId);
+    if (!item || item.type !== 'song' || !item.songId) return res.status(404).json({ error: req.t('errors.itemNotFound') });
+    const song = events.findSong(req.adminId, item.songId);
+    const options = validateSongOptions(req.body || {}, 1, req.t, song);
+    if (options.error) return res.status(400).json({ error: options.error });
+    const before = live.setlistBefore(req.adminId, found.event.id);
+    events.setItemOptions(req.adminId, found.event.id, itemId, { transpose: options.value.transpose, arrangement: options.value.arrangement });
+    live.setlistChanged(req.adminId, found.event.id, before);
     respond(req, res, found.event.id);
   });
 

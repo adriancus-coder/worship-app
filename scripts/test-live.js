@@ -798,6 +798,51 @@ async function main() {
     await api('PUT', '/api/settings/chords', owner, { show: false });
   });
 
+  await step('"Așteaptă strofa" (projector.awaitSection): the holder landing on another song leaves the projector black until a section is picked; verses show at once; a move inside the song shows; the church default; member refused', async () => {
+    assert.strictEqual((await api('GET', '/api/settings', owner)).body.awaitSection, false, 'off by default');
+    assert.strictEqual((await api('PUT', '/api/settings/await-section', owner, { on: 'da' })).status, 400);
+    await send(lead.socket, { type: 'worship.goto', itemId: i1, step: 0 });
+    await memberAt(version);
+    assert.strictEqual((await emit(mem.socket, 'live:command', { eventId: ev.id, type: 'projector.awaitSection', on: true })).code, 'forbidden');
+    assert.strictEqual((await send(lead.socket, { type: 'projector.awaitSection', on: 'yes' })).code, 'badCommand');
+    let reply = await send(lead.socket, { type: 'projector.awaitSection', on: true });
+    assert.strictEqual(reply.ok, true, JSON.stringify(reply));
+    let snap = await memberAt(version);
+    assert.deepStrictEqual(snap.awaitSection, { on: true }, 'in the snapshots');
+    // onto another song: the team is there, the projector on it but black (ended)
+    await send(lead.socket, { type: 'worship.goto', itemId: i3, step: 0 });
+    snap = await memberAt(version);
+    assert.deepStrictEqual([snap.worship.itemId, snap.projector.itemId, snap.projector.step, snap.projector.ended, snap.projector.waiting], [i3, i3, 0, true, true], 'the projector waits on the new song');
+    assert.strictEqual((await frameWhere(screen, (f) => f.version === version)).kind, 'black');
+    // the section picked (the same place): shown
+    await send(lead.socket, { type: 'worship.goto', itemId: i3, step: 0 });
+    snap = await memberAt(version);
+    assert.deepStrictEqual([snap.projector.itemId, snap.projector.step, snap.projector.ended], [i3, 0, false]);
+    assert.strictEqual((await frameWhere(screen, (f) => f.version === version)).kind, 'lyrics', 'the section picked: on screen');
+    // a verse item: at once
+    await send(lead.socket, { type: 'worship.goto', itemId: i2, step: 0 });
+    snap = await memberAt(version);
+    assert.strictEqual(snap.projector.ended, false, 'a verse shows at once');
+    // "next" from the verse into the song: black again; "next" inside it: shown at step 1
+    await send(lead.socket, { type: 'worship.next' });
+    snap = await memberAt(version);
+    assert.deepStrictEqual([snap.projector.itemId, snap.projector.ended], [i3, true], 'next into a song: waits');
+    await send(lead.socket, { type: 'worship.next' });
+    snap = await memberAt(version);
+    assert.deepStrictEqual([snap.projector.itemId, snap.projector.step, snap.projector.ended, snap.projector.waiting], [i3, 0, false, false], 'next while waiting: the song shows where it waits');
+    await send(lead.socket, { type: 'worship.next' });
+    snap = await memberAt(version);
+    assert.deepStrictEqual([snap.projector.itemId, snap.projector.step], [i3, 1], 'next again: the next section');
+    await send(lead.socket, { type: 'projector.awaitSection', on: false });
+    await send(lead.socket, { type: 'worship.goto', itemId: i1, step: 0 });
+    snap = await memberAt(version);
+    assert.strictEqual(snap.projector.ended, false, 'off: a new song shows at once again');
+    assert.deepStrictEqual((await api('PUT', '/api/settings/await-section', owner, { on: true })).body, { awaitSection: true });
+    const evA = (await api('POST', '/api/events', owner, { name: 'Așteaptă', eventDate: day(3) })).body.event;
+    assert.deepStrictEqual((await joined(leader, evA.id)).state.awaitSection, { on: true }, 'an event not started yet shows what it would start with');
+    await api('PUT', '/api/settings/await-section', owner, { on: false });
+  });
+
   await step('a holder: the holder\'s moves show on the projector and carry the team; the others\' moves reach the team only; versions in order', async () => {
     const op = await joined(operator, ev.id);
     const opStates = [];
@@ -1081,12 +1126,21 @@ async function main() {
     snap = await memberAt(version);
     assert.deepStrictEqual(at(snap), [i1, 5, false, 'content'], 'the last step of the ended song');
     assert.strictEqual(await frame(), 'lyrics');
-    // a black screen before the end: the next move after it brings the content back
+    // a black screen set by hand stays black through the end and the moves after it: only
+    // "Cântare" (projector.source content) brings the song back
     await send(lead.socket, { type: 'projector.source', source: 'black' });
     await send(lead.socket, { type: 'worship.endItem' });
     await send(lead.socket, { type: 'worship.next' });
     snap = await memberAt(version);
-    assert.deepStrictEqual(at(snap), [i2, 0, false, 'content']);
+    assert.deepStrictEqual(at(snap), [i2, 0, false, 'black'], 'the move cleared "Sfârșit" but left the black screen');
+    assert.strictEqual(screen.frames[screen.frames.length - 1].kind, 'black'); // black stays black: no new frame to wait for
+    await send(lead.socket, { type: 'worship.goto', itemId: i1, step: 1 });
+    await memberAt(version);
+    assert.strictEqual(screen.frames[screen.frames.length - 1].kind, 'black', 'a section picked: still black');
+    await send(lead.socket, { type: 'projector.source', source: 'content' });
+    snap = await memberAt(version);
+    assert.deepStrictEqual(at(snap), [i1, 1, false, 'content'], '"Cântare" by hand: the song is back');
+    await send(lead.socket, { type: 'worship.goto', itemId: i2, step: 0 });
     // goto clears the flag, even to the same place
     await send(lead.socket, { type: 'worship.endItem' });
     await send(lead.socket, { type: 'worship.goto', itemId: i2, step: 0 });
@@ -1163,10 +1217,17 @@ async function main() {
     assert.deepStrictEqual(after.slice(0, 2), ['Sfânt', 'Ioan 3:16'], 'after the current main item');
     await new Promise((r) => setTimeout(r, 100));
     assert.deepStrictEqual(notices.leader[1] && [notices.leader[1].title, notices.leader[1].target], ['Ioan 3:16', 'setlist']);
-    // a projector-only item added by mistake goes again (operator.removeItem): only such items, event roles only
+    // ✕ on any row (operator.removeItem, event roles only): a shared item leaves the team's
+    // Program too (the phones reload, a notice with target 'setlist'); then the projector-only one
     const sharedId = (await api('GET', `/api/events/${ev.id}`, member)).body.items[1].id;
-    assert.strictEqual((await emit(op.socket, 'live:command', { eventId: ev.id, type: 'operator.removeItem', itemId: sharedId })).code, 'badItem', 'a shared item is the editor\'s');
-    assert.strictEqual((await emit(mem.socket, 'live:command', { eventId: ev.id, type: 'operator.removeItem', itemId: added.id })).code, 'forbidden');
+    assert.strictEqual((await emit(mem.socket, 'live:command', { eventId: ev.id, type: 'operator.removeItem', itemId: sharedId })).code, 'forbidden');
+    reply = await emit(op.socket, 'live:command', { eventId: ev.id, type: 'operator.removeItem', itemId: sharedId });
+    assert.strictEqual(reply.ok, true, JSON.stringify(reply));
+    version = reply.version;
+    snap = await memberAt(version);
+    assert.ok(!(await api('GET', `/api/events/${ev.id}`, member)).body.items.some((it) => it.id === sharedId), 'the shared item is gone for the team');
+    await new Promise((r) => setTimeout(r, 100));
+    assert.deepStrictEqual(notices.leader.at(-1) && [notices.leader.at(-1).type, notices.leader.at(-1).title, notices.leader.at(-1).target], ['itemRemoved', 'Ioan 3:16', 'setlist'], 'the others are told it left the Program');
     reply = await emit(op.socket, 'live:command', { eventId: ev.id, type: 'operator.removeItem', itemId: added.id });
     assert.strictEqual(reply.ok, true, JSON.stringify(reply));
     version = reply.version;

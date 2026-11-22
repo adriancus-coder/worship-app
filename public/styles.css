@@ -2811,6 +2811,7 @@ body.live-compact .live-row:has(> .live-item-grip) > .live-item { padding-right:
 /* before the start: the song opened under its row (the home card's box) */
 .live-list > li.is-open > .now-song { margin: 4px 0 8px; }
 .has-arrange .live-row > .live-item, .has-arrange > .op-item { min-height: 60px; padding-right: 92px; }
+.item-remove.is-asking { padding: 0 10px; color: var(--error); border-color: var(--error); font-weight: 700; } /* "Scoate?": the second tap removes */
 /* the console's ✕ on a projector-only item, at the row's right; "Aranjează" moves left of it */
 .item-remove { position: absolute; top: 6px; right: 6px; bottom: 6px; width: var(--touch); min-width: 0; padding: 0; font-size: 1.125rem; }
 .has-remove > .op-item { padding-right: 56px; min-height: 56px; }

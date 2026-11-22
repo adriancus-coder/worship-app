@@ -16,7 +16,7 @@ const COMMANDS = ['event.start', 'event.end', 'event.withdraw', 'worship.next', 
   'projector.request', 'projector.handover', 'projector.take', 'team.mode', 'background.set',
   'projector.next', 'projector.prev', 'projector.goto', 'projector.syncToWorship', 'projector.source', 'projector.screens',
   'video.prepare', 'video.play', 'video.pause', 'video.restart', 'video.stop', 'video.volume',
-  'clock.set', 'key.set', 'chords.set', 'handover.accept', 'handover.refuse', 'handover.cancel', 'operator.addItem', 'operator.removeItem', 'item.mark'];
+  'clock.set', 'key.set', 'chords.set', 'projector.awaitSection', 'handover.accept', 'handover.refuse', 'handover.cancel', 'operator.addItem', 'operator.removeItem', 'item.mark'];
 // Roles that may send commands at all; the store decides the rest (lib/live.js permission).
 const COMMAND_ROLES = EVENT_ROLES;
 

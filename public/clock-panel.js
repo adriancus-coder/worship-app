@@ -90,14 +90,15 @@
   // "Acorduri" on the projector: one selection toggle (aria-pressed; key C on the live pages).
   //   const toggle = CHORDS_TOGGLE.create(container, { t, el, onChange(show) });
   //   toggle.update({ show, enabled }); toggle.toggle(); toggle.render();
-  function createChordsToggle(container, { t, el, onChange }) {
+  // kind 'await': the same toggle for "Așteaptă strofa" (labels live.projector.await*, no key).
+  function createChordsToggle(container, { t, el, onChange, kind = 'chords' }) {
     let show = false;
     let enabled = false;
-    const button = el('button', { type: 'button', class: 'secondary chords-toggle', 'aria-pressed': 'false', 'aria-keyshortcuts': 'C', onclick: () => { if (enabled) onChange(!show); } });
+    const button = el('button', { type: 'button', class: `secondary chords-toggle ${kind}-toggle`, 'aria-pressed': 'false', ...(kind === 'chords' ? { 'aria-keyshortcuts': 'C' } : {}), onclick: () => { if (enabled) onChange(!show); } });
     container.replaceChildren(button);
     function render() {
-      button.textContent = t('live.projector.chords');
-      button.setAttribute('aria-label', t('live.projector.chordsLabel'));
+      button.textContent = t(`live.projector.${kind}`);
+      button.setAttribute('aria-label', t(`live.projector.${kind}Label`));
       button.setAttribute('aria-pressed', String(enabled && show));
       button.disabled = !enabled;
     }
