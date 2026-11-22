@@ -1,11 +1,16 @@
 'use strict';
 
-// The round "i" next to a page's title (the team page): the explanatory text that used to
-// sit under the title as a paragraph opens in a small dialog instead, so the list under it
-// starts higher, above all on phones. The text is asked for when the button is tapped (it
-// can depend on the page's state, e.g. the open tab, and on the language).
+// The round "i" next to a page's title: the explanatory text that used to sit under the
+// title as a paragraph opens in a small dialog instead, so the page starts higher, above all
+// on phones, and the text no longer takes room once the app is learnt. The text is asked for
+// when the button is tapped (it can depend on the page's state, e.g. the open tab, and on
+// the language).
 //
-//   INFO_TIP.button({ id, label, text })   -> the <button> (class info-button)
+//   <p class="muted" data-i18n="screens.intro" data-info-tip></p>
+//       on load: the paragraph is hidden and the "i" goes next to the page's <h1> (the first
+//       one before it); the dialog shows the paragraph's current text (i18n keeps it fresh)
+//   INFO_TIP.button({ id, label, text })   -> the <button> (class info-button), for a page
+//       whose text depends on its state (the team page's tabs)
 //     label   () => the button's aria-label (what the text is about)
 //     text    () => the text to show
 //   INFO_TIP.open(text)                    -> opens the dialog with that text
@@ -40,5 +45,27 @@
     return node;
   }
 
-  window.INFO_TIP = { button, open };
+  // The declarative form: every [data-info-tip] paragraph becomes an "i" next to the h1.
+  function attach() {
+    for (const node of document.querySelectorAll('[data-info-tip]')) {
+      if (node.dataset.infoTipDone) continue;
+      node.dataset.infoTipDone = '1';
+      node.hidden = true;
+      const h1 = [...document.querySelectorAll('main h1')].reverse().find((h) => h.compareDocumentPosition(node) & Node.DOCUMENT_POSITION_FOLLOWING) || document.querySelector('main h1');
+      if (!h1) continue;
+      let title = h1.closest('.page-title');
+      if (!title) {
+        title = document.createElement('div');
+        title.className = 'page-title';
+        h1.replaceWith(title);
+        title.append(h1);
+      }
+      title.append(button({ label: () => window.I18N.t('info.about', { what: h1.textContent.trim() }), text: () => node.textContent }));
+    }
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', attach);
+  else attach();
+
+  window.INFO_TIP = { button, open, attach };
 })();

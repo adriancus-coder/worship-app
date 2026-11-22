@@ -2046,6 +2046,8 @@ button.op-step:disabled { opacity: 1; cursor: default; }
 .team-page #page-message:empty { display: none; } /* no blank line between the tabs and the list */
 /* The "i" next to a page title (public/info-tip.js): round, the explanation in a dialog */
 .page-title { display: flex; align-items: center; gap: 8px; min-width: 0; }
+main > .page-title { margin: 0 0 8px; } /* a page whose h1 stands alone (screens, profile) */
+main > .page-title > h1 { margin: 0; }
 .info-button { flex: none; width: var(--touch); min-width: var(--touch); height: var(--touch); min-height: var(--touch); padding: 0; justify-content: center; border-radius: 50%; }
 .info-button::before { width: 1.5em; height: 1.5em; }
 .info-dialog p { margin: 0 0 16px; line-height: 1.5; }
