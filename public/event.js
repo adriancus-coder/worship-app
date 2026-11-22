@@ -434,7 +434,18 @@
             el('span', { class: 'pill projector-pill', text: t('operator.tags.projectorOnly') })),
           el('span', { class: 'item-title', text: title }),
           item.displayKey ? el('span', { class: 'item-sub', text: t('options.songKeyShort', { key: window.NOTATION.chord(item.displayKey) }) }) : null),
-        canRemove ? el('span', { class: 'item-tools' }, el('button', {
+        canRemove ? el('span', { class: 'item-tools' },
+          // into the team's Program (the editor's own list would clash with unsaved changes: viewing only)
+          !state.editing ? el('button', {
+            type: 'button', class: 'secondary', 'data-action': 'projector-share', 'data-icon': 'plus', text: t('setlist.projectorShare'), 'aria-label': t('setlist.projectorShareLabel', { title }),
+            onclick: async () => {
+              const res = await api(`/api/events/${state.event.id}/items/${item.id}/share`, { method: 'POST' }).catch(() => null);
+              if (!res || !res.ok) { showAction((res && res.body && res.body.error) || t('common.networkError')); return; }
+              applyEvent(res.body, true);
+              showAction(t('setlist.projectorShared', { title }));
+            },
+          }) : null,
+          el('button', {
           type: 'button', class: 'secondary icon-button', 'data-action': 'projector-remove', 'aria-label': t('setlist.projectorRemove', { title }),
           onclick: async () => {
             const res = await api(`/api/events/${state.event.id}/items/${item.id}/projector`, { method: 'DELETE' }).catch(() => null);

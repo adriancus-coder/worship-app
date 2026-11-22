@@ -145,6 +145,19 @@ module.exports = {
     await p.click('#op-list li:last-child .item-remove');
     await p.waitForFunction((n) => document.querySelectorAll('#op-list li').length === n, 6, { timeout: 5000 });
     check((await app.api(app.cookies.member, 'GET', `/api/events/${E}`)).body.items.length === 6, 'the second tap takes it out of the team\'s Program');
+    // "DOAR PROIECTOR" is a button: one tap offers "Pune în setlist", the next puts the song into the team's Program
+    await p.click('#op-tab-add');
+    await p.fill('#add-q', 'mare');
+    await p.waitForSelector('#add-songs li');
+    await p.click('#add-songs li >> nth=0 >> button:has-text("Doar pe proiector")');
+    await p.waitForFunction(() => /proiector/.test(document.getElementById('op-message').textContent + (document.querySelector('#add-songs .row-state') || {}).textContent), null, { timeout: 4000 }).catch(() => {});
+    await p.click('#op-tab-program');
+    await p.waitForSelector('#op-list .op-tag-button');
+    await p.click('#op-list .op-tag-button');
+    check((await p.textContent('#op-list .op-tag-button')).trim() === 'Pune în setlist' && (await app.api(app.cookies.member, 'GET', `/api/events/${E}`)).body.items.length === 6, 'the tag tapped: "Pune în setlist", nothing changed yet');
+    await p.click('#op-list .op-tag-button');
+    await p.waitForFunction(() => document.querySelectorAll('#op-list .op-item.projector-only').length === 0, null, { timeout: 5000 });
+    check((await app.api(app.cookies.member, 'GET', `/api/events/${E}`)).body.items.length === 7, 'tapped again: the song is in the team\'s Program (the team sees it)');
     for (const [w, h] of [[1440, 900], [1024, 768], [375, 800]]) {
       await p.setViewportSize({ width: w, height: h });
       await wait(300);

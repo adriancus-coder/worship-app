@@ -1228,6 +1228,20 @@ async function main() {
     assert.ok(!(await api('GET', `/api/events/${ev.id}`, member)).body.items.some((it) => it.id === sharedId), 'the shared item is gone for the team');
     await new Promise((r) => setTimeout(r, 100));
     assert.deepStrictEqual(notices.leader.at(-1) && [notices.leader.at(-1).type, notices.leader.at(-1).title, notices.leader.at(-1).target], ['itemRemoved', 'Ioan 3:16', 'setlist'], 'the others are told it left the Program');
+    // "Pune în setlist" (operator.shareItem): the projector-only song joins the team's Program
+    // right after the team's current item; the phones reload; a notice as for an addition
+    assert.strictEqual((await emit(mem.socket, 'live:command', { eventId: ev.id, type: 'operator.shareItem', itemId: added.id })).code, 'forbidden');
+    assert.strictEqual((await emit(op.socket, 'live:command', { eventId: ev.id, type: 'operator.shareItem', itemId: sharedId })).code, 'badItem', 'a gone / shared item: nothing to put');
+    reply = await emit(op.socket, 'live:command', { eventId: ev.id, type: 'operator.shareItem', itemId: added.id });
+    assert.strictEqual(reply.ok, true, JSON.stringify(reply));
+    version = reply.version;
+    snap = await memberAt(version);
+    const teamItems = (await api('GET', `/api/events/${ev.id}`, member)).body.items;
+    const at = teamItems.findIndex((it) => it.id === added.id);
+    assert.ok(at >= 0 && teamItems[at - 1] && teamItems[at - 1].id === snap.worship.itemId, 'in the team\'s Program, right after the team\'s item');
+    assert.strictEqual((await emit(op.socket, 'live:command', { eventId: ev.id, type: 'operator.shareItem', itemId: added.id })).code, 'badItem', 'already shared: nothing more');
+    await new Promise((r) => setTimeout(r, 100));
+    assert.deepStrictEqual(notices.leader.at(-1) && [notices.leader.at(-1).type, notices.leader.at(-1).title, notices.leader.at(-1).target], ['itemAdded', 'Mare ești', 'setlist'], 'the others are told');
     reply = await emit(op.socket, 'live:command', { eventId: ev.id, type: 'operator.removeItem', itemId: added.id });
     assert.strictEqual(reply.ok, true, JSON.stringify(reply));
     version = reply.version;

@@ -375,6 +375,20 @@ function createEventsRouter({ db, auth, logger, live }) {
     respond(req, res, found.event.id);
   }
   router.delete('/api/events/:id/items/:itemId/projector', requirePerm('events', 'live'), (req, res) => removeFromConsole(req, res, false));
+
+  // "Pune în setlist": a projector-only item into the team's Program (at its end), from the
+  // console or the event page before the start; live: the operator.shareItem command.
+  router.post('/api/events/:id/items/:itemId/share', requirePerm('events', 'live'), (req, res) => {
+    const found = load(req, res);
+    if (!found) return;
+    if (found.event.status === 'finished') return res.status(409).json({ code: 'eventFinished', error: req.t('errors.schoolEventClosed') });
+    const itemId = /^\d{1,15}$/.test(req.params.itemId) ? Number(req.params.itemId) : null;
+    const before = live.setlistBefore(req.adminId, found.event.id);
+    if (!itemId || !events.shareItem(req.adminId, found.event.id, itemId)) return res.status(404).json({ error: req.t('errors.itemNotFound') });
+    live.setlistChanged(req.adminId, found.event.id, before);
+    logger.info(`Event #${found.event.id}: item #${itemId} put into the Program by user #${req.user.id} (admin #${req.adminId})`);
+    respond(req, res, found.event.id);
+  });
   router.delete('/api/events/:id/items/:itemId/console', requirePerm('events', 'live'), (req, res) => removeFromConsole(req, res, true));
 
   // A song item's live options from the console's arrange sheet, any scope (a projector-only

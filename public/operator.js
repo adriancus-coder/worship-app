@@ -19,7 +19,7 @@
   const eventId = Number(window.location.pathname.split('/')[2]);
   const RESULTS_MAX = 8;
 
-  const state = { removing: null, removingTimer: null, snap: null, event: null, client: null, queue: Promise.resolve(), screens: 0, logoUrl: null, audioId: null };
+  const state = { removing: null, removingTimer: null, sharing: null, sharingTimer: null, snap: null, event: null, client: null, queue: Promise.resolve(), screens: 0, logoUrl: null, audioId: null };
 
   // --- helpers ----------------------------------------------------------------------
 
@@ -175,7 +175,26 @@
       el('span', { class: 'item-text' },
         el('span', { class: 'op-item-top' },
           el('span', { class: `type-badge type-${item.type}`, text: t(`setlist.types.${item.type}`) }),
-          tag ? el('span', { class: `op-tag tag-${tag}`, text: t(`operator.tags.${tag}`) }) : null,
+          // "DOAR PROIECTOR" is a button: a tap offers "Pune în setlist", the next one puts the
+          // song into the team's Program (live: operator.shareItem; before: POST items/:id/share)
+          tag === 'projectorOnly' && state.snap.status !== 'finished' ? el('button', {
+            type: 'button', class: `op-tag tag-${tag} op-tag-button${state.sharing === item.id ? ' is-asking' : ''}`,
+            'aria-label': t(state.sharing === item.id ? 'operator.tags.shareNow' : 'operator.tags.shareLabel', { title: itemTitle(item) }),
+            onclick: (event) => {
+              event.stopPropagation();
+              if (state.sharing !== item.id) {
+                state.sharing = item.id;
+                clearTimeout(state.sharingTimer);
+                state.sharingTimer = setTimeout(() => { if (state.sharing === item.id) { state.sharing = null; render(); } }, 6000);
+                render();
+                return;
+              }
+              state.sharing = null;
+              if (live()) send('operator.shareItem', { itemId: item.id });
+              else api(`/api/events/${eventId}/items/${item.id}/share`, { method: 'POST' }).catch(() => null);
+            },
+          }, el('span', { text: t(state.sharing === item.id ? 'operator.tags.shareAsk' : 'operator.tags.projectorOnly') })) : null,
+          tag && tag !== 'projectorOnly' ? el('span', { class: `op-tag tag-${tag}`, text: t(`operator.tags.${tag}`) }) : null,
           item.type === 'song' && item.song && (item.song.audioMediaId || item.song.audioUrl) ? el('span', { class: 'op-tag tag-audio', text: t('operator.tags.audio') }) : null,
           el('span', { class: 'op-markers' },
             onProjector ? el('span', { class: 'marker projector', text: t('operator.onProjector') }) : null,

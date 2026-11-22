@@ -1716,6 +1716,10 @@ button.op-item:disabled { opacity: 1; cursor: default; }
 .marker.projector { color: var(--on-accent); background: var(--accent-fill); }
 .marker.worship { color: var(--worship); border: 1px dashed var(--worship); }
 .op-tag { padding: 1px 6px; font-size: 0.625rem; font-weight: 800; letter-spacing: 0.04em; border-radius: 4px; border: 1px solid currentColor; white-space: nowrap; }
+/* "DOAR PROIECTOR" as a button: a tap offers "Pune în setlist" (filled), the next one does it */
+.op-tag-button { min-height: 28px; min-width: 0; padding: 2px 8px; font: inherit; font-size: 0.625rem; font-weight: 800; letter-spacing: 0.04em; color: var(--text-muted); background: var(--background); border: 1px solid currentColor; border-radius: 4px; cursor: pointer; }
+.op-tag-button:hover { color: var(--text); }
+.op-tag-button.is-asking { color: var(--on-accent); background: var(--accent-fill); border-color: var(--accent-fill); }
 .tag-projectorOnly { color: var(--text-muted); }
 .op-add { margin-top: 0; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
 .op-add[hidden] { display: none; }
