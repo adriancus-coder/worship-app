@@ -26,7 +26,25 @@ module.exports = {
     check(mine && mine.title === null && mine.who === 'Fratele Ion', 'saved with "Cine"', mine);
     const line = await p.evaluate(() => [...document.querySelectorAll('#items .item-title')].map((s) => s.textContent).join('|'));
     check(/Fratele Ion/.test(line), 'the person is the Program line\'s title', line);
+    // "Cine cântă" on a song: the team's names offered, saved, under the song in the Program
+    await p.click('#items li:nth-child(1) .item-main');
+    await p.waitForSelector('#it-who[list="who-people"]');
+    await p.waitForSelector('datalist#who-people option', { state: 'attached' });
+    const offered = await p.$$eval('datalist#who-people option', (os) => os.map((o) => o.value));
+    check(offered.includes('Membru') && offered.includes('Lider'), 'a song: "Cine cântă" with the team\'s names offered', offered);
+    await p.fill('#it-who', 'Membru');
+    await p.click('#save-button');
+    await p.waitForFunction(() => /Salvat/.test(document.querySelector('#save-bar .save-state').textContent));
+    const first = (await app.api(app.cookies.owner, 'GET', `/api/events/${E}`)).body.items[0];
+    check(first.type === 'song' && first.who === 'Membru', 'saved on the song', first);
+    check(/Membru/.test(await p.textContent('#items li:nth-child(1) .item-sub, #items li:nth-child(1) .item-meta')), 'the Program line says who sings it');
     await p.context().close();
+    // the live page and the console: the singer under the song
+    const l = await signIn('leader', { width: 1024, lang: 'ro' });
+    await l.goto(`${app.url}/events/${E}/live?view=compact`);
+    await l.waitForSelector('#setlist .live-item');
+    check(/Membru/.test(await l.textContent('#setlist li:nth-child(1)')), 'the live Program: the singer under the song');
+    await l.context().close();
 
     // reading the event (a member, 1024): "Cine" under the item
     const m = await signIn('member', { width: 1024, lang: 'ro' });

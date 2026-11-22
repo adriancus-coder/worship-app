@@ -107,7 +107,7 @@
         parts.push(item.song.sectionCount === 1 ? t('setlist.sectionCountOne') : t('setlist.sectionCount', { n: item.song.sectionCount }));
       }
       if (item.song && (item.song.audioMediaId || item.song.audioUrl)) parts.push(t('library.audioTag')); // a backing track
-      if (item.who) parts.push(item.who); // "Cine" on a song: the Sunday school's mark
+      if (item.who) parts.push(item.who); // "Cine cântă" (or the Sunday school's mark)
     } else if (item.type === 'verse' && item.body) {
       parts.push(item.body.split('\n')[0].slice(0, 60));
     } else if (item.type === 'video' && item.media) {
@@ -867,11 +867,15 @@
     const song = cached;
     parts.push(keyBlock(item, song), arrangementBlock(item, song));
     if (state.editing) {
+      loadPeople();
       parts.push(
+        // "Cine cântă": free text, the team's names offered (the datalist, loadPeople)
+        field('it-who', t('setlist.whoSingsLabel'), input(item, 'who', 'it-who', { type: 'text', maxlength: '100', autocomplete: 'off', list: 'who-people', placeholder: t('setlist.whoSingsPlaceholder') })),
         teamNoteField(item),
         field('it-reference-url', t('options.referenceUrlLabel'), input(item, 'referenceUrl', 'it-reference-url', { type: 'url', maxlength: '500', inputmode: 'url', autocapitalize: 'off', spellcheck: 'false' })),
         durationField(item));
     } else {
+      if (item.who) parts.push(readOnlyText(t('setlist.whoSingsLabel'), item.who));
       if (item.teamNote) parts.push(el('p', { class: 'team-note', text: item.teamNote }));
       if (item.referenceUrl) parts.push(el('p', null, el('a', { class: 'button secondary', href: item.referenceUrl, target: '_blank', rel: 'noopener noreferrer', text: t('options.listenReference') })));
     }
@@ -881,10 +885,23 @@
     return parts;
   }
 
+  // The team's names for "Cine cântă" / "Cine" (a <datalist>, once per page; the directory
+  // is readable by every role).
+  let peopleLoaded = false;
+  function loadPeople() {
+    if (peopleLoaded) return;
+    peopleLoaded = true;
+    api('/api/team/directory').then((res) => {
+      if (!res.ok) return;
+      document.body.append(el('datalist', { id: 'who-people' }, ...res.body.users.map((u) => el('option', { value: u.name }))));
+    }).catch(() => {});
+  }
+
   // "Notă pentru echipă" on any item: for the live and phone pages, never the projector.
   const teamNoteField = (item) => field('it-team-note', t('options.teamNoteLabel'), bind(item, 'teamNote', el('textarea', { id: 'it-team-note', rows: '2', maxlength: '500', value: item.teamNote || '' })));
 
   function editFields(item) {
+    loadPeople();
     const TITLE_TYPES = ['sermon', 'prayer', 'other']; // a title (+ text) on the projector
     const typeSelect = TITLE_TYPES.includes(item.type)
       ? field('it-type', t('setlist.typeLabel'), bind(item, 'type', (() => {
@@ -917,19 +934,19 @@
           durationField(item),
         ];
       case 'prayer': // the person is the item
-        return [typeSelect, field('it-who', t('setlist.whoLabel'), input(item, 'who', 'it-who', { type: 'text', maxlength: '100', autocomplete: 'off' })), teamNoteField(item)];
+        return [typeSelect, field('it-who', t('setlist.whoLabel'), input(item, 'who', 'it-who', { type: 'text', maxlength: '100', autocomplete: 'off', list: 'who-people' })), teamNoteField(item)];
       case 'sermon': // the title and the preacher
         return [
           typeSelect,
           field('it-title', t('setlist.titleLabel'), input(item, 'title', 'it-title', { type: 'text', maxlength: '200' })),
-          field('it-who', t('setlist.whoLabel'), input(item, 'who', 'it-who', { type: 'text', maxlength: '100', autocomplete: 'off' })),
+          field('it-who', t('setlist.whoLabel'), input(item, 'who', 'it-who', { type: 'text', maxlength: '100', autocomplete: 'off', list: 'who-people' })),
           teamNoteField(item),
         ];
       default:
         return [
           typeSelect,
           field('it-title', t('setlist.titleLabel'), input(item, 'title', 'it-title', { type: 'text', maxlength: '200' })),
-          field('it-who', t('setlist.whoLabel'), input(item, 'who', 'it-who', { type: 'text', maxlength: '100', autocomplete: 'off' })),
+          field('it-who', t('setlist.whoLabel'), input(item, 'who', 'it-who', { type: 'text', maxlength: '100', autocomplete: 'off', list: 'who-people' })),
           field('it-body', t('setlist.bodyLabel'), textarea(item, 'body', 'it-body', 4)),
           teamNoteField(item),
           durationField(item),

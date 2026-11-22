@@ -1101,8 +1101,9 @@ test('item type prayer (migrations 052 + 053, "Îndemn la rugăciune"): validate
   const { projectorFrame } = require('../lib/projector');
   assert.deepStrictEqual(ITEM_TYPES, ['song', 'verse', 'video', 'announcement', 'sermon', 'prayer', 'other']);
   const tro = (k, v) => t(k, v, 'ro');
-  const items = save([{ type: 'prayer', title: 'Rugăciune pentru bolnavi', who: 'Fratele Ion' }, { type: 'prayer', body: 'Fiți tari!\nȘi curajoși.' }, { type: 'sermon', title: 'Predica', who: ' Ovidiu Haidemak ' }]);
-  assert.deepStrictEqual(items.map((it) => [it.type, it.title, it.body, it.who]), [['prayer', 'Rugăciune pentru bolnavi', null, 'Fratele Ion'], ['prayer', null, 'Fiți tari!\nȘi curajoși.', null], ['sermon', 'Predica', null, 'Ovidiu Haidemak']], '"Cine" (migration 054) is kept and trimmed');
+  const items = save([{ type: 'prayer', title: 'Rugăciune pentru bolnavi', who: 'Fratele Ion' }, { type: 'prayer', body: 'Fiți tari!\nȘi curajoși.' }, { type: 'sermon', title: 'Predica', who: ' Ovidiu Haidemak ' }, { type: 'song', songId: 1, who: ' Alina ' }]);
+  assert.strictEqual(items[3].who, 'Alina', 'a song: "Cine cântă" kept (trimmed)');
+  assert.deepStrictEqual(items.slice(0, 3).map((it) => [it.type, it.title, it.body, it.who]), [['prayer', 'Rugăciune pentru bolnavi', null, 'Fratele Ion'], ['prayer', null, 'Fiți tari!\nȘi curajoși.', null], ['sermon', 'Predica', null, 'Ovidiu Haidemak']], '"Cine" (migration 054) is kept and trimmed');
   assert.ok(require('../lib/events').validateItems([{ type: 'sermon', who: 'x'.repeat(101) }], tro, () => null).error, '"Cine" has a limit');
   assert.ok(!require('../lib/events').validateItems([{ type: 'sermon', who: 'Doar cine' }], tro, () => null).error, '"Cine" alone is enough');
   const { error } = require('../lib/events').validateItems([{ type: 'exhortation', title: 'x' }], tro, () => null);

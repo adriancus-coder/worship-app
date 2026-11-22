@@ -136,7 +136,8 @@
     return el('ol', { class: 'follow-setlist' }, state.items.map((item) => el('li', null,
       el('span', { class: `type-badge type-${item.type}`, text: t(`setlist.types.${item.type}`) }),
       el('span', { class: 'follow-setlist-title', text: itemTitle(item) }),
-      item.type === 'song' && item.displayKey ? el('span', { class: 'muted', text: ` · ${t('options.songKeyShort', { key: window.NOTATION.chord(item.displayKey) })}` }) : null)));
+      item.type === 'song' && item.displayKey ? el('span', { class: 'muted', text: ` · ${t('options.songKeyShort', { key: window.NOTATION.chord(item.displayKey) })}` }) : null,
+      item.type === 'song' && item.who ? el('span', { class: 'muted', text: ` · ${item.who}` }) : null))); // who sings it
   }
 
   function upNext(pos) {
