@@ -2095,6 +2095,13 @@ button.op-step:disabled { opacity: 1; cursor: default; }
 .positions-add input { flex: 1 1 200px; min-height: var(--touch); }
 .team-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 6px !important; font-size: 0.875rem; }
 .team-actions { display: flex; flex-wrap: wrap; gap: 8px; flex: 1 1 100%; }
+/* The "⋯" menu of a person's row: top right; its list hangs under the button (or opens upwards
+   when the pane ends there); the items carry their icons. */
+.team-menu { flex: none; align-self: flex-start; }
+.team-menu-list { min-width: 250px; }
+.team-menu-list.opens-up { top: auto; bottom: calc(100% + 6px); }
+.team-menu-list .menu-item { gap: 0.6em; }
+.team-menu-list .menu-item::before { flex: none; }
 /* Echipa: the owner's tabs and panels; the directory rows */
 .team-tabs { margin-bottom: 8px; }
 /* the four tabs on one row on a phone: Persoane · Poziții · Roluri · Absențe (the check

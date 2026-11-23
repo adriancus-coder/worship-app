@@ -40,7 +40,7 @@ module.exports = {
     const owner = await signIn('owner', { width: 1024, lang: 'ro' });
     await owner.goto(`${app.url}/team`);
     await owner.waitForSelector('#team .team-row');
-    let mails = await owner.locator('#team .team-actions [data-icon="mail"]').count();
+    let mails = await owner.locator('#team .team-menu-list [data-icon="mail"]').count();
     check(mails === 4, 'team rows (four people who signed in at the seed): "Trimite link de resetare" each, no "Retrimite"', mails);
     await owner.click('#add-person');
     await owner.waitForSelector('#add-dialog[open]');
@@ -59,6 +59,7 @@ module.exports = {
     const mariaRow = teamRow(owner, 'Maria');
     check(await mariaRow.locator('button:has-text("Retrimite invitația")').count() === 1 && await mariaRow.locator('button:has-text("Trimite link de resetare")').count() === 1, 'Maria\'s row: "Retrimite invitația" and "Trimite link de resetare"');
     // resend: a new link, the old one spent
+    await mariaRow.locator('.team-menu-button').click(); // the actions sit in the row's "⋯" menu
     await mariaRow.locator('button:has-text("Retrimite invitația")').click();
     await owner.waitForFunction((n) => document.getElementById('page-message').textContent.includes('maria@x.ro') && n, outbox().length);
     await wait(200);
@@ -127,6 +128,7 @@ module.exports = {
     // --- the reset link for Maria: her other sessions end ------------------------------------
     const mariaOther = /wa_sid=[0-9a-f]+/.exec((await app.api(null, 'POST', '/api/auth/login', { email: 'maria@x.ro', password: 'parola-mariei-1' })).headers.get('set-cookie'))[0];
     const before = outbox().length;
+    await teamRow(owner, 'Maria Pop').locator('.team-menu-button').click();
     await teamRow(owner, 'Maria Pop').locator('button:has-text("Trimite link de resetare")').click();
     await owner.waitForFunction(() => /resetare a fost trimis la maria@x\.ro/.test(document.getElementById('page-message').textContent));
     await wait(200);

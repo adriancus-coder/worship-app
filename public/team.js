@@ -104,23 +104,60 @@
           el('p', { class: 'team-positions' }, ...((user.positionIds || []).map(positionName).filter(Boolean).length
             ? user.positionIds.map(positionName).filter(Boolean).map((name) => el('span', { class: 'pill position-pill', text: name }))
             : [el('span', { class: 'muted', text: t('team.noPositions') })]))),
-        owner ? null : el('div', { class: 'team-actions' },
-          el('button', { type: 'button', class: 'secondary', 'data-icon': 'edit', text: t('team.edit'), 'aria-label': t('team.editFor', { name: user.name }), onclick: () => openEdit(user) }),
-          // By email (only while the server can send): the invitation again while the person
-          // has never signed in, a reset link any time. The temporary-password card stays.
+        // The person's actions sit in a "⋯" menu (the row stays compact): Editează, the email
+        // links (only while the server can send: the invitation again while the person has never
+        // signed in, a reset link any time; the temporary-password card stays), Resetează
+        // parola, Dezactivează / Reactivează and, for a deactivated account, Șterge definitiv.
+        owner ? null : actionsMenu(user, [
+          { icon: 'edit', text: t('team.edit'), label: t('team.editFor', { name: user.name }), run: () => openEdit(user) },
           state.emailEnabled && user.active && !user.lastLoginAt
-            ? el('button', { type: 'button', class: 'secondary', 'data-icon': 'mail', text: t('team.resendInvite'), 'aria-label': t('team.resendInviteFor', { name: user.name }), onclick: () => sendLink('invite', user) }) : null,
+            ? { icon: 'mail', text: t('team.resendInvite'), label: t('team.resendInviteFor', { name: user.name }), run: () => sendLink('invite', user) } : null,
           state.emailEnabled && user.active
-            ? el('button', { type: 'button', class: 'secondary', 'data-icon': 'mail', text: t('team.sendReset'), 'aria-label': t('team.sendResetFor', { name: user.name }), onclick: () => sendLink('reset-link', user) }) : null,
-          el('button', { type: 'button', class: 'secondary', 'data-icon': 'key', text: t('team.reset'), 'aria-label': t('team.resetFor', { name: user.name }), onclick: () => openConfirm('reset', user) }),
+            ? { icon: 'mail', text: t('team.sendReset'), label: t('team.sendResetFor', { name: user.name }), run: () => sendLink('reset-link', user) } : null,
+          { icon: 'key', text: t('team.reset'), label: t('team.resetFor', { name: user.name }), run: () => openConfirm('reset', user) },
           user.active
-            ? el('button', { type: 'button', class: 'secondary danger-text', 'data-icon': 'close', text: t('team.deactivate'), 'aria-label': t('team.deactivateFor', { name: user.name }), onclick: () => openConfirm('deactivate', user) })
-            : el('button', { type: 'button', class: 'secondary', 'data-icon': 'restart', text: t('team.reactivate'), 'aria-label': t('team.reactivateFor', { name: user.name }), onclick: () => openConfirm('reactivate', user) }),
-          // a deactivated account only: deleted for good (after a confirmation)
+            ? { icon: 'close', text: t('team.deactivate'), label: t('team.deactivateFor', { name: user.name }), danger: true, run: () => openConfirm('deactivate', user) }
+            : { icon: 'restart', text: t('team.reactivate'), label: t('team.reactivateFor', { name: user.name }), run: () => openConfirm('reactivate', user) },
           user.active ? null
-            : el('button', { type: 'button', class: 'secondary danger-text', 'data-icon': 'close', 'data-action': 'remove', text: t('team.remove'), 'aria-label': t('team.removeFor', { name: user.name }), onclick: () => openConfirm('remove', user) })));
+            : { icon: 'close', text: t('team.remove'), label: t('team.removeFor', { name: user.name }), danger: true, action: 'remove', run: () => openConfirm('remove', user) },
+        ]));
     }));
   }
+
+  // The "⋯" menu of a row: opens under the button (above it when the pane ends there), closes
+  // on a choice, Escape or a tap elsewhere; one open at a time.
+  let openMenu = null;
+  function closeMenu() {
+    if (!openMenu) return;
+    openMenu.list.hidden = true;
+    openMenu.list.classList.remove('opens-up');
+    openMenu.button.setAttribute('aria-expanded', 'false');
+    openMenu = null;
+  }
+  function actionsMenu(user, items) {
+    const list = el('div', { class: 'menu-list team-menu-list', role: 'group', 'aria-label': t('team.actionsFor', { name: user.name }), hidden: true },
+      ...items.filter(Boolean).map((item) => el('button', {
+        type: 'button', class: `menu-item${item.danger ? ' danger-text' : ''}`, 'data-icon': item.icon, 'data-action': item.action || null, 'aria-label': item.label,
+        onclick: () => { closeMenu(); item.run(); },
+      }, item.text)));
+    const button = el('button', { type: 'button', class: 'secondary menu-button team-menu-button', 'aria-haspopup': 'true', 'aria-expanded': 'false', 'aria-label': t('team.actionsFor', { name: user.name }) }, el('span', { 'aria-hidden': 'true', text: '⋯' }));
+    button.addEventListener('click', () => {
+      const wasOpen = openMenu && openMenu.list === list;
+      closeMenu();
+      if (wasOpen) return;
+      list.hidden = false;
+      button.setAttribute('aria-expanded', 'true');
+      openMenu = { list, button };
+      // no room under the button (the pane or the window ends): the list opens upwards
+      const pane = button.closest('[data-list-pane], .list-pane') || document.documentElement;
+      const limit = Math.min(pane.getBoundingClientRect().bottom, window.innerHeight);
+      if (list.getBoundingClientRect().bottom > limit - 8 && button.getBoundingClientRect().top > list.offsetHeight + 8) list.classList.add('opens-up');
+      list.querySelector('button').focus();
+    });
+    return el('div', { class: 'menu team-menu' }, button, list);
+  }
+  document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && openMenu) { const b = openMenu.button; closeMenu(); b.focus(); } });
+  document.addEventListener('pointerdown', (event) => { if (openMenu && !openMenu.list.parentElement.contains(event.target)) closeMenu(); });
 
   async function load() {
     const res = await api('/api/team');

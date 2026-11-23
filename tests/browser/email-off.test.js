@@ -13,7 +13,7 @@ module.exports = {
       const p = await signIn('owner', { width, lang });
       await p.goto(`${app.url}/team`);
       await p.waitForSelector('#team .team-row');
-      const mails = await p.locator('#team .team-actions [data-icon="mail"]').count();
+      const mails = await p.locator('#team .team-menu-list [data-icon="mail"]').count();
       check(mails === 0, `${tag} team rows: no "Retrimite invitația" / "Trimite link de resetare"`, mails);
       await p.click('#add-person');
       await p.waitForSelector('#add-dialog[open]');

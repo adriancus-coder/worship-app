@@ -36,6 +36,7 @@ module.exports = {
     // the person gets it in Echipa
     await o.click('#tab-people');
     const person = o.locator('#team .team-row', { hasText: 'Membru' });
+    await person.locator('.team-menu-button').click(); // the actions sit in the row's "⋯" menu
     await person.locator('button:has-text("Editează")').click();
     await o.waitForSelector('#edit-dialog[open]');
     const options = await o.$$eval('#edit-role option', (l) => l.map((x) => x.textContent));

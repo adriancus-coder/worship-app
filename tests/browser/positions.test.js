@@ -89,6 +89,7 @@ module.exports = {
     const row = o.locator('#team .team-row', { hasText: 'Membru' });
     const chips = await row.locator('.position-pill').allTextContents();
     check(chips.join(',') === '🎤 Voce,🎻 Vioară', 'Echipa: the member\'s positions as chips, with their emoji', chips);
+    await row.locator('.team-menu-button').click(); // the actions sit in the row's "⋯" menu
     await row.locator('button:has-text("Editează")').click();
     await o.waitForSelector('#edit-dialog[open]');
     await o.click('#edit-positions label:has-text("Bas") input');

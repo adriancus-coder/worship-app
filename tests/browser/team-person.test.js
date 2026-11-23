@@ -19,6 +19,7 @@ module.exports = {
       await o.waitForSelector('#team .team-row');
       const row = o.locator('#team .team-row', { hasText: `Vasile ${lang}` });
       // the email in the dialog
+      await row.locator('.team-menu-button').click(); // the actions sit in the row's "⋯" menu
       await row.locator('button[data-icon="edit"]').click();
       await o.waitForSelector('#edit-dialog[open]');
       check((await o.inputValue('#edit-email')) === `vasile-${lang}@x.ro`, `${tag} the dialog shows the email`);
@@ -35,9 +36,10 @@ module.exports = {
       // deactivated -> "Șterge definitiv"
       await app.api(owner, 'POST', `/api/team/${made.id}/deactivate`);
       await o.reload();
-      await o.waitForSelector('#team .team-row.inactive [data-action="remove"]');
+      await o.waitForSelector('#team .team-row.inactive [data-action="remove"]', { state: 'attached' }); // in the "⋯" menu
       const a = await layoutAudit(o, '#team');
       check(!a.overflow && !a.small.length, `${tag} the rows with the new button: no overflow, targets >= 44 px`, a);
+      await o.locator('#team .team-row', { hasText: `Vasile ${lang}` }).locator('.team-menu-button').click(); // the "⋯" menu
       await o.locator('#team .team-row', { hasText: `Vasile ${lang}` }).locator('[data-action="remove"]').click();
       await o.waitForSelector('#confirm-dialog[open]');
       check(/(nu se poate anula|cannot be undone)/i.test(await o.textContent('#confirm-dialog')), `${tag} it asks first (cannot be undone)`);
