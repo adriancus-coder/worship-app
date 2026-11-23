@@ -1350,6 +1350,9 @@ body.screen-body.cursor-hidden, body.screen-body.cursor-hidden * { cursor: none;
 
 /* --- settings: logo --------------------------------------------------------------------------- */
 
+.settings-tabs { margin: 0 0 8px; }
+.settings-panel[hidden] { display: none; }
+.settings-panel > .settings-section:first-child > h2 { margin-top: 16px; }
 .settings-section { display: flex; flex-direction: column; gap: 12px; }
 .settings-section h2 { margin-bottom: 0; }
 .settings-section .hint { margin: 0; }

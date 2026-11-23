@@ -23,7 +23,7 @@ module.exports = {
 
     // Settings: the defaults panel (off, top left, 100 %)
     const s = await signIn('owner', { width: 1024, lang: 'ro' });
-    await s.goto(`${app.url}/settings`);
+    await s.goto(`${app.url}/settings?tab=projector`);
     await s.waitForSelector('#key-panel .clock-toggle');
     const defaults = await s.evaluate(() => ({ heading: document.getElementById('key-heading').textContent, toggle: document.querySelector('#key-panel .clock-toggle').textContent, pressed: document.querySelector('#key-panel .clock-toggle').getAttribute('aria-pressed'), corner: document.querySelector('#key-panel [data-corner][aria-pressed="true"]').dataset.corner, size: document.getElementById('key-default-scale').value }));
     check(defaults.heading === 'Gama pe proiector' && defaults.toggle === 'Gama' && defaults.pressed === 'false' && defaults.corner === 'top-left' && defaults.size === '100', 'Settings: "Gama pe proiector" with the clock\'s controls: off, top left, 100 %', defaults);

@@ -47,7 +47,7 @@ module.exports = {
 
     // the church setting: 8 %
     const o = await signIn('owner', { width: 1024, lang: 'ro' });
-    await o.goto(`${app.url}/settings`);
+    await o.goto(`${app.url}/settings?tab=projector`);
     await o.waitForSelector('#safe-margin');
     await o.waitForFunction(() => document.getElementById('safe-margin-value').textContent === '5 %');
     await o.fill('#safe-margin', '8');

@@ -74,7 +74,7 @@ module.exports = {
     check(status === 429, 'the 61st distinct search in an hour answers 429 (rate limit)');
     // Setări: "Pexels: activ"
     const o = await signIn('owner', { width: 1024 });
-    await o.goto(`${app.url}/settings`);
+    await o.goto(`${app.url}/settings?tab=advanced`);
     await o.waitForFunction(() => /\S/.test(document.getElementById('pexels-status').textContent));
     check(/Pexels: activ/.test(await o.textContent('#pexels-status')), 'Setări: "Pexels: activ"');
     // a member: no access to the provider

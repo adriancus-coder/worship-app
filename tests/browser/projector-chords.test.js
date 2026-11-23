@@ -59,7 +59,7 @@ module.exports = {
     await op.context().close();
 
     const s = await signIn('owner', { width: 1024, lang: 'ro' });
-    await s.goto(`${app.url}/settings`);
+    await s.goto(`${app.url}/settings?tab=projector`);
     await s.waitForSelector('[data-chords-show="0"][aria-pressed="true"]');
     check((await s.textContent('#chords-heading')) === 'Acorduri pe proiector', 'Settings: "Acorduri pe proiector", Ascunse by default');
     await s.click('[data-chords-show="1"]');

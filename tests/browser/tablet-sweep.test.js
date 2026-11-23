@@ -18,7 +18,7 @@ module.exports = {
       ['owner', '/app', '#now .now-card'], ['owner', '/events', '#events, .events-page'], ['owner', `/events/${E}`, '#items .item-main'],
       ['owner', `/events/${E}/edit`, '#items .item-main'],
       ['owner', '/library', '#songs'], ['owner', `/songs/${songs.G}`, '#sections'], ['owner', `/songs/${songs.G}/edit`, '#song-form, form'],
-      ['owner', '/songs/new', 'form'], ['owner', '/team', 'main'], ['owner', '/positions', 'main'], ['owner', '/settings', '#clock-panel'],
+      ['owner', '/songs/new', 'form'], ['owner', '/team', 'main'], ['owner', '/positions', 'main'], ['owner', '/settings?tab=projector', '#clock-panel'],
       ['owner', '/screens', 'main'], ['owner', '/media', 'main'], ['owner', '/guides', 'main'], ['owner', '/profile', 'main'], ['owner', '/notifications', 'main'],
       ['leader', `/events/${E}/live?view=full`, '#live-clock, .live-page'], ['operator', `/events/${E}/operator`, '#op-steps'],
       ['member', '/app', '#now .now-card'], ['member', `/events/${E}`, '#items .item-main'], ['member', `/events/${E}/follow`, '#slide'],

@@ -1207,6 +1207,8 @@
       settings: {
         pageTitle: 'Setări — {appName}',
         heading: 'Setări',
+        tabsLabel: 'Grupele de setări',
+        tabs: { general: 'Biserica', projector: 'Proiector', advanced: 'Avansat' },
         notationHeading: 'Notație acorduri implicită',
         notationHint: 'Pentru cei care nu și-au ales singuri notația. Fiecare o poate schimba oricând din butonul „C · Do”.',
         notationLetters: 'C D E',
@@ -3556,6 +3558,8 @@
       settings: {
         pageTitle: 'Settings — {appName}',
         heading: 'Settings',
+        tabsLabel: 'Settings groups',
+        tabs: { general: 'Church', projector: 'Projector', advanced: 'Advanced' },
         notationHeading: 'Default chord notation',
         notationHint: 'For people who have not picked their own. Anyone can change it at any time with the “C · Do” switch.',
         notationLetters: 'C D E',

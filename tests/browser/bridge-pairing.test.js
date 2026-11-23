@@ -35,7 +35,7 @@ module.exports = {
     check((await app.api(app.cookies.operator, 'GET', '/api/bridge/pairing')).status === 403, 'the pairing API is the owner\'s');
     // the owner pairs in Settings
     const p = await signIn('owner', { width: 1024 });
-    await p.goto(`${app.url}/settings`);
+    await p.goto(`${app.url}/settings?tab=advanced`);
     await p.waitForSelector('#sv-form:not([hidden])');
     check(/(Neîmperecheată|Not paired)/.test(await p.textContent('#sv-status')), 'Settings: "Neîmperecheată", the pairing form');
     await p.click('#sv-form summary');

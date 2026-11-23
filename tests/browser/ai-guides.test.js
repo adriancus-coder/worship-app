@@ -71,7 +71,7 @@ module.exports = {
     const settings = (await app.api(app.cookies.owner, 'GET', '/api/settings')).body.ai;
     check(settings.enabled && settings.used === 3 && settings.limit === 50 && settings.model === 'claude-opus-5-5', 'Setări: AI on, 3 uses this month', settings);
     const o = await signIn('owner', { width: 375, lang: 'ro' });
-    await o.goto(`${app.url}/settings`);
+    await o.goto(`${app.url}/settings?tab=advanced`);
     await o.waitForFunction(() => /\S/.test(document.getElementById('ai-status').textContent));
     check(/AI: activ \(claude-opus-5-5\) · 3 din 50/.test(await o.textContent('#ai-status')), 'Setări shows "AI: activ … 3 din 50"');
     await o.context().close();

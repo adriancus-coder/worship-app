@@ -465,6 +465,29 @@
     renderBackgrounds(bg.defaults).catch(() => {});
   });
 
+  // The three groups: Biserica · Proiector · Avansat. The open one is in the URL (?tab=…, the
+  // first one without); a link to a heading inside a group (/settings#backup-heading) opens that
+  // group and scrolls there.
+  const TABS = ['general', 'projector', 'advanced'];
+  const tabButtons = [...document.querySelectorAll('#settings-tabs [role="tab"]')];
+  function showTab(name) {
+    for (const tab of TABS) $(`settings-${tab}`).hidden = tab !== name;
+    const url = new URL(window.location.href);
+    if (name === 'general') url.searchParams.delete('tab'); else url.searchParams.set('tab', name);
+    window.history.replaceState(null, '', url);
+  }
+  const tabs = window.PAGE.setupTabs(tabButtons, (index) => showTab(tabButtons[index].dataset.tab));
+  const asked = window.location.hash ? document.getElementById(window.location.hash.slice(1)) : null;
+  const scrollToAsked = () => { if (asked) asked.scrollIntoView({ block: 'start' }); };
+  (function openAsked() {
+    const panel = asked && asked.closest('.settings-panel');
+    const name = panel ? panel.id.replace('settings-', '') : new URLSearchParams(window.location.search).get('tab');
+    const index = TABS.indexOf(name);
+    if (index > 0) tabs.select(index, false);
+    requestAnimationFrame(scrollToAsked);
+  })();
+
   setTitle('settings.pageTitle');
-  load().catch(() => message(t('common.networkError'), 'error'));
+  // the sections above the asked heading fill in as the settings load: scroll again after
+  load().then(scrollToAsked).catch(() => message(t('common.networkError'), 'error'));
 })();

@@ -69,7 +69,7 @@ module.exports = {
     await o.goto(`${app.url}/media`);
     await o.waitForFunction(() => !/^(Se încarcă|Loading)/.test(document.getElementById('status').textContent));
     check(await o.isHidden('#pexels-section') && (await app.api(owner, 'GET', '/api/media/pexels/search?q=sky')).status === 503, 'without a key: the Pexels tab is hidden, the API answers 503');
-    await o.goto(`${app.url}/settings`);
+    await o.goto(`${app.url}/settings?tab=advanced`);
     await o.waitForFunction(() => /\S/.test(document.getElementById('pexels-status').textContent));
     check(/Pexels: dezactivat/.test(await o.textContent('#pexels-status')), 'Setări: "Pexels: dezactivat"');
   },
