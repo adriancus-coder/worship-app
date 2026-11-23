@@ -58,9 +58,12 @@
     const posLabel = (pid) => { const p = d.positions.find((x) => x.id === pid); return p ? window.PAGE.positionLabel(p) : null; };
     const section = (heading, ...children) => el('section', { class: 'person-section' }, el('h3', { text: heading }), ...children);
     const when = (a) => `${formatDate(a.eventDate, d.today.slice(0, 4))}${a.startTime ? ` · ${a.startTime}` : ''}`;
+    const status = 'mustChangePassword' in u ? statusOf(u) : null; // the owner: activ / trebuie să-și schimbe parola / dezactivat
     $('person-body').replaceChildren(
       el('p', { class: 'team-meta' }, el('span', { class: `pill role-pill role-${u.role}`, text: roleOf(u) }),
-        u.active ? null : el('span', { class: 'pill status-pill status-inactive', text: t('team.person.inactive') })),
+        status ? el('span', { class: `pill status-pill status-${status}`, text: t(`team.status.${status}`) })
+          : (u.active ? null : el('span', { class: 'pill status-pill status-inactive', text: t('team.person.inactive') }))),
+      'lastLoginAt' in u ? el('p', { class: 'muted person-last-login', text: lastLogin(u.lastLoginAt) }) : null,
       'email' in u ? section(t('team.person.contactHeading'),
         el('p', { class: 'person-line' }, el('a', { href: `mailto:${u.email}`, text: u.email })),
         el('p', { class: 'person-line' }, u.phone ? el('a', { href: `tel:${u.phone.replace(/\s+/g, '')}`, text: u.phone }) : el('span', { class: 'muted', text: t('team.person.noPhone') }))) : null,
@@ -89,21 +92,12 @@
     $('team').replaceChildren(...state.users.map((user) => {
       const owner = user.role === 'owner';
       const status = statusOf(user);
-      return el('li', { class: `team-row${user.active ? '' : ' inactive'}` },
+      // The row is the name: the email, role, status, last sign-in, positions and unavailability
+      // are on the person's sheet (the › next to the name); the actions in the "⋯" menu.
+      return el('li', { class: `team-row${user.active ? '' : ' inactive'}`, 'data-status': status },
         el('div', { class: 'team-main' },
           el('p', { class: 'team-name' }, personButton(user),
-            user.id === state.meId ? el('span', { class: 'muted', text: ` · ${t('team.you')}` }) : null),
-          el('p', { class: 'team-email', text: user.email }),
-          el('p', { class: 'team-meta' },
-            el('span', { class: `pill role-pill role-${user.role}`, text: owner ? window.PAGE.roleLabel('owner') : personRole(user) }),
-            owner ? null : el('span', { class: `pill status-pill status-${status}`, text: t(`team.status.${status}`) }),
-            el('span', { class: 'muted', text: lastLogin(user.lastLoginAt) })),
-          // "Indisponibil" (lib/unavailability.js): the person's upcoming ranges, for the owner.
-          (user.unavailability || []).length ? el('p', { class: 'team-unavail' }, ...user.unavailability.map((r) => el('span', { class: 'pill unavail-pill', text: unavailText(r) }))) : null,
-          // The person's usual positions (lib/positions.js), the pickers' default suggestions.
-          el('p', { class: 'team-positions' }, ...((user.positionIds || []).map(positionName).filter(Boolean).length
-            ? user.positionIds.map(positionName).filter(Boolean).map((name) => el('span', { class: 'pill position-pill', text: name }))
-            : [el('span', { class: 'muted', text: t('team.noPositions') })]))),
+            user.id === state.meId ? el('span', { class: 'muted', text: ` · ${t('team.you')}` }) : null)),
         // The person's actions sit in a "⋯" menu (the row stays compact): Editează, the email
         // links (only while the server can send: the invitation again while the person has never
         // signed in, a reset link any time; the temporary-password card stays), Resetează
@@ -469,13 +463,9 @@
 
   function renderDirectory() {
     $('directory').replaceChildren(...state.users.map((user) => el('li', { class: 'team-row directory-row' },
+      // the name only: role, positions and unavailability are on the person's sheet (the ›)
       el('div', { class: 'team-main' },
-        el('p', { class: 'team-name' }, personButton(user), user.me ? el('span', { class: 'muted', text: ` · ${t('team.you')}` }) : null),
-        el('p', { class: 'team-meta' }, el('span', { class: `pill role-pill role-${user.role}`, text: personRole(user) })),
-        el('p', { class: 'team-positions' }, ...((user.positionIds || []).map(positionName).filter(Boolean).length
-          ? user.positionIds.map(positionName).filter(Boolean).map((name) => el('span', { class: 'pill position-pill', text: name }))
-          : [el('span', { class: 'muted', text: t('team.noPositions') })])),
-        (user.unavailability || []).length ? el('p', { class: 'team-unavail' }, ...user.unavailability.map((r) => el('span', { class: 'pill unavail-pill', text: unavailText(r) }))) : null))));
+        el('p', { class: 'team-name' }, personButton(user), user.me ? el('span', { class: 'muted', text: ` · ${t('team.you')}` }) : null)))));
   }
 
   (async () => {

@@ -20,12 +20,12 @@ module.exports = {
     await app.api(app.cookies.operator, 'POST', '/api/me/unavailability', { dateFrom: ev.eventDate, dateTo: ev.eventDate, note: 'La nunta fratelui' });
     await app.api(app.cookies.leader, 'PUT', `/api/events/${E}/assignments`, { assignments: [{ userId: op.id, positionId: positions[0].id }] });
 
-    // a member (RO 375): the directory row shows the reason; the card says it all
+    // a member (RO 375): the directory row is the name; the card says it all
     const m = await signIn('member', { width: 375, lang: 'ro' });
     await m.goto(`${app.url}/team`);
     await m.waitForSelector('#directory .person-open');
     const row = m.locator('#directory .directory-row', { hasText: 'Operator' }).first();
-    check(/La nunta fratelui/.test(await row.locator('.unavail-pill').first().textContent()), 'the directory: the unavailable period carries its reason');
+    check((await row.locator('.pill').count()) === 0 && /^Operator/.test((await row.textContent()).trim()), 'the directory row: the name only (the details are on the card)');
     await row.locator('.person-open').click();
     await m.waitForSelector('#person-dialog[open]');
     const card = await m.textContent('#person-dialog');

@@ -46,7 +46,9 @@ module.exports = {
     await o.click('#edit-submit');
     await o.waitForFunction(() => !document.getElementById('edit-dialog').open);
     await wait(200);
-    check(/🎚️ Tehnician sunet/.test(await person.locator('.role-pill').textContent()), 'Echipa: the person\'s pill shows the role');
+    // the role pill is on the person's sheet (the › next to the name)
+    const rolePill = async () => { await person.locator('.person-open').click(); await o.waitForSelector('#person-dialog[open] .role-pill'); const x = await o.textContent('#person-dialog .role-pill'); await o.click('#person-close'); await o.waitForFunction(() => !document.getElementById('person-dialog').open); return x; };
+    check(/🎚️ Tehnician sunet/.test(await rolePill()), 'Echipa: the person\'s sheet shows the role');
     // that person's app (EN 1024): the menu follows the rights
     const m = await signIn('member', { width: 1024, lang: 'en' });
     await m.goto(`${app.url}/app`);
@@ -67,7 +69,7 @@ module.exports = {
     await o.waitForFunction(() => !document.querySelector('#roles-all .role-row[data-role]'));
     await o.click('#tab-people');
     await wait(200);
-    check(/Membru/.test(await person.locator('.role-pill').textContent()), 'deleted: the person is a member again');
+    check(/Membru/.test(await rolePill()), 'deleted: the person is a member again');
     const me = (await app.api(app.cookies.member, 'GET', '/api/auth/me')).body.user;
     check(me.role === 'member' && me.perms.length === 0 && !me.customRole, 'API: member, no rights', me);
     // a built-in role, reshaped by the owner: "Membru" -> "Voluntar" with the Ghiduri right
@@ -83,8 +85,10 @@ module.exports = {
     await o.waitForFunction(() => /Voluntar/.test(document.querySelector('[data-builtin="member"]').textContent));
     check(/🙋 Voluntar · modificat/.test(await o.textContent('[data-builtin="member"]')) && /Ghiduri/.test(await o.textContent('[data-builtin="member"]')), 'the list: the new name, "modificat", the new right');
     await o.click('#tab-people');
-    await o.waitForFunction(() => [...document.querySelectorAll('#team .role-pill')].some((p) => /🙋 Voluntar/.test(p.textContent)));
+    await o.locator('#team .team-row', { hasText: 'Membru' }).locator('.person-open').click();
+    await o.waitForFunction(() => /🙋 Voluntar/.test((document.querySelector('#person-dialog[open] .role-pill') || {}).textContent || ''));
     check(true, 'Echipa: the members show as "🙋 Voluntar"');
+    await o.click('#person-close');
     const mv = await signIn('member', { width: 375, lang: 'ro' });
     await mv.goto(`${app.url}/guides`);
     await mv.waitForSelector('#guide-add:not([hidden])');

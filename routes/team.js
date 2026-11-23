@@ -65,7 +65,7 @@ function createTeamRouter({ db, auth, config, logger, live, email, invites }) {
         id: member.id, name: member.name, role: member.role, customRoleId: member.customRoleId, active: member.active, me: self,
         positionIds: positions.ofUserIds(req.adminId, member.id),
         unavailability: unavailability.listForUser(req.adminId, member.id, day),
-        ...(owner ? { email: member.email, phone: member.phone } : {}),
+        ...(owner ? { email: member.email, phone: member.phone, lastLoginAt: member.lastLoginAt, mustChangePassword: member.mustChangePassword } : {}),
       },
       upcoming: assignments.upcomingForUser(req.adminId, member.id, day).map((a) => (notes ? a : { ...a, note: null })),
       positions: positions.list(req.adminId),

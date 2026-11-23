@@ -46,9 +46,9 @@ module.exports = {
       const head = await o.evaluate(() => ({
         current: (document.querySelector('#app-shell .shell-item[aria-current="page"]') || {}).dataset && document.querySelector('#app-shell .shell-item[aria-current="page"]').dataset.section,
         tabs: [...document.querySelectorAll('#team-tabs [role="tab"]')].map((b) => b.textContent), add: !document.getElementById('add-person').hidden,
-        emails: document.querySelectorAll('#team .team-email').length,
+        emails: document.querySelectorAll('#team .team-name').length,
       }));
-      check(head.current === 'team' && head.tabs.length === 4 && head.add && head.emails > 0, `${tag} owner: Echipa marked in the nav, tabs ${head.tabs.join(' · ')}, accounts with emails`, head);
+      check(head.current === 'team' && head.tabs.length === 4 && head.add && head.emails > 0, `${tag} owner: Echipa marked in the nav, tabs ${head.tabs.join(' · ')}, the people`, head);
       // the "i" next to the title: the explanation of the open tab in a dialog; no paragraph under the title
       const tabsRow = await o.evaluate(() => { const tabs = [...document.querySelectorAll('#team-tabs [role="tab"]')].map((b) => b.getBoundingClientRect().top); return { oneRow: Math.max(...tabs) - Math.min(...tabs) < 2, intro: Boolean(document.getElementById('team-intro')), listTop: document.querySelector('#team .team-row').getBoundingClientRect().top }; });
       check(tabsRow.oneRow && !tabsRow.intro && tabsRow.listTop < (width < 600 ? 260 : 220), `${tag} owner: the four tabs on one row, no intro paragraph, the list starts high (top ${Math.round(tabsRow.listTop)} px)`, tabsRow);
@@ -100,8 +100,12 @@ module.exports = {
         emails: /@/.test(document.querySelector('main').innerText), phones: /\+40|\d{3} \d{3}/.test(document.getElementById('directory').innerText),
       }));
       check(d.current === 'team' && d.rows >= 5 && d.buttons === 0 && d.tabs && d.add && d.profile && !d.emails && !d.phones, `${tag} the directory: every person, no actions, no emails / phones, "Profilul meu" on top`, d);
-      const memberRow = await p.evaluate(() => ([...document.querySelectorAll('#directory .directory-row')].find((r) => /^Membru/.test(r.querySelector('.team-name').textContent)) || {}).innerText || '');
-      check(memberRow.includes(positions[0].name) && /Indisponibil|Unavailable/.test(memberRow), `${tag} the member's position and own unavailability are shown`, memberRow);
+      // the rows are names; the position and the unavailability are on the sheet (the ›)
+      await p.locator('#directory .directory-row', { hasText: 'Membru' }).locator('.person-open').click();
+      await p.waitForSelector('#person-dialog[open] .position-pill');
+      const memberRow = await p.evaluate(() => document.getElementById('person-dialog').innerText);
+      check(memberRow.includes(positions[0].name) && /Indisponibil|Unavailable/.test(memberRow), `${tag} the member's sheet: the position and own unavailability`, memberRow);
+      await p.click('#person-close');
       const a = await layoutAudit(p, 'main');
       check(!a.overflow && !a.small.length, `${tag} directory: no overflow, targets >= 44 px`, a);
       await p.context().close();

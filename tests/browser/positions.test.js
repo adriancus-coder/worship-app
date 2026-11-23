@@ -87,7 +87,9 @@ module.exports = {
     await o.goto(`${app.url}/team`);
     await o.waitForSelector('#team .team-row');
     const row = o.locator('#team .team-row', { hasText: 'Membru' });
-    const chips = await row.locator('.position-pill').allTextContents();
+    // the positions are on the person's sheet (the › next to the name)
+    const sheetChips = async () => { await row.locator('.person-open').click(); await o.waitForSelector('#person-dialog[open] .position-pill'); const c = await o.locator('#person-dialog .position-pill').allTextContents(); await o.click('#person-close'); await o.waitForFunction(() => !document.getElementById('person-dialog').open); return c; };
+    const chips = await sheetChips();
     check(chips.join(',') === '🎤 Voce,🎻 Vioară', 'Echipa: the member\'s positions as chips, with their emoji', chips);
     await row.locator('.team-menu-button').click(); // the actions sit in the row's "⋯" menu
     await row.locator('button:has-text("Editează")').click();
@@ -96,7 +98,7 @@ module.exports = {
     await o.click('#edit-submit');
     await o.waitForFunction(() => !document.getElementById('edit-dialog').open);
     await wait(200);
-    check((await row.locator('.position-pill').allTextContents()).includes('🎸 Bas'), 'the owner adds "Bas" from the person\'s dialog');
+    check((await sheetChips()).includes('🎸 Bas'), 'the owner adds "Bas" from the person\'s dialog');
     await o.goto(`${app.url}/team?tab=positions`);
     await o.waitForSelector('#positions-editor .position-row');
     check((await names(o)).length === 8 && await o.locator('#positions-editor .positions-add').isVisible(), 'Echipa → Poziții: the same editor (Setări has none any more)');

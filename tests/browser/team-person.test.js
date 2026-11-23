@@ -31,7 +31,11 @@ module.exports = {
       await o.click('#edit-submit');
       await o.waitForFunction(() => !document.getElementById('edit-dialog').open);
       await wait(200);
-      check((await row.locator('.team-email').textContent()) === `nou-${lang}@x.ro`, `${tag} saved: the row shows the new email`);
+      await row.locator('.person-open').click(); // the email is on the person's sheet
+      await o.waitForSelector('#person-dialog[open] a[href^="mailto:"]');
+      check((await o.textContent('#person-dialog a[href^="mailto:"]')) === `nou-${lang}@x.ro` && /Ultima intrare|Last sign-in|Nu a intrat|has not signed in/i.test(await o.textContent('#person-dialog')), `${tag} saved: the sheet shows the new email (and the last sign-in)`);
+      await o.click('#person-close');
+      await o.waitForFunction(() => !document.getElementById('person-dialog').open);
       check((await o.locator('#team .team-row:not(.inactive) [data-action="remove"]').count()) === 0, `${tag} active accounts: no "Șterge definitiv"`);
       // deactivated -> "Șterge definitiv"
       await app.api(owner, 'POST', `/api/team/${made.id}/deactivate`);
