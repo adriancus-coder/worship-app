@@ -44,7 +44,8 @@ module.exports = {
     check(saved.length >= 10 && new Set(saved.map((it) => it.songId)).size === saved.length, 'saved: the programme keeps them, no song twice', saved.length);
 
     // --- "Idei de cântări" --------------------------------------------------------------------
-    await p.click('#ideas > summary');
+    await p.click('#add-more-button');
+    await p.click('[data-add="ideas"]'); // the ideas box opens from the "Altele" menu
     await p.waitForSelector('#ideas-list .ideas-row');
     const ideas = await p.evaluate(() => ({ rows: document.querySelectorAll('#ideas-list .ideas-row').length, first: document.querySelector('#ideas-list .ideas-row .ideas-title').textContent }));
     const programme = await p.$$eval('#items > li', (l) => l.map((li) => li.textContent));
@@ -81,8 +82,9 @@ module.exports = {
     // --- the phone and the team ------------------------------------------------------------------
     const m = await signIn('owner', { width: 375, lang: 'ro' });
     await m.goto(`${app.url}/events/${quick.event.id}/edit`);
-    await m.waitForSelector('#ideas:not([hidden])');
-    await m.click('#ideas > summary');
+    await m.waitForSelector('#add-more-button');
+    await m.click('#add-more-button');
+    await m.click('[data-add="ideas"]');
     await m.waitForSelector('#ideas-list .ideas-row, #ideas-status:not(:empty)');
     const b = await layoutAudit(m, '#ideas');
     check(!b.overflow && !b.small.length, 'the ideas 375: no overflow, targets >= 44 px', b);

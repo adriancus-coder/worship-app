@@ -84,7 +84,8 @@ module.exports = {
       const saved = (await app.api(owner, 'GET', `/api/events/${eventId}`)).body.items.map((it) => it.type);
       check(saved.length === 4 && saved.every((x) => x === 'song'), `${tag} saved: the 4 songs`, saved);
       // the other dialogs are unchanged: Verset adds one item at once, no song dialog
-      await p.click('[data-add="verse"]');
+      await p.click('#add-more-button');
+      await p.click('[data-add="verse"]'); // Verset sits in the "Altele" menu
       await wait(300);
       check((await items()) === 5 && !(await p.evaluate(() => document.getElementById('song-dialog').open)), `${tag} Verset: one item, no song dialog`);
       await p.context().close();

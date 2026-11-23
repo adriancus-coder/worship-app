@@ -109,7 +109,8 @@ module.exports = {
       await p.waitForFunction(() => document.querySelectorAll('#items li').length === 0, null, { timeout: 5000 });
       check((await items(id)).length === 0 && (await p.getAttribute('#quick-details [data-source="empty"]', 'aria-pressed')) === 'true' && !(await p.isHidden('#setlist-empty')), `${tag} "Gol" empties the Program after the confirmation`);
       // an edited Program: a copy asks first
-      await p.click('[data-add="verse"]');
+      await p.click('#add-more-button');
+      await p.click('[data-add="verse"]'); // Verset sits in the "Altele" menu
       await p.waitForSelector('#items li');
       await p.click('#quick-details [data-source="copy"]');
       await p.waitForSelector('#q-copy-field:not([hidden])');

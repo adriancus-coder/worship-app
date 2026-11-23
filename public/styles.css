@@ -774,12 +774,23 @@ body.is-dragging-list { user-select: none; -webkit-user-select: none; }
 .ideas-add { flex: none; }
 
 .add-bar { display: flex; flex-wrap: wrap; gap: 8px; }
-.add-bar > button, .add-bar > .menu { flex: 1 1 96px; min-width: 0; } /* "+ Cântare · + Verset · + Altele" on one row, from 320 */
+.add-bar > button, .add-bar > .menu { flex: 1 1 96px; min-width: 0; } /* "+ Cântare · Altele ▾" on one row, from 320 */
+.add-bar > button[data-add="song"] { flex-grow: 1.6; } /* the primary one is the wider */
 .add-bar > button, .add-bar > .menu > button { white-space: nowrap; }
 .add-bar > .menu > button { width: 100%; }
 .add-more-caret { margin-left: 0.3em; font-size: 0.8em; opacity: 0.8; }
 .add-more .menu-list { right: 0; } /* the button ends the row: the list hangs under its right edge, inside the pane (no sideways scroll) */
-.add-more .menu-item[data-add]::before { content: "+"; margin-right: 0.5em; font-weight: 700; }
+/* Phones: the menu spans the whole add bar, its eight choices on two columns, so it fits the
+   pane's visible height on a short screen (the "Idei de cântări" row spans both). */
+@media (max-width: 599px) {
+  .add-bar { position: relative; }
+  .add-bar > .add-more { position: static; }
+  .add-more .menu-list { left: 0; right: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 2px; min-width: 0; }
+  .add-more .menu-item { min-width: 0; padding: 0 10px; line-height: 1.2; overflow-wrap: anywhere; }
+  .add-more .add-ideas { grid-column: 1 / -1; }
+}
+.add-more .menu-item[data-add]:not(.add-ideas)::before { content: "+"; margin-right: 0.5em; font-weight: 700; }
+.add-more .add-ideas { margin-top: 4px; padding-top: 4px; border-top: 1px solid var(--border); border-radius: 0 0 calc(var(--radius) - 2px) calc(var(--radius) - 2px); }
 
 .item-detail { padding: 12px; }
 .setlist-item .item-detail { border-top: 1px solid var(--border); }
@@ -3129,6 +3140,9 @@ dialog.plan-dialog { width: min(440px, calc(100vw - 24px)); padding: 12px; }
 .plan-day.today { outline: 1px dashed var(--accent-fill); outline-offset: -3px; }
 /* "+ Eveniment nou": the form (the calendar shares the plan styles; the weekday heads are plain) */
 dialog.new-dialog { max-height: calc(100dvh - 24px); overflow-y: auto; }
+/* the actions stay at the bottom of the dialog while the form scrolls: one tap creates the
+   event without scrolling past the calendar (the prefilled values fit most Sundays) */
+.new-dialog .form-actions { position: sticky; bottom: -12px; margin: 10px -12px -12px; padding: 10px 12px 12px; background: var(--surface); border-top: 1px solid var(--border); }
 .new-dialog .field { display: flex; flex-direction: column; gap: 4px; }
 .new-dialog .field > span:first-child, .new-dialog .field-label { font-size: 0.875rem; font-weight: 600; color: var(--text-muted); }
 .new-dialog > form > * + * { margin-top: 10px; }

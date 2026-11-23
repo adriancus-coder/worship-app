@@ -124,23 +124,26 @@
             <p class="hint" data-i18n="setlist.schoolHint" data-dismiss="event-school-hint"></p>
           </div>
           <div class="add-bar" id="add-bar" role="group" data-i18n-aria-label="setlist.addLabel" hidden>
-            <button type="button" class="secondary" data-add="song" data-icon="plus" data-i18n="setlist.addSong"></button>
-            <button type="button" class="secondary" data-add="verse" data-icon="plus" data-i18n="setlist.addVerse"></button>
-            <!-- The other types sit in a menu: one row of "+ Cântare · + Verset · + Altele" -->
+            <!-- "+ Cântare" (the one thing added every time, the pane's primary action) and
+                 "Altele ▾": every other type, "10 la întâmplare" and "Idei de cântări" -->
+            <button type="button" data-add="song" data-icon="plus" data-i18n="setlist.addSong"></button>
             <div class="menu add-more" id="add-more">
-              <button type="button" class="secondary" id="add-more-button" aria-haspopup="true" aria-expanded="false" aria-controls="add-more-list" data-icon="plus"><span data-i18n="setlist.addMore"></span><span class="add-more-caret" aria-hidden="true">▾</span></button>
+              <button type="button" class="secondary" id="add-more-button" aria-haspopup="true" aria-expanded="false" aria-controls="add-more-list"><span data-i18n="setlist.addMore"></span><span class="add-more-caret" aria-hidden="true">▾</span></button>
               <div class="menu-list" id="add-more-list" role="group" data-i18n-aria-label="setlist.addMoreLabel" hidden>
+                <button type="button" class="menu-item" data-add="verse" data-i18n="setlist.addVerse"></button>
                 <button type="button" class="menu-item" data-add="video" data-i18n="setlist.addVideo"></button>
                 <button type="button" class="menu-item" data-add="announcement" data-i18n="setlist.addAnnouncement"></button>
                 <button type="button" class="menu-item" data-add="sermon" data-i18n="setlist.addSermon"></button>
                 <button type="button" class="menu-item" data-add="prayer" data-i18n="setlist.addPrayer"></button>
                 <button type="button" class="menu-item" data-add="other" data-i18n="setlist.addOther"></button>
                 <button type="button" class="menu-item" data-add="random" data-i18n="setlist.addRandom"></button>
+                <button type="button" class="menu-item add-ideas" data-add="ideas" data-i18n="setlist.ideasHeading"></button>
               </div>
             </div>
           </div>
           <!-- "Idei de cântări": 10 random songs of the library (GET /api/events/:id/suggestions),
-               each with "+ Adaugă"; "Alte idei" draws again. Editors only, like the add bar. -->
+               each with "+ Adaugă"; "Alte idei" draws again. Opened from the "Altele" menu;
+               closing it puts it away again. -->
           <details class="ideas" id="ideas" hidden>
             <summary><span data-i18n="setlist.ideasHeading"></span></summary>
             <p class="hint" data-i18n="setlist.ideasHint"></p>

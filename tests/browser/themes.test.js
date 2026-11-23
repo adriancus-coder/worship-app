@@ -158,8 +158,9 @@ module.exports = {
 
     // --- the ideas panel by theme; "10 la întâmplare" uses it ------------------------------
     await p.goto(`${app.url}/events/${E}/edit`);
-    await p.waitForSelector('#ideas:not([hidden])');
-    await p.click('#ideas > summary');
+    await p.waitForSelector('#add-more-button');
+    await p.click('#add-more-button');
+    await p.click('[data-add="ideas"]');
     await p.waitForSelector('#ideas-theme-field:not([hidden])');
     await p.selectOption('#ideas-theme', 'botez');
     await p.waitForFunction(() => document.querySelectorAll('#ideas-list .ideas-row').length === 3);

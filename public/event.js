@@ -1581,10 +1581,24 @@
   const addMore = $('add-more');
   const addMoreButton = $('add-more-button');
   const addMoreList = $('add-more-list');
+  // The menu hangs under the bar at the end of the pane: the pane gets room under the bar
+  // while the menu is open (an absolute box adds none itself), so the whole menu scrolls into
+  // view above the save bar; closed, the room goes.
   function openAddMore(open) {
     addMoreList.hidden = !open;
     addMoreButton.setAttribute('aria-expanded', String(open));
+    const pane = addMore.closest('.setlist-scroll');
+    if (pane) { pane.style.paddingBottom = ''; pane.style.scrollPaddingBottom = ''; }
     if (open) {
+      if (pane) {
+        // the save pill floats over the pane's bottom: the menu stops above it
+        const bar = $('save-bar');
+        const paneBottom = pane.getBoundingClientRect().bottom;
+        const covered = bar && !bar.hidden ? Math.max(0, paneBottom - bar.getBoundingClientRect().top + 8) : 0;
+        const below = addMoreList.getBoundingClientRect().bottom - (paneBottom - covered);
+        if (below > 0) pane.style.paddingBottom = `${Math.ceil(parseFloat(getComputedStyle(pane).paddingBottom) || 0) + Math.ceil(below) + 8}px`;
+        if (covered) pane.style.scrollPaddingBottom = `${Math.ceil(covered)}px`;
+      }
       addMoreList.scrollIntoView({ block: 'nearest' });
       addMoreList.querySelector('button').focus();
     }
@@ -1661,7 +1675,16 @@
     ideasList.replaceChildren(...body.songs.map(ideaRow));
   }
 
-  ideas.addEventListener('toggle', () => { if (ideas.open) { loadIdeaThemes(); if (!ideasLoaded) loadIdeas(); } });
+  // Shown from the "Altele" menu; closed, it goes away (the pane stays "+ Cântare · Altele").
+  function showIdeas() {
+    ideas.hidden = false;
+    ideas.open = true;
+    ideas.scrollIntoView({ block: 'nearest' });
+    ideas.querySelector('summary').focus();
+  }
+  ideas.addEventListener('toggle', () => {
+    if (ideas.open) { loadIdeaThemes(); if (!ideasLoaded) loadIdeas(); } else ideas.hidden = true;
+  });
   ideasTheme.addEventListener('change', loadIdeas);
   $('ideas-more').addEventListener('click', loadIdeas);
 
@@ -1671,6 +1694,8 @@
     if (!addMoreList.hidden) openAddMore(false);
     if (button.dataset.add === 'random') {
       addRandom();
+    } else if (button.dataset.add === 'ideas') {
+      showIdeas();
     } else if (button.dataset.add === 'song') {
       picked.ids.clear();
       picked.count = 0;
@@ -1719,7 +1744,7 @@
     state.editing = editSegment === 'edit' && canEdit(state.me);
     $('add-bar').hidden = !state.editing;
     if (!canEdit(state.me)) songSearch.setOnline(false); // the school's picker: the library only
-    ideas.hidden = !state.editing;
+    ideas.hidden = true; // until "Idei de cântări" in the "Altele" menu
     if (state.editing) loadIdeaThemes().catch(() => {});
     applyEvent(eventRes.body, false);
     // ?tab=team (a notification about the team): that tab first, when the person has it
