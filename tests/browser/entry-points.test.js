@@ -24,9 +24,9 @@ module.exports = {
     // [home primary, home secondary, event page primary]
     const planned = {
       owner: [/Pornește live/, /Pregătește/, /Pornește live/],
-      presenter: [/Pregătește/, /^Live$/, /Editează/],
-      leader: [/Pregătește/, /Versuri mari/, /Editează/],
-      operator: [/Pregătește/, /Pornește live/, /Editează/],
+      presenter: [/Pregătește/, /^Live$/, /Pregătește/],
+      leader: [/Pregătește/, /Versuri mari/, /Pregătește/],
+      operator: [/Pregătește/, /Pornește live/, /Pregătește/],
       member: [/Vezi programul/, null, null],
     };
     const pages = {};

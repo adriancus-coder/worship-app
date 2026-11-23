@@ -46,7 +46,7 @@
     }
   }
   for (const button of document.querySelectorAll('#live-view [data-view]')) button.addEventListener('click', () => setCompact(button.dataset.view === 'compact'));
-  if (view === 'compact') setCompact(true); // the event page's "Program compact"
+  if (view === 'compact') setCompact(true); // the event page's "Compact"
 
   renderView();
 
