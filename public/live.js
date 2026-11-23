@@ -614,6 +614,7 @@
   const preview = window.PROJECTOR_RENDER.create($('projector-preview'), { videoPlaceholder: true, guide: true });
   // Video controls (a module the operator console will reuse in stage 6).
   const videoPanel = window.VIDEO_PANEL.create($('video-panel'), { send, api, t, el });
+  const projectorSettings = window.PROJECTOR_SETTINGS.mount($('projector-settings'), { t, el });
   const projector = { screens: 0, logoUrl: null, frame: null, safeMargin: null };
   // "Pe ce ecrane": which screens show the projection (hidden with fewer than two screens).
   const screenPicker = window.SCREEN_PICKER.create($('screen-picker'), { send, t, el });
@@ -649,6 +650,7 @@
     keyPanel.update({ clock: snap && snap.songKey, enabled: (live || planned) && !emergency.active });
     chordsToggle.update({ show: Boolean(snap && snap.chords && snap.chords.show), enabled: (live || planned) && !emergency.active });
     awaitToggle.update({ show: Boolean(snap && snap.awaitSection && snap.awaitSection.on), enabled: (live || planned) && !emergency.active });
+    projectorSettings.update(emergency.active ? null : snap);
     // Separate: the operator owns the projector. The whole panel goes (preview, sources,
     // background, clock, video, screens); only "Proiectorul e la … · Sari acolo" and the
     // switches stay, and the step grid takes the width. B / L / K do nothing here then.
@@ -1041,6 +1043,7 @@
     renderEmergency();
     renderProjector();
     videoPanel.render();
+    projectorSettings.render();
     modes.render();
     clockPanel.render();
     keyPanel.render();

@@ -113,15 +113,19 @@
               <button type="button" class="secondary" data-source="black" aria-pressed="false" data-i18n="live.projector.black"></button>
             </div>
             <div id="live-translation-sources" class="source-buttons" role="group" data-i18n-aria-label="bridge.sourceHeading" hidden></div>
-            <div id="bg-live" class="bg-live-row"></div>
-            <div id="clock-panel"></div>
-            <div class="projector-extras">
-              <div id="key-panel"></div>
-              <div id="chords-panel" class="chords-panel"></div>
-            <div id="await-panel" class="chords-panel"></div>
-            </div>
-            <p class="hint" data-i18n="live.projector.keysHint" data-dismiss="projector-keys-hint"></p>
-            <div id="video-panel"></div>
+            <!-- "Setări proiector" (public/projector-settings.js): the one-time choices fold under
+                 one row that says what is on; open / closed is kept on the device. -->
+            <details id="projector-settings">
+              <div id="bg-live" class="bg-live-row"></div>
+              <div id="clock-panel"></div>
+              <div class="projector-extras">
+                <div id="key-panel"></div>
+                <div id="chords-panel" class="chords-panel"></div>
+                <div id="await-panel" class="chords-panel"></div>
+              </div>
+              <p class="hint" data-i18n="live.projector.keysHint" data-dismiss="projector-keys-hint"></p>
+              <div id="video-panel"></div>
+            </details>
             <button type="button" class="secondary" id="open-projector" data-icon="projector" data-i18n="live.projector.open"></button>
             <p class="hint" id="projector-permission" data-i18n="live.projector.permissionHint" data-dismiss="projector-permission"></p>
             <p id="projector-message" class="message" role="status" aria-live="polite"></p>
@@ -168,6 +172,7 @@
   <script src="/background-picker.js"></script>
   <script src="/event-cache.js"></script>
   <script src="/video-panel.js"></script>
+  <script src="/projector-settings.js"></script>
   <script src="/projector-window.js"></script>
   <script src="/screen-picker.js"></script>
   <script src="/live-modes.js"></script>

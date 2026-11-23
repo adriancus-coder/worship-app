@@ -109,14 +109,18 @@
             <button type="button" class="secondary" data-source="black" aria-pressed="false" data-i18n="live.projector.black"></button>
           </div>
           <div id="op-translation-sources" class="source-buttons op-sources" role="group" data-i18n-aria-label="bridge.sourceHeading" hidden></div>
-          <div id="bg-live" class="bg-live-row"></div>
-          <div id="clock-panel"></div>
-          <div class="projector-extras">
-            <div id="key-panel"></div>
-            <div id="chords-panel" class="chords-panel"></div>
-            <div id="await-panel" class="chords-panel"></div>
-          </div>
-          <div id="video-panel"></div>
+          <!-- "Setări proiector" (public/projector-settings.js): the one-time choices fold under
+               one row that says what is on; open / closed is kept on the device. -->
+          <details id="projector-settings">
+            <div id="bg-live" class="bg-live-row"></div>
+            <div id="clock-panel"></div>
+            <div class="projector-extras">
+              <div id="key-panel"></div>
+              <div id="chords-panel" class="chords-panel"></div>
+              <div id="await-panel" class="chords-panel"></div>
+            </div>
+            <div id="video-panel"></div>
+          </details>
           <div id="bridge-panel" class="bridge-panel"></div>
         </aside>
       </div>
@@ -157,6 +161,7 @@
   <script src="/clock-panel.js"></script>
   <script src="/background-picker.js"></script>
   <script src="/video-panel.js"></script>
+  <script src="/projector-settings.js"></script>
   <script src="/song-audio.js"></script>
   <script src="/projector-window.js"></script>
   <script src="/screen-picker.js"></script>

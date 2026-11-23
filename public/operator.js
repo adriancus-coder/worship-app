@@ -379,6 +379,7 @@
     keyPanel.update({ clock: state.snap.songKey, enabled: live() || planned });
     chordsToggle.update({ show: Boolean(state.snap.chords && state.snap.chords.show), enabled: live() || planned });
     awaitToggle.update({ show: Boolean(state.snap.awaitSection && state.snap.awaitSection.on), enabled: live() || planned });
+    projectorSettings.update(state.snap);
     $('op-new-song').disabled = state.snap.status === 'finished';
     addSearch.render(); // its actions follow live()
     videoPanel.setSetlist(items());
@@ -416,6 +417,7 @@
   window.PROJECTOR_WINDOW.setup({ button: $('open-projector'), hint: $('projector-permission'), message: $('projector-message'), api, t });
   // "Pe ce ecrane": which screens show the projection (hidden with fewer than two screens).
   const screenPicker = window.SCREEN_PICKER.create($('screen-picker'), { send, t, el });
+  const projectorSettings = window.PROJECTOR_SETTINGS.mount($('projector-settings'), { t, el });
   const modes = window.LIVE_MODES.controls($('mode-controls'), { send, t, el, positionLabel });
   window.SHELL.me.then((me) => { if (me) modes.setMe(me.user); state.me = me; }); // the handover flow depends on who this page is
   // "✎ Versuri": the song on screen edited now, for this event or for the library (the
@@ -579,6 +581,7 @@
     renderConnection(state.client.connection);
     render();
     videoPanel.render();
+    projectorSettings.render();
     clockPanel.render();
     keyPanel.render();
     chordsToggle.render();

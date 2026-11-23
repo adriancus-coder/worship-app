@@ -1701,6 +1701,8 @@
         },
         projector: {
           heading: 'Proiector',
+          settings: 'Setări proiector',
+          settingsHint: 'fundal · ceas · gamă · acorduri · video',
           previewLabel: 'Ce arată proiectorul acum',
           sourceLabel: 'Ce arată proiectorul',
           content: 'Cântare',
@@ -4048,6 +4050,8 @@
         },
         projector: {
           heading: 'Projector',
+          settings: 'Projector settings',
+          settingsHint: 'background · clock · key · chords · video',
           previewLabel: 'What the projector shows now',
           sourceLabel: 'What the projector shows',
           content: 'Song',
