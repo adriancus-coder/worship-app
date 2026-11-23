@@ -41,7 +41,7 @@ module.exports = {
     const o = await signIn('owner', { width: 1024, lang: 'en' });
     await o.goto(`${app.url}/team`);
     await o.waitForSelector('#team .person-open');
-    await o.locator('#team .team-row', { hasText: 'op@x.ro' }).locator('.person-open').click();
+    await o.locator('#team .team-row', { hasText: 'Operator' }).first().locator('.person-open').click(); // the row is the name
     await o.waitForSelector('#person-dialog[open]');
     const oc = await o.textContent('#person-dialog');
     check(/op@x\.ro/.test(oc) && /Scheduled for/.test(oc) && /La nunta fratelui/.test(oc), 'the owner: the email too, in English', oc);
