@@ -1,8 +1,10 @@
 'use strict';
 
-// "Acum" (/app): the live event, else the next one, with ONE big button for what this
-// role does with it ("▶ Pornește live" starts it in one tap for the event roles); then the
-// next few events and, for the event roles, quick actions.
+// Home (/app), "the hymn board": the live event, else the next one, as one board: the day and
+// time, the person's own slot (Vin / Poate / Nu pot, their positions and guides), the Program as
+// numbered rows with each song's key on a plate, the team, and ONE big button for what this
+// role does with it ("▶ Pornește live" starts it in one tap for the event roles); beside or
+// under it, the next weeks with the person's own positions on them.
 // Each event role gets its own live page: live page (owner, presenter), big lyrics (leader),
 // console (operator).
 // The page watches its admin's home room: an event starting or ending swaps the card
@@ -13,7 +15,7 @@
   const { t } = window.I18N;
   const $ = (id) => document.getElementById(id);
 
-  const state = { me: null, home: null, failed: false, pickedItem: null, keyBusy: false, keyMinor: false, expanded: null };
+  const state = { me: null, home: null, failed: false, pickedItem: null, keyBusy: false, keyMinor: false, expanded: null, newKey: null };
 
   const editor = () => can(state.me, 'events'); // creates events
 
@@ -22,6 +24,18 @@
     const day = event.eventDate === today ? t('home.today') : formatDate(event.eventDate, today.slice(0, 4));
     return event.startTime ? `${day} · ${event.startTime}` : day;
   }
+
+  // Whole days from today to the event's date (dates as YYYY-MM-DD in the admin's time zone).
+  const daysUntil = (date) => Math.round((Date.UTC(...date.split('-').map((n, i) => Number(n) - (i === 1 ? 1 : 0))) - Date.UTC(...state.home.today.split('-').map((n, i) => Number(n) - (i === 1 ? 1 : 0)))) / 86400000);
+
+  // The board's big line: "Azi · 10:00", "Mâine · 10:00", "Duminică, 30 noiembrie · 10:00".
+  function whenBig(event) {
+    const days = daysUntil(event.eventDate);
+    const day = days === 0 ? t('home.today') : days === 1 ? t('home.tomorrow') : formatDate(event.eventDate, state.home.today.slice(0, 4));
+    return event.startTime ? `${day} · ${event.startTime}` : day;
+  }
+  // "peste 3 zile" on the plate beside it, from two days on.
+  const countdown = (event) => { const days = daysUntil(event.eventDate); return days >= 2 ? t('home.inDays', { n: days }) : null; };
 
   function itemCount(n) {
     if (n === 0) return t('events.itemCountZero');
@@ -90,6 +104,7 @@
     const out = $('start-message');
     if (res.error) { out.textContent = res.error; return; }
     out.textContent = '';
+    state.newKey = it.id; // the new plate slides into its groove
     await load();
   }
 
@@ -103,6 +118,7 @@
     const out = $('start-message');
     if (!res.ok) { out.textContent = res.body.error || t('common.networkError'); return; }
     out.textContent = '';
+    state.newKey = it.id;
     await load();
   }
 
@@ -140,6 +156,9 @@
     if (!items.length) return null;
     const picker = editor();
     const picked = picker ? items.find((it) => it.id === state.pickedItem && it.type === 'song') : null;
+    let number = 0; // the songs are numbered, like on the board on the wall
+    const slid = state.newKey;
+    state.newKey = null;
     return el('div', { class: 'now-program' },
       el('p', { class: 'now-section-label', text: t('home.program') }),
       el('ol', { class: 'now-items' }, ...items.map((it) => {
@@ -147,13 +166,17 @@
         const open = isSong && state.expanded === it.id;
         // the key on the right: the editors tap it to change the key for this event
         const keyText = it.key ? window.NOTATION.chord(it.key) : '—';
+        const keyClass = `key-badge now-item-key${it.key ? '' : ' is-unset'}${slid === it.id ? ' is-new' : ''}`;
         const key = it.type !== 'song' ? null
           : picker && isSong
-            ? el('button', { type: 'button', class: `key-badge now-item-key${it.key ? '' : ' is-unset'}`, 'aria-pressed': String(Boolean(picked && picked.id === it.id)), 'aria-label': t('home.pickSong', { title: itemLabel(it) }), onclick: () => pickItem(it) }, keyText)
-            : el('span', { class: `key-badge now-item-key${it.key ? '' : ' is-unset'}`, text: keyText });
-        const inner = [el('span', { class: `now-item-type type-badge type-${it.type}`, text: t(`setlist.types.${it.type}`) }), el('span', { class: 'now-item-title', text: itemLabel(it) })];
+            ? el('button', { type: 'button', class: keyClass, 'aria-pressed': String(Boolean(picked && picked.id === it.id)), 'aria-label': t('home.pickSong', { title: itemLabel(it) }), onclick: () => pickItem(it) }, keyText)
+            : el('span', { class: keyClass, text: keyText });
+        // a song: its number on the board; anything else: what it is (Verset, Anunț…) after it
+        const inner = it.type === 'song'
+          ? [el('span', { class: 'board-num', 'aria-hidden': 'true', text: String((number += 1)) }), el('span', { class: 'now-item-title', text: itemLabel(it) })]
+          : [el('span', { class: 'board-num', 'aria-hidden': 'true' }), el('span', { class: 'now-item-title', text: itemLabel(it) }), el('span', { class: `now-item-type board-type type-${it.type}`, text: t(`setlist.types.${it.type}`) })];
         const isPicked = Boolean(picked && picked.id === it.id);
-        return el('li', { class: `now-item${isPicked ? ' is-picked' : ''}${open ? ' is-open' : ''}` },
+        return el('li', { class: `now-item now-item-${it.type}${isPicked ? ' is-picked' : ''}${open ? ' is-open' : ''}` },
           el('div', { class: 'now-item-row' },
             isSong
               ? el('button', { type: 'button', class: 'now-item-button', 'aria-expanded': String(open), 'aria-controls': `now-song-${it.id}`, 'aria-label': t(open ? 'home.closeSong' : 'home.openSong', { title: itemLabel(it) }), onclick: () => toggleSong(it) }, ...inner)
@@ -181,43 +204,48 @@
       el('p', { class: 'now-legend', 'aria-hidden': 'true' }, ...['accepted', 'maybe', 'declined', 'pending'].map((s) => el('span', { class: `now-legend-item now-person-${s}` }, el('span', { class: 'now-dot' }), ` ${answer(s)}`))));
   }
 
-  function card(event, live) {
-    const [primary, secondary] = actions(event, live);
-    return el('article', { class: `now-card${live ? ' live' : ''}`, 'aria-labelledby': 'now-title' },
-      el('p', { class: 'now-kicker' },
-        live ? el('span', { class: 'live-dot', 'aria-hidden': 'true' }) : null,
-        live ? t('home.liveNow') : t('home.next')),
-      el('h2', { id: 'now-title', class: 'now-title' }, el('a', { href: eventUrl(event), text: event.name })),
-      el('p', { class: 'now-meta' },
-        el('span', { text: when(event) }),
-        el('span', { text: itemCount(event.itemCount) }),
-        el('span', { class: `pill pill-${event.status}`, text: t(`events.status.${event.status}`) })),
-      event.notes ? el('p', { class: 'event-note now-note', text: event.notes }) : null,
-      programBlock(event),
-      teamBlock(),
-      el('div', { class: 'now-actions' },
-        primary.run
-          ? el('button', { type: 'button', class: 'now-primary', id: 'start-live', 'data-icon': primary.icon, text: primary.text, onclick: primary.run })
-          : el('a', { class: 'button now-primary', href: primary.href, 'data-icon': primary.icon, text: primary.text }),
-        !secondary ? null : secondary.run
-          ? el('button', { type: 'button', class: 'secondary', id: 'start-live', 'data-icon': secondary.icon, text: secondary.text, onclick: secondary.run })
-          : el('a', { class: 'button secondary', href: secondary.href, 'data-icon': secondary.icon, text: secondary.text })),
-      // Stage 7: this person's assignments on the event ("Ești programat: Chitară", Vin / Nu pot
-      // while pending) and, for the event roles, the team summary.
-      // the invitation: "Participi?" Vin / Poate / Nu pot (the chosen one filled), changeable
-      state.home.attendance ? el('div', { class: 'now-assignment now-attend' },
+  // The person's own slot, first on the board: the invitation ("Participi?" Vin / Poate / Nu
+  // pot) and each position they serve on ("Ești programat: 🎤 Voce" Vin / Nu pot), with the
+  // guides for that position (Ghiduri). Changeable; the note is for the event page.
+  function youSlot(event) {
+    const invited = state.home.attendance;
+    const mine = state.home.assignments || [];
+    if (!invited && !mine.length) return null;
+    return el('section', { class: 'board-you', 'aria-label': t('home.you') },
+      invited ? el('div', { class: 'now-assignment now-attend' },
         el('span', { class: 'now-assignment-text', text: t('attend.question') }),
-        window.TEAM_CARD.answers(['accepted', 'maybe', 'declined'], state.home.attendance.status, (status) => attend(event, status), (v) => t(`attend.answers.${v}`), t('attend.question'))) : null,
-      ...(state.home.assignments || []).map((a) => el('div', { class: `now-assignment now-assignment-${a.status}` },
+        window.TEAM_CARD.answers(['accepted', 'maybe', 'declined'], invited.status, (status) => attend(event, status), (v) => t(`attend.answers.${v}`), t('attend.question'))) : null,
+      ...mine.map((a) => el('div', { class: `now-assignment now-assignment-${a.status}` },
         el('span', { class: 'now-assignment-text', text: t('assign.youAre', { position: window.PAGE.positionLabel({ name: a.positionName, emoji: a.positionEmoji }) }) }),
         window.TEAM_CARD.answers(['accepted', 'declined'], a.status, (status) => answer(event, a, status), (v) => t(v === 'accepted' ? 'assign.yes' : 'assign.no'), t('assign.youAre', { position: a.positionName })),
-        // the guides for this position (Ghiduri): "📘 Ghid: Pornirea sunetului"
-        ...(a.status === 'declined' ? [] : (state.guides || []).filter((g) => g.positionIds.includes(a.positionId)).map((g) => el('a', { class: 'now-guide', href: `/guides/${g.id}`, text: `${g.emoji || '📘'} ${t('guides.homeLink', { title: g.title })}` }))))),
-      state.home.proposalsOpen
-        ? el('a', { class: 'pill proposals-badge now-proposals', href: eventUrl(event, '/edit'), text: t('proposals.badge', { n: state.home.proposalsOpen }) })
-        : null,
-      state.home.teamSummary && state.home.teamSummary.total
-        ? el('a', { class: `now-team-summary${state.home.teamSummary.declined ? ' has-declined' : ''}`, href: eventUrl(event), text: window.TEAM_CARD.summaryText(state.home.teamSummary) })
+        ...(a.status === 'declined' ? [] : (state.guides || []).filter((g) => g.positionIds.includes(a.positionId)).map((g) => el('a', { class: 'now-guide', href: `/guides/${g.id}`, text: `${g.emoji || '📘'} ${t('guides.homeLink', { title: g.title })}` }))))));
+  }
+
+  function card(event, live) {
+    const [primary, secondary] = actions(event, live);
+    const soon = live ? null : countdown(event);
+    const button = (a, cls) => (a.run
+      ? el('button', { type: 'button', class: cls, id: 'start-live', 'data-icon': a.icon, text: a.text, onclick: a.run })
+      : el('a', { class: `button ${cls}`, href: a.href, 'data-icon': a.icon, text: a.text }));
+    return el('article', { class: `board now-card${live ? ' live' : ''}`, 'aria-labelledby': 'now-title' },
+      el('header', { class: 'board-head' },
+        el('p', { class: 'board-when' },
+          live ? el('span', { class: 'board-live' }, el('span', { class: 'live-dot', 'aria-hidden': 'true' }), t('home.liveNow')) : null,
+          el('span', { class: 'board-day', text: whenBig(event) }),
+          soon ? el('span', { class: 'board-soon', text: soon }) : null),
+        el('h2', { id: 'now-title', class: 'now-title' }, el('a', { href: eventUrl(event), text: event.name })),
+        event.notes ? el('p', { class: 'event-note now-note', text: event.notes }) : null),
+      youSlot(event),
+      programBlock(event),
+      teamBlock(),
+      state.home.proposalsOpen || (state.home.teamSummary && state.home.teamSummary.total)
+        ? el('p', { class: 'board-links' },
+          state.home.teamSummary && state.home.teamSummary.total
+            ? el('a', { class: `now-team-summary${state.home.teamSummary.declined ? ' has-declined' : ''}`, href: eventUrl(event), text: window.TEAM_CARD.summaryText(state.home.teamSummary) })
+            : null,
+          state.home.proposalsOpen
+            ? el('a', { class: 'pill proposals-badge now-proposals', href: eventUrl(event, '/edit'), text: t('proposals.badge', { n: state.home.proposalsOpen }) })
+            : null)
         : null,
       // Live for more than a day (someone forgot to end it): a small hint with "Încheie".
       live && staleLive(event) ? el('p', { class: 'now-stale', id: 'stale-live' },
@@ -225,7 +253,11 @@
         can(state.me, 'screens')
           ? el('button', { type: 'button', class: 'secondary danger-text', id: 'end-stale', 'data-icon': 'stop', text: t('home.staleEnd'), onclick: () => endStale(event) })
           : null) : null,
-      el('p', { class: 'message error', id: 'start-message', role: 'alert' }));
+      el('p', { class: 'message error', id: 'start-message', role: 'alert' }),
+      // the ledge under the board: ONE primary action, maybe a second
+      el('div', { class: 'now-actions board-ledge' },
+        button(primary, 'now-primary'),
+        secondary ? button(secondary, 'secondary') : null));
   }
 
   // Vin / Nu pot from the home card (the note is for the event page).
@@ -299,10 +331,29 @@
   $('switch-cancel').addEventListener('click', () => $('switch-dialog').close());
 
   function empty() {
-    return el('article', { class: 'now-card empty' },
-      el('p', { class: 'now-title', text: t('home.empty') }),
-      el('p', { class: 'muted', text: editor() ? t('home.emptyEditor') : t('home.emptyTeam') }),
-      editor() ? el('div', { class: 'now-actions' }, el('a', { class: 'button now-primary', href: '/events?new=1', 'data-icon': 'plus', text: t('events.newEvent') })) : null);
+    return el('article', { class: 'board now-card empty' },
+      el('p', { class: 'board-when', text: t('home.empty') }),
+      el('p', { class: 'board-hint', text: editor() ? t('home.emptyEditor') : t('home.emptyTeam') }),
+      editor() ? el('div', { class: 'now-actions board-ledge' }, el('a', { class: 'button now-primary', href: '/events?new=1', 'data-icon': 'plus', text: t('events.newEvent') })) : null);
+  }
+
+  // A row of the next weeks: the date on a plate, the name and time, and, when the person
+  // serves on it, their positions with their answer ("🎤 Voce · Vin").
+  function weekRow(event) {
+    const d = window.PAGE.dateBlock(event.eventDate);
+    const mine = event.mine || [];
+    const answer = (s) => (s === 'pending' ? t('home.noAnswer') : t(`attend.answers.${s}`));
+    return el('li', null,
+      el('a', { class: 'home-row', href: eventUrl(event) },
+        el('span', { class: 'week-plate', 'aria-hidden': 'true' },
+          el('span', { class: 'week-plate-day', text: d.weekday }),
+          el('span', { class: 'week-plate-num', text: d.day }),
+          el('span', { class: 'week-plate-month', text: d.month })),
+        el('span', { class: 'home-row-text' },
+          el('span', { class: 'home-row-name', text: event.name }),
+          el('span', { class: 'home-row-when', text: when(event) }),
+          mine.length ? el('span', { class: 'week-mine' }, ...mine.map((m) => el('span', { class: `week-pos week-pos-${m.status}`, text: `${window.PAGE.positionLabel({ name: m.positionName, emoji: m.positionEmoji })} · ${answer(m.status)}` }))) : null,
+          event.notes ? el('span', { class: 'event-note', text: event.notes }) : null)));
   }
 
   function render() {
@@ -310,6 +361,7 @@
       $('status').hidden = false;
       $('status').removeAttribute('data-i18n');
       $('status').textContent = t('app.loadFailed');
+      $('now').replaceChildren();
       return;
     }
     if (!state.me || !state.home) return;
@@ -317,22 +369,15 @@
     const { live, next, upcoming } = state.home;
     const top = live || next;
     $('now').replaceChildren(top ? card(top, Boolean(live)) : empty());
-    // With a live event, the next one joins the list below.
+    // With a live event, the next one joins the list beside it.
     const more = live && next ? [next, ...upcoming] : upcoming;
     $('upcoming-section').hidden = more.length === 0;
-    $('upcoming').replaceChildren(...more.map((event) => el('li', null,
-      el('a', { class: 'home-row', href: eventUrl(event) },
-        el('span', { class: 'home-row-text' },
-          el('span', { class: 'home-row-name', text: event.name }),
-          el('span', { class: 'home-row-when', text: when(event) }),
-          event.notes ? el('span', { class: 'event-note', text: event.notes }) : null),
-        el('span', { class: `pill pill-${event.status}`, text: t(`events.status.${event.status}`) })))));
+    $('upcoming').replaceChildren(...more.map(weekRow));
     renderBackupCard();
-    $('quick-section').hidden = !editor() || !top;
-    $('quick-new-song').hidden = !canEditLibrary(state.me); // the library: the editor roles
   }
 
-  // The owner's backup reminder (no backup for 30 days, or never): one card, dismissible.
+  // The owner's backup reminder (no backup for 30 days, or never): one quiet line under the
+  // board, dismissible.
   function renderBackupCard() {
     const reminder = state.home.backupReminder;
     if (!reminder || state.backupDismissed) {
@@ -342,20 +387,17 @@
     const date = reminder.lastAt
       ? new Date(reminder.lastAt).toLocaleDateString(window.I18N.lang === 'ro' ? 'ro-RO' : 'en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
       : t('home.backupNever');
-    $('backup-card').replaceChildren(el('section', { class: 'backup-card', 'aria-labelledby': 'backup-card-title' },
-      el('div', { class: 'backup-card-text' },
-        el('p', { class: 'backup-card-title', id: 'backup-card-title', text: t('home.backupLast', { date }) }),
-        el('p', { class: 'hint', text: t('home.backupHint') })),
-      el('div', { class: 'backup-card-actions' },
-        el('a', { class: 'button secondary', href: '/settings#backup-heading', 'data-icon': 'import', text: t('home.backupGo') }),
-        el('button', {
-          type: 'button', class: 'secondary', 'data-icon': 'close', text: t('home.backupDismiss'),
-          onclick: async () => {
-            state.backupDismissed = true;
-            renderBackupCard();
-            await api('/api/backup/reminder/dismiss', { method: 'POST' }).catch(() => {});
-          },
-        }))));
+    $('backup-card').replaceChildren(el('section', { class: 'backup-card home-backup', 'aria-labelledby': 'backup-card-title', title: t('home.backupHint') },
+      el('p', { class: 'backup-card-title', id: 'backup-card-title', text: t('home.backupLast', { date }) }),
+      el('a', { class: 'button secondary', href: '/settings#backup-heading', 'data-icon': 'import', text: t('home.backupGo') }),
+      el('button', {
+        type: 'button', class: 'secondary home-backup-close', 'data-icon': 'close', 'aria-label': t('home.backupDismiss'), title: t('home.backupDismiss'),
+        onclick: async () => {
+          state.backupDismissed = true;
+          renderBackupCard();
+          await api('/api/backup/reminder/dismiss', { method: 'POST' }).catch(() => {});
+        },
+      })));
   }
 
   async function load() {

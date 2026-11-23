@@ -9,22 +9,18 @@
 </head>
 <body data-shell="home">
   <main class="wide home-page">
-    <h1 data-i18n="home.heading"></h1>
+    <h1 class="sr-only" data-i18n="home.heading"></h1>
     <p id="status" class="muted" role="status" aria-live="polite" data-i18n="app.loading"></p>
-    <div id="now" aria-live="polite"></div>
-    <div id="install-card"></div>
-    <div id="backup-card"></div>
-    <section id="upcoming-section" class="home-section" aria-labelledby="upcoming-heading" hidden>
-      <h2 id="upcoming-heading" data-i18n="home.upcomingHeading"></h2>
-      <ul id="upcoming" class="home-upcoming"></ul>
-    </section>
-    <section id="quick-section" class="home-section" aria-labelledby="quick-heading" hidden>
-      <h2 id="quick-heading" data-i18n="home.quickHeading"></h2>
-      <div class="home-quick">
-        <a class="button secondary" href="/events?new=1" data-icon="plus" data-i18n="events.newEvent"></a>
-        <a class="button secondary" id="quick-new-song" href="/songs/new" data-icon="plus" data-i18n="home.newSong"></a>
+    <div class="home-layout">
+      <div id="now" class="home-now" aria-live="polite">
+        <div class="board board-skeleton" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
       </div>
-    </section>
+      <section id="upcoming-section" class="home-weeks" aria-labelledby="upcoming-heading" hidden>
+        <h2 id="upcoming-heading" data-i18n="home.upcomingHeading"></h2>
+        <ul id="upcoming" class="weeks-list"></ul>
+      </section>
+    </div>
+    <div id="backup-card"></div>
 
     <!-- "▶ Pornește live" while another event is live: end that one first? -->
     <dialog id="switch-dialog" aria-labelledby="switch-heading">
