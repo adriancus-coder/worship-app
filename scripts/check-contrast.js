@@ -76,7 +76,7 @@ const PAIRS = [
   ['board-letter', 'board-groove', TEXT, 'home board: letters over a groove'],
   ['board-letter-muted', 'board', TEXT, 'home board: hints, labels, other items'],
   ['board-letter-muted', 'board-groove', TEXT, 'home board: hints over a groove'],
-  ['on-plate', 'plate', TEXT, 'home board: key and date plates'],
+  ['on-plate', 'plate', TEXT, 'home card: the key pills'],
   ['text-muted', 'board', TEXT, 'home board: muted text'],
   ['accent-text', 'board', TEXT, 'home board: the open song, guides'],
   ['error', 'board', TEXT, 'home board: someone said no'],
