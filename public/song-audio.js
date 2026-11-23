@@ -84,12 +84,15 @@
         : el('audio', { controls: true, preload: 'none', id: 'song-audio-player', src: song.audio.src });
     actions.append(...[pick, linkButton, song.audio ? remove : null, input].filter(Boolean));
     root.append(...[
-      el('span', { class: 'ro-label', id: 'song-audio-label', text: t('song.audioLabel') }),
+      el('div', { class: 'song-audio-head' },
+        el('span', { class: 'ro-label', id: 'song-audio-label', text: t('song.audioLabel') }),
+        // the editors' help (formats, size, where it plays) behind an "i", like a page's intro
+        canEdit && window.INFO_TIP ? window.INFO_TIP.button({ id: 'song-audio-info', label: () => t('info.about', { what: t('song.audioLabel') }), text: () => `${t('song.audioHint', { max: MAX_MB })} ${t('song.audioLinkHint')}` }) : null),
       player,
       !song.audio && !canEdit ? el('p', { class: 'muted song-audio-none', text: t('song.audioNone') }) : null,
       canEdit ? actions : null,
       canEdit ? linkForm : null,
-      canEdit ? el('p', { class: 'hint', text: `${t('song.audioHint', { max: MAX_MB })} ${t('song.audioLinkHint')}` }) : null,
+      canEdit && !window.INFO_TIP ? el('p', { class: 'hint', text: `${t('song.audioHint', { max: MAX_MB })} ${t('song.audioLinkHint')}` }) : null,
       message,
     ].filter(Boolean));
     return root;

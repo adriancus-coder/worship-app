@@ -52,6 +52,7 @@
   --ios-blue: #0a84ff;
   --ios-fill: #f2f2f7;
   --ios-text: #1c1c1e;
+  --selection: color-mix(in srgb, var(--accent-fill) 35%, transparent); /* selected text */
   --radius: 10px;
   --touch: 44px;
   color-scheme: dark;
@@ -94,6 +95,9 @@
 * { box-sizing: border-box; }
 
 html, body { margin: 0; }
+html { scrollbar-color: var(--scrollbar-thumb) transparent; }
+::selection { background: var(--selection); }
+input, textarea, [contenteditable] { caret-color: var(--accent-fill); }
 
 body {
   min-height: 100vh;
@@ -551,6 +555,8 @@ dialog .message:empty { display: none; }
 .song-audio audio, .op-audio audio { display: block; width: 100%; max-width: 520px; margin: 6px 0; }
 .song-audio-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0; }
 .song-audio .hint { margin: 4px 0 0; }
+.song-audio-head { display: flex; align-items: center; gap: 2px; min-height: var(--touch); }
+.song-audio-head .ro-label { flex: none; }
 .song-audio .message:empty { display: none; }
 .song-audio-link { display: flex; flex-direction: column; gap: 8px; margin: 6px 0; max-width: 520px; }
 .song-audio-link input { width: 100%; }
@@ -1897,6 +1903,12 @@ button.op-step:disabled { opacity: 1; cursor: default; }
 .tab-count { display: inline-block; min-width: 1.4em; padding: 0 0.35em; border-radius: 999px; font-size: 0.8em; background: var(--surface); color: var(--text-muted); }
 .tab-count:empty { display: none; }
 .editor-tabs { margin: 0 0 12px; }
+/* the tab bar already says "Program": no second heading above the pane */
+.editor-tabs:not([hidden]) ~ .editor-grid .setlist-pane > h2 { display: none; }
+/* A tab row that scrolls sideways (public/scroll-tabs.js): the edge with more tabs fades. */
+.tabs[data-overflow="right"] { -webkit-mask-image: linear-gradient(to right, var(--text) calc(100% - 48px), transparent); mask-image: linear-gradient(to right, var(--text) calc(100% - 48px), transparent); }
+.tabs[data-overflow="left"] { -webkit-mask-image: linear-gradient(to left, var(--text) calc(100% - 48px), transparent); mask-image: linear-gradient(to left, var(--text) calc(100% - 48px), transparent); }
+.tabs[data-overflow="both"] { -webkit-mask-image: linear-gradient(to right, transparent, var(--text) 48px, var(--text) calc(100% - 48px), transparent); mask-image: linear-gradient(to right, transparent, var(--text) 48px, var(--text) calc(100% - 48px), transparent); }
 .editor-tabs > button { flex: 1 1 auto; }
 /* Phones: one row that scrolls sideways (five tabs never wrap into three rows and push the
    save bar under the tab bar); the selected tab is scrolled into view (public/event.js). */
@@ -2095,6 +2107,7 @@ main > .page-title > h1 { margin: 0; }
 .team-page .page-head #my-profile { flex: none; }
 .team-actions button { flex: 1 1 auto; min-height: var(--touch); }
 @media (min-width: 720px) { .team-actions { flex: 0 1 auto; } .team-actions button { flex: none; } }
+@media (max-width: 719px) { .team-actions button { padding-left: 12px; padding-right: 12px; } }
 .role-pill { border-color: var(--border); color: var(--text); }
 .role-owner { color: var(--on-accent); background: var(--accent-fill); border-color: var(--accent-fill); }
 .role-presenter, .role-leader { color: var(--accent-text); border-color: var(--accent-fill); }
@@ -2518,6 +2531,13 @@ button.song-key-change:hover { text-decoration: underline; }
 .song-key-box .message { flex-basis: 100%; margin: 0; }
 .song-key-box .message:empty { display: none; }
 .song-key-row { margin: 4px 0 8px; }
+/* The facts under a song's title (key, themes, order, history): one column, one rhythm. */
+.song-facts { display: flex; flex-direction: column; gap: 8px; margin: 4px 0 16px; }
+.song-facts > :is(div, p, details) { margin: 0; }
+.song-facts > [hidden] { display: none; }
+.song-facts .song-key-box { margin: 0; }
+.song-fact-action { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.song-fact-action .song-key-change { padding-left: 2px; padding-right: 2px; }
 /* the song's themes ("Tematică: Paști · închinare"), each a link to the library filtered by it */
 .song-themes { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 10px; font-size: 0.875rem; color: var(--text-muted); }
 .song-themes[hidden] { display: none; }
@@ -2845,7 +2865,11 @@ body.live-compact .live-row:has(> .live-item-grip) > .live-item { padding-right:
 .dismissed-section h2 { margin: 0 0 6px; font-size: 1.125rem; }
 .dismissed-section .hint, .dismissed-section .muted { margin: 0 0 10px; }
 
-.press-hint { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; padding: 2px 2px 2px 12px; font-size: 0.875rem; color: var(--text-muted); background: var(--surface); border: 1px dashed var(--border); border-radius: var(--radius); }
+.press-hint { display: flex; align-items: center; gap: 4px; margin: 0 0 8px; padding: 0; font-size: 0.875rem; color: var(--text-muted); }
+button.press-hint-close { margin: -10px 0 0; color: var(--text-muted); background: none; border: 0; } /* like the × of every closable message */
+button.press-hint-close:hover, button.press-hint-close:focus-visible { color: var(--text); background: var(--surface); }
+/* while the press hint is up (it says "Trage ≡ ca să muți" too), the drag hint stays out */
+.setlist-pane:has(.press-hint) > .dismissable:has(> #reorder-hint) { display: none; }
 .press-hint-text { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
 .press-hint-close { flex: none; }
 .setlist-pane .press-hint { margin-top: 8px; }
@@ -3155,8 +3179,6 @@ dialog.whats-new[open] { display: flex; }
   /* the selected row already shows the badge and the title: no second head under it */
   body.list-page .setlist-item .item-detail > .detail-head { display: none; }
   body.list-page .editor-tabs { margin-bottom: 6px; }
-  /* the tab bar already says "Program": no second heading above the pane */
-  body.list-page .editor-tabs:not([hidden]) ~ .editor-grid .setlist-pane > h2 { display: none; }
   body.list-page .setlist-pane > h2 { margin: 4px 0; }
   body.list-page .save-bar { gap: 8px; }
   body.list-page .save-state { font-size: 0.8125rem; line-height: 1.25; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }

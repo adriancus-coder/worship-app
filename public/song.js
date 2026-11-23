@@ -110,8 +110,9 @@
     document.getElementById('song-order').replaceChildren(
       el('span', { class: 'song-order-label', text: `${t('song.orderLabel')}:` }),
       el('span', { class: `song-order-codes${isDefault ? ' is-default' : ''}`, id: 'song-order-codes', text: isDefault ? t('song.orderDefault') : names.join(' · ') }),
-      el('span', { class: 'song-order-sep', 'aria-hidden': 'true', text: '·' }),
-      el('button', { type: 'button', class: 'song-key-change song-order-open', id: 'song-order-open', 'data-icon': canSetKey ? 'edit' : 'list', text: t(canSetKey ? 'song.orderChange' : 'song.orderView'), onclick: openSheet }));
+      el('span', { class: 'song-fact-action' },
+        el('span', { class: 'song-order-sep', 'aria-hidden': 'true', text: '·' }), ' ',
+        el('button', { type: 'button', class: 'song-key-change song-order-open', id: 'song-order-open', 'data-icon': canSetKey ? 'edit' : 'list', text: t(canSetKey ? 'song.orderChange' : 'song.orderView'), onclick: openSheet })));
   }
 
   // "Tipărește": the song as a PDF made here (public/song-pdf.js) from what the page shows

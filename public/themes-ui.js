@@ -137,8 +137,9 @@
     if (themes.length) row.append(...themes.map((name) => el('a', { class: 'theme-chip', href: `/library?theme=${encodeURIComponent(name)}`, text: name })));
     else row.append(el('span', { class: 'muted song-themes-none', text: t(canSet ? 'themes.unset' : 'themes.noneShort') }));
     if (canSet) {
-      row.append(el('span', { class: 'song-key-dot', 'aria-hidden': 'true', text: '·' }),
-        el('button', { type: 'button', class: 'song-key-change song-themes-set', 'data-icon': 'edit', text: t(themes.length ? 'song.keyChange' : 'song.keySet'), onclick: () => open(song, { onSaved }) }));
+      row.append(el('span', { class: 'song-fact-action' },
+        el('span', { class: 'song-key-dot', 'aria-hidden': 'true', text: '·' }), ' ',
+        el('button', { type: 'button', class: 'song-key-change song-themes-set', 'data-icon': 'edit', text: t(themes.length ? 'song.keyChange' : 'song.keySet'), onclick: () => open(song, { onSaved }) })));
     }
     return row;
   }

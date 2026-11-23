@@ -13,16 +13,18 @@
     <p id="status" class="muted" role="status" aria-live="polite" data-i18n="library.loading"></p>
     <article id="song" hidden>
       <h1 id="song-title"></h1>
-      <!-- "Ton: Sol · Schimbă" (public/arrange-sheet.js keyBox): always shown, under the title. -->
-      <div id="song-key" class="song-key-row"></div>
-      <p id="song-meta" class="muted"></p>
-      <!-- the song's themes ("tematică"), each a link to the library filtered by it -->
-      <div id="song-themes"></div>
-      <!-- "Cum se cântă: V1 · Refren · V2 · Refren" (the song's own order, the default of every
+      <div class="song-facts">
+        <!-- "Ton: Sol · Schimbă" (public/arrange-sheet.js keyBox): always shown, under the title. -->
+        <div id="song-key" class="song-key-row"></div>
+        <p id="song-meta" class="muted"></p>
+        <!-- the song's themes ("tematică"), each a link to the library filtered by it -->
+        <div id="song-themes"></div>
+        <!-- "Cum se cântă: V1 · Refren · V2 · Refren" (the song's own order, the default of every
            event): the editors change it in the arrange sheet, everyone sees the flow -->
-      <div id="song-order" class="song-order"></div>
-      <!-- "Cântată ultima dată: …" + the events it was sung at (GET /api/songs/:id/history) -->
-      <details id="song-history" class="song-history" hidden></details>
+        <div id="song-order" class="song-order"></div>
+        <!-- "Cântată ultima dată: …" + the events it was sung at (GET /api/songs/:id/history) -->
+        <details id="song-history" class="song-history" hidden></details>
+      </div>
       <!-- "Negativ": the backing track, played here by everyone; added / removed by the song's
            editors (public/song-audio.js) -->
       <div id="song-audio-box"></div>
@@ -46,6 +48,7 @@
   <script src="/chord-diagrams.js"></script>
   <script src="/song-render.js"></script>
   <script src="/song-pdf.js"></script>
+  <script src="/info-tip.js"></script>
   <script src="/song-audio.js"></script>
   <script src="/press.js"></script>
   <script src="/arrange-sheet.js"></script>
