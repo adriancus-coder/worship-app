@@ -40,7 +40,8 @@ jobs:
   # Browser smoke tests (tests/browser/): a separate job that does not fail the workflow
   # until the tests have proven stable on CI.
   browser:
-    runs-on: ubuntu-latest
+    # pinned: Playwright 1.56.1 has no browser build for ubuntu-latest (26.04)
+    runs-on: ubuntu-24.04
     continue-on-error: true
     steps:
       - uses: actions/checkout@v4
