@@ -2021,6 +2021,13 @@ test('events: upcoming / past split by status and date; the home never picks a f
   const h2 = createHome(db).home(1, 'member', today);
   assert.deepStrictEqual([h2.live, h2.next.name], [null, 'planned next week'], 'a finished event today is never "next"');
   assert.ok(Array.isArray(h2.program) && Array.isArray(h2.team), 'the card carries the top event\'s Program and team');
+  // the coming events carry this person's own positions ("mine"), for the next weeks
+  db.prepare("INSERT INTO users (id, admin_id, email, name, password_hash, role, created_at, active) VALUES (1, 1, 'b@x.ro', 'Bob', 'x', 'member', 0, 1)").run();
+  const voce = require('../lib/positions').createPositionStore(db).list(1)[0];
+  require('../lib/assignments').createAssignmentStore(db).replace(1, 5, [{ userId: 1, positionId: voce.id }], 1);
+  const h3 = createHome(db).home(1, 'member', today, 1);
+  assert.deepStrictEqual(h3.next.mine, [{ positionName: voce.name, positionEmoji: voce.emoji || null, status: 'pending' }], 'next: my position on it');
+  assert.ok(!('mine' in createHome(db).home(1, 'member', today).next), 'no person: no "mine"');
   assert.deepStrictEqual(names('past').slice(0, 4), ['planned today', 'finished today', 'planned yesterday', 'live yesterday'], 'descending; same date and time: newest id first');
   db.close();
 });
