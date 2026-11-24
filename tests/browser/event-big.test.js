@@ -68,6 +68,9 @@ module.exports = {
     // big view; when the event starts, the live big view takes over
     const l = await signIn('leader', { width: 375, lang: 'ro' });
     await l.goto(`${app.url}/app`);
+    // Home's one button: "Versuri mari" once the leader prepared this event on this device
+    await l.evaluate((id) => localStorage.setItem(`worship.prepared.${id}`, '1'), app.seed.eventId);
+    await l.reload();
     await l.waitForSelector('#now .now-card');
     await l.click('#now .now-actions :text("Versuri mari")');
     await l.waitForSelector('dialog.big-lyrics[open]', { timeout: 8000 });
