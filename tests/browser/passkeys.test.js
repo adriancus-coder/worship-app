@@ -53,7 +53,7 @@ module.exports = {
     await p.waitForURL('**/app');
     await p.goto(`${base}/profile`);
     await p.waitForSelector('#passkeys:not([hidden])');
-    check(await p.isVisible('#passkey-add') && !(await p.isHidden('#passkey-empty')), 'the profile: "Face ID / amprentă" with "Adaugă pe acest aparat", no device yet');
+    check(await p.isVisible('#passkey-add') && !(await p.isHidden('#passkey-empty')), 'the profile: "Face ID / amprentă" with "Adaugă pe acest dispozitiv", no device yet');
     await p.click('#passkey-add');
     await p.waitForSelector('#passkey-list .passkey-item');
     const item = await p.textContent('#passkey-list .passkey-item');
@@ -69,7 +69,10 @@ module.exports = {
     await logout(p);
     await p.goto(`${base}/login`).catch(() => null); // the page leaves for /app on its own (ERR_ABORTED)
     await p.waitForURL('**/app', { timeout: 10000 });
-    check((await me(p)).user.email === USERS.owner, 'the passkey offered in the email field (autofill) signs in as soon as it is picked');
+    await p.waitForLoadState('load').catch(() => null);
+    let auto = null;
+    for (let i = 0; i < 20 && !auto; i += 1) { auto = await me(p); if (!auto) await wait(100); }
+    check(auto && auto.user.email === USERS.owner, 'the passkey offered in the email field (autofill) signs in as soon as it is picked');
     const used = (await app.api(app.cookies.owner, 'GET', '/api/me/passkeys')).body.passkeys[0];
     check(used.lastUsedAt > 0, 'the key records its last use');
     await p.goto(`${base}/profile`);
