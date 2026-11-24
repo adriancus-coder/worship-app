@@ -602,6 +602,7 @@
         kicker: 'Ce e nou',
         allTitle: 'Ce e nou în aplicație',
         ok: 'Am înțeles',
+        close: 'Închide',
         menu: 'Ce e nou',
       },
       attend: {
@@ -2987,6 +2988,7 @@
         kicker: 'What’s new',
         allTitle: 'What’s new in the app',
         ok: 'Got it',
+        close: 'Close',
         menu: 'What’s new',
       },
       attend: {

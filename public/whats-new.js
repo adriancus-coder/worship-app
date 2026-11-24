@@ -33,17 +33,18 @@
     };
     gate.busy = true;
     dialog.onkeydown = (event) => { if (event.key === 'Escape') { event.preventDefault(); done(); } };
+    // the × stays at the top while the list scrolls: closing never needs the end of the list
     dialog.replaceChildren(
-      el('p', { class: 'answer-popup-kicker', text: t('whatsNew.kicker') }),
+      el('div', { class: 'whats-new-head' },
+        el('p', { class: 'answer-popup-kicker', text: t('whatsNew.kicker') }),
+        el('button', { type: 'button', class: 'secondary icon-button whats-new-close', id: 'whats-new-close', 'data-icon': 'close', 'aria-label': t('whatsNew.close'), title: t('whatsNew.close'), onclick: done })),
       el('h2', { id: 'whats-new-title', text: all ? t('whatsNew.allTitle') : releases[0].title }),
       ...releases.map((r, i) => el('section', { class: 'whats-new-release' },
         all || i > 0 ? el('h3', { text: r.title }) : null,
         el('p', { class: 'whats-new-date', text: formatDate(r.id, String(new Date().getFullYear())) }),
-        el('ul', { class: 'whats-new-list' }, ...r.items.map((item) => el('li', { text: item }))))),
-      el('div', { class: 'form-actions' },
-        el('button', { type: 'button', id: 'whats-new-ok', 'data-icon': 'check', text: t('whatsNew.ok'), onclick: done })));
+        el('ul', { class: 'whats-new-list' }, ...r.items.map((item) => el('li', { text: item }))))));
     if (!dialog.open) dialog.showModal();
-    dialog.querySelector('#whats-new-ok').focus();
+    dialog.querySelector('#whats-new-close').focus();
   }
 
   async function load() {

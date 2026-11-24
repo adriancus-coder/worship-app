@@ -3756,18 +3756,24 @@ test('whats-new: releases newest first with RO / EN texts, every item says whom 
   const member = { role: 'member', perms: [] };
   assert.deepStrictEqual(isFor({ for: 'all' }, member), true);
   assert.deepStrictEqual([isFor({ for: ['events'] }, member), isFor({ for: ['events'] }, { role: 'leader', perms: ['events'] }), isFor({ for: ['owner'] }, owner), isFor({ for: ['owner'] }, { role: 'leader', perms: ['events'] })], [false, true, true, false]);
-  const forOwner = releasesFor(owner, 'ro');
-  const forMember = releasesFor(member, 'en');
-  assert.deepStrictEqual(forOwner.map((r) => r.id), RELEASES.map((r) => r.id), 'the owner (every right) gets every release');
-  assert.deepStrictEqual(forOwner.map((r) => r.items.length), RELEASES.map((r) => r.items.length), 'and every item');
+  const { cutoffFor, KEEP_DAYS } = require('../lib/whats-new');
+  const day = RELEASES[0].id;
+  const kept = RELEASES.filter((r) => r.id >= cutoffFor(day));
+  assert.strictEqual(cutoffFor('2026-11-24'), '2026-11-14', `the window: ${KEEP_DAYS} days`);
+  const forOwner = releasesFor(owner, 'ro', 10, day);
+  const forMember = releasesFor(member, 'en', 10, day);
+  assert.deepStrictEqual(forOwner.map((r) => r.id), kept.map((r) => r.id), 'the owner (every right) gets every release of the last ten days');
+  assert.deepStrictEqual(forOwner.map((r) => r.items.length), kept.map((r) => r.items.length), 'and every item');
+  assert.ok(kept.length < RELEASES.length, 'older releases are gone from the list');
+  assert.deepStrictEqual(releasesFor(owner, 'ro', 10, '2027-06-01'), [], 'nothing is new half a year later');
   assert.ok(forMember.every((r) => r.items.length) && forMember.reduce((n, r) => n + r.items.length, 0) < forOwner.reduce((n, r) => n + r.items.length, 0), 'a member gets fewer items, never an empty release');
   assert.strictEqual(forMember[0].title, RELEASES.find((r) => r.id === forMember[0].id).title.en, 'in the asked language');
-  assert.deepStrictEqual(releasesFor({ role: 'member', perms: [] }, 'ro', 1).length, 1, 'limit');
+  assert.deepStrictEqual(releasesFor({ role: 'member', perms: [] }, 'ro', 1, day).length, 1, 'limit');
   assert.ok(RELEASES.every((r, i) => i === 0 || RELEASES[i - 1].id > r.id), 'newest first');
   assert.strictEqual(latest(), RELEASES[0].id);
-  assert.deepStrictEqual(releasesSince(null).map((r) => r.id), [RELEASES[0].id]);
-  assert.deepStrictEqual(releasesSince('0000-01-01').map((r) => r.id), RELEASES.map((r) => r.id));
-  assert.deepStrictEqual(releasesSince(RELEASES[0].id), []);
+  assert.deepStrictEqual(releasesSince(null, day).map((r) => r.id), [RELEASES[0].id]);
+  assert.deepStrictEqual(releasesSince('0000-01-01', day).map((r) => r.id), kept.map((r) => r.id));
+  assert.deepStrictEqual(releasesSince(RELEASES[0].id, day), []);
 });
 
 test('unavailability (migration 031): own ranges, validation, who is busy on a date, upcoming per user', () => {

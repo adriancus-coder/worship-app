@@ -26,7 +26,7 @@ module.exports = {
     check(shape.kicker === 'Ce e nou' && shape.items === newest && shape.titles === 0 && !shape.invite, 'a device that saw none: the newest release, before the invitation pop-up', shape);
     const a = await layoutAudit(p, '#whats-new');
     check(!a.overflow && !a.small.length, 'the pop-up 375: no overflow, targets >= 44 px', a);
-    await p.click('#whats-new-ok');
+    await p.click('#whats-new-close');
     await p.waitForSelector('#whats-new', { state: 'hidden' });
     await p.waitForSelector('#answer-popup[open]');
     check((await p.evaluate(() => localStorage.getItem('wa_whats_new_seen'))) === latest, '"Am înțeles": kept as seen; the invitation pop-up follows');
@@ -39,7 +39,7 @@ module.exports = {
     await p.reload();
     await p.waitForSelector('#whats-new[open]');
     check(true, 'a device that saw an older release gets the newer ones');
-    await p.click('#whats-new-ok');
+    await p.click('#whats-new-close');
     await p.context().close();
 
     // the menu row reopens the whole list (EN 1024)
@@ -52,8 +52,8 @@ module.exports = {
     check((await e.textContent('#shell-panel .shell-whats-new')).includes('What’s new'), 'the menu has "What’s new"');
     await e.click('#shell-panel .shell-whats-new');
     await e.waitForSelector('#whats-new[open]');
-    const all = await e.evaluate(() => ({ title: document.getElementById('whats-new-title').textContent, titles: document.querySelectorAll('#whats-new h3').length, ok: document.getElementById('whats-new-ok').textContent }));
-    check(all.title === 'What’s new in the app' && all.titles >= 1 && all.ok === 'Got it', 'the whole list, in English', all);
+    const all = await e.evaluate(() => ({ title: document.getElementById('whats-new-title').textContent, titles: document.querySelectorAll('#whats-new h3').length, close: document.getElementById('whats-new-close').getAttribute('aria-label'), bottomButton: Boolean(document.querySelector('#whats-new .form-actions')) }));
+    check(all.title === 'What’s new in the app' && all.titles >= 1 && all.close === 'Close' && !all.bottomButton, 'the whole list, in English; the × at the top, no button at the end', all);
     await e.context().close();
   },
 };
