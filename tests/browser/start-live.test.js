@@ -1,9 +1,10 @@
 'use strict';
 
-// Acasă -> "▶ Pornește live" in one tap (the operator, the owner: the 'screens' right): the
-// event goes live and the console / live page opens; a member's phone follows at once; members
-// have "Vezi programul" / "Urmărește live"; with another event already live (started
-// elsewhere meanwhile) a confirmation offers to end it first. RO/EN; 375/1024.
+// Acasă before the start has NO button: the event's name opens the event page, whose
+// "▶ Începe programul" (the operator, the owner: the 'screens' right) starts it: the event
+// goes live and the console / live page opens; a member's phone follows at once; live, Home
+// offers the way in ("Urmărește live", "Consolă operator", "Intră live"); with another event
+// already live (started elsewhere meanwhile) a confirmation offers to end it first. RO/EN.
 
 const { layoutAudit } = require('./harness');
 
@@ -19,19 +20,23 @@ module.exports = {
       const m = await signIn('member', { width: 375, lang });
       await m.reload(); // in the language just saved
       await m.waitForSelector('#now .now-card');
-      check(await cardAction(m) === (lang === 'ro' ? 'Vezi programul' : 'See the programme'), `${tag} member: "Vezi programul" before the start`);
+      check(await cardAction(m) === null && !(await m.locator('#now .now-actions').count()), `${tag} member: no button before the start`);
       await m.goto(`${app.url}/events/${E}/follow`);
       await m.waitForSelector('#follow:not([hidden])');
       const p = await signIn(role, { width, lang });
       await p.reload();
       await p.waitForSelector('#now .now-card');
-      // the operator prepares first and starts second (secondary); the owner starts first
-      const expected = role === 'operator' ? (lang === 'ro' ? 'Pregătește' : 'Prepare') : (lang === 'ro' ? 'Pornește live' : 'Start live');
-      check(await cardAction(p) === expected && await p.locator(role === 'operator' ? '#start-live.secondary' : '#start-live:not(.secondary)').count() === 1, `${tag} Acasă on the event day: primary "${expected}", "Pornește live" ${role === 'operator' ? 'as the secondary button' : 'primary'}`, await cardAction(p));
+      // no button on Home before the start: the event's name opens the event page
+      check(await cardAction(p) === null && !(await p.locator('#now .now-actions').count()), `${tag} Acasă before the start: no button`, await cardAction(p));
       const a = await layoutAudit(p, 'main');
       check(!a.overflow && !a.small.length, `${tag} Acasă: no overflow, targets >= 44 px`, a);
+      await p.click('#now-title a');
+      await p.waitForURL((u) => u.pathname === `/events/${E}`);
+      await p.waitForSelector('#event-start');
+      const expected = lang === 'ro' ? 'Începe programul' : 'Start the programme';
+      check((await p.textContent('#event-start')).trim() === expected, `${tag} the name opens the event page, with "${expected}"`);
       const t0 = Date.now();
-      await p.click('#start-live');
+      await p.click('#event-start');
       await p.waitForURL(`**/events/${E}/${page}**`);
       await p.waitForSelector(page === 'live' ? '#live:not([hidden])' : '#console:not([hidden])');
       check((await app.state(E)).status === 'live', `${tag} one tap: the event is live and the ${page === 'live' ? 'live page' : 'console'} is open (${Date.now() - t0} ms)`);
@@ -66,12 +71,13 @@ module.exports = {
     await p.fill('[name=password]', 'parola-lunga-1');
     await p.click('button[type=submit]');
     await p.waitForURL('**/app');
-    await p.waitForSelector('#start-live');
+    await p.goto(`${app.url}/events/${current}`);
+    await p.waitForSelector('#event-start');
     blocked = true;
     for (const [ws, server] of links.splice(0)) { await ws.close().catch(() => {}); await server.close().catch(() => {}); }
     const lead = await app.api(app.cookies.operator, 'POST', `/api/events/${other.id}/start`, {});
     check(lead.status === 200 && lead.body.event.status === 'live', 'another event goes live elsewhere');
-    await p.click('#start-live');
+    await p.click('#event-start');
     await p.waitForSelector('#switch-dialog[open]');
     check(/Repetiție de seară/.test(await p.textContent('#switch-heading')), 'a confirmation names the live event', await p.textContent('#switch-heading'));
     blocked = false;

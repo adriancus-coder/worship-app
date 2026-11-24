@@ -48,7 +48,10 @@ module.exports = {
       await p.waitForSelector('#view-as-bar:not([hidden])');
       const barText = await bar(p);
       check(/(Vezi ca membru worship|Viewing as worship team member)/.test(barText) && /(Revino la proprietar|Back to owner)/.test(barText), `${tag} member: the bar "${barText.trim()}"`);
-      check(await cardPrimary(p) === (lang === 'ro' ? 'Vezi programul' : 'See the programme'), `${tag} member: the home card is the member's ("Vezi programul")`, await cardPrimary(p));
+      // the member's card: no button before the start, keys to read (no key buttons)
+      await p.click('#now .now-program-toggle');
+      await p.waitForSelector('#now .now-items');
+      check(await cardPrimary(p) === null && !(await p.locator('#now button.now-item-key').count()) && await p.locator('#now span.now-item-key').count() > 0, `${tag} member: the home card is the member's (no button, keys to read)`, await cardPrimary(p));
       m = await menuPages(p);
       check(!m.pages.includes('team') && !m.pages.includes('settings') && !m.pages.includes('media') && !m.pages.includes('platform') && m.viewAs.includes('member:true'), `${tag} member: no Echipa / Setări / Media / Platformă; the switch stays (Membru selected)`, m);
       await closeMenu(p);

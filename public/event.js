@@ -73,6 +73,7 @@
           transpose: Number(item.transpose) || 0,
           arrangement: arrangementPayload(item),
           referenceUrl: item.referenceUrl || '',
+          chords: item.chords !== false, // "Cu acorduri" / "Fără acorduri"
         });
       }
       return out;
@@ -107,6 +108,7 @@
         parts.push(item.song.sectionCount === 1 ? t('setlist.sectionCountOne') : t('setlist.sectionCount', { n: item.song.sectionCount }));
       }
       if (item.song && (item.song.audioMediaId || item.song.audioUrl)) parts.push(t('library.audioTag')); // a backing track
+      if (item.chords === false) parts.push(t('options.chordsOff').toLowerCase()); // the team sees lyrics only
       if (item.who) parts.push(item.who); // "Cine cântă" (or the Sunday school's mark)
     } else if (item.type === 'verse' && item.body) {
       parts.push(item.body.split('\n')[0].slice(0, 60));
@@ -238,8 +240,11 @@
         // operator, the owner); the leader and the presenter just enter their live page.
         // "Pornește live" starts the event from here and opens the live page: one step (the
         // live page has nothing to set before the start)
-        const starts = soon && can(state.me, 'screens');
-        const live = !entry ? null : { key: starts ? 'home.startLive' : 'live.link', icon: 'play', href: livePage, run: starts ? () => startLive(livePage) : null, id: starts ? 'event-start' : null };
+        // "Începe programul" for those who start (the 'screens' right): today / tomorrow it
+        // starts the event right here; earlier it opens the live page, where they start it.
+        const starter = can(state.me, 'screens');
+        const starts = soon && starter;
+        const live = !entry ? null : { key: starter ? 'home.startLive' : 'live.link', icon: 'play', href: livePage, run: starts ? () => startLive(livePage) : null, id: starts ? 'event-start' : null };
         if (role === 'owner') actions.push(...(soon ? [live, edit] : [edit, live]));
         else actions.push(edit, live, compact);
       }
@@ -771,10 +776,12 @@
       item.transpose = value;
       optionChanged(item);
     };
+    const chordsOn = item.chords !== false;
     if (!state.editing) {
       return el('div', { class: 'option-block' },
         el('span', { class: 'ro-label', text: t('options.keyLabel') }),
-        el('p', { class: 'key-display', text: display }));
+        el('p', { class: 'key-display', text: display }),
+        chordsOn ? null : el('p', { class: 'muted key-chords-note', text: t('options.chordsOff') }));
     }
     // The library song's original key, set from here (public/arrange-sheet.js keyBox, the
     // key-only PUT: sections untouched). No key yet: "Tonul original: [selector] · Setează"
@@ -787,14 +794,27 @@
     const original = window.ARRANGE_SHEET.keyBox(song, true, keySaved, song.song_key
       ? { label: 'arrange.keyOriginalLabel', id: 'opt-original-key' }
       : { label: 'options.keyOriginalLabel', id: 'opt-original-key', open: true });
-    return el('div', { class: 'option-block', role: 'group', 'aria-labelledby': 'opt-key-label' },
-      el('span', { class: 'ro-label', id: 'opt-key-label', text: t('options.keyLabel') }),
-      original,
-      !song.song_key && !transpose ? null : el('div', { class: 'key-row' },
-        el('button', { type: 'button', class: 'secondary icon-button', id: 'opt-key-down', 'aria-label': t('options.keyDown'), disabled: transpose <= -11, onclick: () => setTranspose(transpose - 1) }, el('span', { 'aria-hidden': 'true', text: '−' })),
-        el('output', { class: 'key-display', id: 'opt-key-display', 'aria-live': 'polite', text: display }),
-        el('button', { type: 'button', class: 'secondary icon-button', id: 'opt-key-up', 'aria-label': t('options.keyUp'), disabled: transpose >= 11, onclick: () => setTranspose(transpose + 1) }, el('span', { 'aria-hidden': 'true', text: '+' }))),
-      !song.song_key && !transpose ? null : el('button', { type: 'button', class: 'secondary', id: 'opt-key-reset', disabled: transpose === 0, onclick: () => setTranspose(0), text: t('options.keyReset') }));
+    // "Ton  −  Fa · tonul original  +" on ONE row; under it, small: "Original: Fa · Schimbă"
+    // and "Tonul original" (back to it); then the check "Cu acorduri" / "Fără acorduri"
+    // (unchecked: the team sees this song's lyrics only at this event).
+    const hasRow = Boolean(song.song_key || transpose);
+    const setChords = (on) => {
+      item.chords = on;
+      optionChanged(item);
+    };
+    return el('div', { class: 'option-block key-block', role: 'group', 'aria-labelledby': 'opt-key-label' },
+      el('div', { class: 'key-line' },
+        el('span', { class: 'ro-label', id: 'opt-key-label', text: t('options.keyLabel') }),
+        hasRow ? el('div', { class: 'key-row' },
+          el('button', { type: 'button', class: 'secondary icon-button', id: 'opt-key-down', 'aria-label': t('options.keyDown'), disabled: transpose <= -11, onclick: () => setTranspose(transpose - 1) }, el('span', { 'aria-hidden': 'true', text: '−' })),
+          el('output', { class: 'key-display', id: 'opt-key-display', 'aria-live': 'polite', text: display }),
+          el('button', { type: 'button', class: 'secondary icon-button', id: 'opt-key-up', 'aria-label': t('options.keyUp'), disabled: transpose >= 11, onclick: () => setTranspose(transpose + 1) }, el('span', { 'aria-hidden': 'true', text: '+' }))) : null),
+      el('div', { class: 'key-meta' },
+        original,
+        hasRow && transpose !== 0 ? el('button', { type: 'button', class: 'link-button', id: 'opt-key-reset', onclick: () => setTranspose(0), text: t('options.keyReset') }) : null),
+      el('label', { class: 'chords-check' },
+        el('input', { type: 'checkbox', id: 'opt-chords', checked: chordsOn, onchange: (event) => setChords(event.target.checked) }),
+        el('span', { text: t(chordsOn ? 'options.chordsOn' : 'options.chordsOff') })));
   }
 
   // The library song changed (its key), not the event: re-render the row and the detail,
@@ -885,7 +905,8 @@
       el('div', { class: 'preview-head' }, el('span', { class: 'ro-label', text: t('options.previewHeading') }),
         el('span', { class: 'preview-tools-row' }, window.TEXT_ONLY.button({ t, el, id: 'text-only' }), window.NOTATION.createSwitch())),
       tappable ? el('p', { class: 'hint now-song-hint', text: t('home.sectionHint') }) : null,
-      window.SONG_RENDER.sectionsView(sections, { textOnly: window.TEXT_ONLY.get(), headingLevel: 4, labels: indexes.map((i) => labels[i]) }));
+      // lyrics only: the device's "Doar text", or the item set to "Fără acorduri" for the team
+      window.SONG_RENDER.sectionsView(sections, { textOnly: item.chords === false || window.TEXT_ONLY.get(), headingLevel: 4, labels: indexes.map((i) => labels[i]) }));
   }
 
   function songDetail(item) {

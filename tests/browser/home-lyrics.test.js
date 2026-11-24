@@ -18,6 +18,7 @@ module.exports = {
     // the first song transposed by 2 for this event: the opened song shows the transposed chords
     await window_transpose(app, owner, E, 2);
     const m = await signIn('member', { width: 375, lang: 'ro' });
+    await m.click('#now .now-program-toggle'); // the songs fold under "Program ⌄"
     await m.waitForSelector('#now .now-items');
     const rows = await m.evaluate(() => [...document.querySelectorAll('#now .now-item')].map((li) => ({ button: Boolean(li.querySelector('button.now-item-button')), expanded: li.querySelector('button.now-item-button') && li.querySelector('button.now-item-button').getAttribute('aria-expanded'), keyButton: Boolean(li.querySelector('button.now-item-key')) })));
     check(rows.length === 5 && rows[0].button && rows[0].expanded === 'false' && !rows[1].button && rows.every((r) => !r.keyButton), 'member: the songs are buttons (closed), the verse is not, no key button', rows);
@@ -54,6 +55,7 @@ module.exports = {
     // the owner: the row opens the song too; the key badge is the key picker
     const o = await signIn('owner', { width: 1024, lang: 'ro' });
     await laterAnswers(o);
+    await o.click('#now .now-program-toggle'); // the songs fold under "Program ⌄"
     await o.waitForSelector('#now .now-items');
     await o.click('#now .now-item:nth-child(1) .now-item-key');
     await o.waitForSelector('#now .now-keys');

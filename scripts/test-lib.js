@@ -596,9 +596,13 @@ test('validateItems: song options (transpose, arrangement, team note, reference 
   const ok = evs.validateItems([{ type: 'song', songId: 5, transpose: -3, arrangement: 'v1, c c1 B', teamNote: ' încet ', referenceUrl: 'https://youtu.be/x' }], tro, findSong);
   assert.deepStrictEqual(ok.value[0], {
     id: null, type: 'song', songId: 5, mediaId: null, title: 'Sfânt', body: null, reference: null, url: null, who: null, durationMin: null,
-    transpose: -3, arrangement: 'V1 C C B', teamNote: 'încet', referenceUrl: 'https://youtu.be/x', backgroundMediaId: null, backgroundNone: 0,
+    transpose: -3, arrangement: 'V1 C C B', teamNote: 'încet', referenceUrl: 'https://youtu.be/x', chords: 1, backgroundMediaId: null, backgroundNone: 0,
   });
   assert.deepStrictEqual(evs.validateItems([{ type: 'song', songId: 5 }], tro, findSong).value[0].transpose, 0);
+  // "Fără acorduri": chords false -> 0; anything but a boolean is refused
+  assert.strictEqual(evs.validateItems([{ type: 'song', songId: 5, chords: false }], tro, findSong).value[0].chords, 0);
+  assert.strictEqual(evs.validateItems([{ type: 'song', songId: 5, chords: true }], tro, findSong).value[0].chords, 1);
+  assert.ok(evs.validateItems([{ type: 'song', songId: 5, chords: 'no' }], tro, findSong).error);
   const err = (item, tf = tro) => evs.validateItems([item], tf, findSong).error;
   assert.strictEqual(err({ type: 'song', songId: 5, arrangement: 'V1 V9 C Q' }, tEn), 'Item 1: unknown sections in the order: V9, Q.');
   assert.ok(err({ type: 'song', songId: 5, transpose: 12 }));
@@ -1117,6 +1121,28 @@ test('item type prayer (migrations 052 + 053, "Îndemn la rugăciune"): validate
   const alone = projectorFrame({ ...state, projector: { ...state.projector, itemId: items[0].id }, worship: { itemId: items[0].id, step: 0 } }, { items: evs.get(1, eventId).items.map((it) => (it.id === items[0].id ? { ...it, title: null } : it)) }, new Map(), {});
   assert.deepStrictEqual([alone.kind, alone.title, alone.who], ['title', 'Fratele Ion', undefined], 'no title: the person is the title');
   void ITEM_TYPES;
+});
+
+test('item chords (migration 067): "Fără acorduri" gives the team lyrics only, reloads the live pages, a copy keeps it', () => {
+  const { mem, evs, eventId, items } = liveFixture();
+  const { setlistKey } = require('../lib/live');
+  const tro = (k, v) => t(k, v, 'ro');
+  const song = items[0].id;
+  assert.strictEqual(evs.get(1, eventId).items[0].chords, true, 'with chords by default');
+  assert.ok(evs.itemSong(1, eventId, song, tro).song.sections.some((x) => x.content.includes('[')), 'the chords are there');
+  const keyBefore = setlistKey(evs.get(1, eventId).items);
+  const current = evs.get(1, eventId).items.map((it) => ({ ...it, background: it.background, chords: it.id === song ? false : it.chords }));
+  const { value, error } = require('../lib/events').validateItems(current.map((it) => ({ ...it, arrangement: it.arrangementIsDefault ? '' : it.arrangement })), tro, (id) => evs.findSong(1, id), (id) => evs.findMedia(1, id), (id) => evs.findBackground(1, id));
+  assert.ok(!error, error);
+  evs.replaceItems(1, eventId, value);
+  const it = evs.get(1, eventId).items[0];
+  assert.strictEqual(it.chords, false);
+  const ready = evs.itemSong(1, eventId, it.id, tro);
+  assert.ok(ready.song.chords === false && ready.song.sections.every((x) => !x.content.includes('[')), 'lyrics only', ready.song.sections);
+  assert.notStrictEqual(setlistKey(evs.get(1, eventId).items), keyBefore, 'the live pages reload');
+  const copy = evs.create(1, 1, { name: 'Copie', eventDate: '2026-10-11', startTime: null, notes: null }, { sourceId: eventId });
+  assert.strictEqual(evs.get(1, copy).items[0].chords, false, 'a copy keeps it');
+  mem.close();
 });
 
 test('item lyrics (migration 051): a song item\'s own sections replace the library\'s for that event only; the setlist key follows; a copy keeps them', () => {
@@ -2021,6 +2047,13 @@ test('events: upcoming / past split by status and date; the home never picks a f
   const h2 = createHome(db).home(1, 'member', today);
   assert.deepStrictEqual([h2.live, h2.next.name], [null, 'planned next week'], 'a finished event today is never "next"');
   assert.ok(Array.isArray(h2.program) && Array.isArray(h2.team), 'the card carries the top event\'s Program and team');
+  // the coming events carry this person's own positions ("mine"), for the next weeks
+  db.prepare("INSERT INTO users (id, admin_id, email, name, password_hash, role, created_at, active) VALUES (1, 1, 'b@x.ro', 'Bob', 'x', 'member', 0, 1)").run();
+  const voce = require('../lib/positions').createPositionStore(db).list(1)[0];
+  require('../lib/assignments').createAssignmentStore(db).replace(1, 5, [{ userId: 1, positionId: voce.id }], 1);
+  const h3 = createHome(db).home(1, 'member', today, 1);
+  assert.deepStrictEqual(h3.next.mine, [{ positionName: voce.name, positionEmoji: voce.emoji || null, status: 'pending' }], 'next: my position on it');
+  assert.ok(!('mine' in createHome(db).home(1, 'member', today).next), 'no person: no "mine"');
   assert.deepStrictEqual(names('past').slice(0, 4), ['planned today', 'finished today', 'planned yesterday', 'live yesterday'], 'descending; same date and time: newest id first');
   db.close();
 });

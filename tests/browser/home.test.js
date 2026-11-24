@@ -2,7 +2,8 @@
 
 // Acasă: the "now" card shows the next event for every role; starting it in another tab
 // turns every open home into LIVE without a reload (home:changed), ending it turns them
-// back; the pulsing dot respects reduced motion; the editors' quick actions.
+// back; the pulsing dot respects reduced motion. The board keeps to this week: no quick
+// actions and no install card on it (Evenimente and Mai mult have those).
 
 const { layoutAudit } = require('./harness');
 
@@ -17,12 +18,12 @@ module.exports = {
     }
     const card = (p) => p.evaluate(() => {
       const c = document.querySelector('#now .now-card');
-      return { live: c.classList.contains('live'), title: c.querySelector('.now-title')?.textContent, quick: !document.getElementById('quick-section').hidden };
+      return { live: c.classList.contains('live'), title: c.querySelector('.now-title')?.textContent, quick: Boolean(document.getElementById('quick-section')), install: Boolean(document.querySelector('main .install-card')), board: c.classList.contains('board') };
     });
     for (const [role, p] of Object.entries(pages)) {
       const c = await card(p);
       check(c.title === 'Serviciu duminică' && !c.live, `${role}: the next event is "Serviciu duminică"`, c);
-      check(c.quick === (role !== 'member'), `${role}: quick actions ${role === 'member' ? 'hidden' : 'shown (event roles)'}`, c);
+      check(c.board && !c.quick && !c.install, `${role}: the hymn board, no quick actions, no install card`, c);
       const a = await layoutAudit(p, 'main');
       check(!a.overflow && !a.small.length, `${role}: no overflow, targets >= 44 px`, a);
     }
@@ -44,16 +45,9 @@ module.exports = {
     await tab.click('#end-dialog button[value=end]');
     for (const p of Object.values(pages)) await p.waitForFunction(() => !document.querySelector('.now-card.live'), null, { timeout: 5000 });
     check(true, 'ended: every home leaves LIVE on its own');
-    await pages.owner.goto(`${app.url}/app`);
-    await pages.owner.waitForSelector('#now .now-card');
-    await pages.owner.click('#quick-section a[href="/events?new=1"]');
-    await pages.owner.waitForSelector('#new-dialog[open]', { timeout: 5000 });
-    await pages.owner.click('#new-create');
-    const opened = await pages.owner.waitForURL(/\/events\/\d+\/edit/, { timeout: 5000 }).then(() => true, () => false);
-    check(opened, '"+ Eveniment nou" opens the form; "Creează evenimentul" opens the editor');
     await pages.member.request.put(`${app.url}/api/me/locale`, { data: { locale: 'en' } });
     await pages.member.reload();
     await pages.member.waitForSelector('#now .now-card');
-    check(/Home|Coming up|Next/i.test(await pages.member.textContent('main')), 'member home in English', await pages.member.textContent('h1'));
+    check(/Now|Today|The weeks ahead/.test(await pages.member.textContent('main')), 'member home in English', await pages.member.textContent('h1'));
   },
 };

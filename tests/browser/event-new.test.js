@@ -134,14 +134,13 @@ module.exports = {
       await p.context().close();
     }
 
-    // Home's quick action: the same one tap.
+    // the link "+ Eveniment nou" uses (the empty home board too): the form opens at once
     const o = await signIn('owner', { width: 1024 });
-    await o.waitForSelector('#quick-section a[href="/events?new=1"]');
-    await o.click('#quick-section a[href="/events?new=1"]');
+    await o.goto(`${app.url}/events?new=1`);
     await o.waitForSelector('#new-dialog[open]', { timeout: 8000 });
     await o.click('#new-create');
     await o.waitForURL(/\/events\/\d+\/edit$/, { timeout: 8000 });
-    check(true, 'home "+ Eveniment nou": the form, then the editor');
+    check(true, '/events?new=1: the form, then the editor');
     // the API: apply-copy refuses itself; clear works; the template routes are gone
     const nid = Number(new URL(o.url()).pathname.split('/')[2]);
     check((await app.api(owner, 'POST', `/api/events/${nid}/apply-copy`, { fromEventId: nid })).status === 400, 'apply-copy: itself is refused');

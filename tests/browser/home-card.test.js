@@ -24,6 +24,9 @@ module.exports = {
 
     // the member (375): the Program with the keys, the team, no key choice
     const m = await signIn('member', { width: 375, lang: 'ro' });
+    await m.waitForSelector('#now .now-program-toggle');
+    check(!(await m.locator('#now .now-items').count()) && (await m.getAttribute('#now .now-program-toggle', 'aria-expanded')) === 'false', 'the songs start folded under "Program ⌄"');
+    await m.click('#now .now-program-toggle'); // the songs fold under "Program ⌄"
     await m.waitForSelector('#now .now-items');
     const card = await m.evaluate(() => ({
       items: [...document.querySelectorAll('#now .now-item')].map((li) => ({ title: li.querySelector('.now-item-title').textContent, key: li.querySelector('.now-item-key') ? li.querySelector('.now-item-key').textContent : null, keyButton: Boolean(li.querySelector('button.now-item-key')) })),
@@ -40,6 +43,7 @@ module.exports = {
     // the owner (1024): tap the song, pick A -> transposed by 2 for this event; the badge follows
     const o = await signIn('owner', { width: 1024, lang: 'ro' });
     await laterAnswers(o); // the owner's own invitation pop-up is not this test's
+    await o.click('#now .now-program-toggle'); // the songs fold under "Program ⌄"
     await o.waitForSelector('#now .now-items');
     check(await o.isVisible('#now .now-key-hint') && !(await o.$('#now .now-keys')), 'owner: "Atinge gama…", the choice waits for a song');
     await o.click('#now .now-item .now-item-key >> nth=0');
@@ -63,6 +67,7 @@ module.exports = {
     const evNow = (await app.api(owner, 'GET', `/api/events/${E}`)).body;
     await app.api(owner, 'PUT', `/api/events/${E}/items`, { items: [...evNow.items.map((it) => ({ id: it.id, type: it.type, songId: it.songId, title: it.title, body: it.body, reference: it.reference, url: it.url, who: it.who, mediaId: it.mediaId, durationMin: it.durationMin, teamNote: it.teamNote || '', ...(it.type === 'song' ? { transpose: it.transpose || 0, arrangement: it.arrangementIsDefault ? '' : it.arrangement || '', referenceUrl: it.referenceUrl || '' } : {}) })), { type: 'song', songId: fresh.id }] });
     await o.reload();
+    await o.click('#now .now-program-toggle'); // folded again after a reload
     await laterAnswers(o);
     await o.waitForSelector('#now .now-item:nth-child(6) .now-item-key.is-unset');
     await o.click('#now .now-item:nth-child(6) .now-item-key');
