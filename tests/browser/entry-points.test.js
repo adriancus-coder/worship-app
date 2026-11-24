@@ -24,7 +24,7 @@ module.exports = {
     // [home primary, home secondary, event page primary]: the home card has ONE button,
     // "Pregătește" until the editor was opened on this device
     const planned = {
-      owner: [/Pregătește/, null, /Pornește live/],
+      owner: [/Pregătește/, null, /Începe programul/],
       presenter: [/Pregătește/, null, /Pregătește/],
       leader: [/Pregătește/, null, /Pregătește/],
       operator: [/Pregătește/, null, /Pregătește/],

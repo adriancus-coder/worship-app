@@ -240,8 +240,11 @@
         // operator, the owner); the leader and the presenter just enter their live page.
         // "Pornește live" starts the event from here and opens the live page: one step (the
         // live page has nothing to set before the start)
-        const starts = soon && can(state.me, 'screens');
-        const live = !entry ? null : { key: starts ? 'home.startLive' : 'live.link', icon: 'play', href: livePage, run: starts ? () => startLive(livePage) : null, id: starts ? 'event-start' : null };
+        // "Începe programul" for those who start (the 'screens' right): today / tomorrow it
+        // starts the event right here; earlier it opens the live page, where they start it.
+        const starter = can(state.me, 'screens');
+        const starts = soon && starter;
+        const live = !entry ? null : { key: starter ? 'home.startLive' : 'live.link', icon: 'play', href: livePage, run: starts ? () => startLive(livePage) : null, id: starts ? 'event-start' : null };
         if (role === 'owner') actions.push(...(soon ? [live, edit] : [edit, live]));
         else actions.push(edit, live, compact);
       }

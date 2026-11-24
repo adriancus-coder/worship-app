@@ -33,7 +33,7 @@ module.exports = {
       await p.waitForURL((u) => u.pathname === `/events/${E}/edit`);
       await p.goto(`${app.url}/app`);
       await p.waitForSelector('#now .now-card');
-      const expected = lang === 'ro' ? 'Începerea programului' : 'Start the programme';
+      const expected = lang === 'ro' ? 'Începe programul' : 'Start the programme';
       check(await cardAction(p) === expected && await p.locator('#now .now-actions > *').count() === 1 && await p.locator('#start-live.now-primary').count() === 1, `${tag} after "Pregătește": only "${expected}"`, await cardAction(p));
       const a = await layoutAudit(p, 'main');
       check(!a.overflow && !a.small.length, `${tag} Acasă: no overflow, targets >= 44 px`, a);

@@ -19,7 +19,7 @@ module.exports = {
     await p.goto(`${app.url}/events/${E}`);
     await p.waitForSelector('#event-actions #event-start');
     const action = await p.evaluate(() => { const b = document.getElementById('event-start'); return { tag: b.tagName, text: b.textContent.trim(), primary: b.classList.contains('primary-action'), href: b.getAttribute('href') }; });
-    check(action.tag === 'A' && action.text === 'Pornește live' && action.primary && /\/live$/.test(action.href), 'owner: "Pornește live" is the primary action (a link that starts the event)', action);
+    check(action.tag === 'A' && action.text === 'Începe programul' && action.primary && /\/live$/.test(action.href), 'owner: "Pornește live" is the primary action (a link that starts the event)', action);
     await p.click('#event-start');
     await p.waitForURL(`**/events/${E}/live**`);
     await p.waitForSelector('#live:not([hidden])');
