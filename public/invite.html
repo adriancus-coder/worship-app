@@ -25,6 +25,14 @@
         <span data-i18n="invite.nameLabel"></span>
         <input type="text" id="name" maxlength="100" autocomplete="name" required>
       </label>
+      <!-- The invitation on a device with Face ID / a fingerprint (public/passkeys.js): no
+           password, the passkey is the way in; "Aleg o parolă în loc" shows the password fields. -->
+      <div id="passkey-invite" class="passkey-invite" hidden>
+        <button type="button" id="passkey-submit" data-icon="key" data-i18n="passkey.inviteButton"></button>
+        <p class="hint" data-i18n="passkey.inviteHint"></p>
+        <button type="button" class="secondary" id="use-password" data-i18n="passkey.invitePassword"></button>
+      </div>
+      <div id="password-fields">
       <label>
         <span data-i18n="invite.passwordLabel"></span>
         <input type="password" id="password" autocomplete="new-password" minlength="10" required aria-describedby="password-hint">
@@ -34,6 +42,7 @@
         <span data-i18n="invite.confirmLabel"></span>
         <input type="password" id="confirm" autocomplete="new-password" required>
       </label>
+      </div>
       <p class="message" id="message" role="alert" aria-live="polite"></p>
       <button type="submit" id="submit" data-icon="key"></button>
     </form>
@@ -48,6 +57,7 @@
     </div>
   </main>
   <script src="/i18n.js"></script>
+  <script src="/passkeys.js"></script>
   <script src="/invite.js"></script>
 </body>
 </html>

@@ -18,10 +18,17 @@
     <h1 data-i18n="login.heading"></h1>
     <p class="muted" data-i18n="login.intro"></p>
 
+    <!-- Passkeys (public/passkeys.js): "Intră cu Face ID sau amprentă", shown when this
+         browser has a platform authenticator; the passkey is offered in the email field too. -->
+    <div id="passkey-row" class="passkey-row" hidden>
+      <button type="button" id="passkey-button" data-icon="key" data-i18n="passkey.loginButton"></button>
+      <p class="message" id="passkey-message" role="alert" aria-live="polite"></p>
+      <p class="muted passkey-or" data-i18n="passkey.loginOr"></p>
+    </div>
     <form id="login-form" novalidate>
       <label>
         <span data-i18n="login.emailLabel"></span>
-        <input type="email" name="email" autocomplete="username" inputmode="email" required autofocus>
+        <input type="email" name="email" autocomplete="username webauthn" inputmode="email" required autofocus>
       </label>
       <label>
         <span data-i18n="login.passwordLabel"></span>
@@ -54,6 +61,7 @@
     </form>
   </main>
   <script src="/i18n.js"></script>
+  <script src="/passkeys.js"></script>
   <script src="/login.js"></script>
 </body>
 </html>

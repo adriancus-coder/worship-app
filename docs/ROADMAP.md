@@ -22,6 +22,12 @@ never implement a later stage early. Mockups: claude.ai design canvas
 - **PWA first.** App Store / Google Play later, possibly via Capacitor; not planned yet.
 - **Accounts:** personal logins (email + password) per user. Owner invites users (by
   email link or a temporary password). "Remember me" for church PCs.
+  **Passkeys** (migration 068, `lib/passkeys.js`, `routes/passkeys.js`, no dependency): "Intră cu
+  Face ID / amprentă" on the login page (the key is offered in the email field too), added per
+  device from Profilul meu; an invitation or a temporary password can be taken with a passkey
+  instead of a password (the temporary password is then replaced by one nobody knows). The site
+  (rpId / origin) is PUBLIC_BASE_URL, else the request's host; HTTPS is required (localhost
+  excepted), so the local mode falls back to passwords on plain http.
 - **Roles** (rights → where an event opens for them):
   - *owner* — everything → the home card as always (live page).
   - *presenter* (Prezentator) — event + editor rights (EVENT_ROLES) → the live page.

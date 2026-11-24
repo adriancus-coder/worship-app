@@ -72,6 +72,22 @@
     if (forced) {
       $('pending-bar').hidden = false;
       $('logout').hidden = false;
+      // the passkey instead of a new password (routes/passkeys.js clears the pending flag)
+      if (window.PASSKEYS && window.PASSKEYS.supported() && await window.PASSKEYS.platformAvailable()) {
+        $('passkey-pending').hidden = false;
+        $('passkey-pending-button').addEventListener('click', async () => {
+          $('passkey-message').textContent = '';
+          $('passkey-pending-button').disabled = true;
+          try {
+            await window.PASSKEYS.register({ name: window.PASSKEYS.deviceName() });
+            window.location.replace('/app');
+          } catch (err) {
+            $('passkey-message').className = 'message error';
+            $('passkey-message').textContent = err.code === 'cancelled' ? t('passkey.cancelled') : (err.message || t('passkey.failed'));
+            $('passkey-pending-button').disabled = false;
+          }
+        });
+      }
     } else {
       // The usual menu (under "Mai mult").
       document.body.dataset.shell = 'more';

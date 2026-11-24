@@ -34,6 +34,18 @@
     </form>
 
     <!-- Messages closed with × on this device (public/dismiss.js): bring them back. -->
+    <!-- Passkeys (public/passkeys.js): the devices that sign this person in with Face ID /
+         a fingerprint; add this one, remove one. -->
+    <section class="passkeys-section" id="passkeys" aria-labelledby="passkeys-heading" hidden>
+      <h2 id="passkeys-heading" data-i18n="passkey.heading"></h2>
+      <p class="hint" data-i18n="passkey.intro"></p>
+      <ul id="passkey-list" class="passkey-list"></ul>
+      <p id="passkey-empty" class="muted" data-i18n="passkey.none" hidden></p>
+      <p id="passkey-message" class="message" role="status" aria-live="polite"></p>
+      <button type="button" class="secondary" id="passkey-add" data-icon="plus" data-i18n="passkey.add"></button>
+      <p id="passkey-unsupported" class="hint" data-i18n="passkey.unsupported" hidden></p>
+    </section>
+
     <section class="dismissed-section" id="dismissed" aria-labelledby="dismissed-heading">
       <h2 id="dismissed-heading" data-i18n="dismiss.heading"></h2>
       <p class="hint" data-i18n="dismiss.profileHint"></p>
@@ -62,6 +74,7 @@
   <script src="/shell.js"></script>
   <script src="/info-tip.js"></script>
   <script src="/dismiss.js"></script>
+  <script src="/passkeys.js"></script>
   <script src="/profile.js"></script>
   <script src="/unavailability.js"></script>
 </body>

@@ -92,6 +92,42 @@
     }
   });
 
+  // --- "Intră cu Face ID sau amprentă" (public/passkeys.js) -------------------------------
+  // The button shows when the browser has a platform authenticator; while the page waits, the
+  // passkey is also offered in the email field (conditional mediation), which the button's own
+  // request aborts.
+  const passkeyRow = document.getElementById('passkey-row');
+  const passkeyButton = document.getElementById('passkey-button');
+  const passkeyMessage = document.getElementById('passkey-message');
+  let conditional = null;
+  function passkeyDone(body) {
+    const locale = body.user && body.user.locale;
+    if (locale) window.I18N.setLang(locale);
+    window.location.replace('/app');
+  }
+  function passkeyFailed(err) {
+    passkeyMessage.className = 'message error';
+    passkeyMessage.textContent = err.code === 'cancelled' ? t('passkey.cancelled') : (err.message || t('passkey.failed'));
+  }
+  async function passkeyLogin() {
+    passkeyMessage.textContent = '';
+    if (conditional) { conditional.abort(); conditional = null; }
+    passkeyButton.disabled = true;
+    try { passkeyDone(await window.PASSKEYS.login()); } catch (err) { passkeyFailed(err); } finally { passkeyButton.disabled = false; }
+  }
+  (async () => {
+    if (!window.PASSKEYS || !window.PASSKEYS.supported()) return;
+    const [platform, autofill] = await Promise.all([window.PASSKEYS.platformAvailable(), window.PASSKEYS.conditionalAvailable()]);
+    if (platform || autofill) {
+      passkeyRow.hidden = false;
+      passkeyButton.addEventListener('click', passkeyLogin);
+    }
+    if (autofill) {
+      conditional = new AbortController();
+      window.PASSKEYS.login({ mediation: 'conditional', signal: conditional.signal }).then(passkeyDone).catch(() => { /* no passkey picked */ });
+    }
+  })();
+
   fetch('/api/auth/features', { cache: 'no-store' }).then((res) => (res.ok ? res.json() : {})).then((features) => {
     if (!features.emailEnabled) return;
     document.getElementById('forgot-row').hidden = false;

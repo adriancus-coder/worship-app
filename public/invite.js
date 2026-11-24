@@ -70,6 +70,33 @@
     }
   });
 
+  // The invitation with a passkey (Face ID / fingerprint) instead of a password.
+  function showPasswordFields(on) {
+    $('password-fields').hidden = !on;
+    $('submit').hidden = !on;
+    $('passkey-invite').hidden = on;
+    $('password').required = on;
+    $('confirm').required = on;
+    if (on) $('password').focus();
+  }
+  $('use-password').addEventListener('click', () => showPasswordFields(true));
+  $('passkey-submit').addEventListener('click', async () => {
+    const name = $('name').value.trim();
+    if (!name) return say(t('invite.nameMissing'), 'error');
+    say('');
+    $('passkey-submit').disabled = true;
+    try {
+      await window.PASSKEYS.registerInvite({ token, name });
+      say(t('invite.done'), 'success');
+      window.location.replace('/app');
+    } catch (err) {
+      if (err.code === 'tokenInvalid' || err.code === 'tokenUsed' || err.code === 'tokenExpired') return showProblem(err.code);
+      say(err.code === 'cancelled' ? t('passkey.cancelled') : (err.message || t('passkey.failed')), 'error');
+    } finally {
+      $('passkey-submit').disabled = false;
+    }
+  });
+
   document.addEventListener('i18n:change', () => {
     render();
     say('');
@@ -87,6 +114,9 @@
     $('name').required = kind === 'invite';
     $('status').hidden = true;
     render();
+    // an invitation on a device that recognises its person: the passkey first, no password
+    const passkey = kind === 'invite' && window.PASSKEYS && window.PASSKEYS.supported() && await window.PASSKEYS.platformAvailable();
+    showPasswordFields(!passkey);
     $('token-form').hidden = false;
     (kind === 'invite' ? $('name') : $('password')).focus();
   })().catch(() => {

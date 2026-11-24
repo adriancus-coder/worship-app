@@ -52,6 +52,7 @@ const { createStorageGuard } = require('./lib/storage');
 const { createEmail } = require('./lib/email');
 const { createInviteService } = require('./lib/invites');
 const { createInvitesRouter } = require('./routes/invites');
+const { createPasskeysRouter } = require('./routes/passkeys');
 const { createShutdown } = require('./lib/shutdown');
 
 const db = openDb(config.DATA_DIR);
@@ -194,6 +195,7 @@ app.use(createProposalsRouter({ db, auth, logger, live, notifications }));
 setInterval(() => notifications.tick().catch((err) => logger.error('reminder tick failed', err)), 60 * 1000).unref();
 app.use(createPlatformRouter({ db, auth, config, logger, live, screensHub, storage, email, invites }));
 app.use(createInvitesRouter({ db, auth, config, logger, live, email, invites }));
+app.use(createPasskeysRouter({ db, auth, config, logger, live, invites })); // Face ID / amprentă
 app.use(createScreensRouter({ db, auth, config, logger, screensHub }));
 app.use(createSettingsRouter({ db, auth, config, logger, screensHub, live, storage, email, pexels, ai }));
 app.use(createMediaRouter({ db, auth, config, logger, live, storage, pexels }));

@@ -2096,6 +2096,29 @@ button.op-step:disabled { opacity: 1; cursor: default; }
 .now-team-summary { display: inline-flex; align-items: center; min-height: var(--touch); margin-top: 8px; padding: 6px 12px; font-weight: 600; color: var(--text-muted); border: 1px solid var(--border); border-radius: var(--radius); text-decoration: none; }
 .team-unavail { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 0 !important; font-size: 0.875rem; }
 .unavail-pill { color: var(--error); border-color: var(--error); flex: 0 1 auto; min-width: 0; max-width: 100%; white-space: normal; overflow-wrap: anywhere; border-radius: var(--radius); } /* a long range wraps, never past the screen */
+/* Passkeys: the login page's "Intră cu Face ID sau amprentă" row, the invitation's choice, the
+   profile's list of devices, the temporary-password page's way out. */
+.passkey-row { display: flex; flex-direction: column; gap: 8px; margin: 0 0 20px; }
+.passkey-row > button { width: 100%; }
+.passkey-row .message:empty { display: none; }
+.passkey-or { margin: 4px 0 0; text-align: center; font-size: 0.875rem; }
+.passkey-invite { display: flex; flex-direction: column; gap: 8px; margin: 8px 0; }
+.passkey-invite .hint { margin: 0; }
+#password-fields[hidden] { display: none; }
+.passkeys-section { display: flex; flex-direction: column; gap: 10px; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border); }
+.passkeys-section h2, .passkeys-section .hint, .passkeys-section .muted { margin: 0; }
+.passkeys-section .message:empty { display: none; }
+.passkeys-section > button { align-self: flex-start; }
+.passkey-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.passkey-list:empty { display: none; }
+.passkey-item { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 6px 6px 12px; border: 1px solid var(--border); border-radius: var(--radius); }
+.passkey-text { min-width: 0; overflow-wrap: anywhere; }
+.passkey-name { font-weight: 600; }
+.passkey-remove { flex: none; padding: 8px 12px; }
+.passkey-remove.is-asking { color: var(--error); border-color: var(--error); font-weight: 700; }
+.passkey-pending { display: flex; flex-direction: column; gap: 6px; margin: 16px 0; }
+.passkey-pending .hint { margin: 0; }
+.passkey-pending .message:empty { display: none; }
 .unavail { display: flex; flex-direction: column; gap: 8px; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border); }
 .unavail h2, .unavail .hint, .unavail p { margin: 0; }
 .unavail-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }

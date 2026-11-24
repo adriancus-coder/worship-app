@@ -2408,6 +2408,7 @@ testAsync('platform deletion: refused while active, the exact name, pending -> c
     db.prepare("INSERT INTO user_tokens (user_id, admin_id, kind, token_hash, created_at, expires_at) VALUES (?, ?, 'invite', ?, 0, 9999999999999)").run(userId, a, `h${a}`);
     const posId = Number(db.prepare("INSERT INTO positions (admin_id, name, sort) VALUES (?, 'Voce', 0)").run(a).lastInsertRowid);
     db.prepare('INSERT INTO users_positions (user_id, position_id, admin_id) VALUES (?, ?, ?)').run(userId, posId, a);
+    db.prepare("INSERT INTO passkeys (admin_id, user_id, credential_id, public_key, alg, created_at) VALUES (?, ?, ?, '{}', -7, 0)").run(a, userId, `pk${a}`);
     db.prepare("INSERT INTO event_assignments (event_id, admin_id, user_id, position_id, created_at) VALUES (?, ?, ?, ?, 0)").run(eventId, a, userId, posId);
     db.prepare("INSERT INTO unavailability (admin_id, user_id, date_from, date_to) VALUES (?, ?, '2026-10-01', '2026-10-02')").run(a, userId);
     db.prepare("INSERT INTO push_subscriptions (admin_id, user_id, endpoint, p256dh, auth, created_at) VALUES (?, ?, ?, 'p', 'a', 0)").run(a, userId, `https://push.test/${a}`);
@@ -3958,5 +3959,113 @@ test('song proposals (migration 034): one open per song, five open per member, s
   assert.strictEqual(P.openCount(1, 1), 4);
   assert.ok(P.create(1, 1, ids[0], 3, '').proposal, 'the song can be proposed again once the first was decided');
   assert.strictEqual(P.list(1, 1)[0].status, 'open', 'open ones first');
+  mem.close();
+});
+
+test('passkeys (migration 068): CBOR, the authenticator data, COSE -> JWK, registration and sign-in checks (ES256 and RS256), the counter, the challenges, the store', () => {
+  const crypto = require('crypto');
+  const PK = require('../lib/passkeys');
+  const b64 = PK.toB64url;
+  // a tiny CBOR encoder for the test's own attestation objects and COSE keys
+  const head = (major, n) => (n < 24 ? Buffer.from([(major << 5) | n]) : n < 256 ? Buffer.from([(major << 5) | 24, n]) : Buffer.concat([Buffer.from([(major << 5) | 25]), Buffer.from([n >> 8, n & 255])]));
+  const enc = (v) => {
+    if (Buffer.isBuffer(v)) return Buffer.concat([head(2, v.length), v]);
+    if (typeof v === 'string') { const b = Buffer.from(v, 'utf8'); return Buffer.concat([head(3, b.length), b]); }
+    if (typeof v === 'number') return v >= 0 ? head(0, v) : head(1, -1 - v);
+    if (v instanceof Map) return Buffer.concat([head(5, v.size), ...[...v].flatMap(([k, x]) => [enc(k), enc(x)])]);
+    throw new Error('unsupported');
+  };
+  const rpId = 'worship.example';
+  const origin = 'https://worship.example';
+  const rpHash = crypto.createHash('sha256').update(rpId).digest();
+  const authData = (flags, counter, cred) => Buffer.concat([rpHash, Buffer.from([flags]), Buffer.from([0, 0, 0, counter]), ...(cred ? [Buffer.alloc(16), Buffer.from([0, cred.id.length]), cred.id, enc(cred.cose)] : [])]);
+  const clientData = (type, challenge, org = origin) => b64(Buffer.from(JSON.stringify({ type, challenge, origin: org })));
+  const ec = crypto.generateKeyPairSync('ec', { namedCurve: 'P-256' });
+  const ecJwk = ec.publicKey.export({ format: 'jwk' });
+  const ecCose = new Map([[1, 2], [3, -7], [-1, 1], [-2, Buffer.from(ecJwk.x, 'base64url')], [-3, Buffer.from(ecJwk.y, 'base64url')]]);
+  const rsa = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
+  const rsaJwk = rsa.publicKey.export({ format: 'jwk' });
+  const rsaCose = new Map([[1, 3], [3, -257], [-1, Buffer.from(rsaJwk.n, 'base64url')], [-2, Buffer.from(rsaJwk.e, 'base64url')]]);
+
+  // CBOR round trip
+  const decoded = PK.decodeCbor(enc(new Map([['fmt', 'none'], ['n', -5], ['b', Buffer.from([1, 2, 3])], [7, 'x']]))).value;
+  assert.deepStrictEqual([decoded.get('fmt'), decoded.get('n'), [...decoded.get('b')], decoded.get(7)], ['none', -5, [1, 2, 3], 'x']);
+  assert.throws(() => PK.decodeCbor(Buffer.from([0x5f])), /badData/, 'indefinite lengths are refused');
+
+  // registration (ES256)
+  const challenge = b64(crypto.randomBytes(32));
+  const credId = crypto.randomBytes(16);
+  const attestation = b64(enc(new Map([['fmt', 'none'], ['attStmt', new Map()], ['authData', authData(0x45, 0, { id: credId, cose: ecCose })]])));
+  const reg = PK.verifyRegistration({ clientDataJSON: clientData('webauthn.create', challenge), attestationObject: attestation, expectedChallenge: challenge, expectedOrigins: [origin], rpId });
+  assert.deepStrictEqual({ id: reg.credentialId, alg: reg.alg, counter: reg.counter, jwk: reg.publicKeyJwk }, { id: b64(credId), alg: -7, counter: 0, jwk: { kty: 'EC', crv: 'P-256', x: ecJwk.x, y: ecJwk.y } });
+  assert.throws(() => PK.verifyRegistration({ clientDataJSON: clientData('webauthn.create', challenge, 'https://evil.example'), attestationObject: attestation, expectedChallenge: challenge, expectedOrigins: [origin], rpId }), /badOrigin/);
+  assert.throws(() => PK.verifyRegistration({ clientDataJSON: clientData('webauthn.create', 'other'), attestationObject: attestation, expectedChallenge: challenge, expectedOrigins: [origin], rpId }), /badChallenge/);
+  assert.throws(() => PK.verifyRegistration({ clientDataJSON: clientData('webauthn.get', challenge), attestationObject: attestation, expectedChallenge: challenge, expectedOrigins: [origin], rpId }), /badType/);
+  assert.throws(() => PK.verifyRegistration({ clientDataJSON: clientData('webauthn.create', challenge), attestationObject: attestation, expectedChallenge: challenge, expectedOrigins: [origin], rpId: 'other.example' }), /badRpId/);
+  const noUp = b64(enc(new Map([['fmt', 'none'], ['attStmt', new Map()], ['authData', authData(0x44, 0, { id: credId, cose: ecCose })]])));
+  assert.throws(() => PK.verifyRegistration({ clientDataJSON: clientData('webauthn.create', challenge), attestationObject: noUp, expectedChallenge: challenge, expectedOrigins: [origin], rpId }), /notPresent/);
+  const badAlg = b64(enc(new Map([['fmt', 'none'], ['attStmt', new Map()], ['authData', authData(0x45, 0, { id: credId, cose: new Map([[1, 2], [3, -8], [-1, 1], [-2, Buffer.alloc(32)], [-3, Buffer.alloc(32)]]) })]])));
+  assert.throws(() => PK.verifyRegistration({ clientDataJSON: clientData('webauthn.create', challenge), attestationObject: badAlg, expectedChallenge: challenge, expectedOrigins: [origin], rpId }), /badKey/);
+
+  // sign-in (ES256): the signature over authData || sha256(clientDataJSON)
+  const c2 = b64(crypto.randomBytes(32));
+  const cd2 = clientData('webauthn.get', c2);
+  const ad2 = authData(0x05, 7, null);
+  const signed = Buffer.concat([ad2, crypto.createHash('sha256').update(Buffer.from(cd2, 'base64url')).digest()]);
+  const sig = b64(crypto.sign('sha256', signed, { key: ec.privateKey, dsaEncoding: 'der' }));
+  const auth = PK.verifyAuthentication({ clientDataJSON: cd2, authenticatorData: b64(ad2), signature: sig, expectedChallenge: c2, expectedOrigins: [origin], rpId, publicKeyJwk: reg.publicKeyJwk, alg: -7, counter: 3 });
+  assert.strictEqual(auth.counter, 7);
+  assert.throws(() => PK.verifyAuthentication({ clientDataJSON: cd2, authenticatorData: b64(ad2), signature: sig, expectedChallenge: c2, expectedOrigins: [origin], rpId, publicKeyJwk: reg.publicKeyJwk, alg: -7, counter: 7 }), /badCounter/, 'a counter that did not move: a cloned key');
+  const tampered = b64(Buffer.concat([authData(0x05, 8, null)]));
+  assert.throws(() => PK.verifyAuthentication({ clientDataJSON: cd2, authenticatorData: tampered, signature: sig, expectedChallenge: c2, expectedOrigins: [origin], rpId, publicKeyJwk: reg.publicKeyJwk, alg: -7, counter: 3 }), /badSignature/);
+  const other = crypto.generateKeyPairSync('ec', { namedCurve: 'P-256' });
+  const otherSig = b64(crypto.sign('sha256', signed, { key: other.privateKey, dsaEncoding: 'der' }));
+  assert.throws(() => PK.verifyAuthentication({ clientDataJSON: cd2, authenticatorData: b64(ad2), signature: otherSig, expectedChallenge: c2, expectedOrigins: [origin], rpId, publicKeyJwk: reg.publicKeyJwk, alg: -7, counter: 3 }), /badSignature/, 'another key');
+  // synced passkeys keep the counter at 0
+  const ad0 = authData(0x05, 0, null);
+  const sig0 = b64(crypto.sign('sha256', Buffer.concat([ad0, crypto.createHash('sha256').update(Buffer.from(cd2, 'base64url')).digest()]), { key: ec.privateKey, dsaEncoding: 'der' }));
+  assert.strictEqual(PK.verifyAuthentication({ clientDataJSON: cd2, authenticatorData: b64(ad0), signature: sig0, expectedChallenge: c2, expectedOrigins: [origin], rpId, publicKeyJwk: reg.publicKeyJwk, alg: -7, counter: 0 }).counter, 0);
+
+  // RS256
+  const rsaAtt = b64(enc(new Map([['fmt', 'none'], ['attStmt', new Map()], ['authData', authData(0x45, 0, { id: credId, cose: rsaCose })]])));
+  const rsaReg = PK.verifyRegistration({ clientDataJSON: clientData('webauthn.create', challenge), attestationObject: rsaAtt, expectedChallenge: challenge, expectedOrigins: [origin], rpId });
+  assert.deepStrictEqual({ alg: rsaReg.alg, jwk: rsaReg.publicKeyJwk }, { alg: -257, jwk: { kty: 'RSA', n: rsaJwk.n, e: rsaJwk.e } });
+  const rsaSig = b64(crypto.sign('sha256', signed, rsa.privateKey));
+  assert.strictEqual(PK.verifyAuthentication({ clientDataJSON: cd2, authenticatorData: b64(ad2), signature: rsaSig, expectedChallenge: c2, expectedOrigins: [origin], rpId, publicKeyJwk: rsaReg.publicKeyJwk, alg: -257, counter: 0 }).counter, 7);
+
+  // the options
+  const opts = PK.registrationOptions({ rpId, rpName: 'Worship', challenge, user: { id: 5, name: 'ana@x.ro', displayName: 'Ana' }, excludeIds: ['abc'] });
+  assert.deepStrictEqual([opts.rp.id, opts.user.name, opts.authenticatorSelection.residentKey, opts.attestation, opts.excludeCredentials.length, opts.pubKeyCredParams.map((p) => p.alg)], [rpId, 'ana@x.ro', 'required', 'none', 1, [-7, -257]]);
+  assert.strictEqual(Buffer.from(opts.user.id, 'base64url').toString(), 'u5');
+  assert.deepStrictEqual(PK.authenticationOptions({ rpId, challenge: 'c' }).allowCredentials, [], 'discoverable: the authenticator picks the key');
+
+  // the challenges: one use, five minutes
+  const ch = PK.createChallenges({ ttlMs: 1000 });
+  const issued = ch.issue({ kind: 'login' }, 1000);
+  assert.deepStrictEqual(ch.take(issued, 1500), { kind: 'login', expiresAt: 2000 });
+  assert.strictEqual(ch.take(issued, 1500), null, 'spent');
+  const late = ch.issue({ kind: 'login' }, 1000);
+  assert.strictEqual(ch.take(late, 2000), null, 'expired');
+  assert.strictEqual(ch.take('nope'), null);
+
+  // the store
+  const Database = require('better-sqlite3');
+  const { runMigrations } = require('../lib/db');
+  const mem = new Database(':memory:');
+  mem.pragma('foreign_keys = ON');
+  runMigrations(mem);
+  mem.prepare("INSERT INTO admins (id, name, created_at) VALUES (1, 'A', 0)").run();
+  mem.prepare("INSERT INTO users (id, admin_id, email, name, password_hash, role, created_at) VALUES (1, 1, 'a@x.ro', 'Ana', 'h', 'owner', 0)").run();
+  const store = PK.createPasskeyStore(mem);
+  const id = store.add(1, 1, { ...reg, transports: ['internal'], name: 'iphone' }, 5000);
+  assert.deepStrictEqual(store.listForUser(1, 1).map((p) => [p.id, p.name, p.transports, p.createdAt, p.lastUsedAt]), [[id, 'iphone', ['internal'], 5000, null]]);
+  const found = store.findByCredentialId(reg.credentialId);
+  assert.deepStrictEqual([found.user_id, found.alg, found.counter, found.publicKeyJwk.kty, found.email], [1, -7, 0, 'EC', 'a@x.ro']);
+  store.used(id, 7, 6000);
+  assert.deepStrictEqual([store.findByCredentialId(reg.credentialId).counter, store.listForUser(1, 1)[0].lastUsedAt, store.countForUser(1, 1)], [7, 6000, 1]);
+  assert.throws(() => store.add(1, 1, { ...reg, name: 'again' }), /UNIQUE/, 'a credential id is registered once');
+  assert.strictEqual(store.remove(1, 2, id), false, 'another person cannot remove it');
+  assert.strictEqual(store.remove(1, 1, id), true);
+  assert.strictEqual(store.countForUser(1, 1), 0);
   mem.close();
 });
