@@ -12,24 +12,15 @@ Development-only design brief. Never copy any of it into code, comments or anyth
 - First surface of a replacement visual world, to be extended to the rest of the app later.
 
 ## Direction contract
-THESIS: Home is the church's hymn board for this week: the next service hung as one board of
-grooved rows, each song numbered in tall white letters with its key on a slid-in plate, and
-your own answer as the first slot. It refuses the stacked-card dashboard.
+Adrian replaced "Avganger" with "Standard" on dev (24 Nov 2026), after the hymn board.
 
-OWN-WORLD: dark charcoal felt with faint horizontal grooves inside a walnut frame; letters in
-warm white condensed caps (Barlow Condensed, self-hosted); key plates as solid light tiles
-with dark letters; brass (the app's amber) only for the primary action, the current choice and
-live. Light theme: pale felt, dark letters, dark plates. Restrained colour strategy.
+THESIS: Home is one clear card for the next service, like a well-made team app: when, your
+answer, the songs with their keys, the team, one action. No metaphor; familiarity is the point.
 
-STORY: a team member opens Home, sees when and what is next, answers in one tap, reads the
-songs and keys like the board on the wall, opens any song's lyrics in place, then sees which
-coming weeks they serve.
+OWN-WORLD: the app's own surfaces, system sans and amber accent; soft amber key pills.
 
-FIRST VIEWPORT (390 px): the board fills the width: the day and time in large condensed caps,
-the event name under it; the "Tu" slot (position + Vin / Poate / Nu pot); then the numbered
-song rows with key plates. Leaders: the primary action on the board's bottom ledge.
+STORY: a team member opens Home, sees when and what is next, answers in one tap, scans the songs
+and keys, opens any song's lyrics in place, then sees which coming weeks they serve.
 
-FORM: hymn board / letterboard, candidate 1 of 7; seed: none (unavailable). Signature
-interaction: a key change slides the new plate into its groove.
-
-FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance.
+FIRST VIEWPORT (390 px): the when line, the event name, the answer band, the songs with pills.
+Signature interaction: a key change pops the new pill in.
