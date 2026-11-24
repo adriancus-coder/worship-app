@@ -416,7 +416,7 @@
         song.presentation ? t('online.presentation', { order: song.presentation }) : null,
         song.themes && song.themes.length ? t('song.themes', { themes: song.themes.join(', ') }) : null,
       ].filter(Boolean).join(' · ');
-      previewSections.replaceChildren(...window.SONG_RENDER.sectionsView(song.sections, { headingLevel: 3 }));
+      previewSections.replaceChildren(...window.SONG_RENDER.sectionsView(song.sections, { textOnly: Boolean(window.TEXT_ONLY && window.TEXT_ONLY.get()), headingLevel: 3 }));
       renderChordsChoice(pv);
 
       const outcome = online.outcome;

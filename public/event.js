@@ -882,9 +882,10 @@
       const at = [...section.parentNode.children].filter((n) => n.classList.contains('song-section')).indexOf(section);
       if (at >= 0) programmeBig.open(item, song.sections[indexes[at]].id);
     } : null },
-      el('div', { class: 'preview-head' }, el('span', { class: 'ro-label', text: t('options.previewHeading') }), window.NOTATION.createSwitch()),
+      el('div', { class: 'preview-head' }, el('span', { class: 'ro-label', text: t('options.previewHeading') }),
+        el('span', { class: 'preview-tools-row' }, window.TEXT_ONLY.button({ t, el, id: 'text-only' }), window.NOTATION.createSwitch())),
       tappable ? el('p', { class: 'hint now-song-hint', text: t('home.sectionHint') }) : null,
-      window.SONG_RENDER.sectionsView(sections, { headingLevel: 4, labels: indexes.map((i) => labels[i]) }));
+      window.SONG_RENDER.sectionsView(sections, { textOnly: window.TEXT_ONLY.get(), headingLevel: 4, labels: indexes.map((i) => labels[i]) }));
   }
 
   function songDetail(item) {
@@ -1713,6 +1714,9 @@
   // --- start ------------------------------------------------------------------------
 
   wide.addEventListener('change', placeDetail);
+
+  // "Doar text" switched (here or in the big lyrics): the song's sections re-render in place.
+  document.addEventListener('textonly:change', () => { if (state.event && state.selected >= 0) renderDetail(); });
 
   // Chord notation switched (here or on another switch): re-render in place.
   document.addEventListener('notation:change', () => {

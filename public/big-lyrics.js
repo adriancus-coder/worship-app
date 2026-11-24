@@ -244,8 +244,10 @@
     function setTextOnly(value) {
       state.textOnly = value;
       store(TEXT_ONLY_KEY, value ? '1' : '0');
+      if (window.TEXT_ONLY) window.TEXT_ONLY.set(value); // the page's other views follow
       render();
     }
+    document.addEventListener('textonly:change', (event) => { if (event.detail !== state.textOnly) { state.textOnly = event.detail; render(); } });
 
     // The largest font size at which the text fits the body, then the user's A−/A+ factor.
     // Text-only lyrics follow the projector's rule (public/lyrics-fit.js): no wrapping while

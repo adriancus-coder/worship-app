@@ -500,8 +500,11 @@
     if (sectionIndex < 0) return;
     const labels = window.SECTIONS.sectionLabels(song.sections, t);
     box.append(el('div', { class: 'current-section' },
-      window.SONG_RENDER.sectionsView([song.sections[sectionIndex]], { headingLevel: 4, labels: [labels[sectionIndex]] })));
+      window.SONG_RENDER.sectionsView([song.sections[sectionIndex]], { textOnly: window.TEXT_ONLY.get(), headingLevel: 4, labels: [labels[sectionIndex]] })));
   }
+  // "Doar text" (public/text-only.js): the same choice as the big lyrics and the song page
+  document.querySelector('.current-tools').prepend(window.TEXT_ONLY.button({ t, el, id: 'text-only' }));
+  document.addEventListener('textonly:change', () => { if (state.snap) renderCurrent(); });
 
   // "■ Sfârșit" (worship.endItem, key E): ends the item on screen in place (black); "✓ Terminat"
   // until the next move. The team's position (in split mode the projector is not this page's).

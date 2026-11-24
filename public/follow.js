@@ -483,8 +483,11 @@
   textOnlyButton.addEventListener('click', () => {
     state.textOnly = !state.textOnly;
     store(TEXT_ONLY_KEY, state.textOnly ? '1' : '0');
+    if (window.TEXT_ONLY) window.TEXT_ONLY.set(state.textOnly); // the big lyrics follow
     render();
   });
+  // switched in the big lyrics: this page follows
+  document.addEventListener('textonly:change', (event) => { if (event.detail !== state.textOnly) { state.textOnly = event.detail; render(); } });
 
   function setScale(delta) {
     state.scale = Math.round(Math.min(SCALE.max, Math.max(SCALE.min, state.scale + delta)) * 10) / 10;
