@@ -21,12 +21,13 @@ module.exports = {
     const eventRow = (p) => p.evaluate(() => [...document.querySelectorAll('#event-actions a')].map((a) => `${a.classList.contains('secondary') ? '' : '*'}${a.textContent.trim()}|${a.getAttribute('href')}`));
 
     // --- planned: the home card and the event page per role ---------------------------------
-    // [home primary, home secondary, event page primary]
+    // [home primary, home secondary, event page primary]: the home card has ONE button,
+    // "Pregătește" until the editor was opened on this device
     const planned = {
-      owner: [/Pornește live/, /Pregătește/, /Pornește live/],
-      presenter: [/Pregătește/, /^Live$/, /Pregătește/],
-      leader: [/Pregătește/, /Versuri mari/, /Pregătește/],
-      operator: [/Pregătește/, /Pornește live/, /Pregătește/],
+      owner: [/Pregătește/, null, /Pornește live/],
+      presenter: [/Pregătește/, null, /Pregătește/],
+      leader: [/Pregătește/, null, /Pregătește/],
+      operator: [/Pregătește/, null, /Pregătește/],
       member: [/Vezi programul/, null, null],
     };
     const pages = {};

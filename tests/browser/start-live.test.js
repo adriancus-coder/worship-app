@@ -25,9 +25,16 @@ module.exports = {
       const p = await signIn(role, { width, lang });
       await p.reload();
       await p.waitForSelector('#now .now-card');
-      // the operator prepares first and starts second (secondary); the owner starts first
-      const expected = role === 'operator' ? (lang === 'ro' ? 'Pregătește' : 'Prepare') : (lang === 'ro' ? 'Pornește live' : 'Start live');
-      check(await cardAction(p) === expected && await p.locator(role === 'operator' ? '#start-live.secondary' : '#start-live:not(.secondary)').count() === 1, `${tag} Acasă on the event day: primary "${expected}", "Pornește live" ${role === 'operator' ? 'as the secondary button' : 'primary'}`, await cardAction(p));
+      // ONE button in two steps: "Pregătește" (+ "repetiții"), then, once prepared on this
+      // device, "Începerea programului"
+      const prep = lang === 'ro' ? 'Pregătește repetiții' : 'Prepare rehearsals';
+      check(await cardAction(p) === prep && await p.locator('#now .now-actions > *').count() === 1 && !(await p.locator('#start-live').count()), `${tag} Acasă on the event day: only "Pregătește" with "repetiții" under it`, await cardAction(p));
+      await p.click('#now .now-primary');
+      await p.waitForURL((u) => u.pathname === `/events/${E}/edit`);
+      await p.goto(`${app.url}/app`);
+      await p.waitForSelector('#now .now-card');
+      const expected = lang === 'ro' ? 'Începerea programului' : 'Start the programme';
+      check(await cardAction(p) === expected && await p.locator('#now .now-actions > *').count() === 1 && await p.locator('#start-live.now-primary').count() === 1, `${tag} after "Pregătește": only "${expected}"`, await cardAction(p));
       const a = await layoutAudit(p, 'main');
       check(!a.overflow && !a.small.length, `${tag} Acasă: no overflow, targets >= 44 px`, a);
       const t0 = Date.now();
@@ -66,6 +73,8 @@ module.exports = {
     await p.fill('[name=password]', 'parola-lunga-1');
     await p.click('button[type=submit]');
     await p.waitForURL('**/app');
+    await p.evaluate((id) => localStorage.setItem(`worship.prepared.${id}`, '1'), current); // prepared on this device
+    await p.reload();
     await p.waitForSelector('#start-live');
     blocked = true;
     for (const [ws, server] of links.splice(0)) { await ws.close().catch(() => {}); await server.close().catch(() => {}); }

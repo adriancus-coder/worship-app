@@ -211,5 +211,11 @@
   const roleLabel = (role) => withEmoji(roleEmoji(role), roleName(role));
   const positionLabel = (p) => (p ? withEmoji(p.emoji, p.name) : '');
 
-  window.PAGE = { api, el, ROLE_EMOJI, roleLabel, roleName, roleEmoji, setRoleNames, positionLabel, can, seesAll, liveEntryRole, canEdit, canEditSong, canEditEvents, EVENT_ROLES, setTitle, formatDate, dateBlock, setupTabs, backLink, keepFrom, eventBack, linkBack, assignStatus };
+  // "Pregătește" was opened for an event on this device: Home then offers the next step
+  // ("Începerea programului") instead of preparing again. Per device, light, never shared.
+  const PREPARED_KEY = (eventId) => `worship.prepared.${eventId}`;
+  function markPrepared(eventId) { try { localStorage.setItem(PREPARED_KEY(eventId), '1'); } catch { /* storage off */ } }
+  function isPrepared(eventId) { try { return localStorage.getItem(PREPARED_KEY(eventId)) === '1'; } catch { return false; } }
+
+  window.PAGE = { markPrepared, isPrepared, api, el, ROLE_EMOJI, roleLabel, roleName, roleEmoji, setRoleNames, positionLabel, can, seesAll, liveEntryRole, canEdit, canEditSong, canEditEvents, EVENT_ROLES, setTitle, formatDate, dateBlock, setupTabs, backLink, keepFrom, eventBack, linkBack, assignStatus };
 })();

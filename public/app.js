@@ -62,19 +62,20 @@
       if (entry) return [{ text: t(entry.key), href: eventUrl(event, entry.path), icon: 'play' }];
       return [{ text: t('home.follow'), href: eventUrl(event, '/follow'), icon: 'follow' }];
     }
-    // Event roles: "▶ Pornește live" starts it and opens that role's page in one tap, for
-    // those who start events (the 'screens' right: the operator, and the owner). The owner
-    // starts first; the operator prepares first (primary) and starts second. The leader and
-    // the presenter prepare, and enter their live page (the operator starts the event).
+    // Event roles: ONE button, in two steps. First "Pregătește" (with "repetiții" under it):
+    // the editor. Once it was opened for this event on this device, the next step replaces it:
+    // "▶ Începerea programului" starts the event and opens that role's page in one tap, for
+    // those who start events (the 'screens' right: the operator, and the owner); the leader
+    // and the presenter enter their live page instead (the operator starts the event).
     // Without the events right: "Vezi programul" (the event page).
-    const prepare = can(state.me, 'events') ? { text: t('home.prepare'), href: eventUrl(event, '/edit'), icon: 'edit' } : null;
+    const prepare = can(state.me, 'events') ? { text: t('home.prepare'), sub: t('home.prepareHint'), href: eventUrl(event, '/edit'), icon: 'edit', onclick: () => window.PAGE.markPrepared(event.id) } : null;
     const programme = { text: t('home.programme'), href: eventUrl(event, ''), icon: 'list' };
     if (entry) {
       const starter = can(state.me, 'screens');
-      const start = { text: t('home.startLive'), icon: 'play', run: () => startLive(event, eventUrl(event, entry.path)) };
+      const start = { text: t('home.startProgramme'), icon: 'play', run: () => startLive(event, eventUrl(event, entry.path)) };
       const enter = { text: t(role === 'leader' ? 'home.bigLyrics' : 'live.link'), href: eventUrl(event, entry.path), icon: 'play' };
-      if (role === 'owner') return [start, prepare];
-      return [prepare || programme, starter ? start : enter];
+      const next = starter ? start : enter;
+      return [prepare && !window.PAGE.isPrepared(event.id) ? prepare : next];
     }
     return [prepare || programme];
   }
@@ -224,9 +225,11 @@
   function card(event, live) {
     const [primary, secondary] = actions(event, live);
     const soon = live ? null : countdown(event);
+    // a label, and maybe a small line under it ("repetiții")
+    const label = (a) => (a.sub ? [el('span', { class: 'now-action-text' }, el('span', { text: a.text }), ' ', el('small', { class: 'now-action-sub', text: a.sub }))] : [a.text]);
     const button = (a, cls) => (a.run
-      ? el('button', { type: 'button', class: cls, id: 'start-live', 'data-icon': a.icon, text: a.text, onclick: a.run })
-      : el('a', { class: `button ${cls}`, href: a.href, 'data-icon': a.icon, text: a.text }));
+      ? el('button', { type: 'button', class: cls, id: 'start-live', 'data-icon': a.icon, onclick: a.run }, ...label(a))
+      : el('a', { class: `button ${cls}${a.sub ? ' has-sub' : ''}`, href: a.href, 'data-icon': a.icon, onclick: a.onclick || null }, ...label(a)));
     return el('article', { class: `board now-card${live ? ' live' : ''}`, 'aria-labelledby': 'now-title' },
       el('header', { class: 'board-head' },
         el('p', { class: 'board-when' },
