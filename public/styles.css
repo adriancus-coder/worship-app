@@ -1741,6 +1741,12 @@ main.wide.home-page { max-width: 1120px; }
 
 .board .now-section-label { margin: 12px 0 4px; font-size: 0.8125rem; font-weight: 600; color: var(--board-letter-muted); }
 .board .now-items { gap: 0; }
+.now-program-toggle { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; min-height: var(--touch); margin: 8px 0 0; padding: 0 2px; color: var(--board-letter-muted); background: transparent; border: 0; border-radius: 0; cursor: pointer; }
+.now-program-toggle .now-section-label { margin: 0; }
+.now-program-toggle:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.now-program-chevron { flex: none; width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; transition: transform 160ms ease-out; }
+.now-program.is-open .now-program-chevron { transform: rotate(180deg); }
+@media (prefers-reduced-motion: reduce) { .now-program-chevron { transition: none; } }
 .board .now-item { border-top: 1px solid var(--board-rule); }
 .board .now-item-row { align-items: center; gap: 10px; }
 .board .now-item-button { gap: 10px; min-height: 50px; padding: 6px 2px; color: var(--board-letter); background: transparent; border: 0; border-radius: 0; }

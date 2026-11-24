@@ -15,7 +15,7 @@
   const { t } = window.I18N;
   const $ = (id) => document.getElementById(id);
 
-  const state = { me: null, home: null, failed: false, pickedItem: null, keyBusy: false, keyMinor: false, expanded: null, newKey: null };
+  const state = { me: null, home: null, failed: false, pickedItem: null, keyBusy: false, keyMinor: false, expanded: null, newKey: null, programOpen: false };
 
   const editor = () => can(state.me, 'events'); // creates events
 
@@ -138,6 +138,19 @@
   }
   const songBox = (it) => songs.box(it);
 
+  // A down arrow (turned up when open), drawn inline so it takes the text colour.
+  function chevron() {
+    const ns = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('aria-hidden', 'true');
+    svg.setAttribute('class', 'now-program-chevron');
+    const path = document.createElementNS(ns, 'path');
+    path.setAttribute('d', 'M6 9l6 6 6-6');
+    svg.append(path);
+    return svg;
+  }
+
   function programBlock(event) {
     const items = programItems();
     if (!items.length) return null;
@@ -146,9 +159,14 @@
     let number = 0; // the songs are numbered, like on the board on the wall
     const slid = state.newKey;
     state.newKey = null;
-    return el('div', { class: 'now-program' },
-      el('p', { class: 'now-section-label', text: t('home.program') }),
-      el('ol', { class: 'now-items' }, ...items.map((it) => {
+    // The songs fold under "Program ⌄": closed at first, one tap opens them (Adrian, 24 Nov 2026).
+    const toggle = el('button', { type: 'button', class: 'now-program-toggle', 'aria-expanded': String(state.programOpen), 'aria-controls': 'now-items', onclick: () => { state.programOpen = !state.programOpen; render(); } },
+      el('span', { class: 'now-section-label', text: t('home.program') }),
+      chevron());
+    if (!state.programOpen) return el('div', { class: 'now-program' }, toggle);
+    return el('div', { class: 'now-program is-open' },
+      toggle,
+      el('ol', { class: 'now-items', id: 'now-items' }, ...items.map((it) => {
         const isSong = it.type === 'song' && Boolean(it.songId);
         const open = isSong && state.expanded === it.id;
         // the key on the right: the editors tap it to change the key for this event
