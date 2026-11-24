@@ -3347,3 +3347,16 @@ dialog.whats-new[open] { display: flex; }
   body[data-shell="library"] .chord-tap { cursor: default; text-decoration: none; }
   body[data-shell="library"] .song-section { break-inside: avoid; }
 }
+
+/* The event editor's "Ton": the label and −/key/+ on one row; "Original · Schimbă · Tonul
+   original" small under it; then the check "Cu acorduri" / "Fără acorduri". */
+.key-block { display: flex; flex-direction: column; gap: 6px; }
+.key-line { display: flex; align-items: center; gap: 12px; }
+.key-line .ro-label { flex: none; min-width: 2.5rem; }
+.key-line .key-row { flex: 1 1 auto; min-width: 0; margin: 0; }
+.key-line .key-display { min-width: 0; overflow-wrap: anywhere; }
+.key-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 10px; font-size: 0.9375rem; }
+.key-meta > * { margin: 0; }
+.option-block.key-block label.chords-check { display: flex; flex-direction: row; align-items: center; justify-content: flex-start; align-self: flex-start; gap: 10px; min-height: var(--touch); margin: 0; font-weight: 600; text-align: left; cursor: pointer; }
+.option-block.key-block .chords-check input { flex: none; width: 22px; height: 22px; margin: 0; accent-color: var(--accent-fill); }
+.key-chords-note { margin: 4px 0 0; }

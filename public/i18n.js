@@ -225,6 +225,7 @@
         itemArrangementUnknown: 'Elementul {n}: secțiuni necunoscute în ordine: {codes}.',
         itemTeamNoteTooLong: 'Elementul {n}: nota pentru echipă poate avea cel mult {max} de caractere.',
         itemReferenceUrlInvalid: 'Elementul {n}: linkul de referință trebuie să înceapă cu https:// (max. {max} de caractere).',
+        itemChordsInvalid: 'Elementul {n}: alegerea „Cu acorduri” nu este validă.',
         itemSongOnlyField: 'Elementul {n}: tonul, ordinea secțiunilor și linkul de referință sunt doar pentru cântări.',
         importFormat: 'Fișierul nu este o bibliotecă exportată din această aplicație sau din Sanctuary Voice.',
         importTooMany: 'Fișierul are prea multe cântări (maxim {max}).',
@@ -1790,6 +1791,8 @@
       },
       options: {
         keyLabel: 'Ton',
+        chordsOn: 'Cu acorduri',
+        chordsOff: 'Fără acorduri',
         keyDown: 'Coboară tonul cu un semiton',
         keyUp: 'Urcă tonul cu un semiton',
         keyDisplay: '{key} · original {original} · {offset}',
@@ -2580,6 +2583,7 @@
         itemArrangementUnknown: 'Item {n}: unknown sections in the order: {codes}.',
         itemTeamNoteTooLong: 'Item {n}: the team note can be at most {max} characters.',
         itemReferenceUrlInvalid: 'Item {n}: the reference link must start with https:// (max. {max} characters).',
+        itemChordsInvalid: 'Item {n}: the “With chords” choice is not valid.',
         itemSongOnlyField: 'Item {n}: key, section order and reference link are only for songs.',
         importFormat: 'The file is not a library exported from this app or from Sanctuary Voice.',
         importTooMany: 'The file has too many songs (at most {max}).',
@@ -4145,6 +4149,8 @@
       },
       options: {
         keyLabel: 'Key',
+        chordsOn: 'With chords',
+        chordsOff: 'Without chords',
         keyDown: 'Lower the key by a semitone',
         keyUp: 'Raise the key by a semitone',
         keyDisplay: '{key} · original {original} · {offset}',
