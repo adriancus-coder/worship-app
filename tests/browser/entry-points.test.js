@@ -21,14 +21,14 @@ module.exports = {
     const eventRow = (p) => p.evaluate(() => [...document.querySelectorAll('#event-actions a')].map((a) => `${a.classList.contains('secondary') ? '' : '*'}${a.textContent.trim()}|${a.getAttribute('href')}`));
 
     // --- planned: the home card and the event page per role ---------------------------------
-    // [home primary, home secondary, event page primary]: the home card has ONE button,
-    // "Pregătește" until the editor was opened on this device
+    // [home primary, home secondary, event page primary]: before the start the home card has
+    // no button (the event's name opens the event page)
     const planned = {
-      owner: [/Pregătește/, null, /Începe programul/],
-      presenter: [/Pregătește/, null, /Pregătește/],
-      leader: [/Pregătește/, null, /Pregătește/],
-      operator: [/Pregătește/, null, /Pregătește/],
-      member: [/Vezi programul/, null, null],
+      owner: [null, null, /Începe programul/],
+      presenter: [null, null, /Pregătește/],
+      leader: [null, null, /Pregătește/],
+      operator: [null, null, /Pregătește/],
+      member: [null, null, null],
     };
     const pages = {};
     for (const [role, [primary, secondary, eventPrimary]] of Object.entries(planned)) {
@@ -36,7 +36,7 @@ module.exports = {
       pages[role] = p;
       await p.waitForSelector('#now .now-card');
       const c = await card(p);
-      check(primary.test(c.primary) && (secondary ? secondary.test(c.secondary || '') : !c.secondary), `${role} planned: home "${c.primary}"${c.secondary ? ` + "${c.secondary}"` : ''}`, c);
+      check((primary ? primary.test(c.primary || '') : !c.primary) && (secondary ? secondary.test(c.secondary || '') : !c.secondary), `${role} planned: home "${c.primary}"${c.secondary ? ` + "${c.secondary}"` : ''}`, c);
       await p.goto(`${app.url}/events/${E}`);
       await p.waitForSelector('#items .item-main');
       const row = await eventRow(p);
@@ -57,11 +57,14 @@ module.exports = {
     await pr.goto(`${app.url}/events/${E}/edit`);
     await pr.waitForSelector('#items li');
     check(/\/edit$/.test(new URL(pr.url()).pathname), 'presenter: the editor opens');
-    // the presenter enters the live page from home without starting (the operator starts)
+    // the presenter enters the live page from the event page without starting (the operator starts)
     await pr.goto(`${app.url}/app`);
     await pr.waitForSelector('#now .now-card');
-    check(!(await pr.locator('#start-live').count()), 'presenter: no "Pornește live" on the home card');
-    await pr.click('#now .now-actions a[href*="/live"]');
+    check(!(await pr.locator('#now .now-actions').count()), 'presenter: no button on the home card before the start');
+    await pr.goto(`${app.url}/events/${E}`);
+    await pr.waitForSelector('#event-actions a');
+    check(!(await pr.locator('#event-start').count()), 'presenter: no "Începe programul" (the operator starts)');
+    await pr.click('#event-actions a[href*="/live"]');
     await pr.waitForURL(`**/events/${E}/live**`);
     await pr.waitForSelector('#live:not([hidden])');
     check((await app.state(E)).status === 'planned' && await pr.isHidden('#start-button') && !(await pr.isHidden('#operator-starts')) && !(await pr.locator('dialog.big-lyrics[open]').count()), 'presenter: the live page, still planned, no "Pornește", the hint that the operator starts');

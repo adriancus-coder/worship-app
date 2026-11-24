@@ -1,9 +1,9 @@
 'use strict';
 
-// Home (/app), "the hymn board": the live event, else the next one, as one board: the day and
-// time, the person's own slot (Vin / Poate / Nu pot, their positions and guides), the Program as
-// numbered rows with each song's key on a plate, the team, and ONE big button for what this
-// role does with it ("▶ Pornește live" starts it in one tap for the event roles); beside or
+// Home (/app): the live event, else the next one, as one card: the day and time, the event's
+// name (it opens the event page, where preparing and starting happen), the person's own slot
+// (Vin / Poate / Nu pot, their positions and guides), the Program with each song's key, the
+// team, and, only while it is live, the way in ("Intră live" / "Urmărește live"); beside or
 // under it, the next weeks with the person's own positions on them.
 // Each event role gets its own live page: live page (owner, presenter), big lyrics (leader),
 // console (operator).
@@ -56,28 +56,14 @@
 
   // [primary, secondary?] actions for the card, by role and state, within the rights.
   function actions(event, live) {
-    const role = state.me.user.role;
     const entry = LIVE_ENTRY[liveEntryRole(state.me)];
     if (live) {
       if (entry) return [{ text: t(entry.key), href: eventUrl(event, entry.path), icon: 'play' }];
       return [{ text: t('home.follow'), href: eventUrl(event, '/follow'), icon: 'follow' }];
     }
-    // Event roles: ONE button, in two steps. First "Pregătește" (with "repetiții" under it):
-    // the editor. Once it was opened for this event on this device, the next step replaces it:
-    // "▶ Începerea programului" starts the event and opens that role's page in one tap, for
-    // those who start events (the 'screens' right: the operator, and the owner); the leader
-    // and the presenter enter their live page instead (the operator starts the event).
-    // Without the events right: "Vezi programul" (the event page).
-    const prepare = can(state.me, 'events') ? { text: t('home.prepare'), sub: t('home.prepareHint'), href: eventUrl(event, '/edit'), icon: 'edit', onclick: () => window.PAGE.markPrepared(event.id) } : null;
-    const programme = { text: t('home.programme'), href: eventUrl(event, ''), icon: 'list' };
-    if (entry) {
-      const starter = can(state.me, 'screens');
-      const start = { text: t('home.startProgramme'), icon: 'play', run: () => startLive(event, eventUrl(event, entry.path)) };
-      const enter = { text: t(role === 'leader' ? 'home.bigLyrics' : 'live.link'), href: eventUrl(event, entry.path), icon: 'play' };
-      const next = starter ? start : enter;
-      return [prepare && !window.PAGE.isPrepared(event.id) ? prepare : next];
-    }
-    return [prepare || programme];
+    // Before the start, no button: the event's name opens the event page (Adrian, 24 Nov
+    // 2026: preparing and starting happen there).
+    return [];
   }
 
   // --- the card's Program with the keys, the key choice, the team row ----------------------
@@ -227,9 +213,7 @@
     const soon = live ? null : countdown(event);
     // a label, and maybe a small line under it ("repetiții")
     const label = (a) => (a.sub ? [el('span', { class: 'now-action-text' }, el('span', { text: a.text }), ' ', el('small', { class: 'now-action-sub', text: a.sub }))] : [a.text]);
-    const button = (a, cls) => (a.run
-      ? el('button', { type: 'button', class: cls, id: 'start-live', 'data-icon': a.icon, onclick: a.run }, ...label(a))
-      : el('a', { class: `button ${cls}${a.sub ? ' has-sub' : ''}`, href: a.href, 'data-icon': a.icon, onclick: a.onclick || null }, ...label(a)));
+    const button = (a, cls) => el('a', { class: `button ${cls}${a.sub ? ' has-sub' : ''}`, href: a.href, 'data-icon': a.icon }, ...label(a));
     return el('article', { class: `board now-card${live ? ' live' : ''}`, 'aria-labelledby': 'now-title' },
       el('header', { class: 'board-head' },
         el('p', { class: 'board-when' },
@@ -257,10 +241,10 @@
           ? el('button', { type: 'button', class: 'secondary danger-text', id: 'end-stale', 'data-icon': 'stop', text: t('home.staleEnd'), onclick: () => endStale(event) })
           : null) : null,
       el('p', { class: 'message error', id: 'start-message', role: 'alert' }),
-      // the ledge under the board: ONE primary action, maybe a second
-      el('div', { class: 'now-actions board-ledge' },
+      // live: the way in ("Intră live" / "Urmărește live") under the card; before the start none
+      primary ? el('div', { class: 'now-actions board-ledge' },
         button(primary, 'now-primary'),
-        secondary ? button(secondary, 'secondary') : null));
+        secondary ? button(secondary, 'secondary') : null) : null);
   }
 
   // Vin / Nu pot from the home card (the note is for the event page).
@@ -295,43 +279,6 @@
     }
     await load().catch(() => {});
   }
-
-  // --- "▶ Pornește live" --------------------------------------------------------------
-
-  const pending = { event: null, livePage: null };
-
-  async function startLive(event, livePage, endOther = false) {
-    const button = $('start-live');
-    if (button) button.disabled = true;
-    $('start-message').textContent = '';
-    try {
-      const res = await api(`/api/events/${event.id}/start`, { method: 'POST', body: endOther ? { endOther: true } : {} });
-      if (res.ok) {
-        window.location.assign(livePage);
-        return;
-      }
-      if (res.body.code === 'anotherLive' && !endOther) {
-        // Confirmation only now: another event is live. Offer to end it first.
-        Object.assign(pending, { event, livePage });
-        $('switch-heading').textContent = t('home.switchHeading', { name: (res.body.live && res.body.live.name) || '' });
-        $('switch-text').textContent = t('home.switchText', { name: (res.body.live && res.body.live.name) || '', next: event.name });
-        $('switch-message').textContent = '';
-        $('switch-dialog').showModal();
-        return;
-      }
-      ($('switch-dialog').open ? $('switch-message') : $('start-message')).textContent = res.body.error || t('common.networkError');
-    } catch (err) {
-      $('start-message').textContent = t('common.networkError');
-    } finally {
-      if ($('start-live')) $('start-live').disabled = false;
-    }
-  }
-
-  $('switch-yes').addEventListener('click', () => {
-    $('switch-dialog').close();
-    startLive(pending.event, pending.livePage, true);
-  });
-  $('switch-cancel').addEventListener('click', () => $('switch-dialog').close());
 
   function empty() {
     return el('article', { class: 'board now-card empty' },

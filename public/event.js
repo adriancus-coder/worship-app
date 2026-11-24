@@ -1762,7 +1762,6 @@
       return;
     }
     state.editing = editSegment === 'edit' && canEdit(state.me);
-    if (state.editing) window.PAGE.markPrepared(eventId); // Home: the next step is the start
     $('add-bar').hidden = !state.editing;
     if (!canEdit(state.me)) songSearch.setOnline(false); // the school's picker: the library only
     ideas.hidden = true; // until "Idei de cântări" in the "Altele" menu

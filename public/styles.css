@@ -1781,9 +1781,6 @@ main.wide.home-page { max-width: 1120px; }
 .board-ledge { margin: 14px 0 0; padding: 0 0 var(--board-pad); }
 .now-actions .button, .now-actions button { min-height: 50px; display: inline-flex; align-items: center; justify-content: center; }
 .now-primary { flex: 1 1 220px; font-size: 1.0625rem; }
-.now-action-text { display: inline-flex; flex-direction: column; align-items: flex-start; line-height: 1.15; }
-.now-action-sub { font-size: 0.8125rem; font-weight: 500; }
-.now-actions .has-sub { padding-block: 6px; }
 .board-ledge .secondary { flex: 1 1 140px; }
 .board.empty { padding-top: 20px; }
 .board.empty .board-when { font-size: 1.25rem; font-weight: 700; color: var(--board-letter); }

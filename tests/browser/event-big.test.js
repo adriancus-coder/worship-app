@@ -67,12 +67,10 @@ module.exports = {
     // place); ✕ returns to the live page, where a song row opens the song and a section the
     // big view; when the event starts, the live big view takes over
     const l = await signIn('leader', { width: 375, lang: 'ro' });
-    await l.goto(`${app.url}/app`);
-    // Home's one button: "Versuri mari" once the leader prepared this event on this device
-    await l.evaluate((id) => localStorage.setItem(`worship.prepared.${id}`, '1'), app.seed.eventId);
-    await l.reload();
-    await l.waitForSelector('#now .now-card');
-    await l.click('#now .now-actions :text("Versuri mari")');
+    // (Home has no button before the start: the leader goes in from the event page's "Live")
+    await l.goto(`${app.url}/events/${app.seed.eventId}`);
+    await l.waitForSelector('#event-actions a[href*="/live"]');
+    await l.click('#event-actions a[href*="/live"]');
     await l.waitForSelector('dialog.big-lyrics[open]', { timeout: 8000 });
     check(/Sfânt în G · Strofa 1/.test(await l.textContent('dialog.big-lyrics .big-label')) && !(await l.locator('dialog.big-lyrics .big-status').count()), 'leader, planned event: "Versuri mari" opens the first song big (its own place, no live status)');
     await l.click('dialog.big-lyrics .big-nav .big-exit');
