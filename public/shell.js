@@ -214,7 +214,7 @@
     { id: 'media', href: '/media', key: 'shell.media', icon: 'media', perm: 'media' },
     { id: 'screens', href: '/screens', key: 'shell.screens', icon: 'screens', perm: 'screens' },
     { id: 'guides', href: '/guides', key: 'shell.guides', icon: 'book', roles: ['owner', 'presenter', 'leader', 'operator', 'member'] },
-    { id: 'settings', href: '/settings', key: 'shell.settings', icon: 'settings', roles: ['owner'] },
+    { id: 'settings', href: '/settings', key: 'shell.settings', icon: 'settings', perm: 'screens' }, // the owner (every right) and the projector's people
     // The platform owner only (the churches on this server).
     { id: 'platform', href: '/platform', key: 'shell.platform', icon: 'platform', roles: ['owner'], platform: true },
   ].map(pageRow);

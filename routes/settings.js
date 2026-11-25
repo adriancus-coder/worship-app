@@ -4,6 +4,7 @@ const express = require('express');
 const asyncRoute = require('../lib/async-route');
 const { isValidTime } = require('../lib/dates');
 const { requireRole } = require('../lib/auth');
+const { can } = require('../lib/roles');
 const { MAX_BYTES, sniff, createLogoStore } = require('../lib/logo');
 const { createScreenStore } = require('../lib/screens');
 const { screenCredential } = require('./screens');
@@ -13,8 +14,9 @@ const { parseChoice, createBackgroundStore } = require('../lib/backgrounds');
 const { createMediaSigner } = require('../lib/media');
 const { createBackupService } = require('../lib/backup');
 
-// Admin settings (owner only): the church logo shown by the projector and the default
-// chord notation.
+// Admin settings: the owner's, except the projector's defaults (clock, key, chords, "Așteaptă
+// strofa", backgrounds, logo, safe margin, time format), which the 'screens' right has too
+// (the Proiector tab of /settings).
 // GET /api/logo/:file serves it to the users of that admin and to its paired screens.
 function createSettingsRouter({ db, auth, config, logger, screensHub, live, storage, email, pexels = null, ai = null }) {
   const router = express.Router();
@@ -24,6 +26,8 @@ function createSettingsRouter({ db, auth, config, logger, screensHub, live, stor
   const backgrounds = createBackgroundStore(db, createMediaSigner(config.DATA_DIR));
   const backups = createBackupService({ db, dataDir: config.DATA_DIR, config });
   const ownerOnly = requireRole('owner');
+  const isOwner = (req) => req.user.role === 'owner';
+  const projectorOrOwner = (req, res, next) => (isOwner(req) || can(req.user, 'screens') ? next() : res.status(403).json({ error: req.t('errors.forbidden') }));
   const rawBody = express.raw({ type: () => true, limit: MAX_BYTES });
 
   const logoInfo = (adminId) => {
@@ -31,17 +35,16 @@ function createSettingsRouter({ db, auth, config, logger, screensHub, live, stor
     return file ? { file, url: `/api/logo/${file}` } : null;
   };
 
-  router.use('/api/settings', auth.requireUser, ownerOnly, (req, res, next) => {
+  router.use('/api/settings', auth.requireUser, projectorOrOwner, (req, res, next) => {
     res.set('Cache-Control', 'no-store');
     next();
   });
 
+  // The projector's defaults for everyone allowed here; the rest (scope 'all') for the owner.
   router.get('/api/settings', (req, res) => {
-    res.json({
+    const projector = {
+      scope: 'projector',
       logo: logoInfo(req.adminId),
-      chordNotationDefault: settings.chordNotationDefault(req.adminId),
-      themeDefault: settings.themeDefault(req.adminId),
-      service: settings.service(req.adminId),
       clock: settings.clock(req.adminId),
       timeFormat: settings.timeFormat(req.adminId),
       songKey: settings.songKey(req.adminId),
@@ -49,6 +52,14 @@ function createSettingsRouter({ db, auth, config, logger, screensHub, live, stor
       awaitSection: settings.awaitSection(req.adminId),
       safeMargin: settings.safeMargin(req.adminId),
       backgroundDefaults: backgrounds.defaults(req.adminId),
+    };
+    if (!isOwner(req)) return res.json(projector);
+    res.json({
+      ...projector,
+      scope: 'all',
+      chordNotationDefault: settings.chordNotationDefault(req.adminId),
+      themeDefault: settings.themeDefault(req.adminId),
+      service: settings.service(req.adminId),
       backup: backups.lastBackup(req.adminId),
       storage: storage.usage(),
       email: email.status(), // { enabled, from }
@@ -58,7 +69,7 @@ function createSettingsRouter({ db, auth, config, logger, screensHub, live, stor
   });
 
   // "Trimite un email de test": to the owner's own address. 503 while email is disabled.
-  router.post('/api/settings/email/test', asyncRoute(async (req, res) => {
+  router.post('/api/settings/email/test', ownerOnly, asyncRoute(async (req, res) => {
     if (!email.enabled) return res.status(503).json({ code: 'emailDisabled', error: req.t('errors.emailDisabled') });
     const message = email.templates.test(req.lang, { appName: config.APP_NAME, churchName: req.admin.name, email: req.user.email });
     try {
@@ -90,7 +101,7 @@ function createSettingsRouter({ db, auth, config, logger, screensHub, live, stor
   });
 
   // The church default colour theme, for users without their own choice.
-  router.put('/api/settings/theme-default', (req, res) => {
+  router.put('/api/settings/theme-default', ownerOnly, (req, res) => {
     const theme = (req.body || {}).theme;
     if (!THEME_DEFAULTS.includes(theme)) return res.status(400).json({ error: req.t('errors.themeInvalid') });
     settings.set(req.adminId, 'theme_default', theme);
@@ -98,7 +109,7 @@ function createSettingsRouter({ db, auth, config, logger, screensHub, live, stor
   });
 
   // "Ziua și ora obișnuită a slujbei": the defaults of "+ Eveniment nou".
-  router.put('/api/settings/service', (req, res) => {
+  router.put('/api/settings/service', ownerOnly, (req, res) => {
     const { weekday, time } = req.body || {};
     if (!Number.isInteger(weekday) || weekday < 0 || weekday > 6 || !isValidTime(time)) {
       return res.status(400).json({ error: req.t('errors.serviceInvalid') });
@@ -160,7 +171,7 @@ function createSettingsRouter({ db, auth, config, logger, screensHub, live, stor
   });
 
   // The church default chord notation, for users without their own preference.
-  router.put('/api/settings/chord-notation', (req, res) => {
+  router.put('/api/settings/chord-notation', ownerOnly, (req, res) => {
     const notation = (req.body || {}).notation;
     if (!NOTATIONS.includes(notation)) return res.status(400).json({ error: req.t('errors.chordNotationInvalid') });
     settings.set(req.adminId, 'chord_notation_default', notation);

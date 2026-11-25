@@ -49,6 +49,9 @@
     const permInputs = PERMS.map((perm) => el('input', { type: 'checkbox', name: 'role-perm', value: perm }));
     const permTexts = PERMS.map(() => el('span'));
     const permsNote = el('p', { class: 'hint', id: 'role-perms-note' });
+    // The rights in four groups (the same eight rights): Cântări · Evenimente · Live · Ghiduri
+    const GROUPS = [{ key: 'songs', perms: ['library', 'school', 'media'] }, { key: 'events', perms: ['events', 'schedule'] }, { key: 'live', perms: ['live', 'screens'] }, { key: 'guides', perms: ['guides'] }];
+    const groupTitles = GROUPS.map(() => el('p', { class: 'perm-group-title' }));
     const dialogHeading = el('h2', { id: 'role-heading' });
     const dialogMessage = el('p', { class: 'message error', id: 'role-message', role: 'alert' });
     const saveButton = el('button', { type: 'submit', id: 'role-save', 'data-icon': 'check' });
@@ -70,8 +73,9 @@
       el('fieldset', { class: 'role-choice', id: 'role-base-choice' }, baseLegend, baseHelp,
         ...BASES.map((base, i) => el('label', { class: 'role-option' }, baseInputs[i], el('span', null, el('strong', null, el('span', { class: 'role-emoji', 'aria-hidden': 'true', text: ROLE_EMOJI[base] }), ' ', baseTexts[i])))),
         builtinNote),
-      el('fieldset', { class: 'positions-choice' }, permsLegend,
-        el('div', { class: 'checkbox-list' }, ...PERMS.map((perm, i) => el('label', { class: 'checkbox' }, permInputs[i], permTexts[i]))),
+      el('fieldset', { class: 'positions-choice perms-choice' }, permsLegend,
+        ...GROUPS.map((group, g) => el('div', { class: 'perm-group', 'data-group': group.key }, groupTitles[g],
+          el('div', { class: 'checkbox-list perm-list' }, ...group.perms.map((perm) => { const i = PERMS.indexOf(perm); return el('label', { class: 'checkbox' }, permInputs[i], permTexts[i]); })))),
         permsNote),
       dialogMessage,
       el('div', { class: 'form-actions' }, saveButton, cancelButton, deleteButton, resetButton),
@@ -147,6 +151,7 @@
       BASES.forEach((base, i) => { baseTexts[i].textContent = t(`customRoles.bases.${base}`); });
       permsLegend.textContent = t('customRoles.permsLabel');
       PERMS.forEach((perm, i) => { permTexts[i].textContent = t(`customRoles.perms.${perm}`); });
+      GROUPS.forEach((group, g) => { groupTitles[g].textContent = t(`customRoles.permGroups.${group.key}`); });
       permsNote.textContent = t('customRoles.screensNeedsLive');
       saveButton.textContent = t('customRoles.save');
       cancelButton.textContent = t('customRoles.cancel');

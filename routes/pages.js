@@ -162,9 +162,10 @@ function createPagesRouter({ db, auth, sendPage }) {
     sendPage(req, res, 'platform-church');
   });
 
-  // Admin settings (the church logo): owner only.
+  // Admin settings: the owner; the 'screens' right sees the Proiector group only.
   router.get('/settings', noStore, signedIn, (req, res) => {
-    if (req.session.user.role !== 'owner') return res.redirect('/app');
+    const u = req.session.user;
+    if (u.role !== 'owner' && !(Array.isArray(u.perms) && u.perms.includes('screens'))) return res.redirect('/app');
     sendPage(req, res, 'settings');
   });
 

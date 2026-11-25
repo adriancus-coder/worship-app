@@ -299,7 +299,11 @@ async function main() {
     assert.strictEqual((await api('GET', '/api/team', owner)).body.users.filter((u) => u.role === 'presenter').length, 2, 'listed with the role');
     assert.strictEqual((await api('POST', '/api/screens/auto-claim', operator, { name: 'Fereastra operatorului' })).status, 201);
     assert.strictEqual((await api('GET', '/api/team', operator)).status, 403);
-    assert.strictEqual((await api('GET', '/api/settings', operator)).status, 403);
+    const opSettings = await api('GET', '/api/settings', operator);
+    assert.strictEqual(opSettings.status, 200, 'the projector right reads the projector defaults');
+    assert.strictEqual(opSettings.body.scope, 'projector');
+    assert.strictEqual(opSettings.body.email, undefined, 'the church settings stay the owner\'s');
+    assert.strictEqual((await api('PUT', '/api/settings/theme-default', operator, { theme: 'light' })).status, 403);
     assert.strictEqual((await api('DELETE', `/api/events/${id}`, operator)).status, 200);
     // pages: the operator opens the editor and the live page
     for (const page of [`/events/${ev.id}/edit`, `/events/${ev.id}/live`, `/events/${ev.id}/operator`]) {

@@ -30,26 +30,38 @@
     }
   }
 
+  // The 'screens' right (not the owner) gets the projector's defaults only: the Proiector
+  // group alone, no tab bar.
+  let projectorOnly = false;
+  function limitToProjector() {
+    projectorOnly = true;
+    $('settings-tabs').hidden = true;
+    for (const name of ['general', 'advanced']) $(`settings-${name}`).hidden = true;
+    $('settings-projector').hidden = false;
+  }
+
   async function load() {
     const res = await api('/api/settings');
     if (!res.ok) return message(res.body.error || t('common.networkError'), 'error');
+    if (res.body.scope === 'projector') limitToProjector();
     renderLogo(res.body.logo);
-    renderNotation(res.body.chordNotationDefault);
-    renderThemeDefault(res.body.themeDefault);
-    renderService(res.body.service);
     renderClock(res.body.clock);
     renderMargin(res.body.safeMargin);
     renderTimeFormat(res.body.timeFormat);
     renderSongKey(res.body.songKey);
     renderChordsShow(res.body.chordsShow);
     renderAwaitSection(res.body.awaitSection);
+    await renderBackgrounds(res.body.backgroundDefaults || {});
+    if (projectorOnly) return;
+    renderNotation(res.body.chordNotationDefault);
+    renderThemeDefault(res.body.themeDefault);
+    renderService(res.body.service);
     renderEmail(res.body.email);
     renderPexels(res.body.pexels);
     renderAi(res.body.ai);
     loadPairing();
     renderBackup(res.body.backup);
     renderStorage(res.body.storage);
-    await renderBackgrounds(res.body.backgroundDefaults || {});
   }
 
   // --- storage: the app's data out of the whole disk; the reserved free share shaded ---
@@ -471,6 +483,7 @@
   const TABS = ['general', 'projector', 'advanced'];
   const tabButtons = [...document.querySelectorAll('#settings-tabs [role="tab"]')];
   function showTab(name) {
+    if (projectorOnly) return; // one group only: nothing to switch
     for (const tab of TABS) $(`settings-${tab}`).hidden = tab !== name;
     const url = new URL(window.location.href);
     if (name === 'general') url.searchParams.delete('tab'); else url.searchParams.set('tab', name);

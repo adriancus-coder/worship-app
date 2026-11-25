@@ -56,7 +56,7 @@ module.exports = {
     await m.click('.shell-more');
     await m.waitForSelector('#shell-panel:not([hidden])');
     const menu = await m.evaluate(() => [...document.querySelectorAll('#shell-panel li:not([hidden]) .shell-row[data-page]')].map((x) => x.dataset.page));
-    check(menu.includes('screens') && !menu.includes('media') && !menu.includes('settings'), 'the menu: Screens (projector right), no Media, no Settings', menu);
+    check(menu.includes('screens') && menu.includes('settings') && !menu.includes('media'), 'the menu: Screens and Settings (the projector right), no Media', menu);
     check(/Tehnician sunet/.test(await m.textContent('.shell-who-role')), 'the header names the role', await m.textContent('.shell-who-role'));
     await m.context().close();
     // deleting it: the person becomes a member
