@@ -196,6 +196,7 @@
 
   // The team: a circle with the initials per person, a dot with their answer, a legend.
   const initials = (name) => String(name || '').trim().split(/\s+/).slice(0, 2).map((w) => w[0] || '').join('').toUpperCase() || '?';
+  const firstName = (name) => String(name || '').trim().split(/\s+/)[0] || '';
   function teamBlock() {
     const team = state.home.team || [];
     if (!team.length) return null;
@@ -204,6 +205,7 @@
       el('p', { class: 'now-section-label', text: t('home.team') }),
       el('ul', { class: 'now-people', 'aria-label': t('home.team') }, ...team.map((p) => el('li', { class: `now-person now-person-${p.status}`, title: `${p.name} · ${answer(p.status)}${p.positions.length ? ` · ${p.positions.map((x) => window.PAGE.positionLabel(x)).join(', ')}` : ''}` },
         el('span', { class: 'now-avatar', 'aria-hidden': 'true', text: initials(p.name) }),
+        el('span', { class: 'now-person-name', 'aria-hidden': 'true', text: firstName(p.name) }),
         el('span', { class: 'now-dot', 'aria-hidden': 'true' }),
         el('span', { class: 'sr-only', text: `${p.name}: ${answer(p.status)}` })))),
       el('p', { class: 'now-legend', 'aria-hidden': 'true' }, ...['accepted', 'maybe', 'declined', 'pending'].map((s) => el('span', { class: `now-legend-item now-person-${s}` }, el('span', { class: 'now-dot' }), ` ${answer(s)}`))));

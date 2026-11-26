@@ -20,6 +20,7 @@
   --success: #8fd19e;
   --warning: #f5c26b;
   --error: #ff8a7a;
+  --on-status: #141318;       /* text on a success / warning / error fill (the team's answers) */
   --chord: #e8a33d;
   --worship: #6cb4ff;         /* the team (worship) position */
   --overlay: rgba(0, 0, 0, 0.6);
@@ -85,6 +86,7 @@
   --success: #1f7a3a;
   --warning: #8a5a00;
   --error: #b42318;
+  --on-status: #ffffff;
   --chord: #8a5200;
   --worship: #1f5fa8;
   --board: #ffffff;
@@ -1698,16 +1700,23 @@ button.now-item-key[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--accent-fi
 .now-key-set .now-keys { flex: 1 1 auto; min-width: 0; }
 .now-key-minor { flex: none; min-height: var(--touch); padding: 8px 10px; font-size: 0.9375rem; } /* a single toggle keeps its own border */
 .now-team { margin-top: 4px; }
-.now-people { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
-.now-person { position: relative; display: inline-flex; }
-.now-avatar { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; font-size: 0.875rem; font-weight: 700; color: var(--text); background: var(--background); border: 1px solid var(--border); }
-.now-dot { position: absolute; right: -2px; bottom: -2px; width: 12px; height: 12px; border-radius: 50%; background: var(--text-muted); border: 2px solid var(--surface); }
+.now-people { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 6px; }
+.now-person { position: relative; display: inline-flex; flex-direction: column; align-items: center; gap: 2px; width: 52px; }
+/* the whole circle takes the answer's colour (green / amber / red; grey = no answer yet), the
+   first name small under it */
+.now-avatar { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; font-size: 0.875rem; font-weight: 700; color: var(--text-muted); background: var(--surface-2); border: 1px solid var(--border); }
+.now-people .now-person-accepted .now-avatar { color: var(--on-status); background: var(--success); border-color: var(--success); }
+.now-people .now-person-maybe .now-avatar { color: var(--on-status); background: var(--warning); border-color: var(--warning); }
+.now-people .now-person-declined .now-avatar { color: var(--on-status); background: var(--error); border-color: var(--error); }
+.now-person-name { max-width: 100%; font-size: 0.6875rem; line-height: 1.2; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.now-person > .now-dot { display: none; } /* the circle itself says it */
+.now-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--text-muted); }
 .now-person-accepted .now-dot { background: var(--success); }
 .now-person-maybe .now-dot { background: var(--warning); }
 .now-person-declined .now-dot { background: var(--error); }
 .now-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 8px 0 0; font-size: 0.8125rem; color: var(--text-muted); }
 .now-legend-item { display: inline-flex; align-items: center; gap: 6px; }
-.now-legend .now-dot { position: static; width: 10px; height: 10px; border: 0; }
+.now-legend .now-dot { width: 10px; height: 10px; }
 /* "Standard": Home as a familiar team-app card: the next service on one card (when, your
    answer, the songs with their keys as pills, the team, one action); the weeks ahead as cards. */
 main.wide.home-page { max-width: 1120px; }
