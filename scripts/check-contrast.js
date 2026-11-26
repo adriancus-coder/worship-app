@@ -56,7 +56,7 @@ const PAIRS = [
   ['error', 'background', TEXT, 'errors'],
   ['error', 'surface', TEXT, 'errors on cards'],
   ['on-status', 'success', TEXT, 'initials on a green answer circle'],
-  ['on-status', 'warning', TEXT, 'initials on an amber answer circle'],
+  ['on-maybe', 'maybe-fill', TEXT, 'initials on the yellow "Poate" circle'],
   ['on-status', 'error', TEXT, 'initials on a red answer circle'],
   ['success', 'background', TEXT, 'success'],
   ['success', 'surface', TEXT, 'success on cards'],
